@@ -1,0 +1,18 @@
+@* Phase-1 placeholder body. Real content arrives in Phases 2–5 per the Plan & Scope. *@
+
+<div class="placeholder">
+    <div class="placeholder__icon">
+        <MudIcon Icon="@Icon" Size="Size.Large" />
+    </div>
+    <p class="placeholder__message">@Message</p>
+    @if (!string.IsNullOrEmpty(Detail))
+    {
+        <p class="placeholder__detail">@Detail</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Icon { get; set; } = default!;
+    [Parameter, EditorRequired] public string Message { get; set; } = default!;
+    [Parameter] public string? Detail { get; set; }
+}

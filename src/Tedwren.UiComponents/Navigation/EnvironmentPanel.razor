@@ -1,0 +1,22 @@
+@* Status dot + version / build info block, shown at the foot of the sidebar. *@
+
+<div class="env-panel">
+    <div class="env-panel__row">
+        <span class="env-panel__dot @(IsHealthy ? "env-panel__dot--healthy" : "env-panel__dot--degraded")"
+              aria-hidden="true"></span>
+        <span class="env-panel__name">@EnvironmentName</span>
+        <span class="env-panel__status">@(IsHealthy ? "Healthy" : "Degraded")</span>
+    </div>
+    <div class="env-panel__meta">
+        <span>v@(Version)</span>
+        <span class="env-panel__sep">·</span>
+        <span>Build @(Build)</span>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string EnvironmentName { get; set; } = default!;
+    [Parameter] public string Version { get; set; } = "0.0.0";
+    [Parameter] public string Build { get; set; } = "local";
+    [Parameter] public bool IsHealthy { get; set; } = true;
+}

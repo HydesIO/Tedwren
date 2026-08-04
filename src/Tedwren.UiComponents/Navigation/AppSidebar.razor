@@ -1,0 +1,68 @@
+@* Application sidebar: brand mark, platform selector, nav list, environment panel, collapse control. *@
+
+<nav class="sidebar @(IsCollapsed ? "sidebar--collapsed" : null)" aria-label="Primary">
+    <div class="sidebar__brand">
+        <div class="sidebar__logo" aria-hidden="true">T</div>
+        @if (!IsCollapsed)
+        {
+            <span class="sidebar__wordmark">Tedwren</span>
+        }
+        <MudIconButton Icon="@(IsCollapsed ? Icons.Material.Outlined.ChevronRight : Icons.Material.Outlined.ChevronLeft)"
+                       Size="Size.Small"
+                       Class="sidebar__collapse"
+                       aria-label="@(IsCollapsed ? "Expand sidebar" : "Collapse sidebar")"
+                       OnClick="ToggleCollapse" />
+    </div>
+
+    @if (!IsCollapsed && Platforms.Count > 0)
+    {
+        <PlatformSelector SelectedLabel="@SelectedPlatform"
+                          Options="Platforms"
+                          OnSelected="OnPlatformSelected" />
+    }
+
+    <div class="sidebar__nav">
+        @foreach (var item in NavItems)
+        {
+            <SidebarNavItem Icon="@item.Icon"
+                            Label="@item.Label"
+                            IsCollapsed="IsCollapsed"
+                            HasChildren="item.HasChildren"
+                            IsActive="@IsActive(item)"
+                            OnClick="@(() => OnNavigate.InvokeAsync(item))" />
+        }
+    </div>
+
+    @if (!IsCollapsed && Environment is not null)
+    {
+        <EnvironmentPanel EnvironmentName="@Environment.Name"
+                          Version="@Environment.Version"
+                          Build="@Environment.Build"
+                          IsHealthy="@Environment.IsHealthy" />
+    }
+</nav>
+
+@code {
+    [Parameter] public bool IsCollapsed { get; set; }
+    [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public string? ActiveRoute { get; set; }
+    [Parameter] public IReadOnlyList<NavItem> NavItems { get; set; } = Array.Empty<NavItem>();
+    [Parameter] public IReadOnlyList<string> Platforms { get; set; } = Array.Empty<string>();
+    [Parameter] public string SelectedPlatform { get; set; } = string.Empty;
+    [Parameter] public EventCallback<string> OnPlatformSelected { get; set; }
+    [Parameter] public EnvironmentInfo? Environment { get; set; }
+    [Parameter] public EventCallback<NavItem> OnNavigate { get; set; }
+
+    private async Task ToggleCollapse()
+    {
+        IsCollapsed = !IsCollapsed;
+        await IsCollapsedChanged.InvokeAsync(IsCollapsed);
+    }
+
+    private bool IsActive(NavItem item)
+        => !string.IsNullOrEmpty(ActiveRoute)
+           && ActiveRoute!.TrimStart('/').Equals(item.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Lightweight view model for the environment panel.</summary>
+    public sealed record EnvironmentInfo(string Name, string Version, string Build, bool IsHealthy);
+}

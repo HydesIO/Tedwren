@@ -1,0 +1,40 @@
+.app-shell {
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    background: var(--color-bg, #F7F8FA);
+}
+
+.app-shell__sidebar {
+    flex: 0 0 auto;
+    height: 100%;
+    z-index: 20;
+}
+
+.app-shell__main {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+    height: 100%;
+}
+
+.app-shell__content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    padding: var(--spacing-24, 24px);
+}
+
+/* Responsive: below the breakpoint the sidebar overlays rather than pushes. */
+@media (max-width: 768px) {
+    .app-shell__sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        box-shadow: var(--shadow-card);
+    }
+
+    .app-shell__content {
+        padding: var(--spacing-16, 16px);
+    }
+}

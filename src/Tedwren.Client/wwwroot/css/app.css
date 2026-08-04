@@ -1,0 +1,96 @@
+/* Global resets, typography and scrollbars. Colour/spacing come from tokens.css. */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+}
+
+body {
+    font-family: var(--font-family);
+    font-size: .875rem;
+    line-height: 1.5;
+    color: var(--color-text-primary);
+    background: var(--color-bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+    height: 100%;
+}
+
+a {
+    color: var(--color-brand);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    color: var(--color-text-primary);
+}
+
+/* Thin, unobtrusive scrollbars matching the dashboard chrome. */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-border) transparent;
+}
+
+*::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+*::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 8px;
+}
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* Visible keyboard focus everywhere (Plan & Scope §8, accessibility). */
+:focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+}
+
+/* Blazor's default error UI, restyled to the token palette. */
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: var(--spacing-12) var(--spacing-20);
+    background: var(--color-warning-pale);
+    color: var(--color-text-primary);
+    border-top: 1px solid var(--color-warning);
+    box-shadow: var(--shadow-card);
+    z-index: 1000;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    float: right;
+    font-weight: 600;
+}
+
+.loading-splash {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--color-text-secondary);
+    font-size: .875rem;
+}

@@ -1,0 +1,85 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject IShellSampleDataService Shell
+@inject NavigationManager Nav
+
+@* Application shell: theme provider + sidebar + top bar + routed content. *@
+
+<MudThemeProvider Theme="@TedwrenTheme.Instance" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="app-shell @(_sidebarCollapsed ? "app-shell--collapsed" : null)">
+    <aside class="app-shell__sidebar">
+        <AppSidebar NavItems="_navItems"
+                    ActiveRoute="@_activeRoute"
+                    @bind-IsCollapsed="_sidebarCollapsed"
+                    Platforms="@Shell.GetPlatforms()"
+                    SelectedPlatform="@_selectedPlatform"
+                    OnPlatformSelected="OnPlatformSelected"
+                    Environment="_environment"
+                    OnNavigate="OnNavigate" />
+    </aside>
+
+    <div class="app-shell__main">
+        <AppTopBar PageTitle="@_pageTitle"
+                   NotificationCount="@Shell.GetNotificationCount()"
+                   CurrentUserName="@_user.Name"
+                   CurrentUserRole="@_user.Role"
+                   CurrentUserAvatarUrl="@_user.AvatarUrl"
+                   ShowMenuButton="true"
+                   OnMenuClick="ToggleSidebar" />
+
+        <main class="app-shell__content" role="main">
+            @Body
+        </main>
+    </div>
+</div>
+
+@code {
+    private bool _sidebarCollapsed;
+    private IReadOnlyList<NavItem> _navItems = Array.Empty<NavItem>();
+    private string _selectedPlatform = string.Empty;
+    private ShellUser _user = new("", "");
+    private AppSidebar.EnvironmentInfo? _environment;
+    private string _activeRoute = "/";
+    private string _pageTitle = "Dashboard";
+
+    protected override void OnInitialized()
+    {
+        _navItems = Shell.GetNavItems();
+        _selectedPlatform = Shell.GetSelectedPlatform();
+        _user = Shell.GetCurrentUser();
+
+        var env = Shell.GetEnvironment();
+        _environment = new AppSidebar.EnvironmentInfo(env.Name, env.Version, env.Build, env.IsHealthy);
+
+        Nav.LocationChanged += OnLocationChanged;
+        UpdateActiveRoute();
+    }
+
+    private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
+    {
+        UpdateActiveRoute();
+        StateHasChanged();
+    }
+
+    private void UpdateActiveRoute()
+    {
+        var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri);
+        _activeRoute = relative == "/" ? "/" : "/" + relative.TrimStart('/').Split('?', '#')[0];
+
+        var match = _navItems.FirstOrDefault(
+            n => n.Href.TrimStart('/').Equals(_activeRoute.TrimStart('/'), StringComparison.OrdinalIgnoreCase));
+        _pageTitle = match?.Label ?? "Dashboard";
+    }
+
+    private void OnNavigate(NavItem item) => Nav.NavigateTo(item.Href);
+
+    private void OnPlatformSelected(string platform) => _selectedPlatform = platform;
+
+    private void ToggleSidebar() => _sidebarCollapsed = !_sidebarCollapsed;
+
+    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+}
