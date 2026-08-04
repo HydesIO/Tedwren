@@ -1,0 +1,29 @@
+# .NET build output
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+publish/
+
+# Blazor WASM / build artifacts
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Package outputs
+*.nupkg

@@ -1,0 +1,42 @@
+@* Top bar: page title, global search, notifications, help, profile menu. *@
+
+<header class="topbar">
+    <div class="topbar__lead">
+        @if (ShowMenuButton)
+        {
+            <MudIconButton Icon="@Icons.Material.Outlined.Menu"
+                           Size="Size.Medium"
+                           aria-label="Toggle navigation"
+                           OnClick="OnMenuClick" />
+        }
+        <h1 class="topbar__title">@PageTitle</h1>
+    </div>
+
+    <div class="topbar__search">
+        <GlobalSearchBox Placeholder="Search operatives, sites, permits…" OnSearch="OnSearch" />
+    </div>
+
+    <div class="topbar__actions">
+        <MudBadge Content="NotificationCount" Color="Color.Error" Overlap="true" Visible="NotificationCount > 0">
+            <MudIconButton Icon="@Icons.Material.Outlined.NotificationsNone"
+                           Size="Size.Medium"
+                           aria-label="Notifications" />
+        </MudBadge>
+        <MudIconButton Icon="@Icons.Material.Outlined.HelpOutline"
+                       Size="Size.Medium"
+                       aria-label="Help" />
+        <div class="topbar__divider" aria-hidden="true"></div>
+        <ProfileMenu UserName="@CurrentUserName" UserRole="@CurrentUserRole" AvatarUrl="@CurrentUserAvatarUrl" />
+    </div>
+</header>
+
+@code {
+    [Parameter] public string PageTitle { get; set; } = string.Empty;
+    [Parameter] public int NotificationCount { get; set; }
+    [Parameter] public string CurrentUserName { get; set; } = string.Empty;
+    [Parameter] public string CurrentUserRole { get; set; } = string.Empty;
+    [Parameter] public string? CurrentUserAvatarUrl { get; set; }
+    [Parameter] public bool ShowMenuButton { get; set; }
+    [Parameter] public EventCallback OnMenuClick { get; set; }
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+}

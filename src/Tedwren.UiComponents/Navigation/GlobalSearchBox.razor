@@ -1,0 +1,29 @@
+@* Global search input with a keyboard-shortcut badge. *@
+
+<div class="search-box">
+    <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" Class="search-box__icon" />
+    <input class="search-box__input"
+           type="search"
+           placeholder="@Placeholder"
+           aria-label="@Placeholder"
+           value="@_value"
+           @oninput="OnInput"
+           @onkeydown="OnKeyDown" />
+    @if (!string.IsNullOrEmpty(ShortcutLabel))
+    {
+        <kbd class="search-box__shortcut">@ShortcutLabel</kbd>
+    }
+</div>
+
+@code {
+    [Parameter] public string Placeholder { get; set; } = "Search";
+    [Parameter] public string? ShortcutLabel { get; set; } = "⌘K";
+    [Parameter] public EventCallback<string> OnSearch { get; set; }
+
+    private string _value = string.Empty;
+
+    private void OnInput(ChangeEventArgs e) => _value = e.Value?.ToString() ?? string.Empty;
+
+    private Task OnKeyDown(KeyboardEventArgs e)
+        => e.Key == "Enter" ? OnSearch.InvokeAsync(_value) : Task.CompletedTask;
+}

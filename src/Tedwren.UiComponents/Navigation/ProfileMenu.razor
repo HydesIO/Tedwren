@@ -1,0 +1,50 @@
+@* Avatar + name + role with a dropdown. *@
+
+<MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+    <ActivatorContent>
+        <div class="profile" role="button" tabindex="0" aria-label="Open profile menu">
+            <div class="profile__avatar" aria-hidden="true">
+                @if (!string.IsNullOrEmpty(AvatarUrl))
+                {
+                    <img src="@AvatarUrl" alt="" />
+                }
+                else
+                {
+                    <span>@Initials</span>
+                }
+            </div>
+            <div class="profile__meta">
+                <span class="profile__name">@UserName</span>
+                <span class="profile__role">@UserRole</span>
+            </div>
+            <MudIcon Icon="@Icons.Material.Outlined.ExpandMore" Size="Size.Small" Class="profile__chevron" />
+        </div>
+    </ActivatorContent>
+    <ChildContent>
+        <MudMenuItem Icon="@Icons.Material.Outlined.Person">Profile</MudMenuItem>
+        <MudMenuItem Icon="@Icons.Material.Outlined.Settings">Settings</MudMenuItem>
+        <MudDivider />
+        <MudMenuItem Icon="@Icons.Material.Outlined.Logout">Sign out</MudMenuItem>
+    </ChildContent>
+</MudMenu>
+
+@code {
+    [Parameter, EditorRequired] public string UserName { get; set; } = default!;
+    [Parameter] public string UserRole { get; set; } = string.Empty;
+    [Parameter] public string? AvatarUrl { get; set; }
+
+    private string Initials
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(UserName)) return "?";
+            var parts = UserName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            return parts.Length switch
+            {
+                0 => "?",
+                1 => parts[0][..1].ToUpperInvariant(),
+                _ => (parts[0][..1] + parts[^1][..1]).ToUpperInvariant(),
+            };
+        }
+    }
+}

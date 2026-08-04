@@ -1,0 +1,34 @@
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-16, 16px);
+    margin-bottom: var(--spacing-24, 24px);
+}
+
+.page-header__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+}
+
+.page-header__subtitle {
+    margin: var(--spacing-4, 4px) 0 0;
+    font-size: .875rem;
+    color: var(--color-text-secondary, #667085);
+}
+
+.page-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+    .page-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
