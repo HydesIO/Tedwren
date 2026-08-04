@@ -1,4 +1,5 @@
 using MudBlazor;
+using Tedwren.UiComponents.Models;
 using Tedwren.UiComponents.Navigation;
 
 namespace Tedwren.UiComponents.SampleData;
@@ -43,5 +44,22 @@ public sealed class ShellSampleDataService : IShellSampleDataService
 
     public ShellEnvironment GetEnvironment() => new("Production", "1.0.0", "1042", IsHealthy: true);
 
-    public int GetNotificationCount() => 3;
+    public int GetNotificationCount() => Notifications.Count(n => n.Unread);
+
+    public IReadOnlyList<NotificationEntry> GetNotifications() => Notifications;
+
+    private static readonly IReadOnlyList<NotificationEntry> Notifications = new List<NotificationEntry>
+    {
+        new(Icons.Material.Outlined.WarningAmber, "Qualification expiring", "CSCS card for J. Fletcher expires in 5 days", "12m ago", StatusKind.Warning, Unread: true),
+        new(Icons.Material.Outlined.Block, "Site entry blocked", "Non-compliant operative at Kingsway Retail", "48m ago", StatusKind.Danger, Unread: true),
+        new(Icons.Material.Outlined.Assignment, "Permit issued", "Hot works permit #HW-2043 at Meridian Tower", "2h ago", StatusKind.Permit, Unread: true),
+        new(Icons.Material.Outlined.PersonAddAlt, "New operative onboarded", "M. Adeyemi joined via self-service link", "3h ago", StatusKind.Success),
+        new(Icons.Material.Outlined.UploadFile, "Document uploaded", "RAMS submitted for Harbour Point", "5h ago", StatusKind.Info),
+        new(Icons.Material.Outlined.VerifiedUser, "Compliance restored", "Riverside Civils back above 90% compliant", "Yesterday", StatusKind.Success),
+        new(Icons.Material.Outlined.Schedule, "Timesheet approved", "Week 31 timesheet approved for Riverside Phase 2", "Yesterday", StatusKind.Info),
+        new(Icons.Material.Outlined.WarningAmber, "Qualification expiring", "First Aid for S. Okoro expires in 12 days", "Yesterday", StatusKind.Warning),
+        new(Icons.Material.Outlined.Hub, "Integration sync", "Sage export completed successfully", "2 days ago", StatusKind.Neutral),
+        new(Icons.Material.Outlined.Apartment, "New site added", "Harbour Point Phase 2 created", "2 days ago", StatusKind.Info),
+        new(Icons.Material.Outlined.PictureAsPdf, "Report ready", "Monthly compliance report is available", "3 days ago", StatusKind.Neutral),
+    };
 }

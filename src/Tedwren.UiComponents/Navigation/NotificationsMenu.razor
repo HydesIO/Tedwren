@@ -1,0 +1,74 @@
+@using Tedwren.UiComponents.Models
+@* Bell trigger + custom dropdown showing the most recent notifications, with a
+   "View all" link to the notifications page. Slim custom panel (no MudMenu). *@
+
+<Flyout Align="Flyout.FlyoutAlign.Right" Width="360px" CloseOnContentClick="false">
+    <Trigger>
+        <span class="notif-trigger">
+            <MudIconButton Icon="@Icons.Material.Outlined.NotificationsNone"
+                           Size="Size.Medium"
+                           aria-label="@($"Notifications ({UnreadCount} unread)")" />
+            @if (UnreadCount > 0)
+            {
+                <span class="notif-trigger__badge" aria-hidden="true">
+                    @(UnreadCount > 9 ? "9+" : UnreadCount.ToString())
+                </span>
+            }
+        </span>
+    </Trigger>
+    <ChildContent>
+        <div class="notif">
+            <div class="notif__header">
+                <span class="notif__title">Notifications</span>
+                @if (UnreadCount > 0)
+                {
+                    <span class="notif__count">@UnreadCount new</span>
+                }
+            </div>
+
+            @if (_recent.Count == 0)
+            {
+                <div class="notif__empty">You're all caught up.</div>
+            }
+            else
+            {
+                <ul class="notif__list">
+                    @foreach (var n in _recent)
+                    {
+                        <li class="notif__item @(n.Unread ? "notif__item--unread" : null)">
+                            <span class="notif__icon notif__icon--@(n.Accent.ToString().ToLowerInvariant())" aria-hidden="true">
+                                <MudIcon Icon="@n.Icon" Size="Size.Small" />
+                            </span>
+                            <span class="notif__body">
+                                <span class="notif__item-title">@n.Title</span>
+                                <span class="notif__item-detail">@n.Detail</span>
+                                <span class="notif__item-time">@n.RelativeTime</span>
+                            </span>
+                            @if (n.Unread)
+                            {
+                                <span class="notif__dot" aria-label="Unread"></span>
+                            }
+                        </li>
+                    }
+                </ul>
+            }
+
+            <a class="notif__footer" href="@ViewAllHref">
+                View all notifications
+                <MudIcon Icon="@Icons.Material.Outlined.ArrowForward" Size="Size.Small" />
+            </a>
+        </div>
+    </ChildContent>
+</Flyout>
+
+@code {
+    [Parameter] public IReadOnlyList<NotificationEntry> Notifications { get; set; } = Array.Empty<NotificationEntry>();
+    [Parameter] public int MaxItems { get; set; } = 10;
+    [Parameter] public string ViewAllHref { get; set; } = "/notifications";
+
+    private int UnreadCount => Notifications.Count(n => n.Unread);
+    private IReadOnlyList<NotificationEntry> _recent = Array.Empty<NotificationEntry>();
+
+    protected override void OnParametersSet()
+        => _recent = Notifications.Take(MaxItems).ToList();
+}

@@ -91,13 +91,37 @@ Page title, global search, notifications, help, profile menu.
 | Parameter | Type | Notes |
 |---|---|---|
 | `PageTitle` | `string` | |
-| `NotificationCount` | `int` | Badge; hidden when 0. |
+| `Notifications` | `IReadOnlyList<NotificationEntry>` | Feeds the bell dropdown; unread count drives the badge. |
+| `NotificationsHref` | `string` | "View all" target. |
 | `CurrentUserName` | `string` | |
 | `CurrentUserRole` | `string` | |
 | `CurrentUserAvatarUrl` | `string?` | Falls back to initials. |
 | `ShowMenuButton` | `bool` | Shows the sidebar toggle. |
 | `OnMenuClick` | `EventCallback` | |
 | `OnSearch` | `EventCallback<string>` | |
+| `OnSignOut` | `EventCallback` | |
+
+### `Flyout`
+Lightweight custom dropdown — a trigger, an absolutely-positioned panel and a click-away
+backdrop — used instead of `MudMenu` where a slim bespoke popover is wanted.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Trigger` | `RenderFragment?` | The clickable trigger. |
+| `ChildContent` | `RenderFragment?` | Panel contents. |
+| `Align` | `Flyout.FlyoutAlign` | `Left` / `Right`. |
+| `Width` | `string` | Panel width (default `280px`). |
+| `CloseOnContentClick` | `bool` | Close when the panel is clicked (default true). |
+
+### `NotificationsMenu`
+Bell trigger + custom dropdown showing the most recent notifications with a "View all"
+link. Built on `Flyout`.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Notifications` | `IReadOnlyList<NotificationEntry>` | |
+| `MaxItems` | `int` | Most recent shown (default 10). |
+| `ViewAllHref` | `string` | Notifications page link. |
 
 ### `GlobalSearchBox`
 Search input with a keyboard-shortcut badge.
@@ -109,13 +133,15 @@ Search input with a keyboard-shortcut badge.
 | `OnSearch` | `EventCallback<string>` | Raised on Enter. |
 
 ### `ProfileMenu`
-Avatar, name, role and dropdown.
+Avatar, name, role and a slim custom dropdown (built on `Flyout`, not `MudMenu`).
 
 | Parameter | Type | Notes |
 |---|---|---|
 | `UserName` | `string` | Required; drives initials fallback. |
 | `UserRole` | `string` | |
 | `AvatarUrl` | `string?` | |
+| `ProfileHref` / `SettingsHref` | `string` | Menu links. |
+| `OnSignOut` | `EventCallback` | |
 
 ### `PageHeader`
 Title + subtitle + right-aligned action slot. Every page starts with one.

@@ -1,0 +1,42 @@
+@* Lightweight custom dropdown: a trigger plus an absolutely-positioned panel and a
+   click-away backdrop. Used instead of MudMenu where a slimmer, bespoke popover is
+   wanted (profile menu, notifications). Closes when the backdrop or panel is clicked. *@
+
+<div class="flyout">
+    <div class="flyout__trigger" @onclick="Toggle" @onclick:stopPropagation="true">
+        @Trigger
+    </div>
+
+    @if (_open)
+    {
+        <div class="flyout__backdrop" @onclick="Close"></div>
+        <div class="flyout__panel flyout__panel--@(Align.ToString().ToLowerInvariant())"
+             style="width:@Width"
+             role="menu"
+             @onclick="OnPanelClick">
+            @ChildContent
+        </div>
+    }
+</div>
+
+@code {
+    public enum FlyoutAlign { Left, Right }
+
+    [Parameter] public RenderFragment? Trigger { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public FlyoutAlign Align { get; set; } = FlyoutAlign.Right;
+    [Parameter] public string Width { get; set; } = "280px";
+    /// <summary>Close the panel automatically when its content is clicked (default true).</summary>
+    [Parameter] public bool CloseOnContentClick { get; set; } = true;
+
+    private bool _open;
+
+    private void Toggle() => _open = !_open;
+
+    private void Close() => _open = false;
+
+    private void OnPanelClick()
+    {
+        if (CloseOnContentClick) _open = false;
+    }
+}

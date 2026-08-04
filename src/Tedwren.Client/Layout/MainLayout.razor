@@ -26,7 +26,8 @@
 
     <div class="app-shell__main">
         <AppTopBar PageTitle="@_pageTitle"
-                   NotificationCount="@Shell.GetNotificationCount()"
+                   Notifications="_notifications"
+                   NotificationsHref="/notifications"
                    CurrentUserName="@_user.Name"
                    CurrentUserRole="@_user.Role"
                    CurrentUserAvatarUrl="@_user.AvatarUrl"
@@ -47,12 +48,14 @@
     private AppSidebar.EnvironmentInfo? _environment;
     private string _activeRoute = "/";
     private string _pageTitle = "Dashboard";
+    private IReadOnlyList<NotificationEntry> _notifications = Array.Empty<NotificationEntry>();
 
     protected override void OnInitialized()
     {
         _navItems = Shell.GetNavItems();
         _selectedPlatform = Shell.GetSelectedPlatform();
         _user = Shell.GetCurrentUser();
+        _notifications = Shell.GetNotifications();
 
         var env = Shell.GetEnvironment();
         _environment = new AppSidebar.EnvironmentInfo(env.Name, env.Version, env.Build, env.IsHealthy);
@@ -72,9 +75,27 @@
         var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri);
         _activeRoute = relative == "/" ? "/" : "/" + relative.TrimStart('/').Split('?', '#')[0];
 
-        var match = _navItems.FirstOrDefault(
-            n => n.Href.TrimStart('/').Equals(_activeRoute.TrimStart('/'), StringComparison.OrdinalIgnoreCase));
-        _pageTitle = match?.Label ?? "Dashboard";
+        var rel = _activeRoute.TrimStart('/');
+        if (rel.Length == 0)
+        {
+            _pageTitle = _navItems.FirstOrDefault(n => n.Href == "/")?.Label ?? "Dashboard";
+            return;
+        }
+
+        // Longest-prefix match so sub-routes (e.g. /organisation/add) inherit their
+        // section's title; otherwise fall back to a title-cased last segment.
+        var match = _navItems
+            .Where(n => n.Href != "/" && rel.StartsWith(n.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(n => n.Href.Length)
+            .FirstOrDefault();
+
+        _pageTitle = match?.Label ?? Titleize(rel.Split('/')[^1]);
+    }
+
+    private static string Titleize(string segment)
+    {
+        var words = segment.Replace('-', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Join(' ', words.Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
     }
 
     private void OnNavigate(NavItem item) => Nav.NavigateTo(item.Href);
