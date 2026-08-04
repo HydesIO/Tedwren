@@ -1,0 +1,36 @@
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4, 4px);
+}
+
+.form-field__label {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+}
+
+.form-field__required {
+    color: var(--color-danger, #F04438);
+    margin-left: 2px;
+}
+
+.form-field__control {
+    width: 100%;
+}
+
+/* Reserved space so appearing validation text never shifts the layout. */
+.form-field__footer {
+    min-height: 18px;
+    line-height: 18px;
+}
+
+.form-field__helper {
+    font-size: .75rem;
+    color: var(--color-text-secondary, #667085);
+}
+
+.form-field__error {
+    font-size: .75rem;
+    color: var(--color-danger, #F04438);
+}

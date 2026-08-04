@@ -1,11 +1,13 @@
 @page "/organisation"
 @inject IListSampleDataService Data
+@inject NavigationManager Nav
 
 <PageTitle>Organisation · Tedwren</PageTitle>
 
 <PageHeader Title="Organisation Management" Subtitle="Companies, documents and accreditations">
     <Actions>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@(() => Nav.NavigateTo("/organisation/add"))">
             Add company
         </MudButton>
     </Actions>

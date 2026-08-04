@@ -1,0 +1,121 @@
+@page "/workforce/add"
+@inject IFormSampleDataService Options
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Add operative · Tedwren</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="px-0" />
+
+<PageHeader Title="Add operative" Subtitle="Onboard a new operative by direct entry or a self-service link" />
+
+<div class="form-page">
+    <TedwrenStepper @bind-ActiveIndex="_activeStep">
+        <MudStep Title="Method" Icon="@Icons.Material.Outlined.Tune">
+            <div class="add-operative__step">
+                <p class="add-operative__lead">How would you like to add this operative?</p>
+                <MudRadioGroup T="string" Value="_method" ValueChanged="OnMethodChanged">
+                    <div class="add-operative__choice">
+                        <MudRadio T="string" Value="@("direct")" Color="Color.Primary">
+                            <span class="add-operative__choice-title">Direct entry</span>
+                            <span class="add-operative__choice-desc">Enter the operative's details yourself now.</span>
+                        </MudRadio>
+                    </div>
+                    <div class="add-operative__choice">
+                        <MudRadio T="string" Value="@("link")" Color="Color.Primary">
+                            <span class="add-operative__choice-title">Send a self-service link</span>
+                            <span class="add-operative__choice-desc">The operative completes their own details and uploads their cards.</span>
+                        </MudRadio>
+                    </div>
+                </MudRadioGroup>
+            </div>
+        </MudStep>
+
+        <MudStep Title="@(_method == "link" ? "Recipient" : "Details")" Icon="@Icons.Material.Outlined.Badge">
+            <div class="add-operative__step">
+                @if (_method == "link")
+                {
+                    <div class="add-operative__grid">
+                        <TedwrenTextField Label="Operative name" @bind-Value="_name" Required="true" Placeholder="Full name" />
+                        <TedwrenTextField Label="Mobile or email" @bind-Value="_contact" Required="true"
+                                          Placeholder="Where to send the link" />
+                        <TedwrenToggle Label="Require a passcode on the link"
+                                       Description="The operative must enter a one-time passcode to open the form."
+                                       @bind-Value="_requirePasscode" />
+                    </div>
+                }
+                else
+                {
+                    <div class="add-operative__grid">
+                        <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true" Placeholder="Full name" />
+                        <TedwrenSelect T="string" Label="Trade" @bind-Value="_trade" Options="_trades" Placeholder="Select a trade" />
+                        <TedwrenSelect T="string" Label="Primary site" @bind-Value="_site" Options="_sites" Placeholder="Select a site" />
+                        <TedwrenTextField Label="Mobile" @bind-Value="_contact" InputType="InputType.Telephone" Placeholder="+44 …" />
+                    </div>
+                }
+            </div>
+        </MudStep>
+
+        <MudStep Title="Review" Icon="@Icons.Material.Outlined.CheckCircle">
+            <div class="add-operative__step">
+                <p class="add-operative__lead">Review and confirm</p>
+                <dl class="add-operative__review">
+                    <div><dt>Method</dt><dd>@(_method == "link" ? "Self-service link" : "Direct entry")</dd></div>
+                    <div><dt>Name</dt><dd>@(string.IsNullOrWhiteSpace(_name) ? "—" : _name)</dd></div>
+                    @if (_method == "link")
+                    {
+                        <div><dt>Send to</dt><dd>@(string.IsNullOrWhiteSpace(_contact) ? "—" : _contact)</dd></div>
+                        <div><dt>Passcode</dt><dd>@(_requirePasscode ? "Required" : "Not required")</dd></div>
+                    }
+                    else
+                    {
+                        <div><dt>Trade</dt><dd>@(_trade ?? "—")</dd></div>
+                        <div><dt>Primary site</dt><dd>@(_site ?? "—")</dd></div>
+                    }
+                </dl>
+                <div class="add-operative__finish">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
+                        @(_method == "link" ? "Send link" : "Create operative")
+                    </MudButton>
+                </div>
+            </div>
+        </MudStep>
+    </TedwrenStepper>
+</div>
+
+@code {
+    private int _activeStep;
+    private string _method = "direct";
+    private string? _name;
+    private string? _contact;
+    private string? _trade;
+    private string? _site;
+    private bool _requirePasscode = true;
+
+    private IReadOnlyList<string> _trades = Array.Empty<string>();
+    private IReadOnlyList<string> _sites = Array.Empty<string>();
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new("Workforce", "/workforce"),
+        new("Add operative", null, disabled: true),
+    };
+
+    protected override void OnInitialized()
+    {
+        _trades = Options.GetTrades();
+        _sites = Options.GetSiteNames();
+    }
+
+    private void OnMethodChanged(string value) => _method = value;
+
+    private void Finish()
+    {
+        var message = _method == "link"
+            ? $"Self-service link sent to {(_contact ?? "recipient")} (demo)."
+            : $"Operative \"{_name}\" created (demo — nothing is persisted).";
+        Snackbar.Add(message, Severity.Success);
+        Nav.NavigateTo("/workforce");
+    }
+}

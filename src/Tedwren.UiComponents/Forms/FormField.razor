@@ -1,0 +1,41 @@
+@* Shared field chrome: label above the control, optional helper text, and a
+   reserved-space validation message that never shifts layout when it appears.
+   Used by every Tedwren* input wrapper so spacing/validation stay consistent. *@
+
+<div class="form-field @(Error ? "form-field--error" : null)">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label class="form-field__label" for="@For">
+            @Label
+            @if (Required)
+            {
+                <span class="form-field__required" aria-hidden="true">*</span>
+            }
+        </label>
+    }
+
+    <div class="form-field__control">
+        @ChildContent
+    </div>
+
+    <div class="form-field__footer" aria-live="polite">
+        @if (Error && !string.IsNullOrEmpty(ErrorText))
+        {
+            <span class="form-field__error">@ErrorText</span>
+        }
+        else if (!string.IsNullOrEmpty(HelperText))
+        {
+            <span class="form-field__helper">@HelperText</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? For { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

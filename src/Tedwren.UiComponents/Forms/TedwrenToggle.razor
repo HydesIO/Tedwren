@@ -1,0 +1,30 @@
+@* The default binary/boolean input across the library — a labelled toggle switch,
+   NOT a checkbox (Plan & Scope §6.2). Use MudCheckBox only for genuine
+   multi-select-from-a-list situations, never for single on/off states. *@
+
+<div class="tedwren-toggle @(Disabled ? "tedwren-toggle--disabled" : null)">
+    <div class="tedwren-toggle__text">
+        <span class="tedwren-toggle__label" id="@_labelId">@Label</span>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <span class="tedwren-toggle__description">@Description</span>
+        }
+    </div>
+    <MudSwitch T="bool"
+               Value="@Value"
+               ValueChanged="@ValueChanged"
+               Color="Color.Primary"
+               Disabled="@Disabled"
+               aria-labelledby="@_labelId"
+               Class="tedwren-toggle__switch" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public bool Value { get; set; }
+    [Parameter] public EventCallback<bool> ValueChanged { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    private readonly string _labelId = "tg-" + Guid.NewGuid().ToString("N")[..8];
+}

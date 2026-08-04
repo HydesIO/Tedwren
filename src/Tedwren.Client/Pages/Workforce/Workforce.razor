@@ -1,11 +1,13 @@
 @page "/workforce"
 @inject IListSampleDataService Data
+@inject NavigationManager Nav
 
 <PageTitle>Workforce · Tedwren</PageTitle>
 
 <PageHeader Title="Workforce" Subtitle="Operative register, profiles and onboarding">
     <Actions>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAddAlt">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAddAlt"
+                   OnClick="@(() => Nav.NavigateTo("/workforce/add"))">
             Add operative
         </MudButton>
     </Actions>

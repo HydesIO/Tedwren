@@ -1,0 +1,18 @@
+@* Consistent form action placement (Plan & Scope §6.3): destructive bottom-left,
+   secondary + primary bottom-right, across every form in the app. *@
+
+<div class="form-actions">
+    <div class="form-actions__left">
+        @Destructive
+    </div>
+    <div class="form-actions__right">
+        @Secondary
+        @Primary
+    </div>
+</div>
+
+@code {
+    [Parameter] public RenderFragment? Primary { get; set; }
+    [Parameter] public RenderFragment? Secondary { get; set; }
+    [Parameter] public RenderFragment? Destructive { get; set; }
+}

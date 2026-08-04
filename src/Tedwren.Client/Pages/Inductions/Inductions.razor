@@ -1,10 +1,75 @@
 @page "/inductions"
-@using Tedwren.Client.Pages.Shared
+@inject IFormSampleDataService Options
+@inject ISnackbar Snackbar
 
 <PageTitle>Inductions · Tedwren</PageTitle>
 
-<PageHeader Title="Inductions" Subtitle="Induction builder and history" />
+<PageHeader Title="Induction builder" Subtitle="Configure a site induction (video and quiz)" />
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.PlayCircle"
-                  Message="Induction builder and history screens arrive in Phase 4."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<div class="form-page">
+    <TedwrenStepper @bind-ActiveIndex="_activeStep">
+        <MudStep Title="Details" Icon="@Icons.Material.Outlined.Description">
+            <div class="induction__step">
+                <div class="induction__grid">
+                    <TedwrenTextField Label="Induction name" @bind-Value="_name" Required="true"
+                                      Placeholder="e.g. Meridian Tower — General Induction" />
+                    <TedwrenSelect T="string" Label="Applies to site" @bind-Value="_site" Options="_sites"
+                                   Placeholder="Select a site" />
+                    <div class="form-page__full">
+                        <TedwrenToggle Label="Mandatory before first site entry"
+                                       Description="Operatives must complete this induction before their first entry."
+                                       @bind-Value="_mandatory" />
+                    </div>
+                </div>
+            </div>
+        </MudStep>
+
+        <MudStep Title="Video" Icon="@Icons.Material.Outlined.PlayCircle">
+            <div class="induction__step">
+                <TedwrenFileUpload Label="Induction video"
+                                   PromptText="Drag & drop a video, or click to upload"
+                                   HintText="MP4 up to 500MB (placeholder — not persisted)"
+                                   Accept=".mp4,.mov" />
+            </div>
+        </MudStep>
+
+        <MudStep Title="Quiz" Icon="@Icons.Material.Outlined.Quiz">
+            <div class="induction__step">
+                <p class="induction__lead">Quiz questions</p>
+                <BannerAlert Severity="StatusKind.Info"
+                             Message="Quiz question editing is a placeholder in this UI phase — the builder chrome and flow are what's being demonstrated." />
+                <div class="form-page__full">
+                    <TedwrenToggle Label="Require 100% pass mark"
+                                   Description="Operatives must answer every question correctly to pass."
+                                   @bind-Value="_fullMarks" />
+                </div>
+            </div>
+        </MudStep>
+
+        <MudStep Title="Publish" Icon="@Icons.Material.Outlined.Publish">
+            <div class="induction__step">
+                <p class="induction__lead">Ready to publish</p>
+                <p class="induction__hint">Publishing makes this induction available to assign to operatives.</p>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Publish" OnClick="Publish">
+                    Publish induction
+                </MudButton>
+            </div>
+        </MudStep>
+    </TedwrenStepper>
+</div>
+
+@code {
+    private int _activeStep;
+    private string? _name;
+    private string? _site;
+    private bool _mandatory = true;
+    private bool _fullMarks;
+
+    private IReadOnlyList<string> _sites = Array.Empty<string>();
+
+    protected override void OnInitialized() => _sites = Options.GetSiteNames();
+
+    private void Publish()
+        => Snackbar.Add($"Induction \"{_name ?? "Untitled"}\" published (demo — nothing is persisted).", Severity.Success);
+}

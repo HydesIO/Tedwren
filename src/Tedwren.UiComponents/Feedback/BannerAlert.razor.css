@@ -1,0 +1,70 @@
+.banner {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) var(--spacing-16, 16px);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control, 8px);
+}
+
+.banner__icon {
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.banner__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.banner__title {
+    font-size: .8125rem;
+    font-weight: 600;
+}
+
+.banner__message {
+    font-size: .8125rem;
+}
+
+.banner__action {
+    flex: 0 0 auto;
+}
+
+.banner--info {
+    background: var(--color-info-pale, #EFF8FF);
+    border-color: color-mix(in srgb, var(--color-info) 25%, transparent);
+    color: var(--color-info, #2E90FA);
+}
+
+.banner--success {
+    background: var(--color-success-pale, #ECFDF3);
+    border-color: color-mix(in srgb, var(--color-success) 25%, transparent);
+    color: var(--color-success, #17B26A);
+}
+
+.banner--warning {
+    background: var(--color-warning-pale, #FFFAEB);
+    border-color: color-mix(in srgb, var(--color-warning) 25%, transparent);
+    color: var(--color-warning, #F79009);
+}
+
+.banner--danger {
+    background: var(--color-danger-pale, #FEF3F2);
+    border-color: color-mix(in srgb, var(--color-danger) 25%, transparent);
+    color: var(--color-danger, #F04438);
+}
+
+.banner--neutral,
+.banner--permit {
+    background: var(--color-bg, #F7F8FA);
+    border-color: var(--color-border, #E4E7EC);
+    color: var(--color-text-secondary, #667085);
+}
+
+/* Keep body text readable rather than tinted like the icon/title. */
+.banner__message {
+    color: var(--color-text-primary, #101828);
+}

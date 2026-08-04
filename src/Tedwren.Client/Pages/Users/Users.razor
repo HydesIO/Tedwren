@@ -1,10 +1,80 @@
 @page "/users"
-@using Tedwren.Client.Pages.Shared
+@inject IFormSampleDataService Options
+@inject ISnackbar Snackbar
 
 <PageTitle>Users · Tedwren</PageTitle>
 
-<PageHeader Title="User Management" Subtitle="Users, roles and invitations" />
+<PageHeader Title="Invite user" Subtitle="Send an invitation and set the user's permissions" />
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.PeopleOutline"
-                  Message="User list, roles and invite flows arrive in Phases 3–4."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<div class="form-page">
+    <FormSection Title="User details" Description="We'll email an invitation to join the workspace.">
+        <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true" Placeholder="Full name"
+                          Error="_submitted && string.IsNullOrWhiteSpace(_name)"
+                          ErrorText="Name is required." />
+        <TedwrenTextField Label="Email address" @bind-Value="_email" Required="true"
+                          InputType="InputType.Email" Placeholder="name@company.com"
+                          Error="_submitted && !IsValidEmail(_email)"
+                          ErrorText="Enter a valid email address." />
+        <TedwrenSelect T="string" Label="Role" @bind-Value="_role" Required="true"
+                       Options="_roles" Placeholder="Select a role"
+                       HelperText="Roles set sensible permission defaults, which you can adjust below."
+                       Error="_submitted && string.IsNullOrWhiteSpace(_role)"
+                       ErrorText="Select a role." />
+    </FormSection>
+
+    <FormSection Title="Permissions" Description="Fine-tune what this user can do. Each permission is a simple on/off toggle.">
+        <div class="form-page__full form-page__toggles">
+            @foreach (var flag in _flags)
+            {
+                <TedwrenToggle Label="@flag.Label"
+                               Description="@flag.Description"
+                               Value="_permissions[flag.Key]"
+                               ValueChanged="@(v => _permissions[flag.Key] = v)" />
+                <MudDivider />
+            }
+        </div>
+    </FormSection>
+
+    <FormActions>
+        <Primary>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
+                       OnClick="Send">Send invitation</MudButton>
+        </Primary>
+    </FormActions>
+</div>
+
+@code {
+    private string? _name;
+    private string? _email;
+    private string? _role;
+    private bool _submitted;
+
+    private IReadOnlyList<string> _roles = Array.Empty<string>();
+    private IReadOnlyList<PermissionFlag> _flags = Array.Empty<PermissionFlag>();
+    private readonly Dictionary<string, bool> _permissions = new();
+
+    protected override void OnInitialized()
+    {
+        _roles = Options.GetRoles();
+        _flags = Options.GetPermissionFlags();
+        foreach (var flag in _flags)
+        {
+            _permissions[flag.Key] = flag.Enabled;
+        }
+    }
+
+    private void Send()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name) || !IsValidEmail(_email) || string.IsNullOrWhiteSpace(_role))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Invitation sent to {_email} (demo — nothing is persisted).", Severity.Success);
+    }
+
+    private static bool IsValidEmail(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+}

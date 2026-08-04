@@ -1,0 +1,13 @@
+@* Consistent field-level error presentation. Reserves space so layout is stable. *@
+
+<div class="inline-validation" aria-live="polite">
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <MudIcon Icon="@Icons.Material.Outlined.ErrorOutline" Size="Size.Small" Class="inline-validation__icon" />
+        <span class="inline-validation__text">@Message</span>
+    }
+</div>
+
+@code {
+    [Parameter] public string? Message { get; set; }
+}
