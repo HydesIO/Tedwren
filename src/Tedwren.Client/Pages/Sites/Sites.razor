@@ -16,6 +16,7 @@
         <DataTable TItem="Site"
                    Items="_sites"
                    Columns="_columns"
+                   Loading="_loading"
                    SearchPlaceholder="Search sites…"
                    EmptyTitle="No sites yet"
                    EmptyDescription="Add a site to begin tracking its workforce and compliance."
@@ -26,10 +27,18 @@
 @code {
     private IReadOnlyList<Site> _sites = Array.Empty<Site>();
     private List<DataColumn<Site>> _columns = new();
+    private bool _loading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        BuildColumns();
+        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
         _sites = Data.GetSites();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
         _columns = new()
         {
             new() { Title = "Site", Value = s => s.Name },

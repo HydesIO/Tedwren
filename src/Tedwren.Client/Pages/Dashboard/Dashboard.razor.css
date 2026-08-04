@@ -1,19 +1,31 @@
 .dash-kpis {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
-    gap: var(--spacing-16, 16px);
-    margin-bottom: var(--spacing-24, 24px);
+    gap: var(--spacing-20, 20px);
+    margin-bottom: var(--spacing-20, 20px);
+}
+
+/* KPI cards stretch to the tallest in the row for an even baseline. */
+.dash-kpis > * {
+    height: 100%;
 }
 
 .dash-grid {
     display: grid;
     grid-template-columns: 2fr 1fr;
-    gap: var(--spacing-16, 16px);
-    align-items: start;
+    gap: var(--spacing-20, 20px);
+    align-items: stretch;
 }
 
 .dash-grid__col {
+    display: flex;
     min-width: 0;
+}
+
+/* Cards fill their grid cell so cards on the same row share a height. */
+.dash-grid__col ::deep .dash-card {
+    flex: 1 1 auto;
+    width: 100%;
 }
 
 .dash-grid__col--wide {

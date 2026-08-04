@@ -38,6 +38,12 @@
     flex: 1 1 auto;
 }
 
+/* When the card has no header row, pad the top evenly so content
+   (e.g. a DataTable search/filter toolbar) isn't flush against the edge. */
+.dash-card__body--no-header {
+    padding-top: var(--spacing-20, 20px);
+}
+
 .dash-card__footer {
     padding: var(--spacing-12, 12px) var(--spacing-20, 20px);
     border-top: 1px solid var(--color-border, #E4E7EC);

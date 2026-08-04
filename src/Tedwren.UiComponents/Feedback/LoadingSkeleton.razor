@@ -1,0 +1,64 @@
+@* Card / table / list skeleton placeholders. The default loading pattern across the
+   app is a skeleton, not a spinner (Plan & Scope §8). *@
+
+<div class="skeleton" aria-hidden="true">
+    @switch (Variant)
+    {
+        case SkeletonVariant.Table:
+            <div class="skeleton__toolbar">
+                <span class="skeleton__bar skeleton__bar--search"></span>
+            </div>
+            @for (var r = 0; r < Rows; r++)
+            {
+                <div class="skeleton__row">
+                    <span class="skeleton__bar" style="width:24%"></span>
+                    <span class="skeleton__bar" style="width:18%"></span>
+                    <span class="skeleton__bar" style="width:18%"></span>
+                    <span class="skeleton__bar" style="width:14%"></span>
+                </div>
+            }
+            break;
+
+        case SkeletonVariant.List:
+            @for (var r = 0; r < Rows; r++)
+            {
+                <div class="skeleton__list-item">
+                    <span class="skeleton__avatar"></span>
+                    <span class="skeleton__stack">
+                        <span class="skeleton__bar" style="width:40%"></span>
+                        <span class="skeleton__bar skeleton__bar--sm" style="width:60%"></span>
+                    </span>
+                </div>
+            }
+            break;
+
+        case SkeletonVariant.Kpi:
+            <div class="skeleton__kpi-grid">
+                @for (var r = 0; r < Rows; r++)
+                {
+                    <div class="skeleton__kpi">
+                        <span class="skeleton__avatar"></span>
+                        <span class="skeleton__bar" style="width:70%"></span>
+                        <span class="skeleton__bar skeleton__bar--sm" style="width:50%"></span>
+                    </div>
+                }
+            </div>
+            break;
+
+        default: // Card
+            <div class="skeleton__card">
+                <span class="skeleton__bar" style="width:45%"></span>
+                <span class="skeleton__bar skeleton__bar--sm" style="width:80%"></span>
+                <span class="skeleton__bar skeleton__bar--sm" style="width:65%"></span>
+                <span class="skeleton__bar skeleton__bar--sm" style="width:72%"></span>
+            </div>
+            break;
+    }
+</div>
+
+@code {
+    public enum SkeletonVariant { Card, Table, List, Kpi }
+
+    [Parameter] public SkeletonVariant Variant { get; set; } = SkeletonVariant.Card;
+    [Parameter] public int Rows { get; set; } = 5;
+}

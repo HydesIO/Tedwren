@@ -18,6 +18,7 @@
         <DataTable TItem="Company"
                    Items="_companies"
                    Columns="_columns"
+                   Loading="_loading"
                    SearchPlaceholder="Search companies…"
                    EmptyTitle="No companies yet"
                    EmptyDescription="Add a company to start managing its documents and accreditations."
@@ -28,10 +29,18 @@
 @code {
     private IReadOnlyList<Company> _companies = Array.Empty<Company>();
     private List<DataColumn<Company>> _columns = new();
+    private bool _loading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        BuildColumns();
+        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
         _companies = Data.GetCompanies();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
         _columns = new()
         {
             new() { Title = "Company", Value = c => c.Name },

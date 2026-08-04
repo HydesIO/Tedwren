@@ -5,10 +5,10 @@ is single-responsibility and parameterised: it takes typed parameters and raises
 `EventCallback`s rather than reading global state, and all user-visible copy arrives
 through parameters. Colour and spacing come only from `tokens.css` custom properties.
 
-> **Status:** Phases 1–4 components are documented below (Shell & theme; Dashboard cards,
-> data display and charts; `DataTable` + list pages; and the Phase 4 form components).
-> The remaining feedback components and the accessibility pass land in Phase 5
-> (Plan & Scope §5, §10).
+> **Status:** Complete — Phases 1–5. Every component in Plan & Scope §5 is documented
+> below (shell & theme; dashboard cards, data display and charts; `DataTable` + list
+> pages; the form components; and the feedback / loading / empty / error components).
+> Phase 5 also covered the responsive, empty/loading/error and accessibility pass (§8).
 
 ---
 
@@ -324,6 +324,30 @@ Consistent field-level error with reserved space. `Message`.
 ### `BannerAlert`
 Page-level informational / warning banner. `Message`, `Title`, `Severity` (`StatusKind`),
 `Action`.
+
+---
+
+## Feedback & state (Phase 5)
+
+### `EmptyState`
+See Phase 3 above — icon + message + optional action for the no-data / no-results case.
+
+### `LoadingSkeleton`
+Skeleton placeholders (the default loading pattern — not spinners). Respects
+`prefers-reduced-motion`.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Variant` | `LoadingSkeleton.SkeletonVariant` | `Card` / `Table` / `List` / `Kpi`. |
+| `Rows` | `int` | Placeholder row count. |
+
+`DataTable<TItem>` renders the `Table` variant automatically when its `Loading`
+parameter is set, and a `BannerAlert` with a Retry button when `ErrorMessage` is set.
+
+### `ConfirmDialog`
+Wrapped `MudDialog` for destructive / irreversible actions. Shown via `IDialogService`
+with `DialogParameters` (`ContentText`, `ConfirmText`, `CancelText`, `Destructive`);
+returns `DialogResult.Ok(true)` on confirm. See the usage snippet in the component source.
 
 ---
 

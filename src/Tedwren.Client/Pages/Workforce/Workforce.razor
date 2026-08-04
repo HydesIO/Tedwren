@@ -18,6 +18,7 @@
         <DataTable TItem="Operative"
                    Items="_operatives"
                    Columns="_columns"
+                   Loading="_loading"
                    SearchPlaceholder="Search operatives…"
                    EmptyTitle="No operatives yet"
                    EmptyDescription="Add an operative directly or send a self-service link to get started."
@@ -28,10 +29,18 @@
 @code {
     private IReadOnlyList<Operative> _operatives = Array.Empty<Operative>();
     private List<DataColumn<Operative>> _columns = new();
+    private bool _loading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
+        BuildColumns();
+        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
         _operatives = Data.GetOperatives();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
         _columns = new()
         {
             new() { Title = "Name", Value = o => o.Name },
