@@ -24,6 +24,7 @@
             <DataTable TItem="QualificationType"
                        Items="_qualifications"
                        Columns="_columns"
+                       Loading="_loading"
                        SearchPlaceholder="Search qualifications…"
                        EmptyTitle="No qualification types"
                        EmptyDescription="Add a qualification type to start tracking it across operatives."
@@ -36,11 +37,19 @@
     private ComplianceOverview _overview = default!;
     private IReadOnlyList<QualificationType> _qualifications = Array.Empty<QualificationType>();
     private List<DataColumn<QualificationType>> _columns = new();
+    private bool _loading = true;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         _overview = DashData.GetComplianceOverview();
+        BuildColumns();
+        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
         _qualifications = ListData.GetQualificationTypes();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
         _columns = new()
         {
             new() { Title = "Qualification", Value = q => q.Name },

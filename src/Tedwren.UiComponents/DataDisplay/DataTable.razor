@@ -52,6 +52,26 @@
         }
     </div>
 
+    @if (Loading)
+    {
+        <LoadingSkeleton Variant="LoadingSkeleton.SkeletonVariant.Table" Rows="6" />
+    }
+    else if (!string.IsNullOrEmpty(ErrorMessage))
+    {
+        <BannerAlert Severity="Tedwren.UiComponents.Models.StatusKind.Danger"
+                     Title="Couldn't load data"
+                     Message="@ErrorMessage">
+            <Action>
+                @if (OnRetry.HasDelegate)
+                {
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                               OnClick="@(() => OnRetry.InvokeAsync())">Retry</MudButton>
+                }
+            </Action>
+        </BannerAlert>
+    }
+    else
+    {
     <MudTable T="TItem"
               Items="@Items"
               Filter="@FilterPredicate"
@@ -106,6 +126,7 @@
             }
         </PagerContent>
     </MudTable>
+    }
 </div>
 
 @code {
@@ -115,6 +136,9 @@
     [Parameter] public string SearchPlaceholder { get; set; } = "Search…";
     [Parameter] public bool ShowPager { get; set; } = true;
     [Parameter] public int[] PageSizeOptions { get; set; } = new[] { 10, 25, 50 };
+    [Parameter] public bool Loading { get; set; }
+    [Parameter] public string? ErrorMessage { get; set; }
+    [Parameter] public EventCallback OnRetry { get; set; }
     [Parameter] public EventCallback<TItem> OnRowClick { get; set; }
     [Parameter] public RenderFragment? Actions { get; set; }
 

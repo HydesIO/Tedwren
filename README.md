@@ -10,7 +10,7 @@ See `docs/` and the Plan & Scope of Works v1.0 for the full brief.
 
 ## Status
 
-**Phases 1–4 are complete.**
+**All five phases are complete.**
 
 Phase 1 delivered the solution scaffold, design tokens, MudBlazor theme, and the
 application shell (`MainLayout`, `AppSidebar`, `AppTopBar`). Phase 2 added the §5.2
@@ -23,8 +23,12 @@ components — `FormField`, `TedwrenTextField`, `TedwrenSelect`, `TedwrenAutocom
 add-company, invite-user (permission toggles), add-operative stepper (direct entry vs
 send-a-link), permit issuance, the induction builder stepper, and system configuration
 (module/entitlement and enforcement toggles at scale). Every form validates required
-fields, uses switches per §6.2, and follows the action-placement convention. The
-responsive/accessibility polish pass is Phase 5.
+fields, uses switches per §6.2, and follows the action-placement convention. Phase 5
+added the feedback/state components (`LoadingSkeleton`, `ConfirmDialog`, plus `EmptyState`
+and `BannerAlert`), wired loading/empty/error states into `DataTable` and the list pages,
+and completed the responsive and accessibility polish (equal-height dashboard cards,
+even card spacing, keyboard focus states, an on-icon notification badge, a full-width
+platform selector, and `prefers-reduced-motion` support on skeletons).
 
 ## Requirements
 

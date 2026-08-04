@@ -1,0 +1,41 @@
+@* Wrapped MudDialog for destructive / irreversible actions. Show via IDialogService:
+
+     var parameters = new DialogParameters<ConfirmDialog>
+     {
+         { x => x.ContentText, "Delete this company? This cannot be undone." },
+         { x => x.ConfirmText, "Delete" },
+         { x => x.Destructive, true },
+     };
+     var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete company", parameters);
+     var result = await dialog.Result;
+     if (!result.Canceled) { ... }
+*@
+
+<MudDialog>
+    <DialogContent>
+        <div class="confirm">
+            <div class="confirm__icon confirm__icon--@(Destructive ? "danger" : "brand")" aria-hidden="true">
+                <MudIcon Icon="@(Destructive ? Icons.Material.Outlined.WarningAmber : Icons.Material.Outlined.HelpOutline)" />
+            </div>
+            <p class="confirm__text">@ContentText</p>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">@CancelText</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="@(Destructive ? Color.Error : Color.Primary)"
+                   OnClick="Confirm">@ConfirmText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public string ContentText { get; set; } = "Are you sure?";
+    [Parameter] public string ConfirmText { get; set; } = "Confirm";
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+    [Parameter] public bool Destructive { get; set; }
+
+    private void Confirm() => MudDialog.Close(DialogResult.Ok(true));
+    private void Cancel() => MudDialog.Cancel();
+}

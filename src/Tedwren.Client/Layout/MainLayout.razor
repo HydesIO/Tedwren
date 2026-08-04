@@ -13,6 +13,8 @@
 <div class="app-shell @(_sidebarCollapsed ? "app-shell--collapsed" : null)">
     <aside class="app-shell__sidebar">
         <AppSidebar NavItems="_navItems"
+                    LogoUrl="images/logo-icon.svg"
+                    BrandName="Tedwren"
                     ActiveRoute="@_activeRoute"
                     @bind-IsCollapsed="_sidebarCollapsed"
                     Platforms="@Shell.GetPlatforms()"

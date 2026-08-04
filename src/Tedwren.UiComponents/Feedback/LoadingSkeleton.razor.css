@@ -1,0 +1,99 @@
+.skeleton {
+    width: 100%;
+}
+
+.skeleton__bar {
+    display: block;
+    height: 14px;
+    border-radius: 6px;
+    background: linear-gradient(
+        90deg,
+        var(--color-border, #E4E7EC) 25%,
+        var(--color-bg, #F7F8FA) 37%,
+        var(--color-border, #E4E7EC) 63%
+    );
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+.skeleton__bar--sm {
+    height: 10px;
+}
+
+.skeleton__bar--search {
+    width: 280px;
+    max-width: 60%;
+    height: 36px;
+    border-radius: var(--radius-control, 8px);
+}
+
+.skeleton__toolbar {
+    margin-bottom: var(--spacing-16, 16px);
+}
+
+.skeleton__row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-24, 24px);
+    padding: var(--spacing-16, 16px) var(--spacing-12, 12px);
+    border-bottom: 1px solid var(--color-border, #E4E7EC);
+}
+
+.skeleton__list-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) 0;
+    border-bottom: 1px solid var(--color-border, #E4E7EC);
+}
+
+.skeleton__avatar {
+    width: 36px;
+    height: 36px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--color-border, #E4E7EC);
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.4s ease infinite;
+}
+
+.skeleton__stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+    flex: 1 1 auto;
+}
+
+.skeleton__card {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-20, 20px);
+}
+
+.skeleton__kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--spacing-20, 20px);
+}
+
+.skeleton__kpi {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+    padding: var(--spacing-20, 20px);
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-card, 10px);
+}
+
+@keyframes skeleton-shimmer {
+    0% { background-position: 100% 50%; }
+    100% { background-position: 0 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton__bar,
+    .skeleton__avatar {
+        animation: none;
+    }
+}

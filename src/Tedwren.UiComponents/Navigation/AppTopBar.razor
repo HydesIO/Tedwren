@@ -17,11 +17,17 @@
     </div>
 
     <div class="topbar__actions">
-        <MudBadge Content="NotificationCount" Color="Color.Error" Overlap="true" Visible="NotificationCount > 0">
+        <div class="topbar__notif">
             <MudIconButton Icon="@Icons.Material.Outlined.NotificationsNone"
                            Size="Size.Medium"
-                           aria-label="Notifications" />
-        </MudBadge>
+                           aria-label="@($"Notifications ({NotificationCount} unread)")" />
+            @if (NotificationCount > 0)
+            {
+                <span class="topbar__notif-badge" aria-hidden="true">
+                    @(NotificationCount > 9 ? "9+" : NotificationCount.ToString())
+                </span>
+            }
+        </div>
         <MudIconButton Icon="@Icons.Material.Outlined.HelpOutline"
                        Size="Size.Medium"
                        aria-label="Help" />
