@@ -33,6 +33,8 @@ control.
 | Parameter | Type | Notes |
 |---|---|---|
 | `IsCollapsed` | `bool` | Two-way bindable (`@bind-IsCollapsed`). |
+| `BrandName` | `string` | Wordmark + logo `alt` / letter fallback. |
+| `LogoUrl` | `string?` | Brand mark image (e.g. `images/logo-icon.svg`); falls back to the first letter of `BrandName`. Shown in both expanded and collapsed states. |
 | `ActiveRoute` | `string?` | Current route; drives the active nav highlight. |
 | `NavItems` | `IReadOnlyList<NavItem>` | Sidebar entries. |
 | `Platforms` | `IReadOnlyList<string>` | Platform selector options. |
