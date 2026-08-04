@@ -3,8 +3,11 @@
     align-items: center;
     gap: var(--spacing-8, 8px);
     padding: var(--spacing-4, 4px) var(--spacing-8, 8px);
+    border: none;
+    background: transparent;
     border-radius: var(--radius-control, 8px);
     cursor: pointer;
+    font: inherit;
     transition: background-color .12s ease;
 }
 
@@ -17,7 +20,8 @@
     outline-offset: 2px;
 }
 
-.profile__avatar {
+.profile__avatar,
+.menu__avatar {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -32,7 +36,8 @@
     overflow: hidden;
 }
 
-.profile__avatar img {
+.profile__avatar img,
+.menu__avatar img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -42,6 +47,7 @@
     display: flex;
     flex-direction: column;
     line-height: 1.2;
+    text-align: left;
 }
 
 .profile__name {
@@ -61,4 +67,83 @@
 
 @media (max-width: 640px) {
     .profile__meta { display: none; }
+}
+
+/* Dropdown panel */
+.menu {
+    display: flex;
+    flex-direction: column;
+}
+
+.menu__header {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) var(--spacing-16, 16px);
+}
+
+.menu__id {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.menu__name {
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.menu__role {
+    font-size: .75rem;
+    color: var(--color-text-secondary, #667085);
+}
+
+.menu__divider {
+    height: 1px;
+    background: var(--color-border, #E4E7EC);
+}
+
+.menu__list {
+    padding: var(--spacing-4, 4px);
+    display: flex;
+    flex-direction: column;
+}
+
+.menu__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-8, 8px) var(--spacing-12, 12px);
+    border: none;
+    background: transparent;
+    border-radius: var(--radius-control, 8px);
+    font: inherit;
+    font-size: .8125rem;
+    font-weight: 500;
+    color: var(--color-text-primary, #101828);
+    text-align: left;
+    cursor: pointer;
+    width: 100%;
+    transition: background-color .1s ease;
+}
+
+.menu__item:hover {
+    background: var(--color-bg, #F7F8FA);
+    text-decoration: none;
+}
+
+.menu__item .mud-icon-root {
+    color: var(--color-text-secondary, #667085);
+}
+
+.menu__item--danger {
+    color: var(--color-danger, #F04438);
+}
+
+.menu__item--danger .mud-icon-root {
+    color: var(--color-danger, #F04438);
 }

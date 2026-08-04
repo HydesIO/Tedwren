@@ -1,0 +1,45 @@
+.flyout {
+    position: relative;
+    display: inline-flex;
+}
+
+.flyout__trigger {
+    display: inline-flex;
+}
+
+/* Full-screen click-away layer sitting just under the panel. */
+.flyout__backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 40;
+    background: transparent;
+}
+
+.flyout__panel {
+    position: absolute;
+    top: calc(100% + 8px);
+    z-index: 41;
+    background: var(--color-surface, #FFFFFF);
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-card, 10px);
+    box-shadow: 0 8px 24px rgba(16, 24, 40, .12), 0 2px 6px rgba(16, 24, 40, .06);
+    overflow: hidden;
+    animation: flyout-in .12s ease;
+}
+
+.flyout__panel--right {
+    right: 0;
+}
+
+.flyout__panel--left {
+    left: 0;
+}
+
+@keyframes flyout-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .flyout__panel { animation: none; }
+}

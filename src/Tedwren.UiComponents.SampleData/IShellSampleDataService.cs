@@ -1,3 +1,4 @@
+using Tedwren.UiComponents.Models;
 using Tedwren.UiComponents.Navigation;
 
 namespace Tedwren.UiComponents.SampleData;
@@ -15,6 +16,7 @@ public interface IShellSampleDataService
     ShellUser GetCurrentUser();
     ShellEnvironment GetEnvironment();
     int GetNotificationCount();
+    IReadOnlyList<NotificationEntry> GetNotifications();
 }
 
 /// <summary>Signed-in user, for the top-bar profile menu.</summary>
