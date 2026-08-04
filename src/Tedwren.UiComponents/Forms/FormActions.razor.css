@@ -1,0 +1,20 @@
+.form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    margin-top: var(--spacing-24, 24px);
+}
+
+.form-actions__left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+}
+
+.form-actions__right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    margin-left: auto;
+}

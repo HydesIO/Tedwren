@@ -1,0 +1,25 @@
+@* The "28 Jul 2025 – 3 Aug 2025" style range control from the dashboard header. *@
+
+<FormField Label="@Label" Required="Required" HelperText="@HelperText"
+           Error="Error" ErrorText="@ErrorText">
+    <MudDateRangePicker DateRange="@DateRange"
+                        DateRangeChanged="@DateRangeChanged"
+                        Placeholder="@Placeholder"
+                        Disabled="@Disabled"
+                        Error="@Error"
+                        Clearable="true"
+                        Variant="Variant.Outlined"
+                        Margin="Margin.Dense" />
+</FormField>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public DateRange? DateRange { get; set; }
+    [Parameter] public EventCallback<DateRange?> DateRangeChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; } = "Select a date range";
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+}

@@ -5,10 +5,10 @@ is single-responsibility and parameterised: it takes typed parameters and raises
 `EventCallback`s rather than reading global state, and all user-visible copy arrives
 through parameters. Colour and spacing come only from `tokens.css` custom properties.
 
-> **Status:** Phase 1 (Shell & theme), Phase 2 (Dashboard — cards, data display and
-> charts) and Phase 3 (`DataTable`, `EmptyState` + list pages) components are documented
-> below. Form components are added to this catalogue as Phase 4 lands (Plan & Scope §5,
-> §10).
+> **Status:** Phases 1–4 components are documented below (Shell & theme; Dashboard cards,
+> data display and charts; `DataTable` + list pages; and the Phase 4 form components).
+> The remaining feedback components and the accessibility pass land in Phase 5
+> (Plan & Scope §5, §10).
 
 ---
 
@@ -265,6 +265,65 @@ Icon + message + optional action, for lists / tables with no data.
 | `Title` | `string` | Required. |
 | `Description` | `string?` | |
 | `Action` | `RenderFragment?` | |
+
+---
+
+## Forms (Phase 4)
+
+All inputs are thin, styled wrappers around MudBlazor's own form components, sharing the
+`FormField` chrome (label above the control, optional helper text, and a reserved-space
+validation message that never shifts layout). Binary inputs default to `TedwrenToggle`
+(a switch), **never a checkbox** — see the switches-over-checkboxes rule in `README.md`.
+
+### `FormField`
+Shared field chrome used by every wrapper. `Label`, `For`, `Required`, `HelperText`,
+`Error`, `ErrorText`, `ChildContent`.
+
+### `TedwrenTextField`
+Wrapped `MudTextField`. `Label`, `@bind-Value`, `Placeholder`, `HelperText`, `Required`,
+`Error`, `ErrorText`, `Lines` (multiline), `InputType`, `Disabled`, `ReadOnly`,
+`AdornmentIcon`.
+
+### `TedwrenSelect<T>`
+Wrapped `MudSelect`. `Label`, `@bind-Value`, `Options`, `OptionText`, `Placeholder`,
+`Required`, `Error`, `ErrorText`, `Clearable`.
+
+### `TedwrenAutocomplete<T>`
+Searchable single-select over `MudAutocomplete`. `Label`, `@bind-Value`, `Options`,
+`OptionText`, `Placeholder`, `Required`, `Error`, `ErrorText`.
+
+### `TedwrenToggle`
+The default binary/boolean control — a labelled switch wrapping `MudSwitch`.
+`Label`, `Description`, `@bind-Value`, `Disabled`.
+
+### `TedwrenDateRangePicker`
+The "28 Jul – 3 Aug" style range control. `Label`, `@bind-DateRange`, `Placeholder`,
+`HelperText`, `Required`, `Error`, `ErrorText`.
+
+### `TedwrenFileUpload`
+Card/document upload with drag-and-drop and a selected-file preview (UI-only — files are
+listed, not persisted). `Label`, `PromptText`, `HintText`, `Accept`, `MaxFiles`,
+`FilesChanged`.
+
+### `TedwrenStepper`
+Wrapped `MudStepper` for multi-step flows (onboarding, induction builder). `@bind-ActiveIndex`,
+`Linear`, `ChildContent` (consumer supplies `MudStep` children).
+
+### `FormSection`
+Titled, bordered grouping wrapper — forms are built from these, not one long list.
+`Title`, `Description`, `ChildContent` (two-column grid; children spanning both columns
+use a wrapper with `grid-column: 1 / -1`).
+
+### `FormActions`
+Consistent action placement: destructive bottom-left, secondary + primary bottom-right.
+`Primary`, `Secondary`, `Destructive` render fragments.
+
+### `InlineValidationMessage`
+Consistent field-level error with reserved space. `Message`.
+
+### `BannerAlert`
+Page-level informational / warning banner. `Message`, `Title`, `Severity` (`StatusKind`),
+`Action`.
 
 ---
 

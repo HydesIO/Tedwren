@@ -10,16 +10,21 @@ See `docs/` and the Plan & Scope of Works v1.0 for the full brief.
 
 ## Status
 
-**Phases 1–3 are complete.**
+**Phases 1–4 are complete.**
 
 Phase 1 delivered the solution scaffold, design tokens, MudBlazor theme, and the
 application shell (`MainLayout`, `AppSidebar`, `AppTopBar`). Phase 2 added the §5.2
-card, data-display and chart components (`KpiCard`, `DashboardCard`, `DonutStat`,
-`LegendList`, `ExpiryList`, `ActivityFeed`, `TrendSparkline`, `StatusPill`, `RiskChip`)
-and rebuilt the Dashboard route from them. Phase 3 added the generic `DataTable<TItem>`
-(client-side search, per-column filters, sorting, paging, empty state) and `EmptyState`,
-and built the list pages — Organisation, Workforce, Sites, Compliance and Audit Log —
-each navigable with sample data. Forms and the accessibility pass follow in Phases 4–5.
+card, data-display and chart components and rebuilt the Dashboard route from them.
+Phase 3 added the generic `DataTable<TItem>` and `EmptyState` and the list pages
+(Organisation, Workforce, Sites, Compliance, Audit Log). Phase 4 added the form
+components — `FormField`, `TedwrenTextField`, `TedwrenSelect`, `TedwrenAutocomplete`,
+`TedwrenToggle`, `TedwrenDateRangePicker`, `TedwrenFileUpload`, `TedwrenStepper`,
+`FormSection`, `FormActions`, `InlineValidationMessage`, `BannerAlert` — and the forms:
+add-company, invite-user (permission toggles), add-operative stepper (direct entry vs
+send-a-link), permit issuance, the induction builder stepper, and system configuration
+(module/entitlement and enforcement toggles at scale). Every form validates required
+fields, uses switches per §6.2, and follows the action-placement convention. The
+responsive/accessibility polish pass is Phase 5.
 
 ## Requirements
 

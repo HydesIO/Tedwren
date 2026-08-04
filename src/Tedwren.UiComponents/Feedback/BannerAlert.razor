@@ -1,0 +1,32 @@
+@using Tedwren.UiComponents.Models
+@* Page-level informational / warning banner (e.g. "RAMS is not being enforced at this gate"). *@
+
+<div class="banner banner--@(Severity.ToString().ToLowerInvariant())" role="@(Severity == StatusKind.Danger ? "alert" : "status")">
+    <MudIcon Icon="@IconFor(Severity)" Size="Size.Small" Class="banner__icon" />
+    <div class="banner__body">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <span class="banner__title">@Title</span>
+        }
+        <span class="banner__message">@Message</span>
+    </div>
+    @if (Action is not null)
+    {
+        <div class="banner__action">@Action</div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Message { get; set; } = default!;
+    [Parameter] public string? Title { get; set; }
+    [Parameter] public StatusKind Severity { get; set; } = StatusKind.Info;
+    [Parameter] public RenderFragment? Action { get; set; }
+
+    private static string IconFor(StatusKind s) => s switch
+    {
+        StatusKind.Success => Icons.Material.Outlined.CheckCircle,
+        StatusKind.Warning => Icons.Material.Outlined.WarningAmber,
+        StatusKind.Danger => Icons.Material.Outlined.ErrorOutline,
+        _ => Icons.Material.Outlined.Info,
+    };
+}

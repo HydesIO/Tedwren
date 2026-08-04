@@ -1,0 +1,47 @@
+@typeparam T
+@* Searchable single-select (operative pickers, site pickers) wrapping MudAutocomplete. *@
+
+<FormField Label="@Label" Required="Required" HelperText="@HelperText"
+           Error="Error" ErrorText="@ErrorText">
+    <MudAutocomplete T="T"
+                     Value="@Value"
+                     ValueChanged="@ValueChanged"
+                     SearchFunc="@Search"
+                     ToStringFunc="@ToText"
+                     Placeholder="@Placeholder"
+                     Disabled="@Disabled"
+                     Error="@Error"
+                     Clearable="true"
+                     ResetValueOnEmptyText="true"
+                     CoerceText="true"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     FullWidth="true"
+                     AdornmentIcon="@Icons.Material.Outlined.Search"
+                     Adornment="Adornment.Start" />
+</FormField>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<T> Options { get; set; } = Array.Empty<T>();
+    [Parameter] public Func<T, string>? OptionText { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    private string ToText(T? item)
+        => item is null ? string.Empty : (OptionText?.Invoke(item) ?? item.ToString() ?? string.Empty);
+
+    private Task<IEnumerable<T>> Search(string value, CancellationToken token)
+    {
+        IEnumerable<T> results = string.IsNullOrWhiteSpace(value)
+            ? Options
+            : Options.Where(o => ToText(o).Contains(value, StringComparison.OrdinalIgnoreCase));
+        return Task.FromResult(results);
+    }
+}

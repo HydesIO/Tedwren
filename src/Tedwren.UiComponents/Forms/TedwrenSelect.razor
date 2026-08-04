@@ -1,0 +1,40 @@
+@typeparam T
+@* Wrapped MudSelect with consistent label-above / helper / validation styling. *@
+
+<FormField Label="@Label" Required="Required" HelperText="@HelperText"
+           Error="Error" ErrorText="@ErrorText">
+    <MudSelect T="T"
+               Value="@Value"
+               ValueChanged="@ValueChanged"
+               Placeholder="@Placeholder"
+               Disabled="@Disabled"
+               Error="@Error"
+               Clearable="@Clearable"
+               Variant="Variant.Outlined"
+               Margin="Margin.Dense"
+               FullWidth="true"
+               AnchorOrigin="Origin.BottomCenter">
+        @foreach (var option in Options)
+        {
+            <MudSelectItem T="T" Value="@option">@OptionLabel(option)</MudSelectItem>
+        }
+    </MudSelect>
+</FormField>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public T? Value { get; set; }
+    [Parameter] public EventCallback<T> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<T> Options { get; set; } = Array.Empty<T>();
+    [Parameter] public Func<T, string>? OptionText { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool Clearable { get; set; }
+
+    private string OptionLabel(T option)
+        => OptionText?.Invoke(option) ?? option?.ToString() ?? string.Empty;
+}

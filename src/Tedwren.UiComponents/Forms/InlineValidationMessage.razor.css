@@ -1,0 +1,11 @@
+.inline-validation {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4, 4px);
+    min-height: 18px;
+    color: var(--color-danger, #F04438);
+}
+
+.inline-validation__text {
+    font-size: .75rem;
+}

@@ -1,0 +1,21 @@
+@* Titled, bordered grouping wrapper for related fields. Forms are built from these
+   rather than one long unbroken list of inputs (Plan & Scope §6.3). *@
+
+<section class="form-section">
+    <div class="form-section__head">
+        <h3 class="form-section__title">@Title</h3>
+        @if (!string.IsNullOrEmpty(Description))
+        {
+            <p class="form-section__description">@Description</p>
+        }
+    </div>
+    <div class="form-section__body">
+        @ChildContent
+    </div>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

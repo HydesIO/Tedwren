@@ -1,10 +1,112 @@
 @page "/system-configuration"
-@using Tedwren.Client.Pages.Shared
+@inject IFormSampleDataService Options
+@inject ISnackbar Snackbar
 
 <PageTitle>System Configuration · Tedwren</PageTitle>
 
 <PageHeader Title="System Configuration" Subtitle="Modules, entitlements and general settings" />
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.Settings"
-                  Message="Module/entitlement toggles and settings arrive in Phase 4."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<div class="form-page">
+    <FormSection Title="General settings" Description="Organisation-wide defaults.">
+        <TedwrenTextField Label="Organisation name" @bind-Value="_settings.OrganisationName" />
+        <TedwrenSelect T="string" Label="Time zone" @bind-Value="_settings.TimeZone" Options="_timeZones" />
+    </FormSection>
+
+    <FormSection Title="Enforcement" Description="Yes/no policies applied across sites. Each is a simple toggle.">
+        <div class="form-page__full form-page__toggles">
+            <TedwrenToggle Label="Enforce geofencing"
+                           Description="Require operatives to be within a site's geofence to clock in."
+                           @bind-Value="_settings.EnforceGeofencing" />
+            <MudDivider />
+            <TedwrenToggle Label="Require passcode on pack link"
+                           Description="Compliance pack links can only be opened with a one-time passcode."
+                           @bind-Value="_settings.RequirePasscodeOnPackLink" />
+            <MudDivider />
+            <TedwrenToggle Label="Block non-compliant site entry"
+                           Description="Prevent non-compliant operatives from being granted site entry."
+                           @bind-Value="_settings.BlockNonCompliantEntry" />
+            <MudDivider />
+            <TedwrenToggle Label="Notify on qualification expiry"
+                           Description="Email compliance managers when a qualification is about to expire."
+                           @bind-Value="_settings.NotifyOnExpiry" />
+        </div>
+    </FormSection>
+
+    <FormSection Title="Modules & entitlements" Description="Turn product modules on or off for this workspace.">
+        <div class="form-page__full form-page__toggles">
+            @foreach (var module in _modules)
+            {
+                <TedwrenToggle Label="@module.Name"
+                               Description="@module.Description"
+                               Value="_entitlements[module.Key]"
+                               ValueChanged="@(v => _entitlements[module.Key] = v)" />
+                <MudDivider />
+            }
+        </div>
+    </FormSection>
+
+    <FormActions>
+        <Secondary>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Reset">Reset</MudButton>
+        </Secondary>
+        <Primary>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save changes</MudButton>
+        </Primary>
+    </FormActions>
+</div>
+
+@code {
+    private GeneralSettingsState _settings = new();
+    private IReadOnlyList<ModuleEntitlement> _modules = Array.Empty<ModuleEntitlement>();
+    private readonly Dictionary<string, bool> _entitlements = new();
+
+    private readonly IReadOnlyList<string> _timeZones = new[]
+    {
+        "Europe/London", "Europe/Dublin", "Europe/Paris", "UTC",
+    };
+
+    protected override void OnInitialized()
+    {
+        Load();
+    }
+
+    private void Load()
+    {
+        var s = Options.GetGeneralSettings();
+        _settings = new GeneralSettingsState
+        {
+            OrganisationName = s.OrganisationName,
+            TimeZone = s.TimeZone,
+            EnforceGeofencing = s.EnforceGeofencing,
+            RequirePasscodeOnPackLink = s.RequirePasscodeOnPackLink,
+            BlockNonCompliantEntry = s.BlockNonCompliantEntry,
+            NotifyOnExpiry = s.NotifyOnExpiry,
+        };
+
+        _modules = Options.GetModuleEntitlements();
+        _entitlements.Clear();
+        foreach (var module in _modules)
+        {
+            _entitlements[module.Key] = module.Enabled;
+        }
+    }
+
+    private void Save() => Snackbar.Add("Settings saved (demo — nothing is persisted).", Severity.Success);
+
+    private void Reset()
+    {
+        Load();
+        Snackbar.Add("Settings reset to defaults.", Severity.Info);
+    }
+
+    // Mutable working copy for two-way binding.
+    private sealed class GeneralSettingsState
+    {
+        public string OrganisationName { get; set; } = string.Empty;
+        public string TimeZone { get; set; } = string.Empty;
+        public bool EnforceGeofencing { get; set; }
+        public bool RequirePasscodeOnPackLink { get; set; }
+        public bool BlockNonCompliantEntry { get; set; }
+        public bool NotifyOnExpiry { get; set; }
+    }
+}
