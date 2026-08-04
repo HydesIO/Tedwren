@@ -19,6 +19,7 @@
                    Items="_operatives"
                    Columns="_columns"
                    Loading="_loading"
+                   OnRowClick="OpenOperative"
                    SearchPlaceholder="Search operatives…"
                    EmptyTitle="No operatives yet"
                    EmptyDescription="Add an operative directly or send a self-service link to get started."
@@ -38,6 +39,8 @@
         _operatives = Data.GetOperatives();
         _loading = false;
     }
+
+    private void OpenOperative(Operative op) => Nav.NavigateTo($"/workforce/{Slugs.From(op.Name)}");
 
     private void BuildColumns()
     {

@@ -1,0 +1,74 @@
+@using Tedwren.UiComponents.Models
+@using Tedwren.UiComponents.DataDisplay
+@* Consistent detail-page header: breadcrumb + title + optional status pill + actions. *@
+
+<div class="detail-header">
+    @if (Breadcrumbs is not null)
+    {
+        <nav class="detail-header__crumbs" aria-label="Breadcrumb">
+            @{ var last = Breadcrumbs.Count - 1; }
+            @for (var i = 0; i < Breadcrumbs.Count; i++)
+            {
+                var crumb = Breadcrumbs[i];
+                if (i < last && !string.IsNullOrEmpty(crumb.Href))
+                {
+                    <a class="detail-header__crumb" href="@crumb.Href">@crumb.Label</a>
+                    <span class="detail-header__sep" aria-hidden="true">/</span>
+                }
+                else
+                {
+                    <span class="detail-header__crumb detail-header__crumb--current" aria-current="page">@crumb.Label</span>
+                }
+            }
+        </nav>
+    }
+
+    <div class="detail-header__main">
+        <div class="detail-header__titles">
+            @if (!string.IsNullOrEmpty(AvatarText) || !string.IsNullOrEmpty(AvatarUrl))
+            {
+                <span class="detail-header__avatar" aria-hidden="true">
+                    @if (!string.IsNullOrEmpty(AvatarUrl))
+                    {
+                        <img src="@AvatarUrl" alt="" />
+                    }
+                    else
+                    {
+                        @AvatarText
+                    }
+                </span>
+            }
+            <div class="detail-header__text">
+                <div class="detail-header__title-row">
+                    <h1 class="detail-header__title">@Title</h1>
+                    @if (!string.IsNullOrEmpty(StatusLabel))
+                    {
+                        <StatusPill Label="@StatusLabel" Status="Status" />
+                    }
+                </div>
+                @if (!string.IsNullOrEmpty(Subtitle))
+                {
+                    <p class="detail-header__subtitle">@Subtitle</p>
+                }
+            </div>
+        </div>
+
+        @if (Actions is not null)
+        {
+            <div class="detail-header__actions">@Actions</div>
+        }
+    </div>
+</div>
+
+@code {
+    public sealed record Crumb(string Label, string? Href = null);
+
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+    [Parameter] public string? Subtitle { get; set; }
+    [Parameter] public string? StatusLabel { get; set; }
+    [Parameter] public StatusKind Status { get; set; } = StatusKind.Neutral;
+    [Parameter] public IReadOnlyList<Crumb>? Breadcrumbs { get; set; }
+    [Parameter] public string? AvatarText { get; set; }
+    [Parameter] public string? AvatarUrl { get; set; }
+    [Parameter] public RenderFragment? Actions { get; set; }
+}

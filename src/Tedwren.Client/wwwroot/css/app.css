@@ -94,3 +94,8 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--color-text-secondary);
     font-size: .875rem;
 }
+
+/* Detail-page tab panels: give the tab content some breathing room. */
+.detail-tabs__panel {
+    padding-top: var(--spacing-16) !important;
+}

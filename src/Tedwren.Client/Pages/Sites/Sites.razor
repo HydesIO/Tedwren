@@ -1,5 +1,6 @@
 @page "/sites"
 @inject IListSampleDataService Data
+@inject NavigationManager Nav
 
 <PageTitle>Sites & Projects · Tedwren</PageTitle>
 
@@ -17,6 +18,7 @@
                    Items="_sites"
                    Columns="_columns"
                    Loading="_loading"
+                   OnRowClick="OpenSite"
                    SearchPlaceholder="Search sites…"
                    EmptyTitle="No sites yet"
                    EmptyDescription="Add a site to begin tracking its workforce and compliance."
@@ -36,6 +38,8 @@
         _sites = Data.GetSites();
         _loading = false;
     }
+
+    private void OpenSite(Site site) => Nav.NavigateTo($"/sites/{Slugs.From(site.Name)}");
 
     private void BuildColumns()
     {
