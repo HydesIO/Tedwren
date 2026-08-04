@@ -1,0 +1,22 @@
+@using Tedwren.UiComponents.Models
+@using System.Globalization
+@* Coloured-dot legend rows with value / percentage columns. *@
+
+<ul class="legend">
+    @foreach (var item in Items)
+    {
+        <li class="legend__row">
+            <span class="legend__dot" style="background:@item.Colour" aria-hidden="true"></span>
+            <span class="legend__label">@item.Label</span>
+            <span class="legend__value">@item.Value.ToString("0.##", CultureInfo.InvariantCulture)</span>
+            @if (item.Percentage is { } pct)
+            {
+                <span class="legend__pct">@pct.ToString("0.#", CultureInfo.InvariantCulture)%</span>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter] public IEnumerable<LegendItem> Items { get; set; } = Array.Empty<LegendItem>();
+}

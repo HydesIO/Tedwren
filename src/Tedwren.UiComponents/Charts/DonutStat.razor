@@ -1,0 +1,67 @@
+@using Tedwren.UiComponents.Models
+@using System.Globalization
+@* Donut chart + centred value. Pure SVG, used by the compliance overview card. *@
+
+<div class="donut">
+    <svg viewBox="0 0 @Size @Size" class="donut__svg" role="img" aria-label="@AccessibleLabel">
+        <circle class="donut__track" cx="@_c" cy="@_c" r="@_r"
+                fill="none" stroke="var(--color-border)" stroke-width="@Thickness" />
+        @{
+            double offset = 0;
+        }
+        @foreach (var seg in _segments)
+        {
+            var dash = seg.Fraction * _circumference;
+            var gap = _circumference - dash;
+            <circle cx="@_c" cy="@_c" r="@_r" fill="none"
+                    stroke="@seg.Colour" stroke-width="@Thickness"
+                    stroke-dasharray="@Fmt(dash) @Fmt(gap)"
+                    stroke-dashoffset="@Fmt(-offset)"
+                    transform="rotate(-90 @_c @_c)"
+                    stroke-linecap="butt">
+                <title>@seg.Label</title>
+            </circle>
+            offset += dash;
+        }
+    </svg>
+    <div class="donut__center">
+        <span class="donut__value">@CentreValue</span>
+        @if (!string.IsNullOrEmpty(CentreLabel))
+        {
+            <span class="donut__label">@CentreLabel</span>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<DonutSegment> Segments { get; set; } = Array.Empty<DonutSegment>();
+    [Parameter, EditorRequired] public string CentreValue { get; set; } = default!;
+    [Parameter] public string? CentreLabel { get; set; }
+    [Parameter] public int Size { get; set; } = 160;
+    [Parameter] public int Thickness { get; set; } = 18;
+    [Parameter] public string? AccessibleLabelOverride { get; set; }
+
+    private double _c;
+    private double _r;
+    private double _circumference;
+    private (string Label, string Colour, double Fraction)[] _segments = Array.Empty<(string, string, double)>();
+
+    private string AccessibleLabel => AccessibleLabelOverride
+        ?? $"{CentreValue} {CentreLabel}".Trim();
+
+    protected override void OnParametersSet()
+    {
+        _c = Size / 2.0;
+        _r = _c - Thickness / 2.0;
+        _circumference = 2 * Math.PI * _r;
+
+        double total = Segments.Sum(s => s.Value);
+        if (total <= 0) total = 1;
+
+        _segments = Segments
+            .Select(s => (s.Label, s.Colour, s.Value / total))
+            .ToArray();
+    }
+
+    private static string Fmt(double v) => v.ToString("0.##", CultureInfo.InvariantCulture);
+}

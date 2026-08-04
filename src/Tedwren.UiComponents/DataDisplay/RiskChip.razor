@@ -1,0 +1,13 @@
+@using Tedwren.UiComponents.Models
+@* Small numeric severity chip (used in the heatmap "At Risk" column). *@
+
+<span class="risk-chip risk-chip--@(Severity.ToString().ToLowerInvariant())"
+      title="@Severity risk"
+      aria-label="@(Value) at @Severity risk">
+    @Value
+</span>
+
+@code {
+    [Parameter] public int Value { get; set; }
+    [Parameter] public RiskSeverity Severity { get; set; } = RiskSeverity.Low;
+}

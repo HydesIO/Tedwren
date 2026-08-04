@@ -1,0 +1,12 @@
+@using Tedwren.UiComponents.Models
+@* Rounded coloured pill (Healthy / Warning / Compliant / Expired / etc.). *@
+
+<span class="status-pill status-pill--@(Status.ToString().ToLowerInvariant())" role="status">
+    <span class="status-pill__dot" aria-hidden="true"></span>
+    @Label
+</span>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = default!;
+    [Parameter] public StatusKind Status { get; set; } = StatusKind.Neutral;
+}
