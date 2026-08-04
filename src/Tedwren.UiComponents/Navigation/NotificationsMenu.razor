@@ -4,17 +4,15 @@
 
 <Flyout Align="Flyout.FlyoutAlign.Right" Width="360px" CloseOnContentClick="false">
     <Trigger>
-        <span class="notif-trigger">
-            <MudIconButton Icon="@Icons.Material.Outlined.NotificationsNone"
-                           Size="Size.Medium"
-                           aria-label="@($"Notifications ({UnreadCount} unread)")" />
+        <button type="button" class="notif-trigger" aria-label="@($"Notifications ({UnreadCount} unread)")">
+            <MudIcon Icon="@Icons.Material.Outlined.NotificationsNone" Size="Size.Medium" />
             @if (UnreadCount > 0)
             {
                 <span class="notif-trigger__badge" aria-hidden="true">
                     @(UnreadCount > 9 ? "9+" : UnreadCount.ToString())
                 </span>
             }
-        </span>
+        </button>
     </Trigger>
     <ChildContent>
         <div class="notif">
