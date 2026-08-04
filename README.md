@@ -10,11 +10,14 @@ See `docs/` and the Plan & Scope of Works v1.0 for the full brief.
 
 ## Status
 
-**Phase 1 — Shell & theme** is complete: solution scaffold, design tokens,
-MudBlazor theme, and the application shell (`MainLayout`, `AppSidebar`, `AppTopBar`).
-The app boots to a themed shell whose chrome matches the approved dashboard, with
-every sidebar route reachable via a placeholder page. Dashboard content, data tables,
-forms and the accessibility pass follow in Phases 2–5.
+**Phase 1 — Shell & theme** and **Phase 2 — Dashboard rebuild** are complete.
+
+Phase 1 delivered the solution scaffold, design tokens, MudBlazor theme, and the
+application shell (`MainLayout`, `AppSidebar`, `AppTopBar`). Phase 2 added the §5.2
+card, data-display and chart components (`KpiCard`, `DashboardCard`, `DonutStat`,
+`LegendList`, `ExpiryList`, `ActivityFeed`, `TrendSparkline`, `StatusPill`, `RiskChip`)
+and rebuilt the Dashboard route from them, populated from sample data. Data tables,
+forms and the accessibility pass follow in Phases 3–5.
 
 ## Requirements
 

@@ -1,0 +1,27 @@
+.risk-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 22px;
+    padding: 0 8px;
+    border-radius: var(--radius-control, 8px);
+    font-size: .75rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+.risk-chip--low {
+    background: var(--color-success-pale, #ECFDF3);
+    color: var(--color-success, #17B26A);
+}
+
+.risk-chip--medium {
+    background: var(--color-warning-pale, #FFFAEB);
+    color: var(--color-warning, #F79009);
+}
+
+.risk-chip--high {
+    background: var(--color-danger-pale, #FEF3F2);
+    color: var(--color-danger, #F04438);
+}

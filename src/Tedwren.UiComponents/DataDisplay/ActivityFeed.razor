@@ -1,0 +1,22 @@
+@using Tedwren.UiComponents.Models
+@* Icon + primary/secondary text + relative-time rows. *@
+
+<ul class="activity">
+    @foreach (var item in Items)
+    {
+        <li class="activity__row">
+            <span class="activity__icon activity__icon--@(item.Accent.ToString().ToLowerInvariant())" aria-hidden="true">
+                <MudIcon Icon="@item.Icon" Size="Size.Small" />
+            </span>
+            <div class="activity__body">
+                <span class="activity__primary">@item.Primary</span>
+                <span class="activity__secondary">@item.Secondary</span>
+            </div>
+            <time class="activity__time">@item.RelativeTime</time>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter] public IEnumerable<ActivityItem> Items { get; set; } = Array.Empty<ActivityItem>();
+}
