@@ -1,0 +1,34 @@
+.donut {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.donut__svg {
+    width: 160px;
+    height: 160px;
+    max-width: 100%;
+}
+
+.donut__center {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+}
+
+.donut__value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-text-primary, #101828);
+    line-height: 1.1;
+}
+
+.donut__label {
+    font-size: .75rem;
+    color: var(--color-text-secondary, #667085);
+}

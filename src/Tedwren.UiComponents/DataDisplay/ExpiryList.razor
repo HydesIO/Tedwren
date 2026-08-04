@@ -1,0 +1,30 @@
+@using Tedwren.UiComponents.Models
+@* Repeated "item / site / expiry / days remaining" rows. *@
+
+<ul class="expiry-list">
+    @foreach (var item in Items)
+    {
+        <li class="expiry-list__row">
+            <div class="expiry-list__main">
+                <span class="expiry-list__title">@item.Title</span>
+                <span class="expiry-list__site">@item.Site</span>
+            </div>
+            <div class="expiry-list__right">
+                <span class="expiry-list__date">@item.ExpiresOn.ToString("dd MMM yyyy")</span>
+                <StatusPill Label="@DaysLabel(item)" Status="item.Status" />
+            </div>
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter] public IEnumerable<ExpiryItem> Items { get; set; } = Array.Empty<ExpiryItem>();
+
+    private static string DaysLabel(ExpiryItem item) => item.DaysRemaining switch
+    {
+        < 0 => $"Expired {Math.Abs(item.DaysRemaining)}d ago",
+        0 => "Expires today",
+        1 => "1 day left",
+        _ => $"{item.DaysRemaining} days left",
+    };
+}

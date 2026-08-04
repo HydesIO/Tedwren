@@ -13,5 +13,7 @@ builder.Services.AddMudServices();
 // Sample-data services (Plan & Scope §2). Swappable later for API-backed
 // implementations without changing any component.
 builder.Services.AddSingleton<IShellSampleDataService, ShellSampleDataService>();
+builder.Services.AddSingleton<IDashboardSampleDataService, DashboardSampleDataService>();
+builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
 
 await builder.Build().RunAsync();

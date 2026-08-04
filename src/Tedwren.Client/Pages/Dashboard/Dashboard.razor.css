@@ -1,0 +1,92 @@
+.dash-kpis {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: var(--spacing-16, 16px);
+    margin-bottom: var(--spacing-24, 24px);
+}
+
+.dash-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: var(--spacing-16, 16px);
+    align-items: start;
+}
+
+.dash-grid__col {
+    min-width: 0;
+}
+
+.dash-grid__col--wide {
+    /* occupies the left (wider) column */
+}
+
+.dash-compliance {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-20, 20px);
+    padding-top: var(--spacing-8, 8px);
+}
+
+.dash-compliance ::deep .legend {
+    width: 100%;
+}
+
+/* Lightweight read-only table for the heatmap (the generic DataTable lands in Phase 3). */
+.dash-table-wrap {
+    overflow-x: auto;
+}
+
+.dash-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8125rem;
+}
+
+.dash-table thead th {
+    text-align: left;
+    font-weight: 600;
+    font-size: .75rem;
+    color: var(--color-text-muted, #98A2B3);
+    padding: var(--spacing-8, 8px) var(--spacing-12, 12px);
+    border-bottom: 1px solid var(--color-border, #E4E7EC);
+    white-space: nowrap;
+}
+
+.dash-table tbody td {
+    padding: var(--spacing-12, 12px);
+    border-bottom: 1px solid var(--color-border, #E4E7EC);
+    color: var(--color-text-secondary, #667085);
+}
+
+.dash-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.dash-table__site {
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+    white-space: nowrap;
+}
+
+.dash-table__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Responsive reflow (Plan & Scope §8): 5 / 3 / 2 / 1 columns. */
+@media (max-width: 1280px) {
+    .dash-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (max-width: 1024px) {
+    .dash-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 720px) {
+    .dash-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 480px) {
+    .dash-kpis { grid-template-columns: 1fr; }
+}

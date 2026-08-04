@@ -1,0 +1,65 @@
+@* Small inline SVG line chart for KPI cards and table rows. Pure presentation, no deps. *@
+
+@if (_points.Length >= 2)
+{
+    <svg class="sparkline" viewBox="0 0 @Width @Height" preserveAspectRatio="none"
+         role="img" aria-label="Trend sparkline" focusable="false">
+        <defs>
+            <linearGradient id="@_gradientId" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="@Colour" stop-opacity="0.18" />
+                <stop offset="100%" stop-color="@Colour" stop-opacity="0" />
+            </linearGradient>
+        </defs>
+        <path d="@_areaPath" fill="url(#@_gradientId)" stroke="none" />
+        <path d="@_linePath" fill="none" stroke="@Colour" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke" />
+    </svg>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<double> Values { get; set; } = Array.Empty<double>();
+    [Parameter] public string Colour { get; set; } = "var(--color-brand)";
+    [Parameter] public int Width { get; set; } = 100;
+    [Parameter] public int Height { get; set; } = 32;
+
+    private (double X, double Y)[] _points = Array.Empty<(double, double)>();
+    private string _linePath = string.Empty;
+    private string _areaPath = string.Empty;
+    private readonly string _gradientId = "spark-" + Guid.NewGuid().ToString("N")[..8];
+
+    protected override void OnParametersSet()
+    {
+        var values = Values;
+        if (values.Count < 2)
+        {
+            _points = Array.Empty<(double, double)>();
+            return;
+        }
+
+        double min = values.Min();
+        double max = values.Max();
+        double range = max - min;
+        if (range == 0) range = 1;
+
+        const double pad = 2;
+        double usableH = Height - pad * 2;
+        double stepX = (double)Width / (values.Count - 1);
+
+        _points = new (double X, double Y)[values.Count];
+        for (int i = 0; i < values.Count; i++)
+        {
+            double x = i * stepX;
+            double y = pad + (1 - (values[i] - min) / range) * usableH;
+            _points[i] = (x, y);
+        }
+
+        _linePath = "M " + string.Join(" L ",
+            _points.Select(p => $"{p.X.ToString(System.Globalization.CultureInfo.InvariantCulture)} {p.Y.ToString(System.Globalization.CultureInfo.InvariantCulture)}"));
+
+        var last = _points[^1];
+        var first = _points[0];
+        _areaPath = _linePath
+            + $" L {last.X.ToString(System.Globalization.CultureInfo.InvariantCulture)} {Height}"
+            + $" L {first.X.ToString(System.Globalization.CultureInfo.InvariantCulture)} {Height} Z";
+    }
+}

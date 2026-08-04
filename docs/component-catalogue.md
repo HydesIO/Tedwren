@@ -5,9 +5,10 @@ is single-responsibility and parameterised: it takes typed parameters and raises
 `EventCallback`s rather than reading global state, and all user-visible copy arrives
 through parameters. Colour and spacing come only from `tokens.css` custom properties.
 
-> **Status:** Phase 1 (Shell & theme) components are documented below. Cards, data
-> display, forms and feedback components are added to this catalogue as their phases
-> land (Plan & Scope §5, §10).
+> **Status:** Phase 1 (Shell & theme), Phase 2 (Dashboard — cards, data display and
+> charts) and Phase 3 (`DataTable`, `EmptyState` + list pages) components are documented
+> below. Form components are added to this catalogue as Phase 4 lands (Plan & Scope §5,
+> §10).
 
 ---
 
@@ -133,9 +134,152 @@ Title + subtitle + right-aligned action slot. Every page starts with one.
 
 ---
 
+## Cards & data display (Phase 2)
+
+### `KpiCard`
+Single metric tile: icon, value, trend badge and optional sparkline.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Title` | `string` | Required. |
+| `Value` | `string` | Required; pre-formatted. |
+| `Icon` | `string` | MudBlazor outline icon. |
+| `TrendValue` | `string?` | e.g. `+4.2%`. |
+| `TrendDirection` | `TrendDirection` | `Up` / `Down` drives colour + arrow; `None` hides the badge. |
+| `Sparkline` | `IReadOnlyList<double>?` | Rendered via `TrendSparkline` when ≥ 2 points. |
+| `AccentColour` | `string` | Icon tint + sparkline colour (token var). |
+
+### `DashboardCard`
+Generic bordered/shadowed card shell with a title row, body and optional footer link.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Title` / `Subtitle` | `string?` | Header text. |
+| `Body` | `RenderFragment?` | Card content. |
+| `HeaderActions` | `RenderFragment?` | Right-aligned header slot. |
+| `FooterLinkText` / `FooterLinkHref` | `string?` | Optional footer link. |
+
+### `DonutStat`
+SVG donut + centred value/label. Used by the compliance overview.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Segments` | `IReadOnlyList<DonutSegment>` | Normalised across segments. |
+| `CentreValue` | `string` | Required (e.g. `92%`). |
+| `CentreLabel` | `string?` | |
+| `Size` / `Thickness` | `int` | Geometry. |
+
+### `LegendList`
+Coloured-dot legend rows with value and optional percentage columns.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Items` | `IEnumerable<LegendItem>` | |
+
+### `ExpiryList`
+Repeated "item / site / expiry date / days remaining" rows, each with a `StatusPill`.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Items` | `IEnumerable<ExpiryItem>` | Days-remaining label derived automatically. |
+
+### `ActivityFeed`
+Icon + primary/secondary text + relative-time rows, with an accent per row.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Items` | `IEnumerable<ActivityItem>` | |
+
+### `TrendSparkline`
+Small inline SVG line + area chart. No dependencies.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Values` | `IReadOnlyList<double>` | ≥ 2 points to render. |
+| `Colour` | `string` | Stroke + gradient fill. |
+| `Width` / `Height` | `int` | viewBox geometry (scales to container). |
+
+### `StatusPill`
+Rounded coloured pill (Healthy / Warning / Compliant / Expired / …).
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Label` | `string` | Required. |
+| `Status` | `StatusKind` | `Neutral` / `Success` / `Warning` / `Danger` / `Info` / `Permit`. |
+
+### `RiskChip`
+Small numeric severity chip for the heatmap "At risk" column.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Value` | `int` | |
+| `Severity` | `RiskSeverity` | `Low` / `Medium` / `High` drives colour. |
+
+---
+
+## Tables & feedback (Phase 3)
+
+### `DataTable<TItem>`
+Generic sortable / filterable table wrapping `MudTable`, with client-side free-text
+search, per-column distinct-value dropdown filters, sorting, paging, row-click and a
+built-in empty state. Columns are declared with `DataColumn<TItem>`.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Items` | `IReadOnlyList<TItem>` | Required. |
+| `Columns` | `IReadOnlyList<DataColumn<TItem>>` | Required. |
+| `Searchable` | `bool` | Free-text search box (default true). |
+| `SearchPlaceholder` | `string` | |
+| `ShowPager` | `bool` | Default true. |
+| `PageSizeOptions` | `int[]` | Default `10, 25, 50`. |
+| `OnRowClick` | `EventCallback<TItem>` | Rows are styled clickable only when set. |
+| `Actions` | `RenderFragment?` | Right-aligned toolbar slot. |
+| `EmptyIcon` / `EmptyTitle` / `EmptyDescription` | `string` | Empty-state copy. |
+
+```razor
+<DataTable TItem="Company" Items="_companies" Columns="_columns"
+           SearchPlaceholder="Search companies…"
+           EmptyTitle="No companies yet" />
+```
+
+### `DataColumn<TItem>`
+Declarative column definition.
+
+| Member | Type | Notes |
+|---|---|---|
+| `Title` | `string` | Header text (required). |
+| `Value` | `Func<TItem, object?>?` | Sort key + default cell + search/filter text. |
+| `Text` | `Func<TItem, string>?` | Explicit string projection for search / filter / cell. |
+| `CellTemplate` | `RenderFragment<TItem>?` | Custom cell (takes precedence). |
+| `Sortable` | `bool` | Default true. |
+| `Searchable` | `bool` | Default true. |
+| `Filterable` | `bool` | Adds a distinct-value dropdown filter. |
+| `AlignRight` | `bool` | Right-align (numeric columns). |
+
+### `EmptyState`
+Icon + message + optional action, for lists / tables with no data.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Icon` | `string` | |
+| `Title` | `string` | Required. |
+| `Description` | `string?` | |
+| `Action` | `RenderFragment?` | |
+
+---
+
 ## Models
 
 ### `NavItem`
 `record NavItem(string Label, string Icon, string Href, IReadOnlyList<NavItem>? Children = null)`
 — a single sidebar entry, supplied by the host app so the library never hard-codes the
 route list.
+
+### Display models & enums (`Tedwren.UiComponents.Models`)
+- `TrendDirection` — `None` / `Up` / `Down`.
+- `StatusKind` — `Neutral` / `Success` / `Warning` / `Danger` / `Info` / `Permit`.
+- `RiskSeverity` — `Low` / `Medium` / `High`.
+- `LegendItem(string Label, double Value, string Colour, double? Percentage = null)`.
+- `DonutSegment(string Label, double Value, string Colour)`.
+- `ExpiryItem(string Title, string Site, DateOnly ExpiresOn, int DaysRemaining, StatusKind Status)`.
+- `ActivityItem(string Icon, string Primary, string Secondary, string RelativeTime, StatusKind Accent)`.

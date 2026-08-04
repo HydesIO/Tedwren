@@ -1,10 +1,139 @@
 @page "/"
-@using Tedwren.Client.Pages.Shared
+@inject IDashboardSampleDataService Data
 
 <PageTitle>Dashboard · Tedwren</PageTitle>
 
-<PageHeader Title="Dashboard" Subtitle="Compliance and workforce overview" />
+<PageHeader Title="Dashboard" Subtitle="Compliance and workforce overview">
+    <Actions>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Outlined.CalendarToday"
+                   Color="Color.Default">
+            28 Jul – 3 Aug 2026
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   StartIcon="@Icons.Material.Outlined.FileDownload"
+                   Color="Color.Primary">
+            Export
+        </MudButton>
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.SpaceDashboard"
-                  Message="The dashboard is rebuilt as reusable components in Phase 2."
-                  Detail="Phase 1 delivers the themed shell — sidebar, top bar, theme and design tokens." />
+@* KPI row — reflows 5 / 3 / 2 / 1 across breakpoints. *@
+<div class="dash-kpis">
+    @foreach (var kpi in _kpis)
+    {
+        <KpiCard Title="@kpi.Title"
+                 Value="@kpi.Value"
+                 Icon="@kpi.Icon"
+                 TrendValue="@kpi.TrendValue"
+                 TrendDirection="kpi.TrendDirection"
+                 Sparkline="kpi.Sparkline"
+                 AccentColour="@kpi.AccentColour" />
+    }
+</div>
+
+<div class="dash-grid">
+    <div class="dash-grid__col dash-grid__col--wide">
+        <DashboardCard Title="Site risk heatmap"
+                       Subtitle="Workforce compliance by active site"
+                       FooterLinkText="View all sites"
+                       FooterLinkHref="/sites">
+            <Body>
+                <div class="dash-table-wrap">
+                    <table class="dash-table">
+                        <thead>
+                            <tr>
+                                <th>Site</th>
+                                <th class="dash-table__num">Operatives</th>
+                                <th class="dash-table__num">Compliant</th>
+                                <th class="dash-table__num">Expiring</th>
+                                <th class="dash-table__num">At risk</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _sites)
+                            {
+                                <tr>
+                                    <td class="dash-table__site">@row.Site</td>
+                                    <td class="dash-table__num">@row.Operatives</td>
+                                    <td class="dash-table__num">@row.Compliant</td>
+                                    <td class="dash-table__num">@row.Expiring</td>
+                                    <td class="dash-table__num"><RiskChip Value="row.AtRisk" Severity="row.Severity" /></td>
+                                    <td><StatusPill Label="@SeverityLabel(row.Severity)" Status="@SeverityStatus(row.Severity)" /></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </Body>
+        </DashboardCard>
+    </div>
+
+    <div class="dash-grid__col">
+        <DashboardCard Title="Compliance overview"
+                       FooterLinkText="Open compliance"
+                       FooterLinkHref="/compliance">
+            <Body>
+                <div class="dash-compliance">
+                    <DonutStat Segments="_compliance.Segments"
+                               CentreValue="@_compliance.HeadlinePercent"
+                               CentreLabel="@_compliance.HeadlineLabel" />
+                    <LegendList Items="_compliance.Legend" />
+                </div>
+            </Body>
+        </DashboardCard>
+    </div>
+
+    <div class="dash-grid__col dash-grid__col--wide">
+        <DashboardCard Title="Upcoming expiries"
+                       Subtitle="Qualifications due in the next 30 days"
+                       FooterLinkText="View all expiries"
+                       FooterLinkHref="/compliance">
+            <Body>
+                <ExpiryList Items="_expiries" />
+            </Body>
+        </DashboardCard>
+    </div>
+
+    <div class="dash-grid__col">
+        <DashboardCard Title="Recent activity"
+                       FooterLinkText="View audit log"
+                       FooterLinkHref="/audit-log">
+            <Body>
+                <ActivityFeed Items="_activity" />
+            </Body>
+        </DashboardCard>
+    </div>
+</div>
+
+@code {
+    private IReadOnlyList<KpiTile> _kpis = Array.Empty<KpiTile>();
+    private ComplianceOverview _compliance = default!;
+    private IReadOnlyList<ExpiryItem> _expiries = Array.Empty<ExpiryItem>();
+    private IReadOnlyList<ActivityItem> _activity = Array.Empty<ActivityItem>();
+    private IReadOnlyList<SiteRisk> _sites = Array.Empty<SiteRisk>();
+
+    protected override void OnInitialized()
+    {
+        _kpis = Data.GetKpis();
+        _compliance = Data.GetComplianceOverview();
+        _expiries = Data.GetUpcomingExpiries();
+        _activity = Data.GetRecentActivity();
+        _sites = Data.GetSiteRiskHeatmap();
+    }
+
+    private static string SeverityLabel(RiskSeverity s) => s switch
+    {
+        RiskSeverity.High => "At risk",
+        RiskSeverity.Medium => "Monitor",
+        _ => "Healthy",
+    };
+
+    private static StatusKind SeverityStatus(RiskSeverity s) => s switch
+    {
+        RiskSeverity.High => StatusKind.Danger,
+        RiskSeverity.Medium => StatusKind.Warning,
+        _ => StatusKind.Success,
+    };
+}

@@ -1,10 +1,60 @@
 @page "/audit-log"
-@using Tedwren.Client.Pages.Shared
+@inject IListSampleDataService Data
 
 <PageTitle>Audit Log · Tedwren</PageTitle>
 
-<PageHeader Title="Audit Log" Subtitle="Filterable, searchable activity record" />
+<PageHeader Title="Audit Log" Subtitle="Filterable, searchable activity record">
+    <Actions>
+        <MudDateRangePicker @bind-DateRange="_range"
+                            Placeholder="Date range"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Clearable="true"
+                            Class="audit-log__range" />
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.History"
-                  Message="The filterable audit log table arrives in Phase 3."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="AuditEntry"
+                   Items="_filtered"
+                   Columns="_columns"
+                   SearchPlaceholder="Search actor, action or entity…"
+                   EmptyTitle="No matching entries"
+                   EmptyDescription="No audit entries fall within the selected date range."
+                   EmptyIcon="@Icons.Material.Outlined.History" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<AuditEntry> _all = Array.Empty<AuditEntry>();
+    private DateRange? _range;
+    private List<DataColumn<AuditEntry>> _columns = new();
+
+    protected override void OnInitialized()
+    {
+        _all = Data.GetAuditEntries();
+        _columns = new()
+        {
+            new()
+            {
+                Title = "When", Value = e => e.Timestamp, Searchable = false,
+                CellTemplate = e => @<span>@e.Timestamp.ToString("dd MMM yyyy, HH:mm")</span>
+            },
+            new() { Title = "Actor", Value = e => e.Actor, Filterable = true },
+            new() { Title = "Action", Value = e => e.Action },
+            new() { Title = "Entity", Value = e => e.Entity },
+            new() { Title = "Category", Value = e => e.Category, Filterable = true },
+        };
+    }
+
+    private IReadOnlyList<AuditEntry> _filtered =>
+        _all.Where(InRange).ToList();
+
+    private bool InRange(AuditEntry e)
+    {
+        if (_range?.Start is { } start && e.Timestamp.Date < start.Date) return false;
+        if (_range?.End is { } end && e.Timestamp.Date > end.Date) return false;
+        return true;
+    }
+}

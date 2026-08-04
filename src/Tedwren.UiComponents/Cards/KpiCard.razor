@@ -1,0 +1,39 @@
+@using Tedwren.UiComponents.Models
+@using Tedwren.UiComponents.Charts
+@* Single metric tile: icon, value, trend and optional sparkline. *@
+
+<section class="kpi-card" style="--kpi-accent:@AccentColour">
+    <div class="kpi-card__top">
+        <div class="kpi-card__icon" aria-hidden="true">
+            <MudIcon Icon="@Icon" Size="Size.Small" />
+        </div>
+        @if (TrendDirection != TrendDirection.None && !string.IsNullOrEmpty(TrendValue))
+        {
+            <span class="kpi-card__trend kpi-card__trend--@(TrendDirection.ToString().ToLowerInvariant())">
+                <MudIcon Icon="@(TrendDirection == TrendDirection.Up ? Icons.Material.Outlined.TrendingUp : Icons.Material.Outlined.TrendingDown)"
+                         Size="Size.Small" />
+                @TrendValue
+            </span>
+        }
+    </div>
+
+    <div class="kpi-card__value">@Value</div>
+    <div class="kpi-card__title">@Title</div>
+
+    @if (Sparkline is { Count: >= 2 })
+    {
+        <div class="kpi-card__spark">
+            <TrendSparkline Values="Sparkline" Colour="@AccentColour" />
+        </div>
+    }
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+    [Parameter, EditorRequired] public string Value { get; set; } = default!;
+    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.Analytics;
+    [Parameter] public string? TrendValue { get; set; }
+    [Parameter] public TrendDirection TrendDirection { get; set; } = TrendDirection.None;
+    [Parameter] public IReadOnlyList<double>? Sparkline { get; set; }
+    [Parameter] public string AccentColour { get; set; } = "var(--color-brand)";
+}
