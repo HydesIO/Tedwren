@@ -14,5 +14,6 @@ builder.Services.AddMudServices();
 // implementations without changing any component.
 builder.Services.AddSingleton<IShellSampleDataService, ShellSampleDataService>();
 builder.Services.AddSingleton<IDashboardSampleDataService, DashboardSampleDataService>();
+builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
 
 await builder.Build().RunAsync();
