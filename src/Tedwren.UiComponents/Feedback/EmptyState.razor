@@ -1,0 +1,23 @@
+@* Icon + message + optional action, for lists / tables with no data. *@
+
+<div class="empty-state">
+    <div class="empty-state__icon" aria-hidden="true">
+        <MudIcon Icon="@Icon" Size="Size.Large" />
+    </div>
+    <p class="empty-state__title">@Title</p>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <p class="empty-state__description">@Description</p>
+    }
+    @if (Action is not null)
+    {
+        <div class="empty-state__action">@Action</div>
+    }
+</div>
+
+@code {
+    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.Inbox;
+    [Parameter, EditorRequired] public string Title { get; set; } = default!;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public RenderFragment? Action { get; set; }
+}

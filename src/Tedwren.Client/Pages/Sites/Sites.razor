@@ -1,10 +1,59 @@
 @page "/sites"
-@using Tedwren.Client.Pages.Shared
+@inject IListSampleDataService Data
 
 <PageTitle>Sites & Projects · Tedwren</PageTitle>
 
-<PageHeader Title="Sites & Projects" Subtitle="Sites, projects and dispersed schemes" />
+<PageHeader Title="Sites & Projects" Subtitle="Sites, projects and dispersed schemes">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add">
+            Add site
+        </MudButton>
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.Apartment"
-                  Message="Site list and detail screens arrive in Phase 3."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="Site"
+                   Items="_sites"
+                   Columns="_columns"
+                   SearchPlaceholder="Search sites…"
+                   EmptyTitle="No sites yet"
+                   EmptyDescription="Add a site to begin tracking its workforce and compliance."
+                   EmptyIcon="@Icons.Material.Outlined.Apartment" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<Site> _sites = Array.Empty<Site>();
+    private List<DataColumn<Site>> _columns = new();
+
+    protected override void OnInitialized()
+    {
+        _sites = Data.GetSites();
+        _columns = new()
+        {
+            new() { Title = "Site", Value = s => s.Name },
+            new() { Title = "Client", Value = s => s.Client, Filterable = true },
+            new() { Title = "Region", Value = s => s.Region, Filterable = true },
+            new() { Title = "Operatives", Value = s => s.Operatives, AlignRight = true },
+            new()
+            {
+                Title = "Compliance", Value = s => s.CompliancePercent, AlignRight = true, Searchable = false,
+                CellTemplate = s => @<span>@s.CompliancePercent.ToString("0")%</span>
+            },
+            new()
+            {
+                Title = "At risk", Value = s => s.Risk, AlignRight = true, Searchable = false, Sortable = false,
+                CellTemplate = s => @<RiskChip Value="RiskCount(s)" Severity="s.Risk" />
+            },
+            new()
+            {
+                Title = "Status", Text = s => s.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = s => @<StatusPill Label="@s.StatusLabel" Status="s.Status" />
+            },
+        };
+    }
+
+    private static int RiskCount(Site s)
+        => (int)Math.Round(s.Operatives * (100 - s.CompliancePercent) / 100.0);
+}

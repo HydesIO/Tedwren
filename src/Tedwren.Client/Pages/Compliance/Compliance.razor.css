@@ -1,0 +1,24 @@
+.compliance-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: var(--spacing-16, 16px);
+    align-items: start;
+}
+
+.compliance-overview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-20, 20px);
+    padding-top: var(--spacing-8, 8px);
+}
+
+.compliance-overview ::deep .legend {
+    width: 100%;
+}
+
+@media (max-width: 960px) {
+    .compliance-layout {
+        grid-template-columns: 1fr;
+    }
+}
