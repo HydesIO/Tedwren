@@ -1,0 +1,28 @@
+@* Label / value pairs for detail-page overview sections. Responsive definition grid. *@
+
+<dl class="kv" style="--kv-cols:@Columns">
+    @foreach (var pair in Items)
+    {
+        <div class="kv__row">
+            <dt class="kv__label">@pair.Label</dt>
+            <dd class="kv__value">
+                @if (pair.ValueContent is not null)
+                {
+                    @pair.ValueContent
+                }
+                else
+                {
+                    @(string.IsNullOrEmpty(pair.Value) ? "—" : pair.Value)
+                }
+            </dd>
+        </div>
+    }
+</dl>
+
+@code {
+    /// <summary>A single label/value pair. Supply either <see cref="Value"/> or <see cref="ValueContent"/>.</summary>
+    public sealed record Pair(string Label, string? Value = null, RenderFragment? ValueContent = null);
+
+    [Parameter] public IEnumerable<Pair> Items { get; set; } = Array.Empty<Pair>();
+    [Parameter] public int Columns { get; set; } = 2;
+}

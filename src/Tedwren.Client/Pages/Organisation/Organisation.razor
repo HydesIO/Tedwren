@@ -19,6 +19,7 @@
                    Items="_companies"
                    Columns="_columns"
                    Loading="_loading"
+                   OnRowClick="OpenCompany"
                    SearchPlaceholder="Search companies…"
                    EmptyTitle="No companies yet"
                    EmptyDescription="Add a company to start managing its documents and accreditations."
@@ -38,6 +39,8 @@
         _companies = Data.GetCompanies();
         _loading = false;
     }
+
+    private void OpenCompany(Company company) => Nav.NavigateTo($"/organisation/{Slugs.From(company.Name)}");
 
     private void BuildColumns()
     {

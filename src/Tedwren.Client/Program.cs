@@ -16,5 +16,6 @@ builder.Services.AddSingleton<IShellSampleDataService, ShellSampleDataService>()
 builder.Services.AddSingleton<IDashboardSampleDataService, DashboardSampleDataService>();
 builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
 builder.Services.AddSingleton<IFormSampleDataService, FormSampleDataService>();
+builder.Services.AddSingleton<IDetailSampleDataService, DetailSampleDataService>();
 
 await builder.Build().RunAsync();

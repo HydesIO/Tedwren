@@ -10,7 +10,7 @@ See `docs/` and the Plan & Scope of Works v1.0 for the full brief.
 
 ## Status
 
-**All five phases are complete.**
+**All five base phases are complete, with detail pages added on top.**
 
 Phase 1 delivered the solution scaffold, design tokens, MudBlazor theme, and the
 application shell (`MainLayout`, `AppSidebar`, `AppTopBar`). Phase 2 added the §5.2
@@ -29,6 +29,11 @@ and `BannerAlert`), wired loading/empty/error states into `DataTable` and the li
 and completed the responsive and accessibility polish (equal-height dashboard cards,
 even card spacing, keyboard focus states, an on-icon notification badge, a full-width
 platform selector, and `prefers-reduced-motion` support on skeletons).
+
+Beyond the base phases, **detail pages** have been added: clicking a row in the
+Organisation, Workforce or Sites lists opens a tabbed detail page (`DetailHeader` with
+breadcrumb + status, `KeyValueList` overview, and nested `DataTable`s / qualification
+cards / history feeds), driven by `IDetailSampleDataService`.
 
 ## Requirements
 

@@ -144,13 +144,26 @@ Avatar, name, role and a slim custom dropdown (built on `Flyout`, not `MudMenu`)
 | `OnSignOut` | `EventCallback` | |
 
 ### `PageHeader`
-Title + subtitle + right-aligned action slot. Every page starts with one.
+Title + subtitle + right-aligned action slot. Every list/form page starts with one.
 
 | Parameter | Type | Notes |
 |---|---|---|
 | `Title` | `string` | Required. |
 | `Subtitle` | `string?` | |
 | `Actions` | `RenderFragment?` | Right-aligned action buttons. |
+
+### `DetailHeader`
+Detail-page header: breadcrumb + title + optional status pill + avatar + actions.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Title` | `string` | Required. |
+| `Subtitle` | `string?` | |
+| `StatusLabel` | `string?` | Renders a `StatusPill` when set. |
+| `Status` | `StatusKind` | |
+| `Breadcrumbs` | `IReadOnlyList<DetailHeader.Crumb>?` | `Crumb(Label, Href?)`. |
+| `AvatarText` / `AvatarUrl` | `string?` | Optional leading avatar. |
+| `Actions` | `RenderFragment?` | Right-aligned actions. |
 
 ```razor
 <PageHeader Title="Workforce" Subtitle="Operative register">
@@ -293,6 +306,14 @@ Icon + message + optional action, for lists / tables with no data.
 | `Title` | `string` | Required. |
 | `Description` | `string?` | |
 | `Action` | `RenderFragment?` | |
+
+### `KeyValueList`
+Label / value pairs for detail-page overview sections (responsive definition grid).
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Items` | `IEnumerable<KeyValueList.Pair>` | `Pair(Label, Value?, ValueContent?)`. |
+| `Columns` | `int` | Grid columns (default 2). |
 
 ---
 
