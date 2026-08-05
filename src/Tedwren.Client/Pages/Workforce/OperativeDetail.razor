@@ -1,4 +1,5 @@
 @page "/workforce/{Slug}"
+@using OperativeDetailModel = Tedwren.UiComponents.SampleData.OperativeDetail
 @inject IDetailSampleDataService Details
 @inject ISnackbar Snackbar
 
@@ -82,7 +83,7 @@ else
 @code {
     [Parameter] public string Slug { get; set; } = string.Empty;
 
-    private OperativeDetail? _op;
+    private OperativeDetailModel? _op;
     private List<KeyValueList.Pair> _overview = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
 

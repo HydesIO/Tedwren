@@ -28,6 +28,14 @@ public static class TedwrenTheme
 
     private const string FontFamily = "Inter";
 
+    // --- Dark theme tokens (kept in lock-step with the .theme-dark block in tokens.css) ---
+    private const string DarkBg = "#0C111D";
+    private const string DarkSurface = "#161B26";
+    private const string DarkTextPrimary = "#F5F6F8";
+    private const string DarkTextSecondary = "#94A0B4";
+    private const string DarkTextMuted = "#697586";
+    private const string DarkBorder = "#2A3140";
+
     /// <summary>The one <see cref="MudTheme"/> instance used across the whole app.</summary>
     public static readonly MudTheme Instance = new()
     {
@@ -58,6 +66,35 @@ public static class TedwrenTheme
             Divider = ColorBorder,
 
             DrawerIcon = ColorTextSecondary,
+        },
+
+        PaletteDark = new PaletteDark
+        {
+            Primary = ColorBrand,
+            PrimaryDarken = ColorBrandDark,
+            Secondary = DarkTextSecondary,
+            Success = ColorSuccess,
+            Warning = ColorWarning,
+            Error = ColorDanger,
+            Info = ColorInfo,
+
+            Background = DarkBg,
+            Surface = DarkSurface,
+            AppbarBackground = DarkSurface,
+            AppbarText = DarkTextPrimary,
+            DrawerBackground = DarkSurface,
+            DrawerText = DarkTextPrimary,
+
+            TextPrimary = DarkTextPrimary,
+            TextSecondary = DarkTextSecondary,
+            TextDisabled = DarkTextMuted,
+
+            LinesDefault = DarkBorder,
+            LinesInputs = DarkBorder,
+            TableLines = DarkBorder,
+            Divider = DarkBorder,
+
+            DrawerIcon = DarkTextSecondary,
         },
 
         LayoutProperties = new LayoutProperties

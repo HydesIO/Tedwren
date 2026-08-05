@@ -1,16 +1,19 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject IShellSampleDataService Shell
+@inject IListSampleDataService ListData
 @inject NavigationManager Nav
+@inject IJSRuntime JS
 
 @* Application shell: theme provider + sidebar + top bar + routed content. *@
 
-<MudThemeProvider Theme="@TedwrenTheme.Instance" IsDarkMode="false" />
+<MudThemeProvider Theme="@TedwrenTheme.Instance" IsDarkMode="_isDark" />
 <MudPopoverProvider />
 <MudDialogProvider />
 <MudSnackbarProvider />
 
-<div class="app-shell @(_sidebarCollapsed ? "app-shell--collapsed" : null)">
+<div class="app-shell @(_sidebarCollapsed ? "app-shell--collapsed" : null) @(_isDark ? "theme-dark" : null)">
+    <CommandPalette Items="_commandItems" @bind-IsOpen="_paletteOpen" OnSelect="OnCommandSelect" />
     <aside class="app-shell__sidebar">
         <AppSidebar NavItems="_navItems"
                     LogoUrl="images/logo-icon.svg"
@@ -32,7 +35,10 @@
                    CurrentUserRole="@_user.Role"
                    CurrentUserAvatarUrl="@_user.AvatarUrl"
                    ShowMenuButton="true"
-                   OnMenuClick="ToggleSidebar" />
+                   IsDark="_isDark"
+                   OnMenuClick="ToggleSidebar"
+                   OnOpenSearch="OpenPalette"
+                   OnToggleTheme="ToggleTheme" />
 
         <main class="app-shell__content" role="main">
             @Body
@@ -50,6 +56,11 @@
     private string _pageTitle = "Dashboard";
     private IReadOnlyList<NotificationEntry> _notifications = Array.Empty<NotificationEntry>();
 
+    private bool _isDark;
+    private bool _paletteOpen;
+    private IReadOnlyList<CommandItem> _commandItems = Array.Empty<CommandItem>();
+    private DotNetObjectReference<MainLayout>? _selfRef;
+
     protected override void OnInitialized()
     {
         _navItems = Shell.GetNavItems();
@@ -60,8 +71,76 @@
         var env = Shell.GetEnvironment();
         _environment = new AppSidebar.EnvironmentInfo(env.Name, env.Version, env.Build, env.IsHealthy);
 
+        _commandItems = BuildCommandItems();
+
         Nav.LocationChanged += OnLocationChanged;
         UpdateActiveRoute();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        _selfRef = DotNetObjectReference.Create(this);
+        try
+        {
+            await JS.InvokeVoidAsync("tedwren.shortcuts.register", _selfRef);
+            var stored = await JS.InvokeAsync<string>("tedwren.theme.get");
+            if (stored == "dark" && !_isDark)
+            {
+                _isDark = true;
+                StateHasChanged();
+            }
+        }
+        catch { /* JS not available (e.g. prerender) */ }
+    }
+
+    [JSInvokable]
+    public void OnCommandKey()
+    {
+        _paletteOpen = true;
+        StateHasChanged();
+    }
+
+    private void OpenPalette() => _paletteOpen = true;
+
+    private void OnCommandSelect(CommandItem item) => Nav.NavigateTo(item.Href);
+
+    private async Task ToggleTheme()
+    {
+        _isDark = !_isDark;
+        try { await JS.InvokeVoidAsync("tedwren.theme.set", _isDark ? "dark" : "light"); }
+        catch { /* ignore */ }
+    }
+
+    private IReadOnlyList<CommandItem> BuildCommandItems()
+    {
+        var items = new List<CommandItem>();
+
+        foreach (var nav in _navItems)
+        {
+            items.Add(new CommandItem(nav.Label, "Pages", nav.Icon, nav.Href, "Go to page"));
+        }
+
+        foreach (var c in ListData.GetCompanies())
+        {
+            items.Add(new CommandItem(c.Name, "Companies", MudBlazor.Icons.Material.Outlined.Business,
+                $"/organisation/{Slugs.From(c.Name)}", c.Trade));
+        }
+
+        foreach (var o in ListData.GetOperatives())
+        {
+            items.Add(new CommandItem(o.Name, "Operatives", MudBlazor.Icons.Material.Outlined.Engineering,
+                $"/workforce/{Slugs.From(o.Name)}", $"{o.Trade} · {o.Company}"));
+        }
+
+        foreach (var s in ListData.GetSites())
+        {
+            items.Add(new CommandItem(s.Name, "Sites", MudBlazor.Icons.Material.Outlined.Apartment,
+                $"/sites/{Slugs.From(s.Name)}", s.Region));
+        }
+
+        return items;
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
@@ -104,5 +183,13 @@
 
     private void ToggleSidebar() => _sidebarCollapsed = !_sidebarCollapsed;
 
-    public void Dispose() => Nav.LocationChanged -= OnLocationChanged;
+    public void Dispose()
+    {
+        Nav.LocationChanged -= OnLocationChanged;
+        if (_selfRef is not null)
+        {
+            try { _ = JS.InvokeVoidAsync("tedwren.shortcuts.unregister"); } catch { /* ignore */ }
+            _selfRef.Dispose();
+        }
+    }
 }

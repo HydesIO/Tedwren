@@ -97,9 +97,14 @@ Page title, global search, notifications, help, profile menu.
 | `CurrentUserRole` | `string` | |
 | `CurrentUserAvatarUrl` | `string?` | Falls back to initials. |
 | `ShowMenuButton` | `bool` | Shows the sidebar toggle. |
+| `IsDark` | `bool` | Drives the light/dark toggle icon. |
 | `OnMenuClick` | `EventCallback` | |
-| `OnSearch` | `EventCallback<string>` | |
+| `OnOpenSearch` | `EventCallback` | Opens the command palette. |
+| `OnToggleTheme` | `EventCallback` | Toggles light/dark. |
 | `OnSignOut` | `EventCallback` | |
+
+The search box is now a trigger that opens the `CommandPalette` (it no longer accepts
+inline text); `GlobalSearchBox` remains in the library for standalone use.
 
 ### `Flyout`
 Lightweight custom dropdown — a trigger, an absolutely-positioned panel and a click-away
@@ -122,6 +127,21 @@ link. Built on `Flyout`.
 | `Notifications` | `IReadOnlyList<NotificationEntry>` | |
 | `MaxItems` | `int` | Most recent shown (default 10). |
 | `ViewAllHref` | `string` | Notifications page link. |
+
+### `CommandPalette`
+Global search overlay opened with `Ctrl`/`⌘`+`K` (or the top-bar search). Fuzzy-ish
+search across supplied `CommandItem`s, grouped results, full keyboard navigation
+(↑/↓/Enter/Esc). The host builds items from pages + entities and handles selection.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Items` | `IReadOnlyList<CommandItem>` | `CommandItem(Label, Group, Icon, Href, Detail?)`. |
+| `IsOpen` | `bool` | Two-way bindable. |
+| `OnSelect` | `EventCallback<CommandItem>` | Raised on selection. |
+| `MaxResults` | `int` | Cap on shown results (default 12). |
+
+> Keyboard shortcut + theme persistence use `wwwroot/js/tedwren.js` (registered by
+> `MainLayout` via JS interop).
 
 ### `GlobalSearchBox`
 Search input with a keyboard-shortcut badge.
@@ -275,7 +295,12 @@ built-in empty state. Columns are declared with `DataColumn<TItem>`.
 | `PageSizeOptions` | `int[]` | Default `10, 25, 50`. |
 | `OnRowClick` | `EventCallback<TItem>` | Rows are styled clickable only when set. |
 | `Actions` | `RenderFragment?` | Right-aligned toolbar slot. |
+| `Loading` | `bool` | Renders the table `LoadingSkeleton`. |
+| `ErrorMessage` | `string?` | Renders a `BannerAlert` (+ Retry via `OnRetry`). |
 | `EmptyIcon` / `EmptyTitle` / `EmptyDescription` | `string` | Empty-state copy. |
+
+A summary row shows the filtered result count (`N of M`) and removable chips for the
+active search term and each column filter.
 
 ```razor
 <DataTable TItem="Company" Items="_companies" Columns="_columns"

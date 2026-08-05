@@ -1,21 +1,35 @@
 @* One nav row — active / hover / expandable states. Single responsibility. *@
 
-<div class="nav-item @(IsActive ? "nav-item--active" : null)"
-     role="button"
-     tabindex="0"
-     aria-current="@(IsActive ? "page" : null)"
-     @onclick="HandleClick"
-     @onkeydown="HandleKeyDown">
-    <MudIcon Icon="@Icon" Class="nav-item__icon" Size="Size.Small" />
-    @if (!IsCollapsed)
-    {
-        <span class="nav-item__label">@Label</span>
-        @if (HasChildren)
+@if (IsCollapsed)
+{
+    <MudTooltip Text="@Label" Placement="Placement.Right">
+        @NavRow
+    </MudTooltip>
+}
+else
+{
+    @NavRow
+}
+
+@code {
+    private RenderFragment NavRow =>@<div class="nav-item @(IsActive ? "nav-item--active" : null)"
+         role="button"
+         tabindex="0"
+         aria-current="@(IsActive ? "page" : null)"
+         aria-label="@Label"
+         @onclick="HandleClick"
+         @onkeydown="HandleKeyDown">
+        <MudIcon Icon="@Icon" Class="nav-item__icon" Size="Size.Small" />
+        @if (!IsCollapsed)
         {
-            <MudIcon Icon="@Icons.Material.Outlined.ExpandMore" Class="nav-item__chevron" Size="Size.Small" />
+            <span class="nav-item__label">@Label</span>
+            @if (HasChildren)
+            {
+                <MudIcon Icon="@Icons.Material.Outlined.ExpandMore" Class="nav-item__chevron" Size="Size.Small" />
+            }
         }
-    }
-</div>
+    </div>;
+}
 
 @code {
     [Parameter, EditorRequired] public string Icon { get; set; } = default!;
