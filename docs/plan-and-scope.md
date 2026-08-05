@@ -284,4 +284,133 @@ PRD-Phase 5 Verified identity (biometrics under R17 + DPIA) · PRD-Phase 6 Cross
    `Database:Provider=PostgreSql` against a Postgres instance; confirm parity.
 6. **Regression:** previously completed phases still pass their tests and the default (`Mock`) path
    still renders the shell + dashboard exactly as before.
+
+---
+
+# Phase 8 — Data-access seam on the first slice (SF-1, SF-2, SF-3) — DETAILED PLAN
+
+## Context
+
+Phase 7 added empty backend projects and the `DataSource` switch, all defaulting to `Mock`.
+Phase 8 makes the switch *real* on one vertical slice — **Company + Person + Engagement** — so
+every later phase copies a proven pattern rather than inventing one. It also lands the three
+foundational primitives the whole product depends on: the **`PhoneNumber`** identity normaliser
+(SF-1, PRD Q9), **per-company isolation** of a shared person (SF-2, R15), and **archive/
+reactivate** (SF-3). The visible proof is the existing **Organisation** screens served over the
+API; the person/engagement rules are proven by unit + integration tests and API endpoints.
+
+### Constraints discovered (drive the design)
+- The sample services (`IListSampleDataService` etc.) are **synchronous** and their DTOs live in
+  `src/Tedwren.UiComponents.SampleData`. Blazor WASM cannot block on async HTTP, so the API-backed
+  path needs an **async** contract. → Introduce async contracts in `Tedwren.Abstractions` and
+  migrate **only** the three Organisation pages (strangler pattern); all other pages keep their
+  sync sample interfaces **unchanged** (no regression).
+- Mock mode must stay **visually identical**. → The mock implementation of the new contract
+  **wraps the existing sample services** (as `DetailSampleDataService` already wraps
+  `IListSampleDataService` at `src/Tedwren.UiComponents.SampleData/DetailSampleDataService.cs:14`)
+  and maps their records to the new DTOs. No sample data is duplicated.
+- **No SQL Server/LocalDB and no Docker daemon in this container.** → The Dapper path is authored,
+  unit-mocked, and covered by integration tests that **skip when no connection string is
+  configured**, so they run in CI/dev (LocalDB / shared instance) per the agreed test strategy.
+  In this session the seam is proven end-to-end in **Mock** and via the **API's mock path**
+  (`WebApplicationFactory`), which need no database.
+
+## Approach
+
+### 1. Domain — `src/Tedwren.Domain`
+- `ValueObjects/PhoneNumber.cs` — the settle-once normaliser (SF-1, Q9). `Parse`/`TryParse`,
+  normalises UK (`07…`, `+44`, spaces/punctuation) and international forms to a canonical E.164-ish
+  string; value equality on the normalised form. This is the person identity key. Names are
+  **never** reconciled (PRD §5.1) — they live on the engagement, not the person.
+- `Entities/Company.cs` — `Id` (Guid), Name, Type, Trade, RegistrationNumber, Address, contact
+  fields, timestamps. (Compliance% is derived from cards, which arrive Phase 9 — see mapping note.)
+- `Entities/Person.cs` — `Id` (Guid) + `PhoneNumber` (identity) + created timestamp only.
+- `Entities/Engagement.cs` — `Id`, `CompanyId`, `PersonId`, `Name` (as recorded by that company),
+  Trade, InternalReference, `EngagementStatus`, timestamps. Encodes SF-2 and SF-3.
+- `Enums/EngagementStatus.cs` — `Active`, `Archived`. (Company type/trade stay free-text strings to
+  match the existing option lists and avoid inventing a closed set the PRD leaves open.)
+
+### 2. Abstractions — `src/Tedwren.Abstractions`
+- `Contracts/Organisation/*` DTOs: `CompanySummaryDto`, `CompanyDetailDto`, `CreateCompanyRequest`,
+  `AddOperativeRequest`/`AddOperativeResult`, `OperativeSummaryDto`. **Property names mirror the
+  existing records** (`src/Tedwren.UiComponents.SampleData/IListSampleDataService.cs`,
+  `IDetailSampleDataService.cs`) so the razor markup barely changes.
+- `Services/IOrganisationService.cs` — async: `GetCompaniesAsync`, `GetCompanyAsync(slug)`,
+  `CreateCompanyAsync`, plus `AddOperativeAsync`, `ArchiveEngagementAsync`,
+  `ReactivateEngagementAsync` (SF-1/2/3; the latter three are API+test-proven this phase, UI later).
+- `ClientDataSourceMode` enum (`Mock`, `Api`) for the client switch (server side already has
+  `DataSourceMode` from Phase 7).
+
+### 3. Application — `src/Tedwren.Application`
+- `Organisation/OrganisationService.cs` (real impl) — depends on repository interfaces; holds the
+  SF rules: `AddOperativeAsync` **creates-or-reuses** a `Person` by normalised phone (SF-1),
+  **refuses a duplicate engagement in the same company naming the existing record** (SF-2 accept-
+  when), `Archive`/`Reactivate` toggle `EngagementStatus` while retaining history (SF-3); reads
+  never cross companies (R15).
+- `Organisation/MockOrganisationService.cs` — implements `IOrganisationService` by **wrapping the
+  existing sample services** and mapping to DTOs; keeps Mock mode identical.
+- `Abstractions/Persistence/I{Company,Person,Engagement}Repository.cs` — repository interfaces
+  (defined in Application or Abstractions) the DataAccess layer implements.
+
+### 4. DataAccess — `src/Tedwren.DataAccess` (Dapper, dual-engine)
+- `Connections/IDbConnectionFactory.cs` + `DbConnectionFactory.cs` — returns `SqlConnection` or
+  `NpgsqlConnection` from `BackendOptions.Provider` + `ConnectionStrings`.
+- `Dialects/ISqlDialect.cs` + `SqlServerDialect.cs` + `PostgresDialect.cs` — encapsulate the few
+  real differences (identifier quoting, `uniqueidentifier`/`uuid`, `nvarchar(max)`/`jsonb`,
+  paging). Most SQL is shared ANSI.
+- `Repositories/RepositoryBase.cs` — shared async Dapper helpers over the factory + dialect.
+- `Repositories/{Company,Person,Engagement}Repository.cs` — derive from the base.
+- `Migrations/` + `db/sqlserver/*.sql` + `db/postgres/*.sql` — idempotent `Companies`, `Persons`,
+  `Engagements` tables; **unique index on `Persons.PhoneNumber`** (SF-1) and on
+  `Engagements(CompanyId, PersonId)` (SF-2); a small `MigrationRunner` applies them at API startup
+  in `Database` mode (dev).
+
+### 5. Api — `src/Tedwren.Api`
+- `Endpoints/OrganisationEndpoints.cs` — minimal-API group `/api/organisation`: `GET /companies`,
+  `GET /companies/{slug}`, `POST /companies`, `POST /operatives`, `POST /operatives/{id}:archive`
+  / `:reactivate`; each calls `IOrganisationService`.
+- `Program.cs` — bind `BackendOptions` (done Phase 7); register `IOrganisationService` = Mock impl
+  when `Mode=Mock`, else real impl + repositories + `IDbConnectionFactory` + dialect for the
+  configured provider; run migrations in `Database` mode.
+
+### 6. Client — `src/Tedwren.Client`
+- `Services/ApiOrganisationService.cs` — typed `HttpClient` impl of `IOrganisationService` calling
+  `/api/organisation` (base URL from `wwwroot/appsettings.json:Api:BaseUrl`).
+- `Program.cs` — read `DataSource:Mode`; register `MockOrganisationService` (in-proc, wraps sample
+  data) when `Mock`, else `HttpClient` + `ApiOrganisationService`. Keep the five existing sample
+  registrations for the not-yet-migrated pages.
+- Migrate `Pages/Organisation/{Organisation,CompanyDetail,AddCompany}.razor` to inject
+  `IOrganisationService` and `await` it; `AddCompany.Save` now calls `CreateCompanyAsync` (real
+  create in Api mode; in-proc add in Mock mode). Option lists stay on `IFormSampleDataService`.
+- **Mapping note:** DB-mode companies have no cards yet (Phase 9), so `CompliancePercent`/`Status`
+  render as a neutral "pending" until Phase 9 — honest, not invented. Mock mode is unchanged.
+
+### 7. Tests
+- `Tedwren.Domain.Tests/PhoneNumberTests.cs` — normalisation & equality (UK/international/messy input).
+- `Tedwren.Application.Tests/OrganisationServiceTests.cs` — SF-1/2/3 against mocked repositories:
+  same phone / two companies → one person + two engagements, no cross-company read; same phone
+  twice in one company → refused naming the existing; archive hides from register but keeps
+  history; reactivate restores.
+- `Tedwren.Api.Tests` (new, `WebApplicationFactory<Program>` in **Mock** mode) — `/api/organisation`
+  happy paths; needs no DB, runs in CI and here.
+- `Tedwren.DataAccess.Tests/OrganisationRepositoryTests.cs` — LocalDB integration, **per-test
+  transaction rollback**, purpose-created data; a fixture probes a `TEDWREN_TEST_SQLSERVER`
+  connection string and **skips** when absent (runs in CI/dev).
+
+## Verification (Phase 8)
+1. `dotnet build Tedwren.sln` — 0 errors, no new warnings.
+2. `dotnet test` — Domain/Application/Api(mock) suites pass here; DataAccess integration skips
+   without a SQL Server (runs green in CI/dev with LocalDB).
+3. **Seam proof (this session, no DB):** run the API in `Mock`; run the client with `DataSource=Api`
+   → Organisation list/detail/create are served over HTTP from the API's mock service and look
+   identical to `DataSource=Mock`. Confirms UI + business layers are untouched by the flip.
+4. **DB path (CI/dev):** set `DataSource:Mode=Database`, `Provider=SqlServer`, connection string →
+   migrations create the schema; integration tests prove CRUD + SF-1/2/3 constraints; Postgres SQL
+   validated where a Postgres instance is available (full parity is the Phase 18 gate).
+5. **Regression:** all other pages (Workforce/Sites/Compliance/Audit/detail) and the default
+   `Mock` client path render exactly as before.
+
+## Out of scope for Phase 8 (deferred to their phases)
+Cards/compliance computation (Phase 9); migrating Workforce/Sites/Compliance/Audit pages to async
+contracts; real SMS/email; auth. Phase 8 proves the pattern on one slice only.
 ```

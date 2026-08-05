@@ -1,0 +1,32 @@
+using Microsoft.Extensions.DependencyInjection;
+using Tedwren.Abstractions.Configuration;
+using Tedwren.Application.Persistence;
+using Tedwren.DataAccess.Connections;
+using Tedwren.DataAccess.Dialects;
+using Tedwren.DataAccess.Migrations;
+using Tedwren.DataAccess.Repositories;
+
+namespace Tedwren.DataAccess;
+
+/// <summary>Dependency-injection registration helpers for the Dapper data-access layer.</summary>
+public static class DataAccessServiceCollectionExtensions
+{
+    /// <summary>
+    /// Registers the connection factory, dialect, Dapper repositories and migration runner for the
+    /// given engine + connection string. The business service is unchanged — only the repositories it
+    /// depends on differ from the mock registration.
+    /// </summary>
+    public static IServiceCollection AddSqlDataAccess(
+        this IServiceCollection services, DatabaseProvider provider, string connectionString)
+    {
+        services.AddSingleton(new SqlDataAccessOptions { Provider = provider, ConnectionString = connectionString });
+        services.AddSingleton<ISqlDialect>(_ =>
+            provider == DatabaseProvider.PostgreSql ? new PostgresDialect() : new SqlServerDialect());
+        services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
+        services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<IPersonRepository, PersonRepository>();
+        services.AddScoped<IEngagementRepository, EngagementRepository>();
+        services.AddSingleton<MigrationRunner>();
+        return services;
+    }
+}

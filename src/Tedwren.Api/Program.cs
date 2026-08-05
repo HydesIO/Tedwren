@@ -1,16 +1,33 @@
 using Microsoft.Extensions.Options;
 using Tedwren.Abstractions.Configuration;
+using Tedwren.Api.Endpoints;
+using Tedwren.Application;
+using Tedwren.DataAccess;
 
 // Composition root for the Tedwren Web API. This API is deliberately a separate deployable from
 // the Blazor WebAssembly client and is CORS-enabled, so the same contracts can later serve a
-// mobile application. Phase 7 wires the host, the health probe, CORS and the mock/database
-// configuration switch; feature endpoints and the Dapper-backed services arrive from Phase 8.
+// mobile application. The mock/database switch chooses which repositories back the (single)
+// organisation business service; the service itself is identical in both modes.
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Bind the mock/database switch from the "DataSource" configuration section. Defaults to mock.
-builder.Services.Configure<BackendOptions>(
-    builder.Configuration.GetSection(BackendOptions.SectionName));
+// Bind and read the mock/database switch from the "DataSource" configuration section (defaults to mock).
+var dataSourceSection = builder.Configuration.GetSection(BackendOptions.SectionName);
+builder.Services.Configure<BackendOptions>(dataSourceSection);
+var backend = dataSourceSection.Get<BackendOptions>() ?? new BackendOptions();
+
+// One business service; the data-source switch only changes which repositories are registered.
+builder.Services.AddOrganisationCore();
+if (backend.Mode == DataSourceMode.Database)
+{
+    var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
+    var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
+    builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
+}
+else
+{
+    builder.Services.AddInMemoryOrganisationStore();
+}
 
 builder.Services.AddOpenApi();
 
@@ -36,6 +53,16 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(clientCorsPolicy);
+
+// Apply database migrations at startup when running against a real database.
+if (backend.Mode == DataSourceMode.Database)
+{
+    using var scope = app.Services.CreateScope();
+    var migrationRunner = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Migrations.MigrationRunner>();
+    await migrationRunner.RunAsync();
+}
+
+app.MapOrganisationEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

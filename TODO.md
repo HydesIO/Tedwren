@@ -49,19 +49,50 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+### Phase 8 — Data-access seam on the first slice (SF-1, SF-2, SF-3) (this change)
+- ✅ **Domain** (`Tedwren.Domain`): `PhoneNumber` value object (settle-once mobile normaliser, SF-1/Q9);
+  `Company`, `Person`, `Engagement` entities; `EngagementStatus` enum.
+- ✅ **Abstractions**: `IOrganisationService` + organisation DTOs (`CompanySummary`, `CompanyDetailDto`,
+  `CreateCompanyRequest`, `AddOperativeRequest`/`Result`, …); neutral `ComplianceState`; canonical
+  `Slug`; `ClientDataSourceMode`.
+- ✅ **Application**: single store-agnostic `OrganisationService` (SF-1 create-or-reuse person by phone;
+  SF-2 refuse duplicate engagement naming the existing; SF-3 archive/reactivate; R15 company-scoped);
+  repository interfaces + seeded in-memory repositories (API mock mode); DI extensions.
+- ✅ **DataAccess** (Dapper, dual-engine): `IDbConnectionFactory`, `ISqlDialect`
+  (SqlServer/Postgres), `RepositoryBase`, Company/Person/Engagement repositories, `MigrationRunner`
+  with embedded idempotent SQL for both engines (unique index on `Persons.PhoneNumber` = SF-1, on
+  `Engagements(CompanyId, PersonId)` = SF-2). SQL is ANSI-portable across both engines.
+- ✅ **API**: `/api/organisation` endpoints; composition root registers one `OrganisationService` and
+  chooses in-memory repos (`DataSource=Mock`) or Dapper repos + migrations (`DataSource=Database`).
+- ✅ **Client**: `ApiOrganisationService` (HTTP) and `ClientMockOrganisationService` (wraps sample data,
+  keeps Mock mode visually identical); `DataSource:Mode` switch in `Program.cs`; Organisation list,
+  detail and add-company pages migrated to the async `IOrganisationService` + DTOs (no other page
+  touched). Client default remains `Mock` — **no regression**.
+- ✅ **Tests**: `PhoneNumberTests` (normalisation/equality); `OrganisationServiceTests` (SF-1/2/3, R15);
+  `Tedwren.Api.Tests` (WebApplicationFactory, mock mode — GET/POST/409); `OrganisationRepositoryTests`
+  (SQL Server integration, skip-guarded on `TEDWREN_TEST_SQLSERVER`, purpose-created rows). Result:
+  **26 passed, 1 skipped** (the DB integration test — no SQL Server in this environment).
+- ✅ Verified live: `GET /api/organisation/companies` returns seeded data; SF-1 (`07700 900123` and
+  `+447700900123` → one person) and SF-2 (duplicate → HTTP 409 naming the existing) proven over HTTP.
+
 ## Outstanding / known issues
 - ❗ **MUD0002 warnings** (pre-existing, in `TedwrenStepper.razor`, `AddOperative.razor`,
   `Inductions.razor`): `Variant`/`Linear`/`Color` on `MudStepper` and `Icon` on `MudStep` flagged
-  by the MudBlazor analyzer. Not addressed in Phase 7 (backend scope). Review against the current
-  MudBlazor `MudStepper`/`MudStep` API and correct in a focused UI pass.
+  by the MudBlazor analyzer. Not backend scope. Review against the current MudBlazor API in a UI pass.
+- ❗ **DB path executes in CI/dev, not this container** (no SQL Server / LocalDB / Docker daemon).
+  Dapper repositories + migrations are authored and the integration test is skip-guarded; run it in
+  CI/dev with `DataSource:Mode=Database` and `TEDWREN_TEST_SQLSERVER` set. PostgreSQL parity is the
+  Phase 18 gate.
+- ❗ **WASM in-browser render not asserted this session** (no browser harness set up). The seam is
+  proven at the HTTP/contract level (live API + `WebApplicationFactory` tests + shared DTOs + build);
+  a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 8 — Prove the data-access seam on one slice (SF-1, SF-2, SF-3).** Company + Person +
-  Engagement (person keyed by normalised mobile number; per-company isolation; archive/reactivate),
-  implemented mock + Dapper (SQL Server + PostgreSQL) behind the shared interface, with the
-  Organisation/detail pages served over the database when `DataSource=Api`/`Database`. Establish the
-  `PhoneNumber` value object (Q9), `IDbConnectionFactory`, shared repository base + dialects, and
-  the LocalDB transaction-rollback integration harness. This locks the pattern later phases copy.
+- ⏳ **Phase 9 — Qualification cards & competency (SF-5–SF-8, SF-10–SF-12).** Card capture with
+  suggested-not-silent reads; three visibly-distinct states; named confirmation; status computed from
+  expiry; trade→required-qualification lists; default library; renewal supersedes. This also lets the
+  organisation compliance figures move from `Pending` to computed values. Follow the Phase 8 pattern
+  (Domain → Abstractions → Application → DataAccess → API → Client) on the next slice.
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,
