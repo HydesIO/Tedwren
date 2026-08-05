@@ -50,3 +50,33 @@
     --spacing-24: 24px;
     --spacing-32: 32px;
 }
+
+/*
+ * Dark theme overrides. Applied by placing the `.theme-dark` class on the app shell
+ * root; every component reads --color-* so the whole tree flips. Kept in lock-step
+ * with the PaletteDark values in TedwrenTheme.cs. The brand orange is unchanged.
+ */
+.theme-dark {
+    --color-bg: #0C111D;
+    --color-surface: #161B26;
+    --color-text-primary: #F5F6F8;
+    --color-text-secondary: #94A0B4;
+    --color-text-muted: #697586;
+    --color-border: #2A3140;
+
+    --color-brand-pale: #3A2317;
+    --color-brand-dark: #F5926A;
+
+    --color-success: #3CCB7F;
+    --color-success-pale: #16281F;
+    --color-warning: #F7A93D;
+    --color-warning-pale: #2C2313;
+    --color-danger: #F5766B;
+    --color-danger-pale: #2E1B1A;
+    --color-info: #5AA9FB;
+    --color-info-pale: #16233A;
+    --color-permit: #A98BE6;
+    --color-permit-pale: #241F35;
+
+    --shadow-card: 0 1px 2px rgba(0, 0, 0, .30), 0 1px 3px rgba(0, 0, 0, .24);
+}

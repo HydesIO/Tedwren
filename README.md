@@ -35,6 +35,13 @@ Organisation, Workforce or Sites lists opens a tabbed detail page (`DetailHeader
 breadcrumb + status, `KeyValueList` overview, and nested `DataTable`s / qualification
 cards / history feeds), driven by `IDetailSampleDataService`.
 
+Also added: a **dark theme** (toggle in the top bar, persisted to `localStorage`; the
+token structure flips via a `.theme-dark` class alongside MudBlazor's `PaletteDark`), a
+**command palette** (global search over pages + entities, opened with `Ctrl`/`⌘`+`K`),
+**result-count + removable filter chips** on every `DataTable`, and **tooltips** on the
+collapsed sidebar rail. A small `wwwroot/js/tedwren.js` provides the keyboard shortcut
+and theme persistence.
+
 ## Requirements
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download)

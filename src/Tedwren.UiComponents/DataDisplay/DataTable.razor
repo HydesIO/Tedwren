@@ -52,6 +52,33 @@
         }
     </div>
 
+    @if (!Loading && string.IsNullOrEmpty(ErrorMessage))
+    {
+        <div class="data-table__summary">
+            @if (_hasActiveFilters || !string.IsNullOrWhiteSpace(_search))
+            {
+                <div class="data-table__chips">
+                    @if (!string.IsNullOrWhiteSpace(_search))
+                    {
+                        <span class="data-table__chip">
+                            <span class="data-table__chip-key">Search:</span> @_search
+                            <button type="button" class="data-table__chip-x" aria-label="Clear search" @onclick="ClearSearch">×</button>
+                        </span>
+                    }
+                    @foreach (var (title, value) in _filters.Where(f => !string.IsNullOrEmpty(f.Value)))
+                    {
+                        <span class="data-table__chip">
+                            <span class="data-table__chip-key">@title:</span> @value
+                            <button type="button" class="data-table__chip-x" aria-label="@($"Clear {title} filter")"
+                                    @onclick="@(() => SetFilter(title, null))">×</button>
+                        </span>
+                    }
+                </div>
+            }
+            <span class="data-table__count">@FilteredCount of @Items.Count</span>
+        </div>
+    }
+
     @if (Loading)
     {
         <LoadingSkeleton Variant="LoadingSkeleton.SkeletonVariant.Table" Rows="6" />
@@ -154,6 +181,8 @@
 
     private bool _hasActiveFilters => _filters.Values.Any(v => !string.IsNullOrEmpty(v));
 
+    private int FilteredCount => Items.Count(FilterPredicate);
+
     protected override void OnParametersSet()
     {
         _filterColumns = Columns.Where(c => c.Filterable).ToList();
@@ -180,6 +209,8 @@
     }
 
     private void OnSearchInput(ChangeEventArgs e) => _search = e.Value?.ToString() ?? string.Empty;
+
+    private void ClearSearch() => _search = string.Empty;
 
     private bool FilterPredicate(TItem item)
     {
