@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.10" />
+    <!-- Direct reference overrides the vulnerable Microsoft.OpenApi 2.0.0 pulled in transitively
+         by Microsoft.AspNetCore.OpenApi (advisory GHSA-v5pm-xwqc-g5wc / NU1903). -->
+    <PackageReference Include="Microsoft.OpenApi" Version="2.11.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tedwren.Abstractions\Tedwren.Abstractions.csproj" />
+    <ProjectReference Include="..\Tedwren.Application\Tedwren.Application.csproj" />
+    <ProjectReference Include="..\Tedwren.DataAccess\Tedwren.DataAccess.csproj" />
+  </ItemGroup>
+
+</Project>

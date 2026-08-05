@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Dapper over both engines; provider-specific ADO.NET drivers for SQL Server and PostgreSQL.
+         Wired here in Phase 7; consumed by the shared repository base and dialects in Phase 8. -->
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tedwren.Abstractions\Tedwren.Abstractions.csproj" />
+    <ProjectReference Include="..\Tedwren.Application\Tedwren.Application.csproj" />
+    <ProjectReference Include="..\Tedwren.Domain\Tedwren.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

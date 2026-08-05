@@ -20,11 +20,16 @@
 @code {
     [Parameter] public IEnumerable<ExpiryItem> Items { get; set; } = Array.Empty<ExpiryItem>();
 
-    private static string DaysLabel(ExpiryItem item) => item.DaysRemaining switch
+    // Builds the "days remaining" label. Written as an if-chain rather than a switch
+    // expression on purpose: a switch arm whose relational pattern starts with '<'
+    // (e.g. "< 0 =>") sits at statement position inside a Razor @code block, where the
+    // parser treats the leading '<' as an HTML markup transition and truncates the method.
+    private static string DaysLabel(ExpiryItem item)
     {
-        < 0 => $"Expired {Math.Abs(item.DaysRemaining)}d ago",
-        0 => "Expires today",
-        1 => "1 day left",
-        _ => $"{item.DaysRemaining} days left",
-    };
+        var days = item.DaysRemaining;
+        if (days < 0) return $"Expired {Math.Abs(days)}d ago";
+        if (days == 0) return "Expires today";
+        if (days == 1) return "1 day left";
+        return $"{days} days left";
+    }
 }
