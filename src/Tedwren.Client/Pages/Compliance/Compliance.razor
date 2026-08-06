@@ -1,5 +1,7 @@
 @page "/compliance"
-@inject IListSampleDataService ListData
+@using Tedwren.Abstractions.Contracts.Qualifications
+@using Tedwren.Abstractions.Services
+@inject IQualificationService Qualifications
 @inject IDashboardSampleDataService DashData
 
 <PageTitle>Compliance · Tedwren</PageTitle>
@@ -21,7 +23,7 @@
     <DashboardCard Title="Qualification type library"
                    Subtitle="Qualifications tracked across the workforce">
         <Body>
-            <DataTable TItem="QualificationType"
+            <DataTable TItem="QualificationTypeDto"
                        Items="_qualifications"
                        Columns="_columns"
                        Loading="_loading"
@@ -35,30 +37,32 @@
 
 @code {
     private ComplianceOverview _overview = default!;
-    private IReadOnlyList<QualificationType> _qualifications = Array.Empty<QualificationType>();
-    private List<DataColumn<QualificationType>> _columns = new();
+    private IReadOnlyList<QualificationTypeDto> _qualifications = Array.Empty<QualificationTypeDto>();
+    private List<DataColumn<QualificationTypeDto>> _columns = new();
     private bool _loading = true;
 
+    // Loads the compliance overview (dashboard sample) and the qualification-type library through the
+    // shared IQualificationService, so the table is served from mock or the API identically (SF-12).
     protected override async Task OnInitializedAsync()
     {
         _overview = DashData.GetComplianceOverview();
         BuildColumns();
-        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
-        _qualifications = ListData.GetQualificationTypes();
+        _qualifications = await Qualifications.GetQualificationTypesAsync();
         _loading = false;
     }
 
+    // Builds the qualification-library table columns.
     private void BuildColumns()
     {
         _columns = new()
         {
             new() { Title = "Qualification", Value = q => q.Name },
-            new() { Title = "Category", Value = q => q.Category, Filterable = true },
-            new() { Title = "Issuer", Value = q => q.Issuer, Filterable = true },
+            new() { Title = "Category", Value = q => q.Category ?? "—", Filterable = true },
+            new() { Title = "Issuer", Value = q => q.Issuer ?? "—", Filterable = true },
             new()
             {
-                Title = "Valid for", Value = q => q.ValidMonths, AlignRight = true, Searchable = false,
-                CellTemplate = q => @<span>@q.ValidMonths months</span>
+                Title = "Valid for", Value = q => q.DefaultValidityMonths, AlignRight = true, Searchable = false,
+                CellTemplate = q => @<span>@q.DefaultValidityMonths months</span>
             },
             new() { Title = "Held by", Value = q => q.HeldBy, AlignRight = true },
         };

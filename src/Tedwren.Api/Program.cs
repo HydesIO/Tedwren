@@ -16,8 +16,9 @@ var dataSourceSection = builder.Configuration.GetSection(BackendOptions.SectionN
 builder.Services.Configure<BackendOptions>(dataSourceSection);
 var backend = dataSourceSection.Get<BackendOptions>() ?? new BackendOptions();
 
-// One business service; the data-source switch only changes which repositories are registered.
+// Business services; the data-source switch only changes which repositories are registered.
 builder.Services.AddOrganisationCore();
+builder.Services.AddQualificationCore();
 if (backend.Mode == DataSourceMode.Database)
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
@@ -27,6 +28,7 @@ if (backend.Mode == DataSourceMode.Database)
 else
 {
     builder.Services.AddInMemoryOrganisationStore();
+    builder.Services.AddInMemoryQualificationStore();
 }
 
 builder.Services.AddOpenApi();
@@ -60,9 +62,14 @@ if (backend.Mode == DataSourceMode.Database)
     using var scope = app.Services.CreateScope();
     var migrationRunner = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Migrations.MigrationRunner>();
     await migrationRunner.RunAsync();
+
+    // Seed the default qualification library (SF-12) and trade requirements (SF-11) — idempotent.
+    var librarySeeder = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Qualifications.QualificationLibrarySeeder>();
+    await librarySeeder.RunAsync();
 }
 
 app.MapOrganisationEndpoints();
+app.MapQualificationEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

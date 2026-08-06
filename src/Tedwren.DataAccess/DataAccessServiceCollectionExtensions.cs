@@ -26,6 +26,10 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<ICompanyRepository, CompanyRepository>();
         services.AddScoped<IPersonRepository, PersonRepository>();
         services.AddScoped<IEngagementRepository, EngagementRepository>();
+        services.AddScoped<IQualificationTypeRepository, QualificationTypeRepository>();
+        services.AddScoped<IQualificationCardRepository, QualificationCardRepository>();
+        services.AddScoped<ITradeRequirementRepository, TradeRequirementRepository>();
+        services.AddScoped<Qualifications.QualificationLibrarySeeder>();
         services.AddSingleton<MigrationRunner>();
         return services;
     }

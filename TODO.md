@@ -75,6 +75,32 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live: `GET /api/organisation/companies` returns seeded data; SF-1 (`07700 900123` and
   `+447700900123` → one person) and SF-2 (duplicate → HTTP 409 naming the existing) proven over HTTP.
 
+### Phase 9 — Qualification cards & competency (SF-5–SF-8, SF-10–SF-12) (this change)
+- ✅ **Domain**: `QualificationType` (SF-12), `QualificationCard` with pure `GetStatus(asOf, window)`
+  computing currency from expiry (SF-8) + supersede fields (SF-10), `TradeQualificationRequirement`
+  (SF-11); enums `CardVerificationState` (SF-7), `CardStatus` (SF-8), `CardCaptureSource` (SF-5).
+- ✅ **Abstractions**: neutral `CardVerificationState`; `QualificationDtos` (`QualificationTypeDto`
+  incl. `HeldBy`; `QualificationCardDto` with server-computed state/labels; capture/confirm/renew
+  requests; `CompetencyShortfallDto`); `IQualificationService`.
+- ✅ **Application**: `DefaultQualificationLibrary` (canonical SF-12 seed + illustrative SF-11 trade
+  requirements, single source of truth); store-agnostic `QualificationService` (SF-5 capture →
+  needs-review, never auto-confirmed; SF-6 confirm records who/when; SF-8 status computed server-side;
+  SF-10 renew supersedes + retains; SF-11 shortfall; SF-12 library + `HeldBy`); repo interfaces +
+  seeded in-memory store/repos; DI `AddQualificationCore` / `AddInMemoryQualificationStore`.
+- ✅ **DataAccess**: Dapper `QualificationType/Card/TradeRequirement` repositories (ANSI-portable);
+  `002_qualifications.sql` for both engines; idempotent `QualificationLibrarySeeder` (keeps the C#
+  library as the source); registrations extended.
+- ✅ **API**: `/api/qualifications` endpoints (types, person cards, capture, confirm, renew, shortfall);
+  composition root registers the qualification service + store/seeder alongside organisation.
+- ✅ **Client**: `ApiQualificationService` (HTTP) + `ClientMockQualificationService` (wraps sample
+  library, browser-safe stable id — no `System.Security.Cryptography`); `DataSource:Mode` switch;
+  **Compliance** qualification-library table migrated to `IQualificationService` (no other page touched).
+- ✅ **Tests**: `QualificationCardStatusTests` (SF-8 boundaries); `QualificationServiceTests`
+  (SF-5/6/8/10/11/12 + `HeldBy`); `QualificationApiTests` (types + capture→confirm flow, mock mode);
+  `QualificationRepositoryTests` (SQL Server integration, skip-guarded). Result: **41 passed, 2 skipped**.
+- ✅ Verified live (mock mode): `GET /api/qualifications/types` returns the 7-type default library;
+  capture → "Read — not checked" (SF-5, not auto-confirmed) → confirm → "Checked" by the named person (SF-6).
+
 ## Outstanding / known issues
 - ❗ **MUD0002 warnings** (pre-existing, in `TedwrenStepper.razor`, `AddOperative.razor`,
   `Inductions.razor`): `Variant`/`Linear`/`Color` on `MudStepper` and `Icon` on `MudStep` flagged
@@ -88,11 +114,13 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 9 — Qualification cards & competency (SF-5–SF-8, SF-10–SF-12).** Card capture with
-  suggested-not-silent reads; three visibly-distinct states; named confirmation; status computed from
-  expiry; trade→required-qualification lists; default library; renewal supersedes. This also lets the
-  organisation compliance figures move from `Pending` to computed values. Follow the Phase 8 pattern
-  (Domain → Abstractions → Application → DataAccess → API → Client) on the next slice.
+- ⏳ **Phase 10 — Expiry engine, warning schedule & job heartbeat (SF-9, SF-21, SUB-5, R12).**
+  Scheduled expiry evaluation over the Phase 9 cards; warnings at 60/30/7/0/+1 days (worker SMS / admin
+  email behind provider interfaces, stubbed); idempotent (no double-send); weekly 60-day digest; every
+  job reports whether it ran and alerts on silent stop (R12). Follow the Phase 8/9 layered pattern.
+- ⏳ **Phase 9 follow-ups (non-blocking):** surface qualification cards on the Operative-detail page over
+  the API (backend + tests already in place); wire company/operative compliance % from cards into the
+  Phase 8 `OrganisationService` (moves the `Pending` figures to computed); real card-image storage (R9).
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,
