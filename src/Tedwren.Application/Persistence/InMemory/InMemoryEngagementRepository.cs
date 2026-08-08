@@ -21,6 +21,15 @@ public sealed class InMemoryEngagementRepository : IEngagementRepository
         return Task.FromResult(engagements);
     }
 
+    /// <summary>Returns the active engagements of a person across all companies.</summary>
+    public Task<IReadOnlyList<Engagement>> GetActiveByPersonAsync(Guid personId, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<Engagement> engagements = _store.Engagements.Values
+            .Where(e => e.PersonId == personId && e.Status == EngagementStatus.Active)
+            .ToList();
+        return Task.FromResult(engagements);
+    }
+
     /// <summary>Returns a specific engagement owned by the company, or null (tenant-scoped, R15).</summary>
     public Task<Engagement?> GetAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.Engagements.Values.FirstOrDefault(e => e.Id == engagementId && e.CompanyId == companyId));

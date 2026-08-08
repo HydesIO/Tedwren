@@ -35,6 +35,15 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
         return row is null ? null : ToEntity(row);
     }
 
+    /// <summary>Returns current (non-superseded) cards that carry an expiry date (the expiry engine's input).</summary>
+    public async Task<IReadOnlyList<QualificationCard>> GetCurrentWithExpiryAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            $"SELECT {Columns} FROM QualificationCards WHERE SupersededByCardId IS NULL AND ExpiresOn IS NOT NULL",
+            null, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
     /// <summary>Counts current (non-superseded) cards per qualification type.</summary>
     public async Task<IReadOnlyDictionary<Guid, int>> GetHeldByCountsAsync(CancellationToken cancellationToken = default)
     {

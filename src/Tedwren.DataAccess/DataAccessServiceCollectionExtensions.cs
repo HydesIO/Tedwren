@@ -29,6 +29,8 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IQualificationTypeRepository, QualificationTypeRepository>();
         services.AddScoped<IQualificationCardRepository, QualificationCardRepository>();
         services.AddScoped<ITradeRequirementRepository, TradeRequirementRepository>();
+        services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
+        services.AddScoped<IJobRunRepository, JobRunRepository>();
         services.AddScoped<Qualifications.QualificationLibrarySeeder>();
         services.AddSingleton<MigrationRunner>();
         return services;

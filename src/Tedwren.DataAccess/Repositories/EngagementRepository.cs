@@ -25,6 +25,15 @@ public sealed class EngagementRepository : RepositoryBase, IEngagementRepository
         return rows.Select(ToEntity).ToList();
     }
 
+    /// <summary>Returns the active engagements of a person across all companies.</summary>
+    public async Task<IReadOnlyList<Engagement>> GetActiveByPersonAsync(Guid personId, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<EngagementRow>(
+            $"SELECT {Columns} FROM Engagements WHERE PersonId = @PersonId AND Status = @Status",
+            new { PersonId = personId, Status = (int)EngagementStatus.Active }, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
     /// <summary>Returns a specific engagement owned by the company, or null (tenant-scoped, R15).</summary>
     public async Task<Engagement?> GetAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default)
     {

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using Tedwren.Abstractions.Configuration;
 using Tedwren.Api.Endpoints;
+using Tedwren.Api.Hosting;
 using Tedwren.Application;
 using Tedwren.DataAccess;
 
@@ -19,6 +20,7 @@ var backend = dataSourceSection.Get<BackendOptions>() ?? new BackendOptions();
 // Business services; the data-source switch only changes which repositories are registered.
 builder.Services.AddOrganisationCore();
 builder.Services.AddQualificationCore();
+builder.Services.AddExpiryCore();
 if (backend.Mode == DataSourceMode.Database)
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
@@ -29,7 +31,11 @@ else
 {
     builder.Services.AddInMemoryOrganisationStore();
     builder.Services.AddInMemoryQualificationStore();
+    builder.Services.AddInMemoryExpiryStore();
 }
+
+// Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
+builder.Services.AddHostedService<ExpirySchedulerHostedService>();
 
 builder.Services.AddOpenApi();
 
@@ -70,6 +76,7 @@ if (backend.Mode == DataSourceMode.Database)
 
 app.MapOrganisationEndpoints();
 app.MapQualificationEndpoints();
+app.MapJobEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

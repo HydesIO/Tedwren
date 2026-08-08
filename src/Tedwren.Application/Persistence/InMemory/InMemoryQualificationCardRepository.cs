@@ -20,6 +20,15 @@ public sealed class InMemoryQualificationCardRepository : IQualificationCardRepo
         return Task.FromResult(cards);
     }
 
+    /// <summary>Returns current (non-superseded) cards that carry an expiry date.</summary>
+    public Task<IReadOnlyList<QualificationCard>> GetCurrentWithExpiryAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<QualificationCard> cards = _store.Cards.Values
+            .Where(c => c.SupersededByCardId is null && c.ExpiresOn is not null)
+            .ToList();
+        return Task.FromResult(cards);
+    }
+
     /// <summary>Returns a card by id, or null.</summary>
     public Task<QualificationCard?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.Cards.GetValueOrDefault(id));

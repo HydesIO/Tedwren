@@ -101,6 +101,35 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock mode): `GET /api/qualifications/types` returns the 7-type default library;
   capture → "Read — not checked" (SF-5, not auto-confirmed) → confirm → "Checked" by the named person (SF-6).
 
+### Phase 10 — Expiry engine, warning schedule & job heartbeat (SF-9, SF-21, SUB-5, R12) (this change)
+- ✅ **Domain**: `Notifications/ExpiryWarningStage` (60/30/7/0/−1) + pure `ExpiryWarningSchedule.DueStages`
+  (catch-up-safe, SF-9), `NotificationChannel`, `ExpiryNotification` (idempotency log row); `Jobs/JobRun`
+  + `JobRunStatus` (SF-21/R12).
+- ✅ **Abstractions**: `ISmsSender`, `IEmailSender`, `INotificationOutbox` (+`OutboxMessage`); expiry
+  contracts (`ExpiryScanResultDto`, `DigestResultDto`, `HeartbeatResultDto`, `UpcomingExpiryDto`,
+  `JobRunDto`); `IExpiryQueryService`.
+- ✅ **Application**: `ExpiryWarningJob` (SF-9: due stages → worker SMS + each engaging company's admin
+  email, recorded so twice-a-day ≠ twice), `WeeklyDigestJob` (SUB-5, cards now; company docs when SUB-4
+  lands), `ExpiryQueryService`; `JobRunner` (records Running→Succeeded/Failed + counts, SF-21) and
+  `JobHeartbeatMonitor` (emails ops on silent stop, R12); stub `Outbox{Sms,Email}Sender` +
+  `NotificationOutbox`; new repo interfaces + in-memory store/repos; extended card/engagement repos with
+  `GetCurrentWithExpiryAsync`/`GetActiveByPersonAsync`; DI `AddExpiryCore`/`AddInMemoryExpiryStore`.
+- ✅ **DataAccess**: Dapper `NotificationLogRepository` (idempotent exists/add), `JobRunRepository`
+  (ANSI `OFFSET…FETCH` paging); `003_notifications.sql` for both engines (**unique index on
+  (CardId,Stage,Channel,Recipient)** = SF-9 idempotency) + `JobRuns`; registrations extended.
+- ✅ **API**: `ExpirySchedulerHostedService` (`BackgroundService`, gated by `Jobs:SchedulerEnabled`);
+  `/api/jobs/{expiry-scan,weekly-digest,heartbeat-check,runs,outbox}` + `/api/expiry/upcoming`;
+  composition root wires the engine + store/scheduler.
+- ✅ **Client**: none this phase (engine + endpoints are the increment); a Dashboard/Notifications panel
+  over `/api/expiry` is a logged follow-up. `Mock` stays default — no page regression.
+- ✅ **Tests**: `ExpiryWarningScheduleTests` (SF-9 boundaries/catch-up); `ExpiryWarningJobTests`
+  (worker+admin at 30 days; second run same day sends nothing), `WeeklyDigestJobTests`,
+  `JobHeartbeatMonitorTests`; `JobApiTests` (scan idempotency + heartbeat, scheduler disabled);
+  skip-guarded `NotificationLogRepositoryTests`. Result: **55 passed, 3 skipped**.
+- ✅ Verified live (mock): card 20 days out → scan sent **4** (SMS + email at the 60- and 30-day stages);
+  second scan sent **0** (SF-9 idempotent); runs recorded Succeeded (SF-21); heartbeat flagged only the
+  never-run weekly-digest (R12).
+
 ## Outstanding / known issues
 - ❗ **MUD0002 warnings** (pre-existing, in `TedwrenStepper.razor`, `AddOperative.razor`,
   `Inductions.razor`): `Variant`/`Linear`/`Color` on `MudStepper` and `Icon` on `MudStep` flagged
@@ -114,13 +143,15 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 10 — Expiry engine, warning schedule & job heartbeat (SF-9, SF-21, SUB-5, R12).**
-  Scheduled expiry evaluation over the Phase 9 cards; warnings at 60/30/7/0/+1 days (worker SMS / admin
-  email behind provider interfaces, stubbed); idempotent (no double-send); weekly 60-day digest; every
-  job reports whether it ran and alerts on silent stop (R12). Follow the Phase 8/9 layered pattern.
-- ⏳ **Phase 9 follow-ups (non-blocking):** surface qualification cards on the Operative-detail page over
-  the API (backend + tests already in place); wire company/operative compliance % from cards into the
-  Phase 8 `OrganisationService` (moves the `Pending` figures to computed); real card-image storage (R9).
+- ⏳ **Phase 11 — Sites, boundaries & dispersed schemes (SF-6, SF-14, SF-25, SF-26).** Site records (incl.
+  free/unlimited subcontractor-recorded sites); a site carries a geofence boundary; a site may be a set of
+  dispersed properties each with its own geofence grouped under one site for management/billing; adding a
+  property requires nothing printed/installed/attached. Foundation for verified sign-in. Follow the
+  Phase 8–10 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** surface qualification cards on the Operative-detail page and a
+  Dashboard/Notifications panel over `/api/expiry` (backends + tests already in place); wire company/
+  operative compliance % from cards into the Phase 8 `OrganisationService`; real SMS/email providers
+  (PRD-Phase 7); company insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,

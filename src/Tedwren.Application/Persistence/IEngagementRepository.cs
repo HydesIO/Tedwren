@@ -11,6 +11,9 @@ public interface IEngagementRepository
     /// <summary>Returns the active engagements for a company.</summary>
     Task<IReadOnlyList<Engagement>> GetActiveByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the active engagements of a person across all companies (to notify each engaging company, SF-9).</summary>
+    Task<IReadOnlyList<Engagement>> GetActiveByPersonAsync(Guid personId, CancellationToken cancellationToken = default);
+
     /// <summary>Returns a specific engagement owned by the company, or null (tenant-scoped, R15).</summary>
     Task<Engagement?> GetAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default);
 
