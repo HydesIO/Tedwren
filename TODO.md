@@ -154,7 +154,40 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 14 — Timesheets (SUB-7–SUB-12, SUB-27, MC-24, R16, R18) (this change)
+### Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9) (this change)
+- ✅ **Domain**: `CompliancePack` (fixed-at-send snapshot with token + passcode hash + expiry + status, R7/R8/R9)
+  with `EffectiveStatus`/`IsAccessible` (expiry & revoke gate, SUB-18/SUB-21); `PackSubject`/`PackCard` (frozen
+  snapshot, R7); `PackAccessEvent` (open/download tracking, SUB-20); pure `PackReadiness` (expired = blocking,
+  expiring-soon = warning, SUB-14); enums `PackStatus` (Active/Revoked/Superseded/Expired) and `PackAccessKind`.
+- ✅ **Abstractions**: pack DTOs (build request/result with readiness issues, list item with tallies, recipient
+  view, access result); `ICompliancePackService`.
+- ✅ **Application**: `CompliancePackService` (snapshots each operative's cards via `IQualificationService` at
+  send, R7; **gates sending on acknowledged blocking issues**, SUB-14; token+passcode+expiry authorisation with
+  open/download tracking, R8/SUB-20; revoke SUB-21; **re-issue supersedes** the prior pack, R7); `PackPasscode`
+  (salted SHA-256, never stores plaintext, SUB-18), `PackToken` (256-bit opaque, no guessable URLs, R9),
+  `PackComposer` (one snapshot → CSV/ZIP/PDF, identical content, SUB-16); a framework-only **`PdfWriter`**
+  (valid multi-page PDF via hand-built xref, no dependency) alongside the Phase-14 `XlsxWriter`; in-memory
+  store/repo; DI helpers.
+- ✅ **DataAccess**: Dapper `CompliancePackRepository` (snapshot as JSON; access events table; token unique
+  index, R9); `008_compliance_packs.sql` for both engines; registration extended.
+- ✅ **API**: `/api/packs` — readiness preview, build (409 carrying issues when unacknowledged, SUB-14), company
+  list, revoke; account-free recipient routes `view`/`download.{csv,zip,pdf}` gated by token+passcode (403 on
+  refusal, R8/R9). Composition root wires the service + store.
+- ✅ **Client**: `ApiCompliancePackService` (HTTP) + self-contained `ClientMockCompliancePackService` (fabricates
+  operatives incl. an expired card so the readiness gate is demonstrable) behind `ICompliancePackService`; new
+  **Compliance Packs** page (`/compliance-packs`, added to the nav) — build with readiness banner + acknowledge,
+  status pills, open/download tallies, revoke — identical across the mock↔API switch.
+- ✅ **Tests**: `PackReadinessTests` + `CompliancePackTests` (SUB-14 severities, SUB-18/21 accessibility);
+  `CompliancePackServiceTests` (readiness gate, passcode-gated view + tracking, revoke, supersede, CSV/valid-zip
+  ZIP/valid `%PDF` — SUB-16); `CompliancePackApiTests` (capture an expired card → 409 gate → ack → send → view →
+  PDF download → revoke blocks, over HTTP); skip-guarded `CompliancePackRepositoryTests`. Result: **140 passed,
+  10 skipped**.
+- ✅ Verified live (mock): building a pack for an operative with an expired card returns 409 with the blocking
+  issue; acknowledging sends it with a token + passcode; the recipient view needs the passcode (bad token → 403);
+  a downloaded PDF is a structurally valid document (`%PDF` header, xref, `startxref`, `%%EOF`); revoke makes the
+  link 403. *Subcontractor MVP complete (product saleable).*
+
+### Phase 14 — Timesheets (SUB-7–SUB-12, SUB-27, MC-24, R16, R18)
 - ✅ **Domain**: `Timesheet` (first-class, stateful, approvable header — SUB-7/SUB-8), `TimesheetEntry`
   (append-only line; a correction is a new line referencing the original, R16), `TimesheetWorkflow` (pure
   lifecycle guards); enums `TimesheetStatus` (Draft/Submitted/Approved/**Returned** — never "denied", R18/SUB-12)
@@ -258,14 +291,16 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9).** Pack builder over selected operatives/site/
-  date-range; **not-site-ready problems surfaced before send** with explicit acknowledgement (SUB-14); contents
-  chosen not automatic; output as web link + PDF + ZIP with identical content, 25 operatives ready < 1 min (SUB-16);
-  **recipient needs no account** (R8); passcode + sender-set expiry (30-day default, SUB-18/Q12); open/download
-  tracking (SUB-20); revoke (SUB-21); **fixed-at-send, re-issue supersedes** (R7); no permanent public asset URLs
-  (R9); send restricted to nominated roles (SUB-22). Completes the Subcontractor MVP (product saleable). Follow the
-  Phase 8–14 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** timesheet detail/correction UI (line-level edit) and operative self-service
+- ⏳ **Phase 16 — Digital induction & consent (MC-1–MC-7, MC-15, MC-20, R5).** Whole induction in a phone
+  browser (identity, cards, emergency contact, declarations, video/document, quiz, signature); **configurable
+  capture** (MC-3, JSON schema); can't continue until content demonstrably completed; **quiz scored server-side,
+  answers never sent to the device** (R5); failed-attempt handling + manager reset with recorded reason (MC-6);
+  completion reference + configurable validity, re-induction supersedes (MC-7); **separate, optional,
+  non-pre-ticked consent** (MC-20 — stored, consumed in PRD-Phase 6). Begins the Main Contractor MVP; follow the
+  Phase 8–15 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** compliance-pack recipient view page (token+passcode landing) and a "re-issue"
+  action on the packs page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22);
+  timesheet detail/correction UI (line-level edit) and operative self-service
   hours view (SUB-27) over the API; a "configurable approval" settings surface (SUB-9 line/site/project/all);
   navigation gating over `/api/entitlements` (SF-22 — no locked door);
   audit "Export CSV" button + free-text box on `AuditLog.razor` (backend supports both already);

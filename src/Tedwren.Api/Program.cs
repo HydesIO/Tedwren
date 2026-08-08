@@ -24,6 +24,7 @@ builder.Services.AddExpiryCore();
 builder.Services.AddSiteCore();
 builder.Services.AddAttendanceCore();
 builder.Services.AddTimesheetCore();
+builder.Services.AddCompliancePackCore();
 builder.Services.AddConsoleFoundationCore();
 if (backend.Mode == DataSourceMode.Database)
 {
@@ -39,6 +40,7 @@ else
     builder.Services.AddInMemorySiteStore();
     builder.Services.AddInMemoryAttendanceStore();
     builder.Services.AddInMemoryTimesheetStore();
+    builder.Services.AddInMemoryCompliancePackStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
 }
 
@@ -88,6 +90,7 @@ app.MapJobEndpoints();
 app.MapSiteEndpoints();
 app.MapAttendanceEndpoints();
 app.MapTimesheetEndpoints();
+app.MapCompliancePackEndpoints();
 app.MapEntitlementEndpoints();
 app.MapAuditEndpoints();
 app.MapDecisionEndpoints();

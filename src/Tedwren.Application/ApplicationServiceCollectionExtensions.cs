@@ -135,6 +135,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9).</summary>
+    public static IServiceCollection AddCompliancePackCore(this IServiceCollection services)
+    {
+        services.AddScoped<ICompliancePackService, CompliancePacks.CompliancePackService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory compliance-pack repository and its shared store (mock mode).</summary>
+    public static IServiceCollection AddInMemoryCompliancePackStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryCompliancePackStore>();
+        services.AddScoped<ICompliancePackRepository, InMemoryCompliancePackRepository>();
+        return services;
+    }
+
     /// <summary>Registers the console-foundation services: module entitlements (Q2), audit (SF-20) and the decision store (R10).</summary>
     public static IServiceCollection AddConsoleFoundationCore(this IServiceCollection services)
     {

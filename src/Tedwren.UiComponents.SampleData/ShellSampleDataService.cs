@@ -19,6 +19,7 @@ public sealed class ShellSampleDataService : IShellSampleDataService
         new("Workforce",           Icons.Material.Outlined.Engineering,    "/workforce"),
         new("Sites & Projects",    Icons.Material.Outlined.Apartment,      "/sites"),
         new("Compliance",          Icons.Material.Outlined.VerifiedUser,   "/compliance"),
+        new("Compliance Packs",    Icons.Material.Outlined.FolderShared,   "/compliance-packs"),
         new("Inductions",          Icons.Material.Outlined.PlayCircle,     "/inductions"),
         new("Time & Attendance",   Icons.Material.Outlined.Schedule,       "/time-attendance"),
         new("Permits",             Icons.Material.Outlined.Assignment,     "/permits"),

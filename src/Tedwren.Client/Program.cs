@@ -33,6 +33,7 @@ if (dataSourceMode == ClientDataSourceMode.Api)
     builder.Services.AddScoped<ISiteService, ApiSiteService>();
     builder.Services.AddScoped<IAuditService, ApiAuditService>();
     builder.Services.AddScoped<ITimesheetService, ApiTimesheetService>();
+    builder.Services.AddScoped<ICompliancePackService, ApiCompliancePackService>();
 }
 else
 {
@@ -41,6 +42,7 @@ else
     builder.Services.AddScoped<ISiteService, ClientMockSiteService>();
     builder.Services.AddScoped<IAuditService, ClientMockAuditService>();
     builder.Services.AddScoped<ITimesheetService, ClientMockTimesheetService>();
+    builder.Services.AddScoped<ICompliancePackService, ClientMockCompliancePackService>();
 }
 
 await builder.Build().RunAsync();
