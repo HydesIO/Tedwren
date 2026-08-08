@@ -1,10 +1,138 @@
 @page "/time-attendance"
-@using Tedwren.Client.Pages.Shared
+@using Tedwren.Abstractions.Common
+@using Tedwren.Abstractions.Contracts.Timesheets
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ITimesheetService Timesheets
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 
-<PageTitle>Time & Attendance · Tedwren</PageTitle>
+<PageTitle>Time &amp; Attendance · Tedwren</PageTitle>
 
-<PageHeader Title="Time & Attendance" Subtitle="Timesheets and correction history" />
+<PageHeader Title="Time &amp; Attendance" Subtitle="Weekly timesheets — review, approve and return for correction">
+    <Actions>
+        <MudButton Variant="Variant.Outlined"
+                   StartIcon="@Icons.Material.Outlined.Download"
+                   Disabled="_loading"
+                   OnClick="ExportCsv">Export CSV</MudButton>
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.Schedule"
-                  Message="Timesheet list and detail screens arrive in Phases 3–4."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="TimesheetSummaryDto"
+                   Items="_timesheets"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search operative…"
+                   EmptyTitle="No timesheets"
+                   EmptyDescription="No timesheets exist for this valuation period."
+                   EmptyIcon="@Icons.Material.Outlined.Schedule" />
+    </Body>
+</DashboardCard>
+
+@code {
+    // Mock mode and the API mock seed share this demo company + week so the screen is identical across the switch.
+    private static readonly Guid CompanyId = ClientMockTimesheetService.DemoCompanyId;
+    private static readonly DateOnly WeekStart = ClientMockTimesheetService.DemoWeekStart;
+
+    private IReadOnlyList<TimesheetSummaryDto> _timesheets = Array.Empty<TimesheetSummaryDto>();
+    private List<DataColumn<TimesheetSummaryDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _timesheets = await Timesheets.GetForCompanyWeekAsync(CompanyId, WeekStart);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Operative", Value = t => t.OperativeName, Filterable = true },
+            new()
+            {
+                Title = "Week starting", Value = t => t.WeekStart, Searchable = false,
+                CellTemplate = t => @<span>@t.WeekStart.ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "Hours", Value = t => t.TotalHours, Searchable = false,
+                CellTemplate = t => @<span>@t.TotalHours.ToString("0.##")</span>
+            },
+            new()
+            {
+                Title = "Status", Value = t => t.StatusLabel, Searchable = false, Filterable = true,
+                CellTemplate = t => @<StatusPill Label="@t.StatusLabel" Status="@ToStatusKind(t.Status)" />
+            },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = t => @<div class="timesheet-actions">
+                    @if (t.Status == TimesheetState.Submitted)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                   OnClick="@(() => ApproveAsync(t))">Approve</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                   OnClick="@(() => ReturnAsync(t))">Return</MudButton>
+                    }
+                </div>
+            },
+        };
+    }
+
+    // Approves the whole timesheet (SUB-9 scope = All).
+    private async Task ApproveAsync(TimesheetSummaryDto timesheet)
+    {
+        var result = await Timesheets.ApproveAsync(timesheet.Id, new ApproveTimesheetRequest("You", ApprovalScope.All));
+        if (result is not null)
+        {
+            Snackbar.Add($"Approved {timesheet.OperativeName}'s timesheet.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    // Returns the timesheet for correction with a reason (never "denied", R18).
+    private async Task ReturnAsync(TimesheetSummaryDto timesheet)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Return {timesheet.OperativeName}'s timesheet for correction?" },
+            { x => x.ConfirmText, "Return" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Return timesheet", parameters);
+        var outcome = await dialog.Result;
+        if (outcome is { Canceled: false })
+        {
+            var result = await Timesheets.ReturnAsync(timesheet.Id, new ReturnTimesheetRequest("You", "Please review the recorded hours."));
+            if (result is not null)
+            {
+                Snackbar.Add($"Returned {timesheet.OperativeName}'s timesheet for correction.", Severity.Info);
+                await LoadAsync();
+            }
+        }
+    }
+
+    // Renders the company-week CSV export and hands it to the caller as a notification (a real download in Api mode).
+    private async Task ExportCsv()
+    {
+        var csv = await Timesheets.ExportCompanyWeekCsvAsync(CompanyId, WeekStart);
+        Snackbar.Add($"Exported {csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length - 1} timesheet rows to CSV.", Severity.Success);
+    }
+
+    private static StatusKind ToStatusKind(TimesheetState status) => status switch
+    {
+        TimesheetState.Approved => StatusKind.Success,
+        TimesheetState.Submitted => StatusKind.Warning,
+        TimesheetState.Returned => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -1,10 +1,77 @@
 @page "/audit-log"
-@using Tedwren.Client.Pages.Shared
+@using Tedwren.Abstractions.Contracts.Audit
+@using Tedwren.Abstractions.Services
+@inject IAuditService Audit
 
 <PageTitle>Audit Log · Tedwren</PageTitle>
 
-<PageHeader Title="Audit Log" Subtitle="Filterable, searchable activity record" />
+<PageHeader Title="Audit Log" Subtitle="Filterable, searchable activity record">
+    <Actions>
+        <MudDateRangePicker DateRange="_range"
+                            DateRangeChanged="OnRangeChanged"
+                            Placeholder="Date range"
+                            Variant="Variant.Outlined"
+                            Margin="Margin.Dense"
+                            Clearable="true"
+                            Class="audit-log__range" />
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.History"
-                  Message="The filterable audit log table arrives in Phase 3."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="AuditEntryDto"
+                   Items="_entries"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search actor, action or entity…"
+                   EmptyTitle="No matching entries"
+                   EmptyDescription="No audit entries fall within the selected date range."
+                   EmptyIcon="@Icons.Material.Outlined.History" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<AuditEntryDto> _entries = Array.Empty<AuditEntryDto>();
+    private DateRange? _range;
+    private List<DataColumn<AuditEntryDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    // Re-queries the audit service when the date range changes; the service applies the range filter (SF-20).
+    private async Task OnRangeChanged(DateRange? range)
+    {
+        _range = range;
+        await LoadAsync();
+    }
+
+    // Loads (or reloads) the audit entries for the current date range.
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        DateOnly? from = _range?.Start is { } s ? DateOnly.FromDateTime(s) : null;
+        DateOnly? to = _range?.End is { } e ? DateOnly.FromDateTime(e) : null;
+        _entries = await Audit.SearchAsync(companyId: null, text: null, from: from, to: to);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new()
+            {
+                Title = "When", Value = e => e.OccurredUtc, Searchable = false,
+                CellTemplate = e => @<span>@e.OccurredUtc.ToString("dd MMM yyyy, HH:mm")</span>
+            },
+            new() { Title = "Actor", Value = e => e.Actor, Filterable = true },
+            new() { Title = "Action", Value = e => e.Action },
+            new() { Title = "Entity", Value = e => e.Entity },
+            new() { Title = "Category", Value = e => e.Category ?? string.Empty, Filterable = true },
+        };
+    }
+}

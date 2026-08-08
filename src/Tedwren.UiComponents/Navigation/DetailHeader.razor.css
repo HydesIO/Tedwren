@@ -1,0 +1,99 @@
+.detail-header {
+    margin-bottom: var(--spacing-24, 24px);
+}
+
+.detail-header__crumbs {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: var(--spacing-4, 4px);
+    margin-bottom: var(--spacing-12, 12px);
+    font-size: .8125rem;
+}
+
+.detail-header__crumb {
+    color: var(--color-text-secondary, #667085);
+}
+
+.detail-header__crumb--current {
+    color: var(--color-text-primary, #101828);
+    font-weight: 600;
+}
+
+a.detail-header__crumb:hover {
+    color: var(--color-brand, #E8590C);
+    text-decoration: none;
+}
+
+.detail-header__sep {
+    color: var(--color-text-muted, #98A2B3);
+}
+
+.detail-header__main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-16, 16px);
+}
+
+.detail-header__titles {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-16, 16px);
+    min-width: 0;
+}
+
+.detail-header__avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 52px;
+    height: 52px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--color-brand-pale, #FFF1E8);
+    color: var(--color-brand-dark, #B8430C);
+    font-weight: 600;
+    font-size: 1.125rem;
+    overflow: hidden;
+}
+
+.detail-header__avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.detail-header__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12, 12px);
+    flex-wrap: wrap;
+}
+
+.detail-header__title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+}
+
+.detail-header__subtitle {
+    margin: 2px 0 0;
+    font-size: .875rem;
+    color: var(--color-text-secondary, #667085);
+}
+
+.detail-header__actions {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    flex: 0 0 auto;
+}
+
+@media (max-width: 640px) {
+    .detail-header__main {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}

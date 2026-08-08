@@ -1,0 +1,32 @@
+.kv {
+    display: grid;
+    grid-template-columns: repeat(var(--kv-cols, 2), 1fr);
+    gap: var(--spacing-16, 16px) var(--spacing-24, 24px);
+    margin: 0;
+}
+
+.kv__row {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.kv__label {
+    font-size: .75rem;
+    color: var(--color-text-muted, #98A2B3);
+}
+
+.kv__value {
+    margin: 0;
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+    word-break: break-word;
+}
+
+@media (max-width: 640px) {
+    .kv {
+        grid-template-columns: 1fr;
+    }
+}

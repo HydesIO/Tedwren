@@ -35,6 +35,15 @@
     font-size: 1.125rem;
 }
 
+.sidebar__logo-img {
+    display: block;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: var(--radius-control, 8px);
+    object-fit: contain;
+}
+
 .sidebar__wordmark {
     flex: 1 1 auto;
     font-size: 1.125rem;
@@ -56,4 +65,11 @@
 .sidebar--collapsed .sidebar__brand {
     justify-content: center;
     padding: 0;
+}
+
+/* Collapsed rail: centre the nav icons so they line up under the centred logo. */
+.sidebar--collapsed ::deep .nav-item {
+    justify-content: center;
+    padding-left: var(--spacing-8, 8px);
+    padding-right: var(--spacing-8, 8px);
 }

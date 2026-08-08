@@ -35,11 +35,21 @@
 }
 
 .search-box__shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    flex: 0 0 auto;
+}
+
+.search-box__key {
     font-family: inherit;
     font-size: .6875rem;
     font-weight: 600;
+    line-height: 1;
     color: var(--color-text-secondary, #667085);
-    padding: 2px 6px;
+    padding: 3px 6px;
+    min-width: 18px;
+    text-align: center;
     border: 1px solid var(--color-border, #E4E7EC);
     border-radius: 6px;
     background: var(--color-surface, #FFFFFF);

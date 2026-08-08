@@ -11,14 +11,23 @@
            @onkeydown="OnKeyDown" />
     @if (!string.IsNullOrEmpty(ShortcutLabel))
     {
-        <kbd class="search-box__shortcut">@ShortcutLabel</kbd>
+        <span class="search-box__shortcut">
+            @foreach (var key in ShortcutKeys)
+            {
+                <kbd class="search-box__key">@key</kbd>
+            }
+        </span>
     }
 </div>
 
 @code {
     [Parameter] public string Placeholder { get; set; } = "Search";
-    [Parameter] public string? ShortcutLabel { get; set; } = "⌘K";
+    /// <summary>Keyboard shortcut hint, e.g. "Ctrl K". Split on spaces into individual keys.</summary>
+    [Parameter] public string? ShortcutLabel { get; set; } = "Ctrl K";
     [Parameter] public EventCallback<string> OnSearch { get; set; }
+
+    private IEnumerable<string> ShortcutKeys =>
+        (ShortcutLabel ?? string.Empty).Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
     private string _value = string.Empty;
 

@@ -1,10 +1,65 @@
 @page "/workforce"
-@using Tedwren.Client.Pages.Shared
+@inject IListSampleDataService Data
+@inject NavigationManager Nav
 
 <PageTitle>Workforce · Tedwren</PageTitle>
 
-<PageHeader Title="Workforce" Subtitle="Operative register, profiles and onboarding" />
+<PageHeader Title="Workforce" Subtitle="Operative register, profiles and onboarding">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAddAlt"
+                   OnClick="@(() => Nav.NavigateTo("/workforce/add"))">
+            Add operative
+        </MudButton>
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.Engineering"
-                  Message="Operative register and onboarding flows arrive in Phases 3–4."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="Operative"
+                   Items="_operatives"
+                   Columns="_columns"
+                   Loading="_loading"
+                   OnRowClick="OpenOperative"
+                   SearchPlaceholder="Search operatives…"
+                   EmptyTitle="No operatives yet"
+                   EmptyDescription="Add an operative directly or send a self-service link to get started."
+                   EmptyIcon="@Icons.Material.Outlined.Engineering" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<Operative> _operatives = Array.Empty<Operative>();
+    private List<DataColumn<Operative>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
+        _operatives = Data.GetOperatives();
+        _loading = false;
+    }
+
+    private void OpenOperative(Operative op) => Nav.NavigateTo($"/workforce/{Slugs.From(op.Name)}");
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Name", Value = o => o.Name },
+            new() { Title = "Trade", Value = o => o.Trade, Filterable = true },
+            new() { Title = "Company", Value = o => o.Company, Filterable = true },
+            new() { Title = "Primary site", Value = o => o.PrimarySite, Filterable = true },
+            new()
+            {
+                Title = "Next expiry", Value = o => o.NextExpiry ?? DateOnly.MaxValue, Searchable = false,
+                CellTemplate = o => @<span>@(o.NextExpiry?.ToString("dd MMM yyyy") ?? "—")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = o => o.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="o.Status" />
+            },
+        };
+    }
+}

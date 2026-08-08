@@ -60,6 +60,7 @@
 }
 
 .kpi-card__spark {
-    margin-top: var(--spacing-12, 12px);
+    margin-top: auto;
+    padding-top: var(--spacing-12, 12px);
     height: 32px;
 }

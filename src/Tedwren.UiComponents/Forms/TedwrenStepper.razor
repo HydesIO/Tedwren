@@ -1,0 +1,28 @@
+@* Wrapped MudStepper for multi-step flows (onboarding, compliance pack builder).
+   Consumers supply MudStep children; this standardises the stepper chrome. *@
+
+<div class="tedwren-stepper">
+    <MudStepper ActiveIndex="@ActiveIndex"
+                ActiveIndexChanged="@OnActiveIndexChanged"
+                Linear="@Linear"
+                Class="tedwren-stepper__mud"
+                Variant="Variant.Filled"
+                Color="Color.Primary">
+        <ChildContent>
+            @ChildContent
+        </ChildContent>
+    </MudStepper>
+</div>
+
+@code {
+    [Parameter] public int ActiveIndex { get; set; }
+    [Parameter] public EventCallback<int> ActiveIndexChanged { get; set; }
+    [Parameter] public bool Linear { get; set; } = true;
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private async Task OnActiveIndexChanged(int index)
+    {
+        ActiveIndex = index;
+        await ActiveIndexChanged.InvokeAsync(index);
+    }
+}

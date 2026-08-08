@@ -1,0 +1,156 @@
+@page "/organisation/{Slug}"
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IOrganisationService Org
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_company?.Name ?? "Company") · Tedwren</PageTitle>
+
+@if (_company is null)
+{
+    <PageHeader Title="Company not found" />
+    <DashboardCard>
+        <Body>
+            <EmptyState Icon="@Icons.Material.Outlined.Business"
+                        Title="Company not found"
+                        Description="This company doesn't exist.">
+                <Action>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/organisation">
+                        Back to organisation
+                    </MudButton>
+                </Action>
+            </EmptyState>
+        </Body>
+    </DashboardCard>
+}
+else
+{
+    <DetailHeader Title="@_company.Name"
+                  Subtitle="@($"{_company.Type} · {_company.Trade}")"
+                  StatusLabel="@_company.StatusLabel"
+                  Status="ComplianceStatusView.ToStatusKind(_company.State)"
+                  AvatarText="@Initials(_company.Name)"
+                  Breadcrumbs="_crumbs">
+        <Actions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Edit" OnClick="@(() => Snackbar.Add("Edit company (demo).", Severity.Info))">
+                Edit
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.FolderShared" OnClick="@(() => Snackbar.Add("Compliance pack (demo).", Severity.Info))">
+                Compliance pack
+            </MudButton>
+        </Actions>
+    </DetailHeader>
+
+    <div class="detail-tabs">
+        <MudTabs Elevation="0" Rounded="true" Border="true" ApplyEffectsToContainer="true" PanelClass="detail-tabs__panel">
+            <MudTabPanel Text="Overview">
+                <DashboardCard Title="Company details">
+                    <Body>
+                        <KeyValueList Items="_overview" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Documents ({_company.Documents.Count})")">
+                <DashboardCard>
+                    <Body>
+                        <DataTable TItem="CompanyDocumentDto"
+                                   Items="_company.Documents"
+                                   Columns="_docColumns"
+                                   SearchPlaceholder="Search documents…"
+                                   EmptyTitle="No documents"
+                                   EmptyIcon="@Icons.Material.Outlined.Description" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Operatives ({_company.Operatives.Count})")">
+                <DashboardCard>
+                    <Body>
+                        <DataTable TItem="CompanyOperativeDto"
+                                   Items="_company.Operatives"
+                                   Columns="_opColumns"
+                                   SearchPlaceholder="Search operatives…"
+                                   OnRowClick="OpenOperative"
+                                   EmptyTitle="No operatives"
+                                   EmptyIcon="@Icons.Material.Outlined.Engineering" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+        </MudTabs>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private CompanyDetailDto? _company;
+    private List<KeyValueList.Pair> _overview = new();
+    private List<DataColumn<CompanyDocumentDto>> _docColumns = new();
+    private List<DataColumn<CompanyOperativeDto>> _opColumns = new();
+    private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _company = await Org.GetCompanyAsync(Slug);
+        if (_company is null) return;
+
+        _crumbs = new List<DetailHeader.Crumb>
+        {
+            new("Organisation", "/organisation"),
+            new(_company.Name),
+        };
+
+        _overview = new()
+        {
+            new("Company type", _company.Type ?? "—"),
+            new("Primary trade", _company.Trade ?? "—"),
+            new("Registration number", _company.RegistrationNumber ?? "—"),
+            new("Workforce compliance", _company.CompliancePercent is null ? "Pending" : $"{_company.CompliancePercent.Value:0}%"),
+            new("Registered address", _company.Address ?? "—"),
+            new("Operatives", _company.Operatives.Count.ToString()),
+            new("Primary contact", _company.ContactName ?? "—"),
+            new("Email", _company.ContactEmail ?? "—"),
+            new("Phone", _company.ContactPhone ?? "—"),
+        };
+
+        _docColumns = new()
+        {
+            new() { Title = "Document", Value = d => d.Name },
+            new() { Title = "Type", Value = d => d.Type, Filterable = true },
+            new()
+            {
+                Title = "Expires", Value = d => d.ExpiresOn ?? DateOnly.MaxValue, Searchable = false,
+                CellTemplate = d => @<span>@(d.ExpiresOn?.ToString("dd MMM yyyy") ?? "—")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = d => d.StatusLabel, Sortable = false, Filterable = true,
+                CellTemplate = d => @<StatusPill Label="@d.StatusLabel" Status="ComplianceStatusView.ToStatusKind(d.State)" />
+            },
+        };
+
+        _opColumns = new()
+        {
+            new() { Title = "Name", Value = o => o.Name },
+            new() { Title = "Trade", Value = o => o.Trade ?? "—", Filterable = true },
+            new()
+            {
+                Title = "Status", Text = o => o.StatusLabel, Sortable = false, Filterable = true,
+                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="ComplianceStatusView.ToStatusKind(o.State)" />
+            },
+        };
+    }
+
+    private void OpenOperative(CompanyOperativeDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length == 0 ? "?" : parts[0][..1].ToUpperInvariant();
+    }
+}

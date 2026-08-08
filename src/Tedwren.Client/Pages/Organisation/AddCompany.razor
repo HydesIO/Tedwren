@@ -1,0 +1,101 @@
+@page "/organisation/add"
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IFormSampleDataService Options
+@inject IOrganisationService Org
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Add company · Tedwren</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="px-0" />
+
+<PageHeader Title="Add company" Subtitle="Register a company and its accreditations" />
+
+<div class="form-page">
+    <FormSection Title="Company details" Description="Basic identifying information for the company.">
+        <TedwrenTextField Label="Company name" @bind-Value="_name" Required="true"
+                          Placeholder="e.g. Meridian Construction Ltd"
+                          Error="_submitted && string.IsNullOrWhiteSpace(_name)"
+                          ErrorText="Company name is required." />
+        <TedwrenSelect T="string" Label="Company type" @bind-Value="_type" Required="true"
+                       Options="_companyTypes" Placeholder="Select a type"
+                       Error="_submitted && string.IsNullOrWhiteSpace(_type)"
+                       ErrorText="Select a company type." />
+        <TedwrenSelect T="string" Label="Primary trade" @bind-Value="_trade"
+                       Options="_trades" Placeholder="Select a trade" />
+        <TedwrenTextField Label="Registration number" @bind-Value="_regNumber"
+                          Placeholder="e.g. 09876543"
+                          HelperText="Companies House number, if applicable." />
+    </FormSection>
+
+    <FormSection Title="Primary contact" Description="Who we contact about this company.">
+        <TedwrenTextField Label="Contact name" @bind-Value="_contactName" Placeholder="Full name" />
+        <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail"
+                          InputType="InputType.Email" Placeholder="name@company.com" />
+        <TedwrenTextField Label="Contact phone" @bind-Value="_contactPhone"
+                          InputType="InputType.Telephone" Placeholder="+44 …" />
+    </FormSection>
+
+    <FormSection Title="Accreditations" Description="Upload accreditation and insurance documents.">
+        <div class="form-page__full">
+            <TedwrenFileUpload Label="Documents"
+                               HelperText="e.g. SSIP certificate, employer's liability insurance."
+                               HintText="PDF, PNG or JPG up to 10MB" />
+        </div>
+    </FormSection>
+
+    <FormActions>
+        <Secondary>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        </Secondary>
+        <Primary>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save company</MudButton>
+        </Primary>
+    </FormActions>
+</div>
+
+@code {
+    private string? _name;
+    private string? _type;
+    private string? _trade;
+    private string? _regNumber;
+    private string? _contactName;
+    private string? _contactEmail;
+    private string? _contactPhone;
+    private bool _submitted;
+
+    private IReadOnlyList<string> _companyTypes = Array.Empty<string>();
+    private IReadOnlyList<string> _trades = Array.Empty<string>();
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new("Organisation", "/organisation"),
+        new("Add company", null, disabled: true),
+    };
+
+    protected override void OnInitialized()
+    {
+        _companyTypes = Options.GetCompanyTypes();
+        _trades = Options.GetTrades();
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_type))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        // Persists via the API when DataSource=Api; a no-op demo save under mock data.
+        await Org.CreateCompanyAsync(new CreateCompanyRequest(
+            _name!, _type, _trade, _regNumber, Address: null, _contactName, _contactEmail, _contactPhone));
+
+        Snackbar.Add($"Company \"{_name}\" saved.", Severity.Success);
+        Nav.NavigateTo("/organisation");
+    }
+
+    private void Cancel() => Nav.NavigateTo("/organisation");
+}

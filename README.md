@@ -1,23 +1,41 @@
 # Tedwren — UI/UX Base Project
 
-A Blazor WebAssembly solution that is the **visual and structural foundation** for
-both Tedwren products (subcontractor and main contractor). It is a deliberate
-**UI/UX exercise**: screens are built with representative sample data, forms validate
-and toggle visually, and nothing persists. Business logic, the data model, API
-contracts and backend services are explicitly out of scope and follow later.
+A .NET 10 solution for both Tedwren products (subcontractor and main contractor).
+Phases 1–6 delivered the **visual and structural foundation** in Blazor WebAssembly:
+screens built with representative sample data behind service interfaces. From **Phase 7**
+the backend (Web API, domain, Dapper data access over SQL Server / PostgreSQL) is being
+added behind those same interfaces, switchable between mock and database via configuration.
 
-See `docs/` and the Plan & Scope of Works v1.0 for the full brief.
+The definitive brief is **`docs/TedwrenPRDv6_4.docx` (PRD v6.4)** — the source of truth.
+See **`docs/plan-and-scope.md`** for the phased plan, **`CLAUDE.md`** for architecture and
+standards, and **`TODO.md`** for the live checklist.
 
 ## Status
 
-**Phase 1 — Shell & theme** and **Phase 2 — Dashboard rebuild** are complete.
+**Phases 1–6 (UI/UX over mock data) are complete; Phase 7 (backend scaffolding) has begun.**
 
 Phase 1 delivered the solution scaffold, design tokens, MudBlazor theme, and the
 application shell (`MainLayout`, `AppSidebar`, `AppTopBar`). Phase 2 added the §5.2
-card, data-display and chart components (`KpiCard`, `DashboardCard`, `DonutStat`,
-`LegendList`, `ExpiryList`, `ActivityFeed`, `TrendSparkline`, `StatusPill`, `RiskChip`)
-and rebuilt the Dashboard route from them, populated from sample data. Data tables,
-forms and the accessibility pass follow in Phases 3–5.
+card, data-display and chart components and rebuilt the Dashboard route from them.
+Phase 3 added the generic `DataTable<TItem>` and `EmptyState` and the list pages
+(Organisation, Workforce, Sites, Compliance, Audit Log). Phase 4 added the form
+components — `FormField`, `TedwrenTextField`, `TedwrenSelect`, `TedwrenAutocomplete`,
+`TedwrenToggle`, `TedwrenDateRangePicker`, `TedwrenFileUpload`, `TedwrenStepper`,
+`FormSection`, `FormActions`, `InlineValidationMessage`, `BannerAlert` — and the forms:
+add-company, invite-user (permission toggles), add-operative stepper (direct entry vs
+send-a-link), permit issuance, the induction builder stepper, and system configuration
+(module/entitlement and enforcement toggles at scale). Every form validates required
+fields, uses switches per §6.2, and follows the action-placement convention. Phase 5
+added the feedback/state components (`LoadingSkeleton`, `ConfirmDialog`, plus `EmptyState`
+and `BannerAlert`), wired loading/empty/error states into `DataTable` and the list pages,
+and completed the responsive and accessibility polish (equal-height dashboard cards,
+even card spacing, keyboard focus states, an on-icon notification badge, a full-width
+platform selector, and `prefers-reduced-motion` support on skeletons).
+
+Beyond the base phases, **detail pages** have been added: clicking a row in the
+Organisation, Workforce or Sites lists opens a tabbed detail page (`DetailHeader` with
+breadcrumb + status, `KeyValueList` overview, and nested `DataTable`s / qualification
+cards / history feeds), driven by `IDetailSampleDataService`.
 
 ## Requirements
 

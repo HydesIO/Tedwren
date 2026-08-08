@@ -1,10 +1,70 @@
 @page "/compliance"
-@using Tedwren.Client.Pages.Shared
+@using Tedwren.Abstractions.Contracts.Qualifications
+@using Tedwren.Abstractions.Services
+@inject IQualificationService Qualifications
+@inject IDashboardSampleDataService DashData
 
 <PageTitle>Compliance · Tedwren</PageTitle>
 
 <PageHeader Title="Compliance" Subtitle="Compliance overview and qualification library" />
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.VerifiedUser"
-                  Message="Compliance dashboard and qualification library arrive in Phase 3."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<div class="compliance-layout">
+    <DashboardCard Title="Workforce compliance">
+        <Body>
+            <div class="compliance-overview">
+                <DonutStat Segments="_overview.Segments"
+                           CentreValue="@_overview.HeadlinePercent"
+                           CentreLabel="@_overview.HeadlineLabel" />
+                <LegendList Items="_overview.Legend" />
+            </div>
+        </Body>
+    </DashboardCard>
+
+    <DashboardCard Title="Qualification type library"
+                   Subtitle="Qualifications tracked across the workforce">
+        <Body>
+            <DataTable TItem="QualificationTypeDto"
+                       Items="_qualifications"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search qualifications…"
+                       EmptyTitle="No qualification types"
+                       EmptyDescription="Add a qualification type to start tracking it across operatives."
+                       EmptyIcon="@Icons.Material.Outlined.WorkspacePremium" />
+        </Body>
+    </DashboardCard>
+</div>
+
+@code {
+    private ComplianceOverview _overview = default!;
+    private IReadOnlyList<QualificationTypeDto> _qualifications = Array.Empty<QualificationTypeDto>();
+    private List<DataColumn<QualificationTypeDto>> _columns = new();
+    private bool _loading = true;
+
+    // Loads the compliance overview (dashboard sample) and the qualification-type library through the
+    // shared IQualificationService, so the table is served from mock or the API identically (SF-12).
+    protected override async Task OnInitializedAsync()
+    {
+        _overview = DashData.GetComplianceOverview();
+        BuildColumns();
+        _qualifications = await Qualifications.GetQualificationTypesAsync();
+        _loading = false;
+    }
+
+    // Builds the qualification-library table columns.
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Qualification", Value = q => q.Name },
+            new() { Title = "Category", Value = q => q.Category ?? "—", Filterable = true },
+            new() { Title = "Issuer", Value = q => q.Issuer ?? "—", Filterable = true },
+            new()
+            {
+                Title = "Valid for", Value = q => q.DefaultValidityMonths, AlignRight = true, Searchable = false,
+                CellTemplate = q => @<span>@q.DefaultValidityMonths months</span>
+            },
+            new() { Title = "Held by", Value = q => q.HeldBy, AlignRight = true },
+        };
+    }
+}

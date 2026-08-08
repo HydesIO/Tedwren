@@ -13,30 +13,29 @@
     </div>
 
     <div class="topbar__search">
-        <GlobalSearchBox Placeholder="Search operatives, sites, permits…" OnSearch="OnSearch" />
+        <GlobalSearchBox Placeholder="Search operatives, sites, permits" OnSearch="OnSearch" />
     </div>
 
     <div class="topbar__actions">
-        <MudBadge Content="NotificationCount" Color="Color.Error" Overlap="true" Visible="NotificationCount > 0">
-            <MudIconButton Icon="@Icons.Material.Outlined.NotificationsNone"
-                           Size="Size.Medium"
-                           aria-label="Notifications" />
-        </MudBadge>
+        <NotificationsMenu Notifications="Notifications" ViewAllHref="@NotificationsHref" />
         <MudIconButton Icon="@Icons.Material.Outlined.HelpOutline"
                        Size="Size.Medium"
                        aria-label="Help" />
         <div class="topbar__divider" aria-hidden="true"></div>
-        <ProfileMenu UserName="@CurrentUserName" UserRole="@CurrentUserRole" AvatarUrl="@CurrentUserAvatarUrl" />
+        <ProfileMenu UserName="@CurrentUserName" UserRole="@CurrentUserRole"
+                     AvatarUrl="@CurrentUserAvatarUrl" OnSignOut="OnSignOut" />
     </div>
 </header>
 
 @code {
     [Parameter] public string PageTitle { get; set; } = string.Empty;
-    [Parameter] public int NotificationCount { get; set; }
+    [Parameter] public IReadOnlyList<NotificationEntry> Notifications { get; set; } = Array.Empty<NotificationEntry>();
+    [Parameter] public string NotificationsHref { get; set; } = "/notifications";
     [Parameter] public string CurrentUserName { get; set; } = string.Empty;
     [Parameter] public string CurrentUserRole { get; set; } = string.Empty;
     [Parameter] public string? CurrentUserAvatarUrl { get; set; }
     [Parameter] public bool ShowMenuButton { get; set; }
     [Parameter] public EventCallback OnMenuClick { get; set; }
     [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public EventCallback OnSignOut { get; set; }
 }

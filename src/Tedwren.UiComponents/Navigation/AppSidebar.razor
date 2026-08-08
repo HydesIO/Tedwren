@@ -2,16 +2,23 @@
 
 <nav class="sidebar @(IsCollapsed ? "sidebar--collapsed" : null)" aria-label="Primary">
     <div class="sidebar__brand">
-        <div class="sidebar__logo" aria-hidden="true">T</div>
+        @if (!string.IsNullOrEmpty(LogoUrl))
+        {
+            <img class="sidebar__logo-img" src="@LogoUrl" alt="@BrandName" width="32" height="32" />
+        }
+        else
+        {
+            <div class="sidebar__logo" aria-hidden="true">@BrandName.Substring(0, 1)</div>
+        }
         @if (!IsCollapsed)
         {
-            <span class="sidebar__wordmark">Tedwren</span>
+            <span class="sidebar__wordmark">@BrandName</span>
+            <MudIconButton Icon="@Icons.Material.Outlined.ChevronLeft"
+                           Size="Size.Small"
+                           Class="sidebar__collapse"
+                           aria-label="Collapse sidebar"
+                           OnClick="ToggleCollapse" />
         }
-        <MudIconButton Icon="@(IsCollapsed ? Icons.Material.Outlined.ChevronRight : Icons.Material.Outlined.ChevronLeft)"
-                       Size="Size.Small"
-                       Class="sidebar__collapse"
-                       aria-label="@(IsCollapsed ? "Expand sidebar" : "Collapse sidebar")"
-                       OnClick="ToggleCollapse" />
     </div>
 
     @if (!IsCollapsed && Platforms.Count > 0)
@@ -45,6 +52,8 @@
 @code {
     [Parameter] public bool IsCollapsed { get; set; }
     [Parameter] public EventCallback<bool> IsCollapsedChanged { get; set; }
+    [Parameter] public string BrandName { get; set; } = "Tedwren";
+    [Parameter] public string? LogoUrl { get; set; }
     [Parameter] public string? ActiveRoute { get; set; }
     [Parameter] public IReadOnlyList<NavItem> NavItems { get; set; } = Array.Empty<NavItem>();
     [Parameter] public IReadOnlyList<string> Platforms { get; set; } = Array.Empty<string>();

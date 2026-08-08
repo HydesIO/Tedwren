@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using MudBlazor.Services;
+using Tedwren.Abstractions.Configuration;
+using Tedwren.Abstractions.Services;
 using Tedwren.Client;
+using Tedwren.Client.Services;
 using Tedwren.UiComponents.SampleData;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
@@ -10,9 +13,34 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddMudServices();
 
-// Sample-data services (Plan & Scope §2). Swappable later for API-backed
-// implementations without changing any component.
+// Sample-data services. Pages not yet migrated to the API consume these directly; the client mock
+// organisation service also wraps them so mock mode looks identical to before.
 builder.Services.AddSingleton<IShellSampleDataService, ShellSampleDataService>();
 builder.Services.AddSingleton<IDashboardSampleDataService, DashboardSampleDataService>();
+builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
+builder.Services.AddSingleton<IFormSampleDataService, FormSampleDataService>();
+builder.Services.AddSingleton<IDetailSampleDataService, DetailSampleDataService>();
+
+// The mock/API data-source switch (wwwroot/appsettings.json "DataSource:Mode"). The UI injects the
+// same IOrganisationService in both modes — switching requires no component or page changes.
+Enum.TryParse<ClientDataSourceMode>(builder.Configuration["DataSource:Mode"], ignoreCase: true, out var dataSourceMode);
+if (dataSourceMode == ClientDataSourceMode.Api)
+{
+    var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+    builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
+    builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
+    builder.Services.AddScoped<IQualificationService, ApiQualificationService>();
+    builder.Services.AddScoped<ISiteService, ApiSiteService>();
+    builder.Services.AddScoped<IAuditService, ApiAuditService>();
+    builder.Services.AddScoped<ITimesheetService, ApiTimesheetService>();
+}
+else
+{
+    builder.Services.AddScoped<IOrganisationService, ClientMockOrganisationService>();
+    builder.Services.AddScoped<IQualificationService, ClientMockQualificationService>();
+    builder.Services.AddScoped<ISiteService, ClientMockSiteService>();
+    builder.Services.AddScoped<IAuditService, ClientMockAuditService>();
+    builder.Services.AddScoped<ITimesheetService, ClientMockTimesheetService>();
+}
 
 await builder.Build().RunAsync();

@@ -1,10 +1,67 @@
 @page "/organisation"
-@using Tedwren.Client.Pages.Shared
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IOrganisationService Org
+@inject NavigationManager Nav
 
 <PageTitle>Organisation · Tedwren</PageTitle>
 
-<PageHeader Title="Organisation Management" Subtitle="Companies, documents and accreditations" />
+<PageHeader Title="Organisation Management" Subtitle="Companies, documents and accreditations">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@(() => Nav.NavigateTo("/organisation/add"))">
+            Add company
+        </MudButton>
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.Business"
-                  Message="Company list and detail screens arrive in Phase 3."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="CompanySummary"
+                   Items="_companies"
+                   Columns="_columns"
+                   Loading="_loading"
+                   OnRowClick="OpenCompany"
+                   SearchPlaceholder="Search companies…"
+                   EmptyTitle="No companies yet"
+                   EmptyDescription="Add a company to start managing its documents and accreditations."
+                   EmptyIcon="@Icons.Material.Outlined.Business" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private List<DataColumn<CompanySummary>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _companies = await Org.GetCompaniesAsync();
+        _loading = false;
+    }
+
+    private void OpenCompany(CompanySummary company) => Nav.NavigateTo($"/organisation/{company.Slug}");
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Company", Value = c => c.Name },
+            new() { Title = "Type", Value = c => c.Type ?? "—", Filterable = true },
+            new() { Title = "Trade", Value = c => c.Trade ?? "—", Filterable = true },
+            new() { Title = "Operatives", Value = c => c.Operatives, AlignRight = true },
+            new()
+            {
+                Title = "Compliance", Value = c => c.CompliancePercent ?? -1, AlignRight = true, Searchable = false,
+                CellTemplate = c => @<span>@(c.CompliancePercent is null ? "—" : c.CompliancePercent.Value.ToString("0") + "%")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = c => c.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = c => @<StatusPill Label="@c.StatusLabel" Status="ComplianceStatusView.ToStatusKind(c.State)" />
+            },
+        };
+    }
+}

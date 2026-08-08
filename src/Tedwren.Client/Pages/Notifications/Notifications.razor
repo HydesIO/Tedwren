@@ -1,0 +1,32 @@
+@page "/notifications"
+@inject IShellSampleDataService Shell
+
+<PageTitle>Notifications · Tedwren</PageTitle>
+
+<PageHeader Title="Notifications" Subtitle="Everything that's happened across your workspace" />
+
+<DashboardCard>
+    <Body>
+        @if (_items.Count == 0)
+        {
+            <EmptyState Icon="@Icons.Material.Outlined.NotificationsNone"
+                        Title="You're all caught up"
+                        Description="New notifications will appear here." />
+        }
+        else
+        {
+            <ActivityFeed Items="_items" />
+        }
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<ActivityItem> _items = Array.Empty<ActivityItem>();
+
+    protected override void OnInitialized()
+    {
+        _items = Shell.GetNotifications()
+            .Select(n => new ActivityItem(n.Icon, n.Title, n.Detail, n.RelativeTime, n.Accent))
+            .ToList();
+    }
+}

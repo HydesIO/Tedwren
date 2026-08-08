@@ -55,3 +55,12 @@ public sealed record ActivityItem(
     string Secondary,
     string RelativeTime,
     StatusKind Accent = StatusKind.Neutral);
+
+/// <summary>A notification shown in the top-bar bell dropdown and the notifications page.</summary>
+public sealed record NotificationEntry(
+    string Icon,
+    string Title,
+    string Detail,
+    string RelativeTime,
+    StatusKind Accent = StatusKind.Neutral,
+    bool Unread = false);

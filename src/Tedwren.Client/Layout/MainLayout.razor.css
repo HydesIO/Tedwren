@@ -25,15 +25,10 @@
     padding: var(--spacing-24, 24px);
 }
 
-/* Responsive: below the breakpoint the sidebar overlays rather than pushes. */
+/* Responsive: tighten content padding on smaller viewports. The sidebar itself
+   collapses to an icon rail via the collapse control (kept in flow, not an
+   overlay, so it never covers the page — this is a desktop/tablet console). */
 @media (max-width: 768px) {
-    .app-shell__sidebar {
-        position: fixed;
-        top: 0;
-        left: 0;
-        box-shadow: var(--shadow-card);
-    }
-
     .app-shell__content {
         padding: var(--spacing-16, 16px);
     }

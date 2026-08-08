@@ -1,0 +1,123 @@
+@page "/workforce/{Slug}"
+@using OperativeDetailModel = Tedwren.UiComponents.SampleData.OperativeDetail
+@inject IDetailSampleDataService Details
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_op?.Name ?? "Operative") · Tedwren</PageTitle>
+
+@if (_op is null)
+{
+    <PageHeader Title="Operative not found" />
+    <DashboardCard>
+        <Body>
+            <EmptyState Icon="@Icons.Material.Outlined.Engineering"
+                        Title="Operative not found"
+                        Description="This operative doesn't exist in the sample data.">
+                <Action>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/workforce">Back to workforce</MudButton>
+                </Action>
+            </EmptyState>
+        </Body>
+    </DashboardCard>
+}
+else
+{
+    <DetailHeader Title="@_op.Name"
+                  Subtitle="@($"{_op.Trade} · {_op.Company}")"
+                  StatusLabel="@_op.StatusLabel"
+                  Status="_op.Status"
+                  AvatarText="@Initials(_op.Name)"
+                  Breadcrumbs="_crumbs">
+        <Actions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Edit" OnClick="@(() => Snackbar.Add("Edit operative (demo).", Severity.Info))">
+                Edit
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Outlined.Send" OnClick="@(() => Snackbar.Add("Self-service link sent (demo).", Severity.Info))">
+                Send update link
+            </MudButton>
+        </Actions>
+    </DetailHeader>
+
+    <div class="detail-tabs">
+        <MudTabs Elevation="0" Rounded="true" Border="true" ApplyEffectsToContainer="true" PanelClass="detail-tabs__panel">
+            <MudTabPanel Text="Overview">
+                <DashboardCard Title="Operative details">
+                    <Body>
+                        <KeyValueList Items="_overview" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Qualifications ({_op.Qualifications.Count})")">
+                <div class="qual-grid">
+                    @foreach (var q in _op.Qualifications)
+                    {
+                        <div class="qual-card">
+                            <div class="qual-card__top">
+                                <span class="qual-card__name">@q.Name</span>
+                                <StatusPill Label="@q.StatusLabel" Status="q.Status" />
+                            </div>
+                            <div class="qual-card__meta">
+                                <span>Issuer: @q.Issuer</span>
+                                <span>Obtained: @q.ObtainedOn.ToString("dd MMM yyyy")</span>
+                                <span>Expires: @(q.ExpiresOn?.ToString("dd MMM yyyy") ?? "No expiry")</span>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </MudTabPanel>
+
+            <MudTabPanel Text="History">
+                <DashboardCard Title="Recent history">
+                    <Body>
+                        <ActivityFeed Items="_op.History" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+        </MudTabs>
+    </div>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private OperativeDetailModel? _op;
+    private List<KeyValueList.Pair> _overview = new();
+    private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
+
+    protected override void OnParametersSet()
+    {
+        _op = Details.GetOperative(Slug);
+        if (_op is null) return;
+
+        _crumbs = new List<DetailHeader.Crumb>
+        {
+            new("Workforce", "/workforce"),
+            new(_op.Name),
+        };
+
+        _overview = new()
+        {
+            new("Trade", _op.Trade),
+            new("Employer", _op.Company),
+            new("Primary site", _op.PrimarySite),
+            new("Date of birth", _op.DateOfBirth.ToString("dd MMM yyyy")),
+            new("NI number", _op.NiNumber),
+            new("Phone", _op.Phone),
+            new("Email", _op.Email),
+        };
+    }
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => (parts[0][..1] + parts[^1][..1]).ToUpperInvariant(),
+        };
+    }
+}

@@ -1,0 +1,84 @@
+.data-table {
+    display: flex;
+    flex-direction: column;
+}
+
+.data-table__toolbar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-16, 16px);
+}
+
+.data-table__search {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    width: 100%;
+    max-width: 320px;
+    padding: var(--spacing-8, 8px) var(--spacing-12, 12px);
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-control, 8px);
+    background: var(--color-surface, #FFFFFF);
+    transition: border-color .12s ease;
+}
+
+.data-table__search:focus-within {
+    border-color: var(--color-brand, #E8590C);
+}
+
+.data-table__search-icon {
+    color: var(--color-text-muted, #98A2B3);
+}
+
+.data-table__search-input {
+    flex: 1 1 auto;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: .875rem;
+    color: var(--color-text-primary, #101828);
+}
+
+.data-table__search-input::placeholder {
+    color: var(--color-text-muted, #98A2B3);
+}
+
+.data-table__filter {
+    min-width: 160px;
+    max-width: 220px;
+}
+
+.data-table__actions {
+    margin-left: auto;
+}
+
+/* MudTable-rendered cells (reached via ::deep because MudBlazor owns that DOM). */
+.data-table ::deep .data-table__th--right,
+.data-table ::deep .data-table__td--right {
+    text-align: right;
+}
+
+.data-table ::deep .data-table__td--right {
+    font-variant-numeric: tabular-nums;
+}
+
+.data-table ::deep .data-table__row--clickable {
+    cursor: pointer;
+}
+
+.data-table ::deep .mud-table-root {
+    font-size: .8125rem;
+}
+
+.data-table ::deep th.mud-table-cell {
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--color-text-muted, #98A2B3);
+}
+
+.data-table ::deep td.mud-table-cell {
+    color: var(--color-text-secondary, #667085);
+}

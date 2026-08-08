@@ -1,10 +1,75 @@
 @page "/sites"
-@using Tedwren.Client.Pages.Shared
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ISiteService SiteData
+@inject NavigationManager Nav
 
 <PageTitle>Sites & Projects · Tedwren</PageTitle>
 
-<PageHeader Title="Sites & Projects" Subtitle="Sites, projects and dispersed schemes" />
+<PageHeader Title="Sites & Projects" Subtitle="Sites, projects and dispersed schemes">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add">
+            Add site
+        </MudButton>
+    </Actions>
+</PageHeader>
 
-<PlaceholderPanel Icon="@Icons.Material.Outlined.Apartment"
-                  Message="Site list and detail screens arrive in Phase 3."
-                  Detail="This route is wired into the shell so navigation is testable now." />
+<DashboardCard>
+    <Body>
+        <DataTable TItem="SiteSummary"
+                   Items="_sites"
+                   Columns="_columns"
+                   Loading="_loading"
+                   OnRowClick="OpenSite"
+                   SearchPlaceholder="Search sites…"
+                   EmptyTitle="No sites yet"
+                   EmptyDescription="Add a site to begin tracking its workforce and compliance."
+                   EmptyIcon="@Icons.Material.Outlined.Apartment" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private List<DataColumn<SiteSummary>> _columns = new();
+    private bool _loading = true;
+
+    // Loads the sites through the shared ISiteService, served from mock or the API identically (SF-6).
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _sites = await SiteData.GetSitesAsync();
+        _loading = false;
+    }
+
+    private void OpenSite(SiteSummary site) => Nav.NavigateTo($"/sites/{site.Slug}");
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Site", Value = s => s.Name },
+            new() { Title = "Client", Value = s => s.Client ?? "—", Filterable = true },
+            new() { Title = "Region", Value = s => s.Region ?? "—", Filterable = true },
+            new() { Title = "Operatives", Value = s => s.Operatives, AlignRight = true },
+            new()
+            {
+                Title = "Compliance", Value = s => s.CompliancePercent ?? 0, AlignRight = true, Searchable = false,
+                CellTemplate = s => @<span>@(s.CompliancePercent is { } p ? $"{p:0}%" : "—")</span>
+            },
+            new()
+            {
+                Title = "At risk", Value = s => RiskCount(s), AlignRight = true, Searchable = false, Sortable = false,
+                CellTemplate = s => @<RiskChip Value="RiskCount(s)" Severity="RiskStateView.ToSeverity(s.Risk)" />
+            },
+            new()
+            {
+                Title = "Status", Text = s => s.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = s => @<StatusPill Label="@s.StatusLabel" Status="ComplianceStatusView.ToStatusKind(s.State)" />
+            },
+        };
+    }
+
+    private static int RiskCount(SiteSummary s)
+        => (int)Math.Round(s.Operatives * (100 - (s.CompliancePercent ?? 100)) / 100.0);
+}

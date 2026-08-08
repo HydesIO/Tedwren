@@ -1,0 +1,32 @@
+.confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-16, 16px);
+    max-width: 420px;
+}
+
+.confirm__icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+}
+
+.confirm__icon--danger {
+    background: var(--color-danger-pale, #FEF3F2);
+    color: var(--color-danger, #F04438);
+}
+
+.confirm__icon--brand {
+    background: var(--color-brand-pale, #FFF1E8);
+    color: var(--color-brand, #E8590C);
+}
+
+.confirm__text {
+    margin: var(--spacing-8, 8px) 0 0;
+    font-size: .875rem;
+    color: var(--color-text-secondary, #667085);
+}

@@ -1,0 +1,34 @@
+.tedwren-toggle {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-16, 16px);
+    padding: var(--spacing-12, 12px) 0;
+}
+
+.tedwren-toggle__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.tedwren-toggle__label {
+    font-size: .875rem;
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+}
+
+.tedwren-toggle__description {
+    font-size: .8125rem;
+    color: var(--color-text-secondary, #667085);
+}
+
+.tedwren-toggle__switch {
+    flex: 0 0 auto;
+    margin: 0;
+}
+
+.tedwren-toggle--disabled .tedwren-toggle__label,
+.tedwren-toggle--disabled .tedwren-toggle__description {
+    opacity: .55;
+}
