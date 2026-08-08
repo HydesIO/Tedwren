@@ -21,6 +21,7 @@ public sealed class ShellSampleDataService : IShellSampleDataService
         new("Compliance",          Icons.Material.Outlined.VerifiedUser,   "/compliance"),
         new("Compliance Packs",    Icons.Material.Outlined.FolderShared,   "/compliance-packs"),
         new("Inductions",          Icons.Material.Outlined.PlayCircle,     "/inductions"),
+        new("Induction Records",   Icons.Material.Outlined.FactCheck,      "/induction-records"),
         new("Time & Attendance",   Icons.Material.Outlined.Schedule,       "/time-attendance"),
         new("Permits",             Icons.Material.Outlined.Assignment,     "/permits"),
         new("Reports & Analytics", Icons.Material.Outlined.BarChart,       "/reports"),

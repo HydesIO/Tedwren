@@ -36,6 +36,9 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<ITimesheetRepository, TimesheetRepository>();
         services.AddScoped<ICompliancePackRepository, CompliancePackRepository>();
+        services.AddScoped<IInductionTemplateRepository, InductionTemplateRepository>();
+        services.AddScoped<IInductionSessionRepository, InductionSessionRepository>();
+        services.AddScoped<Inductions.InductionTemplateSeeder>();
         services.AddScoped<IEntitlementRepository, EntitlementRepository>();
         services.AddScoped<IAuditRepository, AuditRepository>();
         services.AddScoped<IDecisionRepository, DecisionRepository>();

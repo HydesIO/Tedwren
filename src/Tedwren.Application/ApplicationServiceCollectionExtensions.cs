@@ -135,6 +135,22 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic digital-induction service (MC-1–MC-7, MC-20, R5).</summary>
+    public static IServiceCollection AddInductionCore(this IServiceCollection services)
+    {
+        services.AddScoped<IInductionService, Inductions.InductionService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory induction repositories and their seeded shared store (mock mode).</summary>
+    public static IServiceCollection AddInMemoryInductionStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryInductionStore>();
+        services.AddScoped<IInductionTemplateRepository, InMemoryInductionTemplateRepository>();
+        services.AddScoped<IInductionSessionRepository, InMemoryInductionSessionRepository>();
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9).</summary>
     public static IServiceCollection AddCompliancePackCore(this IServiceCollection services)
     {

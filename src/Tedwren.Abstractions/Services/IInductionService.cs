@@ -1,0 +1,37 @@
+using Tedwren.Abstractions.Contracts.Inductions;
+
+namespace Tedwren.Abstractions.Services;
+
+/// <summary>
+/// The digital-induction service (MC-1–MC-7, MC-15, MC-20, R5). Runs the whole induction in a phone browser:
+/// configurable capture steps (MC-3), a quiz whose answers are <b>never sent to the device</b> and are scored
+/// on the server (R5), required-step gating before completion (MC-4), failed-attempt handling with manager
+/// reset (MC-6), a completion reference with configurable validity and re-induction supersedes (MC-7), and a
+/// separate optional consent (MC-20). Company reads are tenant-scoped (R15).
+/// </summary>
+public interface IInductionService
+{
+    /// <summary>Lists a company's induction templates (MC-3).</summary>
+    Task<IReadOnlyList<InductionTemplateDto>> GetTemplatesAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
+    Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the device-facing session (steps + quiz without answers), or null (R5).</summary>
+    Task<InductionSessionDto?> GetSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
+
+    /// <summary>Marks a step completed (MC-4). Returns the updated session, or null if not found.</summary>
+    Task<InductionSessionDto?> CompleteStepAsync(Guid sessionId, string stepId, CancellationToken cancellationToken = default);
+
+    /// <summary>Scores a quiz submission on the server and records the attempt (R5, MC-6). Null if not found.</summary>
+    Task<QuizResultDto?> SubmitQuizAsync(Guid sessionId, SubmitQuizRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Finalises the induction (signature + consent) once required steps are done and the quiz passed (MC-4/MC-5/MC-20). Null if not found; throws if not ready.</summary>
+    Task<InductionSessionDto?> FinalizeAsync(Guid sessionId, FinalizeInductionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Resets a failed induction so it can be retaken, recording the reason (MC-6). Null if not found.</summary>
+    Task<InductionSessionDto?> ResetAsync(Guid sessionId, ResetInductionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Lists a company's induction sessions for the console (MC-15).</summary>
+    Task<IReadOnlyList<InductionSummaryDto>> GetForCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
+}

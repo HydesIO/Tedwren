@@ -154,7 +154,38 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9) (this change)
+### Phase 16 — Digital induction & consent (MC-1–MC-7, MC-15, MC-20, R5) (this change)
+- ✅ **Domain**: `InductionTemplate` (configurable steps + quiz + pass mark + validity, MC-3); `InductionStep`
+  (data-driven capture, MC-3/MC-4); `InductionQuizQuestion` (**correct answer server-side only**, R5); pure
+  `InductionQuiz.Score` (server-side scoring, R5); `InductionSession` (stateful lifecycle, MC-1–MC-7, consent
+  MC-20, `IsValid`); enums `InductionStatus` (InProgress/Failed/Passed/Superseded) and `InductionStepKind`.
+- ✅ **Abstractions**: device-facing DTOs — `InductionSessionDto`/`InductionQuizQuestionDto` carry **prompt +
+  options but no answers** (R5); start/step/quiz/finalize/reset requests; `QuizResultDto` (score only, no
+  answers); `InductionSummaryDto`; `IInductionService`.
+- ✅ **Application**: `InductionService` (start with re-induction supersede MC-7; step gating MC-4; **server-side
+  quiz scoring** R5; failed-attempt handling + manager reset MC-6; completion reference + configurable validity
+  MC-5/MC-7; separate optional consent MC-20); `DefaultInductionTemplate` seed (answers held server-side);
+  template + session repo interfaces + seeded in-memory store; DI helpers.
+- ✅ **DataAccess**: Dapper `InductionTemplateRepository` (steps/quiz as JSON) + `InductionSessionRepository`
+  (completed-steps JSON, supersede query); `009_inductions.sql` for both engines; `InductionTemplateSeeder`
+  (idempotent); registrations extended; seeder runs in DB mode.
+- ✅ **API**: `/api/inductions` — templates, start, device session, complete-step, **server-scored quiz**,
+  finalize (409 when required steps/quiz incomplete, MC-4), manager reset, company records. Composition root
+  wires the service + seeded store + DB-mode seeder.
+- ✅ **Client**: `ApiInductionService` + self-contained `ClientMockInductionService` (holds answers privately so
+  R5 holds; full in-proc flow) behind `IInductionService`; new **Induction Records** page (`/induction-records`,
+  added to nav) — completions, validity, consent flag, and manager Reset for failed inductions — identical across
+  the mock↔API switch.
+- ✅ **Tests**: `InductionQuizTests` (R5 scoring); `InductionServiceTests` (**JSON-serialised device session
+  asserts no `CorrectOptionIndex`**, fail→pass scoring, MC-4 gate throws, completion ref/validity/consent, reset,
+  supersede); `InductionApiTests` (wire response has no answers, 409 gate → full flow → completion over HTTP);
+  skip-guarded `InductionRepositoryTests`. Result: **151 passed, 11 skipped**.
+- ✅ Verified live (mock): the started-session wire response contains **0 occurrences of the correct-answer field**
+  (R5); finalize before ready → 409 (MC-4); a wrong quiz scores 0/fails, the correct quiz scores 3/passes
+  (server-side); finalize issues a completion reference (`IND-…`) with 365-day validity and stores consent. *Main
+  Contractor MVP begins.*
+
+### Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9)
 - ✅ **Domain**: `CompliancePack` (fixed-at-send snapshot with token + passcode hash + expiry + status, R7/R8/R9)
   with `EffectiveStatus`/`IsAccessible` (expiry & revoke gate, SUB-18/SUB-21); `PackSubject`/`PackCard` (frozen
   snapshot, R7); `PackAccessEvent` (open/download tracking, SUB-20); pure `PackReadiness` (expired = blocking,
@@ -291,14 +322,16 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 16 — Digital induction & consent (MC-1–MC-7, MC-15, MC-20, R5).** Whole induction in a phone
-  browser (identity, cards, emergency contact, declarations, video/document, quiz, signature); **configurable
-  capture** (MC-3, JSON schema); can't continue until content demonstrably completed; **quiz scored server-side,
-  answers never sent to the device** (R5); failed-attempt handling + manager reset with recorded reason (MC-6);
-  completion reference + configurable validity, re-induction supersedes (MC-7); **separate, optional,
-  non-pre-ticked consent** (MC-20 — stored, consumed in PRD-Phase 6). Begins the Main Contractor MVP; follow the
-  Phase 8–15 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** compliance-pack recipient view page (token+passcode landing) and a "re-issue"
+- ⏳ **Phase 17 — Site-entry decision, competency cover & muster (MC-8–MC-14, MC-16–MC-23, MC-25, MC-28, R2, R3,
+  R10, R14).** The **five-check decision** (registered / not-elsewhere / induction valid / cards in date+confirmed
+  / RAMS where module held) against **current data** (R3); **fail-closed** (R2 — any error ⇒ no); specific
+  actionable block reason (MC-9); **self-reconstructing decision record** through the Phase-13 store (R10) incl.
+  checks not run and why; day-only manager override with reason (MC-11); live on-site view resolving to property
+  on dispersed schemes (MC-12); **competency cover** present/alert-on-last-out (MC-13); **offline-capable muster**
+  with data-age (MC-14); decision reachable on no-compound schemes (MC-28); instrument the **<3s** budget from the
+  start (R14). Completes the Main Contractor MVP (product saleable). Follow the Phase 8–16 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** induction take-flow phone UI (start→steps→quiz→sign) over the API; wire the
+  induction-valid check into the Phase-17 gate; compliance-pack recipient view page (token+passcode landing) and a "re-issue"
   action on the packs page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22);
   timesheet detail/correction UI (line-level edit) and operative self-service
   hours view (SUB-27) over the API; a "configurable approval" settings surface (SUB-9 line/site/project/all);

@@ -1,0 +1,110 @@
+@page "/induction-records"
+@using Tedwren.Abstractions.Contracts.Inductions
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IInductionService Inductions
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Induction Records · Tedwren</PageTitle>
+
+<PageHeader Title="Induction Records" Subtitle="Completions, validity, consent and manager resets" />
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="InductionSummaryDto"
+                   Items="_records"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search operative…"
+                   EmptyTitle="No inductions"
+                   EmptyDescription="No inductions have been started for this company yet."
+                   EmptyIcon="@Icons.Material.Outlined.FactCheck" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private static readonly Guid CompanyId = ClientMockInductionService.DemoCompanyId;
+
+    private IReadOnlyList<InductionSummaryDto> _records = Array.Empty<InductionSummaryDto>();
+    private List<DataColumn<InductionSummaryDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _records = await Inductions.GetForCompanyAsync(CompanyId);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Operative", Value = r => r.PersonName, Filterable = true },
+            new() { Title = "Induction", Value = r => r.TemplateName },
+            new()
+            {
+                Title = "Status", Value = r => r.Status, Searchable = false, Filterable = true,
+                CellTemplate = r => @<StatusPill Label="@r.Status" Status="@ToStatusKind(r.Status)" />
+            },
+            new() { Title = "Reference", Value = r => r.CompletionReference ?? "—", Searchable = false },
+            new()
+            {
+                Title = "Valid until", Value = r => r.ExpiresUtc ?? DateTimeOffset.MinValue, Searchable = false,
+                CellTemplate = r => @<span>@(r.ExpiresUtc is { } e ? e.ToString("dd MMM yyyy") : "—")</span>
+            },
+            new()
+            {
+                Title = "Consent", Value = r => r.ConsentGiven, Searchable = false,
+                CellTemplate = r => @<span>@(r.ConsentGiven ? "Given" : "—")</span>
+            },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = r => @<div>
+                    @if (r.Status == "Failed")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                   OnClick="@(() => ResetAsync(r))">Reset</MudButton>
+                    }
+                </div>
+            },
+        };
+    }
+
+    // Manager reset of a failed induction, recording a reason (MC-6).
+    private async Task ResetAsync(InductionSummaryDto record)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Reset {record.PersonName}'s failed induction so it can be retaken?" },
+            { x => x.ConfirmText, "Reset" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Reset induction", parameters);
+        if (await dialog.Result is { Canceled: false })
+        {
+            var result = await Inductions.ResetAsync(record.Id, new ResetInductionRequest("Reset by manager for retake"));
+            if (result is not null)
+            {
+                Snackbar.Add($"Reset {record.PersonName}'s induction.", Severity.Info);
+                await LoadAsync();
+            }
+        }
+    }
+
+    private static StatusKind ToStatusKind(string status) => status switch
+    {
+        "Passed" => StatusKind.Success,
+        "InProgress" => StatusKind.Warning,
+        "Failed" => StatusKind.Danger,
+        "Superseded" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+}
