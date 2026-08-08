@@ -1,6 +1,7 @@
 using Tedwren.Abstractions.Contracts.Expiry;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Attendance;
 using Tedwren.Application.Expiry;
 using Tedwren.Application.Jobs;
 
@@ -45,6 +46,21 @@ public static class JobEndpoints
                 return Results.Ok(result);
             })
             .WithName("RunWeeklyDigest");
+
+        // Flags workers left signed in overnight and alerts their manager (SF-19).
+        jobs.MapPost("/overnight-check", async (JobRunner runner, OvernightSignInJob job, CancellationToken cancellationToken) =>
+            {
+                var cutoff = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero);
+                var flagged = 0;
+                var notifications = 0;
+                await runner.RunAsync(JobNames.OvernightCheck, async token =>
+                {
+                    (flagged, notifications) = await job.RunAsync(cutoff, token);
+                    return (flagged, notifications);
+                }, cancellationToken);
+                return Results.Ok(new { flagged, notifications });
+            })
+            .WithName("RunOvernightCheck");
 
         // Checks each job's heartbeat and alerts ops on a silent stop (R12).
         jobs.MapPost("/heartbeat-check", async (JobHeartbeatMonitor monitor, CancellationToken cancellationToken) =>

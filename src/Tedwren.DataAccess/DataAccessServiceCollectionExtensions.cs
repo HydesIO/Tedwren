@@ -33,6 +33,7 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IJobRunRepository, JobRunRepository>();
         services.AddScoped<ISiteRepository, SiteRepository>();
         services.AddScoped<ISitePropertyRepository, SitePropertyRepository>();
+        services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<Qualifications.QualificationLibrarySeeder>();
         services.AddSingleton<MigrationRunner>();
         return services;

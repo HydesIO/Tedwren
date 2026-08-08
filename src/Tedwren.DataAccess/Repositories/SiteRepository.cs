@@ -10,7 +10,7 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
 {
     private const string Columns =
         "Id, CompanyId, Name, Client, Region, Address, HasCompound, IsDispersed, " +
-        "BoundaryLatitude, BoundaryLongitude, BoundaryRadiusMetres, CreatedUtc";
+        "BoundaryLatitude, BoundaryLongitude, BoundaryRadiusMetres, LocationPolicy, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public SiteRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -36,9 +36,9 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
     public Task AddAsync(Site site, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             "INSERT INTO Sites (Id, CompanyId, Name, Client, Region, Address, HasCompound, IsDispersed, " +
-            "BoundaryLatitude, BoundaryLongitude, BoundaryRadiusMetres, CreatedUtc) " +
+            "BoundaryLatitude, BoundaryLongitude, BoundaryRadiusMetres, LocationPolicy, CreatedUtc) " +
             "VALUES (@Id, @CompanyId, @Name, @Client, @Region, @Address, @HasCompound, @IsDispersed, " +
-            "@BoundaryLatitude, @BoundaryLongitude, @BoundaryRadiusMetres, @CreatedUtc)",
+            "@BoundaryLatitude, @BoundaryLongitude, @BoundaryRadiusMetres, @LocationPolicy, @CreatedUtc)",
             ToParameters(site), cancellationToken);
 
     /// <summary>Updates an existing site's mutable fields.</summary>
@@ -46,7 +46,8 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
         ExecuteAsync(
             "UPDATE Sites SET Name = @Name, Client = @Client, Region = @Region, Address = @Address, " +
             "HasCompound = @HasCompound, IsDispersed = @IsDispersed, BoundaryLatitude = @BoundaryLatitude, " +
-            "BoundaryLongitude = @BoundaryLongitude, BoundaryRadiusMetres = @BoundaryRadiusMetres WHERE Id = @Id",
+            "BoundaryLongitude = @BoundaryLongitude, BoundaryRadiusMetres = @BoundaryRadiusMetres, " +
+            "LocationPolicy = @LocationPolicy WHERE Id = @Id",
             ToParameters(site), cancellationToken);
 
     /// <summary>Flattens a site (and its optional boundary) to Dapper parameters.</summary>
@@ -63,6 +64,7 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
         BoundaryLatitude = s.Boundary?.CentreLatitude,
         BoundaryLongitude = s.Boundary?.CentreLongitude,
         BoundaryRadiusMetres = s.Boundary?.RadiusMetres,
+        LocationPolicy = (int)s.LocationPolicy,
         s.CreatedUtc,
     };
 
@@ -80,6 +82,7 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
         Boundary = r.BoundaryLatitude is { } lat && r.BoundaryLongitude is { } lng && r.BoundaryRadiusMetres is { } radius
             ? new Geofence(lat, lng, radius)
             : null,
+        LocationPolicy = (Tedwren.Domain.Enums.LocationPolicy)r.LocationPolicy,
         CreatedUtc = r.CreatedUtc,
     };
 
@@ -87,5 +90,5 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
     private sealed record Row(
         Guid Id, Guid CompanyId, string Name, string? Client, string? Region, string? Address,
         bool HasCompound, bool IsDispersed, double? BoundaryLatitude, double? BoundaryLongitude,
-        double? BoundaryRadiusMetres, DateTimeOffset CreatedUtc);
+        double? BoundaryRadiusMetres, int LocationPolicy, DateTimeOffset CreatedUtc);
 }

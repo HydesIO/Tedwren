@@ -4,6 +4,7 @@ using Tedwren.Abstractions.Services;
 using Tedwren.Application.Expiry;
 using Tedwren.Application.Jobs;
 using Tedwren.Application.Notifications;
+using Tedwren.Application.Attendance;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
@@ -97,6 +98,22 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemorySiteStore>();
         services.AddScoped<ISiteRepository, InMemorySiteRepository>();
         services.AddScoped<ISitePropertyRepository, InMemorySitePropertyRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic attendance service and the overnight still-in job (SF-13–SF-19).</summary>
+    public static IServiceCollection AddAttendanceCore(this IServiceCollection services)
+    {
+        services.AddScoped<IAttendanceService, AttendanceService>();
+        services.AddScoped<OvernightSignInJob>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory attendance repository and its shared store (mock mode).</summary>
+    public static IServiceCollection AddInMemoryAttendanceStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryAttendanceStore>();
+        services.AddScoped<IAttendanceRepository, InMemoryAttendanceRepository>();
         return services;
     }
 }

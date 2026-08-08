@@ -1,3 +1,4 @@
+using Tedwren.Domain.Enums;
 using Tedwren.Domain.ValueObjects;
 
 namespace Tedwren.Domain.Entities;
@@ -40,6 +41,9 @@ public sealed class Site
 
     /// <summary>The site-level boundary (SF-14). Null for a dispersed scheme, whose boundaries live on its properties.</summary>
     public Geofence? Boundary { get; set; }
+
+    /// <summary>What happens at sign-in when a worker's location is unavailable (SF-15). Defaults to record-and-flag.</summary>
+    public LocationPolicy LocationPolicy { get; set; } = LocationPolicy.RecordAndFlag;
 
     /// <summary>When the site record was created (UTC; displayed in UK local time per R11).</summary>
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;

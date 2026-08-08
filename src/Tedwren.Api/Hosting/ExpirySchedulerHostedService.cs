@@ -1,3 +1,4 @@
+using Tedwren.Application.Attendance;
 using Tedwren.Application.Expiry;
 using Tedwren.Application.Jobs;
 
@@ -80,6 +81,15 @@ public sealed class ExpirySchedulerHostedService : BackgroundService
                     return (result.CompaniesProcessed, result.EmailsSent);
                 }, cancellationToken);
             }
+
+            // SF-19: flag anyone left signed in before today started.
+            var overnight = provider.GetRequiredService<OvernightSignInJob>();
+            var cutoff = new DateTimeOffset(DateTime.UtcNow.Date, TimeSpan.Zero);
+            await runner.RunAsync(JobNames.OvernightCheck, async token =>
+            {
+                var (flagged, notifications) = await overnight.RunAsync(cutoff, token);
+                return (flagged, notifications);
+            }, cancellationToken);
 
             var monitor = provider.GetRequiredService<JobHeartbeatMonitor>();
             await monitor.CheckAsync(DateTimeOffset.UtcNow, cancellationToken);

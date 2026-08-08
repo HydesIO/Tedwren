@@ -154,6 +154,32 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
+### Phase 12 — Sign-in / sign-out & attendance (SF-13–SF-19, SF-25, R3, R4, R11) (this change)
+- ✅ **Domain**: `AttendanceRecord` (append-only, R4; UTC instants, R11); enums `AttendanceEventType`
+  (SignIn/SignOut/OvernightFlag), `AttendanceOutcome` (Accepted/Flagged/Refused), `SignInMethod`
+  (QrScan/AssignmentLink, SF-13/SF-25), `LocationPolicy` (RecordAndFlag/Refuse, SF-15); `Site.LocationPolicy`
+  added (per-site customer setting).
+- ✅ **Abstractions**: neutral `SignInMethod`; attendance DTOs (sign-in/out requests + results, on-site,
+  record); `IAttendanceService`.
+- ✅ **Application**: store-agnostic `AttendanceService` — boundary verification against site/property
+  geofence (SF-14), location policy when absent (SF-15), every attempt recorded incl. refusals (SF-16),
+  no double-site naming the other (SF-18/Q4), sign-out duration (SF-17), QR + link identical records
+  (SF-13/SF-25); `OvernightSignInJob` (SF-19, flags-not-truncates + alerts, reuses Phase 10 `JobRunner`/
+  email); repo interface + in-memory store/repo; DI `AddAttendanceCore`/`AddInMemoryAttendanceStore`.
+- ✅ **DataAccess**: Dapper `AttendanceRepository` (ANSI open-sign-in / overnight queries); `SiteRepository`
+  extended for `LocationPolicy`; `005_attendance.sql` for both engines (ALTER Sites + Attendance table +
+  indexes); registrations extended.
+- ✅ **API**: `/api/attendance` (sign-in, sign-out, on-site, records) + `/api/jobs/overnight-check` and a
+  scheduler hook; composition root wires the service + store.
+- ✅ **Client**: none this phase — sign-in is worker/phone-facing (proven via API + tests); a console
+  "on-site"/attendance view is a logged follow-up. `Mock` stays default — no regression.
+- ✅ **Tests**: `AttendanceServiceTests` (SF-14/15/16/17/18 + property boundary), `OvernightSignInJobTests`
+  (SF-19 flag + alert + idempotent), `AttendanceApiTests` (sign-in→double-site→sign-out over HTTP),
+  skip-guarded `AttendanceRepositoryTests`. Result: **79 passed, 5 skipped**.
+- ✅ Verified live (mock): inside boundary → Accepted + present; second site while present → Refused naming
+  "Meridian Tower" (SF-18); outside boundary → Refused (SF-14); sign-out returns duration (SF-17); the log
+  shows all attempts including the refusal (SF-16, append-only R4).
+
 ## Outstanding / known issues
 - ❗ **MUD0002 warnings** (pre-existing, in `TedwrenStepper.razor`, `AddOperative.razor`,
   `Inductions.razor`): `Variant`/`Linear`/`Color` on `MudStepper` and `Icon` on `MudStep` flagged
@@ -167,13 +193,13 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 12 — Sign-in / sign-out & attendance (SF-13–SF-19, SF-25, R3, R4, R11).** QR-scan sign-in
-  (no app/account) **and** the no-compound route (assignment-scoped link active only inside the boundary)
-  producing an identical-weight record; location + time recorded; location-unavailable behaviour a customer
-  setting (record-and-flag default, Q5); every attempt incl. refusals stored **append-only** (R4); no worker
-  present at two sites at once (cross-customer name-only check, Q4); overnight-still-in alert; UK-time
-  storage/display (R11). Builds on the Phase 11 geofences. Follow the Phase 8–11 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** SiteDetail page over `ISiteService`; qualification cards on the
+- ⏳ **Phase 13 — Roles, audit, module entitlements & console gating (SF-2, SF-20, SF-22, SF-23, R10, R15, Q2).**
+  Roles incl. read-only auditor (SF-23); audit search by name/reference/date-range + export (SF-20); **module
+  entitlements checked server-side, fail-closed, one authoritative answer** (Q2); navigation shows only
+  purchased modules — no locked door (SF-22); introduce the reconstructable decision-record store (R10) ready
+  for the gate. Completes the shared foundation. Follow the Phase 8–12 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** a console "on-site"/attendance view over `/api/attendance`; SiteDetail page
+  over `ISiteService`; qualification cards on the
   Operative-detail page and a Dashboard/Notifications panel over `/api/expiry` (backends + tests already in
   place); wire company/operative compliance % from cards into the Phase 8 `OrganisationService`; real
   SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs SUB-4);

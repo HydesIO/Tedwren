@@ -8,4 +8,7 @@ public static class JobNames
 
     /// <summary>The weekly expiry digest (SUB-5).</summary>
     public const string WeeklyDigest = "weekly-digest";
+
+    /// <summary>The overnight still-signed-in check (SF-19).</summary>
+    public const string OvernightCheck = "overnight-check";
 }
