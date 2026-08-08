@@ -154,7 +154,38 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 16 — Digital induction & consent (MC-1–MC-7, MC-15, MC-20, R5) (this change)
+### Phase 17 — Site-entry decision, competency cover & muster (MC-8–MC-14, MC-28, R2, R3, R10, R14) (this change)
+- ✅ **Domain**: pure `SiteEntryPolicy` — fail-closed admission (admitted only if no check failed, R2) +
+  actionable block reason from failed checks (MC-9). Reuses the Phase-13 `SiteEntryDecision`/`DecisionCheck`
+  store for the record (R10).
+- ✅ **Abstractions**: site-entry DTOs (`DecideEntryRequest` with optional manager override, `EntryDecisionResultDto`
+  with admission/reason/checks/decision-id/**elapsed-ms** R14, muster with data-age + competency cover);
+  `ISiteEntryService`.
+- ✅ **Application**: `SiteEntryService` — the **five checks against current data** (registered / not-elsewhere /
+  induction valid / cards in date & confirmed / RAMS-where-held, R3), each wrapped so any error becomes a failed
+  check (**fail-closed**, R2); RAMS recorded **NotRun** when the module isn't held (R10); day-only manager override
+  (MC-11); self-reconstructing record written through `IDecisionService` (R10); timed against the **<3s** budget
+  (R14); plus the **muster** — on-site people resolved to property (MC-12), competency cover with holder count
+  (MC-13), and a generated timestamp for offline data-age (MC-14). Added `IInductionSessionRepository.
+  GetLatestPassedForPersonAsync` (in-memory + Dapper). DI `AddSiteEntryCore` (aggregates existing slices — no new
+  store).
+- ✅ **API**: `/api/site-entry/decide` (always 200 with the full result incl. every check, MC-28 needs no compound)
+  and `/api/site-entry/muster/{siteId}`; composition root wires the service.
+- ✅ **Client**: `ApiSiteEntryService` + self-contained `ClientMockSiteEntryService` (three demo operatives — clear
+  / expired-card / no-induction) behind `ISiteEntryService`; new **Site Gate** page (`/site-gate`, added to nav) —
+  check-entry with the five-check breakdown + block reason + manager-override, and a live muster with competency
+  cover and data-age — identical across the mock↔API switch.
+- ✅ **Tests**: `SiteEntryPolicyTests` (fail-closed rule, block reason); `SiteEntryServiceTests` (clear admit +
+  R10 record, expired-card block reason, unregistered block, **error→fail-closed R2**, override MC-11, muster
+  competency cover — against real in-memory repos); `SiteEntryApiTests` (blocked-with-all-checks + RAMS NotRun +
+  timing, override admits, muster). Result: **165 passed, 11 skipped**.
+- ✅ Verified live (mock): an unknown worker is **blocked** with all five checks (Registered/Induction failed,
+  RAMS **NotRun** — R10) and a specific reason (MC-9) in **16 ms** (R14); the decision **reconstructs from the
+  store** with all five checks (R10); a manager override admits and is flagged (MC-11); the muster returns a
+  generated timestamp (data-age, MC-14) and competency cover (MC-13). *Main Contractor MVP complete (product
+  saleable). Shared foundation + both MVPs delivered.*
+
+### Phase 16 — Digital induction & consent (MC-1–MC-7, MC-15, MC-20, R5)
 - ✅ **Domain**: `InductionTemplate` (configurable steps + quiz + pass mark + validity, MC-3); `InductionStep`
   (data-driven capture, MC-3/MC-4); `InductionQuizQuestion` (**correct answer server-side only**, R5); pure
   `InductionQuiz.Score` (server-side scoring, R5); `InductionSession` (stateful lifecycle, MC-1–MC-7, consent
@@ -322,16 +353,12 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 17 — Site-entry decision, competency cover & muster (MC-8–MC-14, MC-16–MC-23, MC-25, MC-28, R2, R3,
-  R10, R14).** The **five-check decision** (registered / not-elsewhere / induction valid / cards in date+confirmed
-  / RAMS where module held) against **current data** (R3); **fail-closed** (R2 — any error ⇒ no); specific
-  actionable block reason (MC-9); **self-reconstructing decision record** through the Phase-13 store (R10) incl.
-  checks not run and why; day-only manager override with reason (MC-11); live on-site view resolving to property
-  on dispersed schemes (MC-12); **competency cover** present/alert-on-last-out (MC-13); **offline-capable muster**
-  with data-age (MC-14); decision reachable on no-compound schemes (MC-28); instrument the **<3s** budget from the
-  start (R14). Completes the Main Contractor MVP (product saleable). Follow the Phase 8–16 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** induction take-flow phone UI (start→steps→quiz→sign) over the API; wire the
-  induction-valid check into the Phase-17 gate; compliance-pack recipient view page (token+passcode landing) and a "re-issue"
+- ⏳ **Phase 18 — Hardening & PostgreSQL launch gate.** Accessibility pass; load/latency testing against R14;
+  **independent security review of the public pack link** (the only public route to personal data); backup/restore
+  rehearsal; **full PostgreSQL parity suite** run green (proves the dual-engine promise before production). This is
+  the pre-launch gate before the PRD commercial modules (Phases 19+).
+- ⏳ **Follow-ups (non-blocking):** induction take-flow phone UI (start→steps→quiz→sign) over the API;
+  compliance-pack recipient view page (token+passcode landing) and a "re-issue"
   action on the packs page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22);
   timesheet detail/correction UI (line-level edit) and operative self-service
   hours view (SUB-27) over the API; a "configurable approval" settings surface (SUB-9 line/site/project/all);

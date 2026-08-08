@@ -135,6 +135,13 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic site-entry decision &amp; muster service (MC-8–MC-14, R2, R3, R10, R14). Aggregates other slices' repositories/services, so those cores must also be registered.</summary>
+    public static IServiceCollection AddSiteEntryCore(this IServiceCollection services)
+    {
+        services.AddScoped<ISiteEntryService, SiteEntry.SiteEntryService>();
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic digital-induction service (MC-1–MC-7, MC-20, R5).</summary>
     public static IServiceCollection AddInductionCore(this IServiceCollection services)
     {

@@ -50,6 +50,17 @@ public sealed class InductionSessionRepository : RepositoryBase, IInductionSessi
         return row is null ? null : ToEntity(row);
     }
 
+    /// <summary>Returns the operative's latest passed induction for the company across any template, or null (MC-8). Status 2 = Passed.</summary>
+    public async Task<InductionSession?> GetLatestPassedForPersonAsync(Guid companyId, Guid personId, CancellationToken cancellationToken = default)
+    {
+        var row = await QuerySingleOrDefaultAsync<Row>(
+            $"SELECT {Columns} FROM InductionSessions " +
+            "WHERE CompanyId = @CompanyId AND PersonId = @PersonId AND Status = 2 " +
+            "ORDER BY CompletedUtc DESC OFFSET 0 ROWS FETCH NEXT 1 ROWS ONLY",
+            new { CompanyId = companyId, PersonId = personId }, cancellationToken);
+        return row is null ? null : ToEntity(row);
+    }
+
     /// <summary>Persists a new session.</summary>
     public Task AddAsync(InductionSession session, CancellationToken cancellationToken = default) =>
         ExecuteAsync(

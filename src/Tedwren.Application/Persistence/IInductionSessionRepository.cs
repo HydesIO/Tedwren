@@ -17,6 +17,9 @@ public interface IInductionSessionRepository
     /// <summary>Returns the operative's latest non-superseded session for a template, or null (re-induction supersede check, MC-7).</summary>
     Task<InductionSession?> GetLatestForPersonAsync(Guid companyId, Guid templateId, Guid personId, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the operative's latest passed induction for the company across any template, or null (the site-entry induction-valid check, MC-8).</summary>
+    Task<InductionSession?> GetLatestPassedForPersonAsync(Guid companyId, Guid personId, CancellationToken cancellationToken = default);
+
     /// <summary>Persists a new session.</summary>
     Task AddAsync(InductionSession session, CancellationToken cancellationToken = default);
 

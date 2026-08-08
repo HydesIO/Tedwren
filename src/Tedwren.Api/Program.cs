@@ -26,6 +26,7 @@ builder.Services.AddAttendanceCore();
 builder.Services.AddTimesheetCore();
 builder.Services.AddCompliancePackCore();
 builder.Services.AddInductionCore();
+builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
 if (backend.Mode == DataSourceMode.Database)
 {
@@ -98,6 +99,7 @@ app.MapAttendanceEndpoints();
 app.MapTimesheetEndpoints();
 app.MapCompliancePackEndpoints();
 app.MapInductionEndpoints();
+app.MapSiteEntryEndpoints();
 app.MapEntitlementEndpoints();
 app.MapAuditEndpoints();
 app.MapDecisionEndpoints();

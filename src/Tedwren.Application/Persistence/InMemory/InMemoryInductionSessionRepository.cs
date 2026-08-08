@@ -35,6 +35,16 @@ public sealed class InMemoryInductionSessionRepository : IInductionSessionReposi
         return Task.FromResult(latest);
     }
 
+    /// <summary>Returns the operative's latest passed induction for the company across any template, or null (MC-8).</summary>
+    public Task<InductionSession?> GetLatestPassedForPersonAsync(Guid companyId, Guid personId, CancellationToken cancellationToken = default)
+    {
+        var latest = _store.Sessions.Values
+            .Where(s => s.CompanyId == companyId && s.PersonId == personId && s.Status == InductionStatus.Passed)
+            .OrderByDescending(s => s.CompletedUtc ?? s.StartedUtc)
+            .FirstOrDefault();
+        return Task.FromResult(latest);
+    }
+
     /// <summary>Persists a new session.</summary>
     public Task AddAsync(InductionSession session, CancellationToken cancellationToken = default)
     {
