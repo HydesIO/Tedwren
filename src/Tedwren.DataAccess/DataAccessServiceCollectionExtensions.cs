@@ -34,6 +34,9 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<ISiteRepository, SiteRepository>();
         services.AddScoped<ISitePropertyRepository, SitePropertyRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
+        services.AddScoped<IEntitlementRepository, EntitlementRepository>();
+        services.AddScoped<IAuditRepository, AuditRepository>();
+        services.AddScoped<IDecisionRepository, DecisionRepository>();
         services.AddScoped<Qualifications.QualificationLibrarySeeder>();
         services.AddSingleton<MigrationRunner>();
         return services;

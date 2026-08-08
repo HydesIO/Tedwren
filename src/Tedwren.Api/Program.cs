@@ -23,6 +23,7 @@ builder.Services.AddQualificationCore();
 builder.Services.AddExpiryCore();
 builder.Services.AddSiteCore();
 builder.Services.AddAttendanceCore();
+builder.Services.AddConsoleFoundationCore();
 if (backend.Mode == DataSourceMode.Database)
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
@@ -36,6 +37,7 @@ else
     builder.Services.AddInMemoryExpiryStore();
     builder.Services.AddInMemorySiteStore();
     builder.Services.AddInMemoryAttendanceStore();
+    builder.Services.AddInMemoryConsoleFoundationStore();
 }
 
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
@@ -83,6 +85,9 @@ app.MapQualificationEndpoints();
 app.MapJobEndpoints();
 app.MapSiteEndpoints();
 app.MapAttendanceEndpoints();
+app.MapEntitlementEndpoints();
+app.MapAuditEndpoints();
+app.MapDecisionEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

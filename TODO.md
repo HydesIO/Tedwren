@@ -154,7 +154,38 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 12 — Sign-in / sign-out & attendance (SF-13–SF-19, SF-25, R3, R4, R11) (this change)
+### Phase 13 — Roles, audit, module entitlements & decision store (SF-2, SF-20, SF-22, SF-23, R10, R15, Q2) (this change)
+- ✅ **Domain**: `AccessRole` enum (Administrator/ComplianceManager/SiteManager/Auditor) + `RolePermissions.CanWrite`
+  (Auditor is read-only, SF-23); `ModuleEntitlement` (per-company module override, Q2); `AuditEntry` (SF-20,
+  company-scoped R15); `SiteEntryDecision` + `DecisionCheck`/`DecisionCheckOutcome` — reconstructable
+  decision record (R10), introduced here ready for the Phase 17 gate.
+- ✅ **Abstractions**: entitlement/audit/decision DTOs; `IEntitlementService` (fail-closed), `IAuditService`
+  (search + CSV export + record), `IDecisionService` (read by person/site + record).
+- ✅ **Application**: `ModuleCatalog` (single list of modules + default-enabled) + `EntitlementService`
+  (override-over-default, unknown module fails closed — the one authoritative answer, Q2); `AuditService`
+  (free-text/date-range search, RFC-4180 CSV export, append record, SF-20); `DecisionService` (records +
+  reconstructs checks, unknown outcome → NotRun, R10); repo interfaces + in-memory stores (audit seeded under
+  a fixed demo company); DI `AddConsoleFoundationCore`/`AddInMemoryConsoleFoundationStore`.
+- ✅ **DataAccess**: Dapper `EntitlementRepository` (portable update-then-insert upsert), `AuditRepository`
+  (null-tolerant search SQL, `LOWER(...) LIKE` for portable case-insensitivity, date-range boundaries),
+  `DecisionRepository` (checks serialised as JSON); `006_console.sql` for both engines (ModuleEntitlements
+  with unique (CompanyId, ModuleKey) index Q2, AuditEntries, Decisions); registrations extended.
+- ✅ **API**: `/api/entitlements` (catalogue for a company + is-enabled), `/api/audit` (search, `/export` CSV
+  download, record), `/api/decisions` (by person, by site, record); composition root wires the services + store.
+- ✅ **Client**: `ApiAuditService` (HTTP incl. query-string filters) + `ClientMockAuditService` (wraps sample
+  audit entries, in-proc filter + CSV) behind `IAuditService`; migrated **`AuditLog.razor`** to `IAuditService`
+  with server-side date-range filtering. `Mock` stays default — visually identical.
+- ✅ **Tests**: `RolePermissionsTests` (SF-23 read-only auditor); `EntitlementServiceTests` (default/override/
+  fail-closed/company-scoped, Q2); `AuditServiceTests` (record→search, free-text over actor/action/entity/
+  reference, company scope, CSV header + quoting, SF-20); `DecisionServiceTests` (reconstructable checks,
+  by-site, unknown-outcome→NotRun, R10); `ConsoleFoundationApiTests` (entitlements + audit + decision over
+  HTTP); skip-guarded `ConsoleFoundationRepositoryTests`. Result: **98 passed, 8 skipped**.
+- ✅ Verified live (mock): `GET /api/entitlements/{company}` returns the catalogue with foundation modules on
+  and paid modules off; unknown module → `false` (fail-closed, Q2); audit search by text and CSV export return
+  the seeded trail (SF-20); a posted decision reconstructs its full check set by person and by site (R10).
+  *Shared foundation (PRD §5.1) complete.*
+
+### Phase 12 — Sign-in / sign-out & attendance (SF-13–SF-19, SF-25, R3, R4, R11)
 - ✅ **Domain**: `AttendanceRecord` (append-only, R4; UTC instants, R11); enums `AttendanceEventType`
   (SignIn/SignOut/OvernightFlag), `AttendanceOutcome` (Accepted/Flagged/Refused), `SignInMethod`
   (QrScan/AssignmentLink, SF-13/SF-25), `LocationPolicy` (RecordAndFlag/Refuse, SF-15); `Site.LocationPolicy`
@@ -193,12 +224,15 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 13 — Roles, audit, module entitlements & console gating (SF-2, SF-20, SF-22, SF-23, R10, R15, Q2).**
-  Roles incl. read-only auditor (SF-23); audit search by name/reference/date-range + export (SF-20); **module
-  entitlements checked server-side, fail-closed, one authoritative answer** (Q2); navigation shows only
-  purchased modules — no locked door (SF-22); introduce the reconstructable decision-record store (R10) ready
-  for the gate. Completes the shared foundation. Follow the Phase 8–12 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** a console "on-site"/attendance view over `/api/attendance`; SiteDetail page
+- ⏳ **Phase 14 — Timesheets (SUB-7–SUB-12, SUB-24, SUB-27–SUB-30, MC-24 view, R16).** The timesheet as a
+  first-class, stateful, approvable object (not a view over rows): attendance rolls up per operative per week;
+  corrections are new records referencing the original with author/when/why (R4/R16); configurable approval at
+  line/site/project/all (SUB-9); worker sees own real-time hours (SUB-27); CSV **and** Excel export at operative
+  and site level (SUB-10). MC-24 as a company/valuation-period view over the same object. Never "permitted/denied"
+  (R18, SUB-12). Begins the Subcontractor MVP; follow the Phase 8–13 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** navigation gating over `/api/entitlements` (SF-22 — no locked door);
+  audit "Export CSV" button + free-text box on `AuditLog.razor` (backend supports both already);
+  a console "on-site"/attendance view over `/api/attendance`; SiteDetail page
   over `ISiteService`; qualification cards on the
   Operative-detail page and a Dashboard/Notifications panel over `/api/expiry` (backends + tests already in
   place); wire company/operative compliance % from cards into the Phase 8 `OrganisationService`; real

@@ -31,12 +31,14 @@ if (dataSourceMode == ClientDataSourceMode.Api)
     builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
     builder.Services.AddScoped<IQualificationService, ApiQualificationService>();
     builder.Services.AddScoped<ISiteService, ApiSiteService>();
+    builder.Services.AddScoped<IAuditService, ApiAuditService>();
 }
 else
 {
     builder.Services.AddScoped<IOrganisationService, ClientMockOrganisationService>();
     builder.Services.AddScoped<IQualificationService, ClientMockQualificationService>();
     builder.Services.AddScoped<ISiteService, ClientMockSiteService>();
+    builder.Services.AddScoped<IAuditService, ClientMockAuditService>();
 }
 
 await builder.Build().RunAsync();

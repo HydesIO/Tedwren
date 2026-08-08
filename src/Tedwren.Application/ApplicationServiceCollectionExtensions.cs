@@ -5,6 +5,9 @@ using Tedwren.Application.Expiry;
 using Tedwren.Application.Jobs;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
+using Tedwren.Application.Audit;
+using Tedwren.Application.Decisions;
+using Tedwren.Application.Entitlements;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
@@ -114,6 +117,27 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<InMemoryAttendanceStore>();
         services.AddScoped<IAttendanceRepository, InMemoryAttendanceRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the console-foundation services: module entitlements (Q2), audit (SF-20) and the decision store (R10).</summary>
+    public static IServiceCollection AddConsoleFoundationCore(this IServiceCollection services)
+    {
+        services.AddScoped<IEntitlementService, EntitlementService>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<IDecisionService, DecisionService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory entitlement, audit and decision repositories (mock mode).</summary>
+    public static IServiceCollection AddInMemoryConsoleFoundationStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryEntitlementRepository>();
+        services.AddScoped<IEntitlementRepository>(sp => sp.GetRequiredService<InMemoryEntitlementRepository>());
+        services.AddSingleton<InMemoryAuditStore>();
+        services.AddScoped<IAuditRepository, InMemoryAuditRepository>();
+        services.AddSingleton<InMemoryDecisionRepository>();
+        services.AddScoped<IDecisionRepository>(sp => sp.GetRequiredService<InMemoryDecisionRepository>());
         return services;
     }
 }
