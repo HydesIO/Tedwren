@@ -31,6 +31,8 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<ITradeRequirementRepository, TradeRequirementRepository>();
         services.AddScoped<INotificationLogRepository, NotificationLogRepository>();
         services.AddScoped<IJobRunRepository, JobRunRepository>();
+        services.AddScoped<ISiteRepository, SiteRepository>();
+        services.AddScoped<ISitePropertyRepository, SitePropertyRepository>();
         services.AddScoped<Qualifications.QualificationLibrarySeeder>();
         services.AddSingleton<MigrationRunner>();
         return services;

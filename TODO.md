@@ -130,6 +130,30 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   second scan sent **0** (SF-9 idempotent); runs recorded Succeeded (SF-21); heartbeat flagged only the
   never-run weekly-digest (R12).
 
+### Phase 11 — Sites, boundaries & dispersed schemes (SF-6, SF-14, SF-25, SF-26) (this change)
+- ✅ **Domain**: `Geofence` value object (centre + radius, haversine `Contains`/`DistanceMetresTo`, SF-14);
+  `Site` (owner company, boundary, `HasCompound` for SF-25, `IsDispersed` for SF-26) and `SiteProperty`
+  (own address + geofence, SF-26).
+- ✅ **Abstractions**: neutral `RiskState`; site DTOs (`SiteSummary` incl. `IsDispersed`/`PropertyCount`,
+  `SiteDetailDto`, `SitePropertyDto`, `GeofenceDto`, `CreateSiteRequest`, `AddSitePropertyRequest`);
+  `ISiteService`.
+- ✅ **Application**: store-agnostic `SiteService` (record sites unlimited/never billed SF-6; boundary
+  round-trip SF-14; adding a property marks the scheme dispersed SF-26; compliance `Pending` until
+  attendance exists); repo interfaces + seeded in-memory store (a boundaried site + a dispersed
+  no-compound retrofit scheme); DI `AddSiteCore`/`AddInMemorySiteStore`.
+- ✅ **DataAccess**: Dapper `SiteRepository` (boundary as 3 nullable columns) + `SitePropertyRepository`;
+  `004_sites.sql` for both engines; registrations extended.
+- ✅ **API**: `/api/sites` endpoints (list, detail, record, add-property); composition root wires the
+  service + store alongside the others.
+- ✅ **Client**: `ApiSiteService` (HTTP) + `ClientMockSiteService` (wraps sample data) + `RiskStateView`;
+  `DataSource:Mode` switch; **Sites** list migrated to `ISiteService` (same columns → mock visually
+  identical; SiteDetail migration deferred). `Mock` stays default — no regression.
+- ✅ **Tests**: `GeofenceTests` (SF-14 in/out + validation); `SiteServiceTests` (SF-6 unlimited, SF-14
+  boundary, SF-25/26 dispersed on add-property); `SiteApiTests` (dispersed seed, no-compound detail,
+  create+add-property); skip-guarded `SiteRepositoryTests`. Result: **70 passed, 4 skipped**.
+- ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
+  creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
+
 ## Outstanding / known issues
 - ❗ **MUD0002 warnings** (pre-existing, in `TedwrenStepper.razor`, `AddOperative.razor`,
   `Inductions.razor`): `Variant`/`Linear`/`Color` on `MudStepper` and `Icon` on `MudStep` flagged
@@ -143,15 +167,17 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 11 — Sites, boundaries & dispersed schemes (SF-6, SF-14, SF-25, SF-26).** Site records (incl.
-  free/unlimited subcontractor-recorded sites); a site carries a geofence boundary; a site may be a set of
-  dispersed properties each with its own geofence grouped under one site for management/billing; adding a
-  property requires nothing printed/installed/attached. Foundation for verified sign-in. Follow the
-  Phase 8–10 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** surface qualification cards on the Operative-detail page and a
-  Dashboard/Notifications panel over `/api/expiry` (backends + tests already in place); wire company/
-  operative compliance % from cards into the Phase 8 `OrganisationService`; real SMS/email providers
-  (PRD-Phase 7); company insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
+- ⏳ **Phase 12 — Sign-in / sign-out & attendance (SF-13–SF-19, SF-25, R3, R4, R11).** QR-scan sign-in
+  (no app/account) **and** the no-compound route (assignment-scoped link active only inside the boundary)
+  producing an identical-weight record; location + time recorded; location-unavailable behaviour a customer
+  setting (record-and-flag default, Q5); every attempt incl. refusals stored **append-only** (R4); no worker
+  present at two sites at once (cross-customer name-only check, Q4); overnight-still-in alert; UK-time
+  storage/display (R11). Builds on the Phase 11 geofences. Follow the Phase 8–11 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** SiteDetail page over `ISiteService`; qualification cards on the
+  Operative-detail page and a Dashboard/Notifications panel over `/api/expiry` (backends + tests already in
+  place); wire company/operative compliance % from cards into the Phase 8 `OrganisationService`; real
+  SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs SUB-4);
+  real card-image storage (R9).
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,

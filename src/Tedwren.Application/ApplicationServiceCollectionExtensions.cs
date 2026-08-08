@@ -8,6 +8,7 @@ using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Qualifications;
+using Tedwren.Application.Sites;
 
 namespace Tedwren.Application;
 
@@ -80,6 +81,22 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemoryExpiryStore>();
         services.AddScoped<INotificationLogRepository, InMemoryNotificationLogRepository>();
         services.AddScoped<IJobRunRepository, InMemoryJobRunRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic sites business service (SF-6/SF-14/SF-25/SF-26).</summary>
+    public static IServiceCollection AddSiteCore(this IServiceCollection services)
+    {
+        services.AddScoped<ISiteService, SiteService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory site repositories and their shared seeded store (mock mode).</summary>
+    public static IServiceCollection AddInMemorySiteStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemorySiteStore>();
+        services.AddScoped<ISiteRepository, InMemorySiteRepository>();
+        services.AddScoped<ISitePropertyRepository, InMemorySitePropertyRepository>();
         return services;
     }
 }

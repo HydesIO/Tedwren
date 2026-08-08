@@ -21,6 +21,7 @@ var backend = dataSourceSection.Get<BackendOptions>() ?? new BackendOptions();
 builder.Services.AddOrganisationCore();
 builder.Services.AddQualificationCore();
 builder.Services.AddExpiryCore();
+builder.Services.AddSiteCore();
 if (backend.Mode == DataSourceMode.Database)
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
@@ -32,6 +33,7 @@ else
     builder.Services.AddInMemoryOrganisationStore();
     builder.Services.AddInMemoryQualificationStore();
     builder.Services.AddInMemoryExpiryStore();
+    builder.Services.AddInMemorySiteStore();
 }
 
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
@@ -77,6 +79,7 @@ if (backend.Mode == DataSourceMode.Database)
 app.MapOrganisationEndpoints();
 app.MapQualificationEndpoints();
 app.MapJobEndpoints();
+app.MapSiteEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

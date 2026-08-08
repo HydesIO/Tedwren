@@ -30,11 +30,13 @@ if (dataSourceMode == ClientDataSourceMode.Api)
     builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
     builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
     builder.Services.AddScoped<IQualificationService, ApiQualificationService>();
+    builder.Services.AddScoped<ISiteService, ApiSiteService>();
 }
 else
 {
     builder.Services.AddScoped<IOrganisationService, ClientMockOrganisationService>();
     builder.Services.AddScoped<IQualificationService, ClientMockQualificationService>();
+    builder.Services.AddScoped<ISiteService, ClientMockSiteService>();
 }
 
 await builder.Build().RunAsync();
