@@ -25,4 +25,7 @@ public interface IAttendanceRepository
 
     /// <summary>Returns the most recent records for a site, newest first (the append-only log).</summary>
     Task<IReadOnlyList<AttendanceRecord>> GetBySiteAsync(Guid siteId, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns a person's records occurring in <c>[fromUtc, toUtc)</c>, oldest first — the source for the weekly timesheet roll-up (SUB-7).</summary>
+    Task<IReadOnlyList<AttendanceRecord>> GetByPersonInRangeAsync(Guid personId, DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken cancellationToken = default);
 }

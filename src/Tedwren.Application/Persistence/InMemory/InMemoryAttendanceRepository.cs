@@ -58,6 +58,16 @@ public sealed class InMemoryAttendanceRepository : IAttendanceRepository
         return Task.FromResult(records);
     }
 
+    /// <summary>Returns a person's records occurring in <c>[fromUtc, toUtc)</c>, oldest first (timesheet roll-up).</summary>
+    public Task<IReadOnlyList<AttendanceRecord>> GetByPersonInRangeAsync(Guid personId, DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<AttendanceRecord> records = _store.Records.Values
+            .Where(r => r.PersonId == personId && r.OccurredUtc >= fromUtc && r.OccurredUtc < toUtc)
+            .OrderBy(r => r.OccurredUtc)
+            .ToList();
+        return Task.FromResult(records);
+    }
+
     /// <summary>
     /// The currently-open sign-ins: presence-counting sign-ins with no later sign-out at the same site for
     /// the same person. Newest first.

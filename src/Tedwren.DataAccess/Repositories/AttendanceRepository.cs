@@ -85,6 +85,15 @@ public sealed class AttendanceRepository : RepositoryBase, IAttendanceRepository
         return rows.Select(ToEntity).ToList();
     }
 
+    /// <summary>Returns a person's records in <c>[fromUtc, toUtc)</c>, oldest first (timesheet roll-up).</summary>
+    public async Task<IReadOnlyList<AttendanceRecord>> GetByPersonInRangeAsync(Guid personId, DateTimeOffset fromUtc, DateTimeOffset toUtc, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            $"SELECT {Columns} FROM Attendance WHERE PersonId = @PersonId AND OccurredUtc >= @FromUtc AND OccurredUtc < @ToUtc ORDER BY OccurredUtc",
+            new { PersonId = personId, FromUtc = fromUtc, ToUtc = toUtc }, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
     /// <summary>Flattens a record to Dapper parameters (enums as ints).</summary>
     private static object ToParameters(AttendanceRecord r) => new
     {

@@ -120,6 +120,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic timesheet service (SUB-7–SUB-12, SUB-27, MC-24).</summary>
+    public static IServiceCollection AddTimesheetCore(this IServiceCollection services)
+    {
+        services.AddScoped<ITimesheetService, Timesheets.TimesheetService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory timesheet repository and its seeded shared store (mock mode).</summary>
+    public static IServiceCollection AddInMemoryTimesheetStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryTimesheetStore>();
+        services.AddScoped<ITimesheetRepository, InMemoryTimesheetRepository>();
+        return services;
+    }
+
     /// <summary>Registers the console-foundation services: module entitlements (Q2), audit (SF-20) and the decision store (R10).</summary>
     public static IServiceCollection AddConsoleFoundationCore(this IServiceCollection services)
     {

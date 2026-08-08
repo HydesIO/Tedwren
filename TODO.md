@@ -154,7 +154,41 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 13 — Roles, audit, module entitlements & decision store (SF-2, SF-20, SF-22, SF-23, R10, R15, Q2) (this change)
+### Phase 14 — Timesheets (SUB-7–SUB-12, SUB-27, MC-24, R16, R18) (this change)
+- ✅ **Domain**: `Timesheet` (first-class, stateful, approvable header — SUB-7/SUB-8), `TimesheetEntry`
+  (append-only line; a correction is a new line referencing the original, R16), `TimesheetWorkflow` (pure
+  lifecycle guards); enums `TimesheetStatus` (Draft/Submitted/Approved/**Returned** — never "denied", R18/SUB-12)
+  and `ApprovalScope` (Line/Site/Project/All, SUB-9).
+- ✅ **Abstractions**: neutral `TimesheetState`/`ApprovalScope`; timesheet DTOs (summary for MC-24, full with
+  folded effective lines, operative hours for SUB-27, correct/approve/return requests); `ITimesheetService`.
+- ✅ **Application**: pure `TimesheetHoursCalculator` (pairs sign-in/out per site/day from the append-only
+  attendance log, SUB-7); reusable `Export/` helpers — `TabularSheet`, `CsvWriter`, and a **framework-only
+  `XlsxWriter`** (valid .xlsx via `ZipArchive`, numeric hours cells, no external dependency) for SUB-10;
+  `TimesheetService` (roll-up get-or-create, submit/approve/return with recorded who/when/scope, corrections
+  folded into effective hours while originals are retained, worker hours, CSV+Excel export); repo interface +
+  seeded in-memory store/repo; DI `AddTimesheetCore`/`AddInMemoryTimesheetStore`. Extended `IAttendanceRepository`
+  with `GetByPersonInRangeAsync` (in-memory + Dapper).
+- ✅ **DataAccess**: Dapper `TimesheetRepository` (stateful header + append-only entries, ANSI-portable);
+  `007_timesheets.sql` for both engines (Timesheets with unique (Company,Person,Week) index + TimesheetEntries);
+  registration extended.
+- ✅ **API**: `/api/timesheets` — company-week list (MC-24), get, operative get-or-create + hours (SUB-27),
+  submit/approve/return/correct, and CSV/`.xlsx` export at timesheet and company-week level (SUB-10). Composition
+  root wires the service + seeded store.
+- ✅ **Client**: `ApiTimesheetService` (HTTP) + self-contained `ClientMockTimesheetService` (fabricates the same
+  demo week the API seeds, in-proc workflow) behind `ITimesheetService`; replaced the **Time & Attendance**
+  placeholder with a real valuation-period timesheet screen — status pills, Approve/Return actions (ConfirmDialog),
+  and CSV export — identical across the mock↔API switch.
+- ✅ **Tests**: `TimesheetWorkflowTests` (SUB-8 transitions); `TimesheetHoursCalculatorTests` (SUB-7 pairing,
+  refusals/unmatched excluded); `TimesheetServiceTests` (roll-up, submit→approve with scope, guarded approve,
+  return-not-deny R18, correction retained + effective hours R16, worker hours SUB-27, CSV + valid-zip XLSX SUB-10);
+  `TimesheetApiTests` (MC-24 list, approve+guarded return, CSV/XLSX); skip-guarded `TimesheetRepositoryTests`.
+  Result: **126 passed, 9 skipped**.
+- ✅ Verified live (mock): company-week list shows 3 seeded operatives with rolled-up totals (MC-24); approving a
+  submitted sheet records scope=Project (SUB-9); correcting a line drops the total and flags the line while
+  retaining the original (R16); CSV export and a genuine .xlsx (validated as a ZIP workbook with numeric hours
+  cells) both download (SUB-10). *Subcontractor MVP begins.*
+
+### Phase 13 — Roles, audit, module entitlements & decision store (SF-2, SF-20, SF-22, SF-23, R10, R15, Q2)
 - ✅ **Domain**: `AccessRole` enum (Administrator/ComplianceManager/SiteManager/Auditor) + `RolePermissions.CanWrite`
   (Auditor is read-only, SF-23); `ModuleEntitlement` (per-company module override, Q2); `AuditEntry` (SF-20,
   company-scoped R15); `SiteEntryDecision` + `DecisionCheck`/`DecisionCheckOutcome` — reconstructable
@@ -224,13 +258,16 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 14 — Timesheets (SUB-7–SUB-12, SUB-24, SUB-27–SUB-30, MC-24 view, R16).** The timesheet as a
-  first-class, stateful, approvable object (not a view over rows): attendance rolls up per operative per week;
-  corrections are new records referencing the original with author/when/why (R4/R16); configurable approval at
-  line/site/project/all (SUB-9); worker sees own real-time hours (SUB-27); CSV **and** Excel export at operative
-  and site level (SUB-10). MC-24 as a company/valuation-period view over the same object. Never "permitted/denied"
-  (R18, SUB-12). Begins the Subcontractor MVP; follow the Phase 8–13 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** navigation gating over `/api/entitlements` (SF-22 — no locked door);
+- ⏳ **Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9).** Pack builder over selected operatives/site/
+  date-range; **not-site-ready problems surfaced before send** with explicit acknowledgement (SUB-14); contents
+  chosen not automatic; output as web link + PDF + ZIP with identical content, 25 operatives ready < 1 min (SUB-16);
+  **recipient needs no account** (R8); passcode + sender-set expiry (30-day default, SUB-18/Q12); open/download
+  tracking (SUB-20); revoke (SUB-21); **fixed-at-send, re-issue supersedes** (R7); no permanent public asset URLs
+  (R9); send restricted to nominated roles (SUB-22). Completes the Subcontractor MVP (product saleable). Follow the
+  Phase 8–14 layered pattern.
+- ⏳ **Follow-ups (non-blocking):** timesheet detail/correction UI (line-level edit) and operative self-service
+  hours view (SUB-27) over the API; a "configurable approval" settings surface (SUB-9 line/site/project/all);
+  navigation gating over `/api/entitlements` (SF-22 — no locked door);
   audit "Export CSV" button + free-text box on `AuditLog.razor` (backend supports both already);
   a console "on-site"/attendance view over `/api/attendance`; SiteDetail page
   over `ISiteService`; qualification cards on the
