@@ -24,6 +24,9 @@ builder.Services.AddExpiryCore();
 builder.Services.AddSiteCore();
 builder.Services.AddAttendanceCore();
 builder.Services.AddTimesheetCore();
+builder.Services.AddCompliancePackCore();
+builder.Services.AddInductionCore();
+builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
 if (backend.Mode == DataSourceMode.Database)
 {
@@ -39,6 +42,8 @@ else
     builder.Services.AddInMemorySiteStore();
     builder.Services.AddInMemoryAttendanceStore();
     builder.Services.AddInMemoryTimesheetStore();
+    builder.Services.AddInMemoryCompliancePackStore();
+    builder.Services.AddInMemoryInductionStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
 }
 
@@ -80,6 +85,10 @@ if (backend.Mode == DataSourceMode.Database)
     // Seed the default qualification library (SF-12) and trade requirements (SF-11) — idempotent.
     var librarySeeder = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Qualifications.QualificationLibrarySeeder>();
     await librarySeeder.RunAsync();
+
+    // Seed the default induction template (MC-3) — idempotent.
+    var inductionSeeder = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Inductions.InductionTemplateSeeder>();
+    await inductionSeeder.RunAsync();
 }
 
 app.MapOrganisationEndpoints();
@@ -88,6 +97,9 @@ app.MapJobEndpoints();
 app.MapSiteEndpoints();
 app.MapAttendanceEndpoints();
 app.MapTimesheetEndpoints();
+app.MapCompliancePackEndpoints();
+app.MapInductionEndpoints();
+app.MapSiteEntryEndpoints();
 app.MapEntitlementEndpoints();
 app.MapAuditEndpoints();
 app.MapDecisionEndpoints();

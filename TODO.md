@@ -154,7 +154,102 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 14 — Timesheets (SUB-7–SUB-12, SUB-27, MC-24, R16, R18) (this change)
+### Phase 17 — Site-entry decision, competency cover & muster (MC-8–MC-14, MC-28, R2, R3, R10, R14) (this change)
+- ✅ **Domain**: pure `SiteEntryPolicy` — fail-closed admission (admitted only if no check failed, R2) +
+  actionable block reason from failed checks (MC-9). Reuses the Phase-13 `SiteEntryDecision`/`DecisionCheck`
+  store for the record (R10).
+- ✅ **Abstractions**: site-entry DTOs (`DecideEntryRequest` with optional manager override, `EntryDecisionResultDto`
+  with admission/reason/checks/decision-id/**elapsed-ms** R14, muster with data-age + competency cover);
+  `ISiteEntryService`.
+- ✅ **Application**: `SiteEntryService` — the **five checks against current data** (registered / not-elsewhere /
+  induction valid / cards in date & confirmed / RAMS-where-held, R3), each wrapped so any error becomes a failed
+  check (**fail-closed**, R2); RAMS recorded **NotRun** when the module isn't held (R10); day-only manager override
+  (MC-11); self-reconstructing record written through `IDecisionService` (R10); timed against the **<3s** budget
+  (R14); plus the **muster** — on-site people resolved to property (MC-12), competency cover with holder count
+  (MC-13), and a generated timestamp for offline data-age (MC-14). Added `IInductionSessionRepository.
+  GetLatestPassedForPersonAsync` (in-memory + Dapper). DI `AddSiteEntryCore` (aggregates existing slices — no new
+  store).
+- ✅ **API**: `/api/site-entry/decide` (always 200 with the full result incl. every check, MC-28 needs no compound)
+  and `/api/site-entry/muster/{siteId}`; composition root wires the service.
+- ✅ **Client**: `ApiSiteEntryService` + self-contained `ClientMockSiteEntryService` (three demo operatives — clear
+  / expired-card / no-induction) behind `ISiteEntryService`; new **Site Gate** page (`/site-gate`, added to nav) —
+  check-entry with the five-check breakdown + block reason + manager-override, and a live muster with competency
+  cover and data-age — identical across the mock↔API switch.
+- ✅ **Tests**: `SiteEntryPolicyTests` (fail-closed rule, block reason); `SiteEntryServiceTests` (clear admit +
+  R10 record, expired-card block reason, unregistered block, **error→fail-closed R2**, override MC-11, muster
+  competency cover — against real in-memory repos); `SiteEntryApiTests` (blocked-with-all-checks + RAMS NotRun +
+  timing, override admits, muster). Result: **165 passed, 11 skipped**.
+- ✅ Verified live (mock): an unknown worker is **blocked** with all five checks (Registered/Induction failed,
+  RAMS **NotRun** — R10) and a specific reason (MC-9) in **16 ms** (R14); the decision **reconstructs from the
+  store** with all five checks (R10); a manager override admits and is flagged (MC-11); the muster returns a
+  generated timestamp (data-age, MC-14) and competency cover (MC-13). *Main Contractor MVP complete (product
+  saleable). Shared foundation + both MVPs delivered.*
+
+### Phase 16 — Digital induction & consent (MC-1–MC-7, MC-15, MC-20, R5)
+- ✅ **Domain**: `InductionTemplate` (configurable steps + quiz + pass mark + validity, MC-3); `InductionStep`
+  (data-driven capture, MC-3/MC-4); `InductionQuizQuestion` (**correct answer server-side only**, R5); pure
+  `InductionQuiz.Score` (server-side scoring, R5); `InductionSession` (stateful lifecycle, MC-1–MC-7, consent
+  MC-20, `IsValid`); enums `InductionStatus` (InProgress/Failed/Passed/Superseded) and `InductionStepKind`.
+- ✅ **Abstractions**: device-facing DTOs — `InductionSessionDto`/`InductionQuizQuestionDto` carry **prompt +
+  options but no answers** (R5); start/step/quiz/finalize/reset requests; `QuizResultDto` (score only, no
+  answers); `InductionSummaryDto`; `IInductionService`.
+- ✅ **Application**: `InductionService` (start with re-induction supersede MC-7; step gating MC-4; **server-side
+  quiz scoring** R5; failed-attempt handling + manager reset MC-6; completion reference + configurable validity
+  MC-5/MC-7; separate optional consent MC-20); `DefaultInductionTemplate` seed (answers held server-side);
+  template + session repo interfaces + seeded in-memory store; DI helpers.
+- ✅ **DataAccess**: Dapper `InductionTemplateRepository` (steps/quiz as JSON) + `InductionSessionRepository`
+  (completed-steps JSON, supersede query); `009_inductions.sql` for both engines; `InductionTemplateSeeder`
+  (idempotent); registrations extended; seeder runs in DB mode.
+- ✅ **API**: `/api/inductions` — templates, start, device session, complete-step, **server-scored quiz**,
+  finalize (409 when required steps/quiz incomplete, MC-4), manager reset, company records. Composition root
+  wires the service + seeded store + DB-mode seeder.
+- ✅ **Client**: `ApiInductionService` + self-contained `ClientMockInductionService` (holds answers privately so
+  R5 holds; full in-proc flow) behind `IInductionService`; new **Induction Records** page (`/induction-records`,
+  added to nav) — completions, validity, consent flag, and manager Reset for failed inductions — identical across
+  the mock↔API switch.
+- ✅ **Tests**: `InductionQuizTests` (R5 scoring); `InductionServiceTests` (**JSON-serialised device session
+  asserts no `CorrectOptionIndex`**, fail→pass scoring, MC-4 gate throws, completion ref/validity/consent, reset,
+  supersede); `InductionApiTests` (wire response has no answers, 409 gate → full flow → completion over HTTP);
+  skip-guarded `InductionRepositoryTests`. Result: **151 passed, 11 skipped**.
+- ✅ Verified live (mock): the started-session wire response contains **0 occurrences of the correct-answer field**
+  (R5); finalize before ready → 409 (MC-4); a wrong quiz scores 0/fails, the correct quiz scores 3/passes
+  (server-side); finalize issues a completion reference (`IND-…`) with 365-day validity and stores consent. *Main
+  Contractor MVP begins.*
+
+### Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9)
+- ✅ **Domain**: `CompliancePack` (fixed-at-send snapshot with token + passcode hash + expiry + status, R7/R8/R9)
+  with `EffectiveStatus`/`IsAccessible` (expiry & revoke gate, SUB-18/SUB-21); `PackSubject`/`PackCard` (frozen
+  snapshot, R7); `PackAccessEvent` (open/download tracking, SUB-20); pure `PackReadiness` (expired = blocking,
+  expiring-soon = warning, SUB-14); enums `PackStatus` (Active/Revoked/Superseded/Expired) and `PackAccessKind`.
+- ✅ **Abstractions**: pack DTOs (build request/result with readiness issues, list item with tallies, recipient
+  view, access result); `ICompliancePackService`.
+- ✅ **Application**: `CompliancePackService` (snapshots each operative's cards via `IQualificationService` at
+  send, R7; **gates sending on acknowledged blocking issues**, SUB-14; token+passcode+expiry authorisation with
+  open/download tracking, R8/SUB-20; revoke SUB-21; **re-issue supersedes** the prior pack, R7); `PackPasscode`
+  (salted SHA-256, never stores plaintext, SUB-18), `PackToken` (256-bit opaque, no guessable URLs, R9),
+  `PackComposer` (one snapshot → CSV/ZIP/PDF, identical content, SUB-16); a framework-only **`PdfWriter`**
+  (valid multi-page PDF via hand-built xref, no dependency) alongside the Phase-14 `XlsxWriter`; in-memory
+  store/repo; DI helpers.
+- ✅ **DataAccess**: Dapper `CompliancePackRepository` (snapshot as JSON; access events table; token unique
+  index, R9); `008_compliance_packs.sql` for both engines; registration extended.
+- ✅ **API**: `/api/packs` — readiness preview, build (409 carrying issues when unacknowledged, SUB-14), company
+  list, revoke; account-free recipient routes `view`/`download.{csv,zip,pdf}` gated by token+passcode (403 on
+  refusal, R8/R9). Composition root wires the service + store.
+- ✅ **Client**: `ApiCompliancePackService` (HTTP) + self-contained `ClientMockCompliancePackService` (fabricates
+  operatives incl. an expired card so the readiness gate is demonstrable) behind `ICompliancePackService`; new
+  **Compliance Packs** page (`/compliance-packs`, added to the nav) — build with readiness banner + acknowledge,
+  status pills, open/download tallies, revoke — identical across the mock↔API switch.
+- ✅ **Tests**: `PackReadinessTests` + `CompliancePackTests` (SUB-14 severities, SUB-18/21 accessibility);
+  `CompliancePackServiceTests` (readiness gate, passcode-gated view + tracking, revoke, supersede, CSV/valid-zip
+  ZIP/valid `%PDF` — SUB-16); `CompliancePackApiTests` (capture an expired card → 409 gate → ack → send → view →
+  PDF download → revoke blocks, over HTTP); skip-guarded `CompliancePackRepositoryTests`. Result: **140 passed,
+  10 skipped**.
+- ✅ Verified live (mock): building a pack for an operative with an expired card returns 409 with the blocking
+  issue; acknowledging sends it with a token + passcode; the recipient view needs the passcode (bad token → 403);
+  a downloaded PDF is a structurally valid document (`%PDF` header, xref, `startxref`, `%%EOF`); revoke makes the
+  link 403. *Subcontractor MVP complete (product saleable).*
+
+### Phase 14 — Timesheets (SUB-7–SUB-12, SUB-27, MC-24, R16, R18)
 - ✅ **Domain**: `Timesheet` (first-class, stateful, approvable header — SUB-7/SUB-8), `TimesheetEntry`
   (append-only line; a correction is a new line referencing the original, R16), `TimesheetWorkflow` (pure
   lifecycle guards); enums `TimesheetStatus` (Draft/Submitted/Approved/**Returned** — never "denied", R18/SUB-12)
@@ -258,14 +353,14 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 15 — Compliance pack (SUB-13–SUB-26, R7, R8, R9).** Pack builder over selected operatives/site/
-  date-range; **not-site-ready problems surfaced before send** with explicit acknowledgement (SUB-14); contents
-  chosen not automatic; output as web link + PDF + ZIP with identical content, 25 operatives ready < 1 min (SUB-16);
-  **recipient needs no account** (R8); passcode + sender-set expiry (30-day default, SUB-18/Q12); open/download
-  tracking (SUB-20); revoke (SUB-21); **fixed-at-send, re-issue supersedes** (R7); no permanent public asset URLs
-  (R9); send restricted to nominated roles (SUB-22). Completes the Subcontractor MVP (product saleable). Follow the
-  Phase 8–14 layered pattern.
-- ⏳ **Follow-ups (non-blocking):** timesheet detail/correction UI (line-level edit) and operative self-service
+- ⏳ **Phase 18 — Hardening & PostgreSQL launch gate.** Accessibility pass; load/latency testing against R14;
+  **independent security review of the public pack link** (the only public route to personal data); backup/restore
+  rehearsal; **full PostgreSQL parity suite** run green (proves the dual-engine promise before production). This is
+  the pre-launch gate before the PRD commercial modules (Phases 19+).
+- ⏳ **Follow-ups (non-blocking):** induction take-flow phone UI (start→steps→quiz→sign) over the API;
+  compliance-pack recipient view page (token+passcode landing) and a "re-issue"
+  action on the packs page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22);
+  timesheet detail/correction UI (line-level edit) and operative self-service
   hours view (SUB-27) over the API; a "configurable approval" settings surface (SUB-9 line/site/project/all);
   navigation gating over `/api/entitlements` (SF-22 — no locked door);
   audit "Export CSV" button + free-text box on `AuditLog.razor` (backend supports both already);

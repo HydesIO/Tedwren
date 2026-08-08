@@ -1,0 +1,134 @@
+@page "/site-gate"
+@using Tedwren.Abstractions.Contracts.SiteEntry
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ISiteEntryService SiteEntry
+@inject ISnackbar Snackbar
+
+<PageTitle>Site Gate · Tedwren</PageTitle>
+
+<PageHeader Title="Site Gate" Subtitle="Five-check entry decision, manager override and live muster" />
+
+<DashboardCard>
+    <Body>
+        <MudText Typo="Typo.h6">Check entry</MudText>
+        <div class="gate__operatives">
+            @foreach (var op in ClientMockSiteEntryService.DemoOperatives)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="gate__op"
+                           OnClick="@(() => DecideAsync(op.Id))">@op.Name</MudButton>
+            }
+        </div>
+
+        @if (_result is { } r)
+        {
+            <div class="gate__result">
+                <BannerAlert Severity="@(r.Admitted ? StatusKind.Success : StatusKind.Danger)"
+                             Title="@(r.Admitted ? (r.WasOverridden ? "Admitted (manager override)" : "Admitted") : "Entry blocked")"
+                             Message="@(r.Admitted ? $"Decision in {r.ElapsedMs} ms." : (r.BlockReason ?? "Blocked."))" />
+
+                <MudSimpleTable Dense="true" Class="gate__checks">
+                    <thead><tr><th>Check</th><th>Outcome</th><th>Detail</th></tr></thead>
+                    <tbody>
+                        @foreach (var c in r.Checks)
+                        {
+                            <tr>
+                                <td>@c.Name</td>
+                                <td><StatusPill Label="@c.Outcome" Status="@ToStatusKind(c.Outcome)" /></td>
+                                <td>@c.Detail</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                @if (!r.Admitted)
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Class="gate__override"
+                               OnClick="OverrideAsync">Manager override (today only)</MudButton>
+                }
+            </div>
+        }
+    </Body>
+</DashboardCard>
+
+<DashboardCard>
+    <Body>
+        <div class="gate__muster-head">
+            <MudText Typo="Typo.h6">On site now</MudText>
+            @if (_muster is { } m)
+            {
+                <MudText Typo="Typo.caption">As at @m.GeneratedUtc.ToString("HH:mm:ss") UTC · @_dataAgeSeconds s ago</MudText>
+            }
+        </div>
+
+        @if (_muster is { } muster)
+        {
+            <div class="gate__cover">
+                @foreach (var cover in muster.Competencies)
+                {
+                    <StatusPill Label="@($"{cover.Competency}: {(cover.Covered ? $"covered ({cover.HoldersOnSite})" : "NOT COVERED")}")"
+                                Status="@(cover.Covered ? (cover.HoldersOnSite <= 1 ? StatusKind.Warning : StatusKind.Success) : StatusKind.Danger)" />
+                }
+            </div>
+
+            <MudSimpleTable Dense="true">
+                <thead><tr><th>Operative</th><th>Property</th><th>On site since</th></tr></thead>
+                <tbody>
+                    @foreach (var p in muster.People)
+                    {
+                        <tr>
+                            <td>@p.Name</td>
+                            <td>@(p.PropertyName ?? "—")</td>
+                            <td>@p.SinceUtc.ToString("dd MMM HH:mm")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </Body>
+</DashboardCard>
+
+@code {
+    private static readonly Guid SiteId = ClientMockSiteEntryService.DemoSiteId;
+    private static readonly Guid CompanyId = Guid.Parse("77777777-7777-4777-8777-000000000100");
+
+    private EntryDecisionResultDto? _result;
+    private Guid _lastPersonId;
+    private MusterDto? _muster;
+    private int _dataAgeSeconds;
+
+    protected override async Task OnInitializedAsync() => await LoadMusterAsync();
+
+    private async Task LoadMusterAsync()
+    {
+        _muster = await SiteEntry.GetMusterAsync(SiteId);
+        _dataAgeSeconds = (int)(DateTimeOffset.UtcNow - _muster.GeneratedUtc).TotalSeconds;
+    }
+
+    // Runs the five-check decision for an operative (MC-8) and shows the result and every check (R10).
+    private async Task DecideAsync(Guid personId)
+    {
+        _lastPersonId = personId;
+        _result = await SiteEntry.DecideAsync(new DecideEntryRequest(CompanyId, SiteId, personId, null, null));
+    }
+
+    // Day-only manager override of a blocked decision, with a reason (MC-11).
+    private async Task OverrideAsync()
+    {
+        _result = await SiteEntry.DecideAsync(new DecideEntryRequest(
+            CompanyId, SiteId, _lastPersonId, null,
+            new ManagerOverrideDto("You", "Escorted on site for a supervised task")));
+        if (_result.Admitted)
+        {
+            Snackbar.Add("Entry admitted by manager override (recorded for today).", Severity.Warning);
+        }
+    }
+
+    private static StatusKind ToStatusKind(string outcome) => outcome switch
+    {
+        "Passed" => StatusKind.Success,
+        "Failed" => StatusKind.Danger,
+        "NotRun" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -1,0 +1,175 @@
+@page "/compliance-packs"
+@using Tedwren.Abstractions.Contracts.CompliancePacks
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ICompliancePackService Packs
+@inject ISnackbar Snackbar
+
+<PageTitle>Compliance Packs · Tedwren</PageTitle>
+
+<PageHeader Title="Compliance Packs" Subtitle="Build, send and track shareable compliance evidence" />
+
+<DashboardCard Class="pack-builder">
+    <Body>
+        <MudText Typo="Typo.h6" Class="pack-builder__title">New pack</MudText>
+        <MudTextField @bind-Value="_title" Label="Pack title" Variant="Variant.Outlined" Margin="Margin.Dense" Class="pack-builder__field" />
+
+        <MudText Typo="Typo.subtitle2" Class="pack-builder__label">Operatives</MudText>
+        <div class="pack-builder__operatives">
+            @foreach (var op in ClientMockCompliancePackService.DemoOperatives)
+            {
+                <MudCheckBox T="bool"
+                             Value="_selected.Contains(op.Id)"
+                             ValueChanged="@(v => Toggle(op.Id, v))"
+                             Label="@op.Name"
+                             Dense="true" />
+            }
+        </div>
+
+        @if (_issues.Count > 0)
+        {
+            <BannerAlert Severity="@(_issues.Any(i => i.Blocking) ? StatusKind.Danger : StatusKind.Warning)"
+                         Title="Not-site-ready problems found"
+                         Message="@IssuesSummary()" />
+        }
+
+        <div class="pack-builder__actions">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy || _selected.Count == 0"
+                       OnClick="@(() => SendAsync(false))">Check &amp; send</MudButton>
+            @if (_issues.Any(i => i.Blocking))
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_busy"
+                           OnClick="@(() => SendAsync(true))">Acknowledge &amp; send anyway</MudButton>
+            }
+        </div>
+    </Body>
+</DashboardCard>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="PackListItemDto"
+                   Items="_packs"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search pack title…"
+                   EmptyTitle="No packs"
+                   EmptyDescription="No compliance packs have been sent yet."
+                   EmptyIcon="@Icons.Material.Outlined.FolderShared" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private static readonly Guid CompanyId = ClientMockCompliancePackService.DemoCompanyId;
+
+    private string _title = "Weekly compliance pack";
+    private readonly HashSet<Guid> _selected = new();
+    private IReadOnlyList<ReadinessIssueDto> _issues = Array.Empty<ReadinessIssueDto>();
+    private IReadOnlyList<PackListItemDto> _packs = Array.Empty<PackListItemDto>();
+    private List<DataColumn<PackListItemDto>> _columns = new();
+    private bool _loading = true;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _selected.UnionWith(ClientMockCompliancePackService.DemoOperatives.Select(o => o.Id));
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _packs = await Packs.ListForCompanyAsync(CompanyId);
+        _loading = false;
+    }
+
+    // One-line summary of the current readiness issues for the banner (SUB-14).
+    private string IssuesSummary() =>
+        string.Join("; ", _issues.Select(i => $"{i.SubjectName} — {i.QualificationName}: {i.Detail}{(i.Blocking ? " (blocking)" : "")}"));
+
+    private void Toggle(Guid id, bool selected)
+    {
+        if (selected) _selected.Add(id); else _selected.Remove(id);
+        _issues = Array.Empty<ReadinessIssueDto>();   // selection changed — re-check before sending
+    }
+
+    // Builds/sends the pack. First attempt surfaces blocking readiness issues (SUB-14); acknowledge to proceed.
+    private async Task SendAsync(bool acknowledge)
+    {
+        _busy = true;
+        var request = new BuildPackRequest(
+            CompanyId, _title, "You", SiteId: null, FromDate: null, ToDate: null,
+            _selected.ToList(), Passcode: null, ExpiryDays: null, AcknowledgeIssues: acknowledge, SupersedesPackId: null);
+        var result = await Packs.BuildAsync(request);
+        _busy = false;
+
+        if (!result.Sent)
+        {
+            _issues = result.Issues;
+            Snackbar.Add("Pack not sent — resolve or acknowledge the readiness problems.", Severity.Warning);
+            return;
+        }
+
+        _issues = Array.Empty<ReadinessIssueDto>();
+        Snackbar.Add($"Pack sent. Passcode: {result.Passcode}", Severity.Success);
+        await LoadAsync();
+    }
+
+    private async Task RevokeAsync(PackListItemDto pack)
+    {
+        if (await Packs.RevokeAsync(CompanyId, pack.Id))
+        {
+            Snackbar.Add($"Revoked \"{pack.Title}\".", Severity.Info);
+            await LoadAsync();
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Pack", Value = p => p.Title, Filterable = true },
+            new() { Title = "Site", Value = p => p.SiteName ?? "—", Searchable = false },
+            new()
+            {
+                Title = "Status", Value = p => p.Status, Searchable = false, Filterable = true,
+                CellTemplate = p => @<StatusPill Label="@p.Status" Status="@ToStatusKind(p.Status)" />
+            },
+            new()
+            {
+                Title = "Operatives", Value = p => p.SubjectCount, Searchable = false,
+                CellTemplate = p => @<span>@p.SubjectCount</span>
+            },
+            new()
+            {
+                Title = "Opened / Downloaded", Value = p => p.OpenedCount, Searchable = false,
+                CellTemplate = p => @<span>@p.OpenedCount / @p.DownloadedCount</span>
+            },
+            new()
+            {
+                Title = "Expires", Value = p => p.ExpiresUtc, Searchable = false,
+                CellTemplate = p => @<span>@p.ExpiresUtc.ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = p => @<div>
+                    @if (p.Status == "Active")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
+                                   OnClick="@(() => RevokeAsync(p))">Revoke</MudButton>
+                    }
+                </div>
+            },
+        };
+    }
+
+    private static StatusKind ToStatusKind(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "Expired" => StatusKind.Warning,
+        "Revoked" => StatusKind.Danger,
+        "Superseded" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+}
