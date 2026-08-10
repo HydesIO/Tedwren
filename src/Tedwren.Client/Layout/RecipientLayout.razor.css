@@ -1,0 +1,33 @@
+.recipient-shell {
+    min-height: 100vh;
+    background: var(--color-surface-sunken, #f2f4f7);
+    display: flex;
+    flex-direction: column;
+}
+
+.recipient-shell__bar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    padding: var(--spacing-16, 16px) var(--spacing-24, 24px);
+    background: var(--color-surface, #ffffff);
+    border-bottom: 1px solid var(--color-border, #e4e7ec);
+}
+
+.recipient-shell__logo {
+    width: 28px;
+    height: 28px;
+}
+
+.recipient-shell__brand {
+    font-weight: 600;
+    font-size: var(--font-size-16, 16px);
+    color: var(--color-text-primary, #101828);
+}
+
+.recipient-shell__content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    padding: var(--spacing-24, 24px);
+}

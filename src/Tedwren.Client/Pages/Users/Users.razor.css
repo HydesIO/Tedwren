@@ -1,15 +1,1 @@
-.form-page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-16, 16px);
-    max-width: 880px;
-}
-
-.form-page__full {
-    grid-column: 1 / -1;
-}
-
-/* Toggle list: each toggle followed by a divider; hide the last divider. */
-.form-page__toggles ::deep .mud-divider:last-child {
-    display: none;
-}
+/* The Users list uses the shared DataTable/DashboardCard styling; no page-specific rules needed. */

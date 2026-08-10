@@ -30,7 +30,11 @@ if (dataSourceMode == ClientDataSourceMode.Api)
     builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
     builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
     builder.Services.AddScoped<IQualificationService, ApiQualificationService>();
+    builder.Services.AddScoped<IUserService, ApiUserService>();
     builder.Services.AddScoped<ISiteService, ApiSiteService>();
+    builder.Services.AddScoped<IAttendanceService, ApiAttendanceService>();
+    builder.Services.AddScoped<IExpiryQueryService, ApiExpiryQueryService>();
+    builder.Services.AddScoped<IEntitlementService, ApiEntitlementService>();
     builder.Services.AddScoped<IAuditService, ApiAuditService>();
     builder.Services.AddScoped<ITimesheetService, ApiTimesheetService>();
     builder.Services.AddScoped<ICompliancePackService, ApiCompliancePackService>();
@@ -41,7 +45,11 @@ else
 {
     builder.Services.AddScoped<IOrganisationService, ClientMockOrganisationService>();
     builder.Services.AddScoped<IQualificationService, ClientMockQualificationService>();
+    builder.Services.AddScoped<IUserService, ClientMockUserService>();
     builder.Services.AddScoped<ISiteService, ClientMockSiteService>();
+    builder.Services.AddScoped<IAttendanceService, ClientMockAttendanceService>();
+    builder.Services.AddScoped<IExpiryQueryService, ClientMockExpiryQueryService>();
+    builder.Services.AddScoped<IEntitlementService, ClientMockEntitlementService>();
     builder.Services.AddScoped<IAuditService, ClientMockAuditService>();
     builder.Services.AddScoped<ITimesheetService, ClientMockTimesheetService>();
     builder.Services.AddScoped<ICompliancePackService, ClientMockCompliancePackService>();

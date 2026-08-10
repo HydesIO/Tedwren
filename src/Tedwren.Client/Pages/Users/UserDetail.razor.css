@@ -1,0 +1,13 @@
+.user-edit {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16, 16px);
+    max-width: 520px;
+}
+
+.user-edit__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-12, 12px);
+    margin-top: var(--spacing-8, 8px);
+}

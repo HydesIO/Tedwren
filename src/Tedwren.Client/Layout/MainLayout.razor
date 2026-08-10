@@ -1,6 +1,9 @@
 @inherits LayoutComponentBase
 @implements IDisposable
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
 @inject IShellSampleDataService Shell
+@inject IEntitlementService Entitlements
 @inject IListSampleDataService ListData
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -61,9 +64,25 @@
     private IReadOnlyList<CommandItem> _commandItems = Array.Empty<CommandItem>();
     private DotNetObjectReference<MainLayout>? _selfRef;
 
-    protected override void OnInitialized()
+    // Maps a gated nav route to the module a customer must hold for it to appear (SF-22). Routes absent from
+    // this map are core console features and are always shown.
+    private static readonly IReadOnlyDictionary<string, string> GatedRouteModules = new Dictionary<string, string>
     {
-        _navItems = Shell.GetNavItems();
+        ["/workforce"] = "workforce",
+        ["/compliance"] = "compliance",
+        ["/compliance-packs"] = "compliance",
+        ["/inductions"] = "inductions",
+        ["/induction-records"] = "inductions",
+        ["/time-attendance"] = "time",
+        ["/attendance"] = "time",
+        ["/permits"] = "permits",
+        ["/reports"] = "reports",
+        ["/integrations"] = "integrations",
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _navItems = await GatedNavItemsAsync(Shell.GetNavItems());
         _selectedPlatform = Shell.GetSelectedPlatform();
         _user = Shell.GetCurrentUser();
         _notifications = Shell.GetNotifications();
@@ -175,6 +194,28 @@
     {
         var words = segment.Replace('-', ' ').Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return string.Join(' ', words.Select(w => char.ToUpperInvariant(w[0]) + w[1..]));
+    }
+
+    // Removes nav items for modules the customer has not purchased (SF-22). Fails open on error so a
+    // transient entitlement lookup failure never leaves the operator with an empty sidebar; the server
+    // still enforces entitlements on every data call (Q2).
+    private async Task<IReadOnlyList<NavItem>> GatedNavItemsAsync(IReadOnlyList<NavItem> all)
+    {
+        try
+        {
+            var entitlements = await Entitlements.GetForCompanyAsync(TenantContext.CurrentCompanyId);
+            var enabled = entitlements.Where(e => e.Enabled)
+                .Select(e => e.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return all
+                .Where(n => !GatedRouteModules.TryGetValue(n.Href, out var moduleKey) || enabled.Contains(moduleKey))
+                .ToList();
+        }
+        catch
+        {
+            return all;
+        }
     }
 
     private void OnNavigate(NavItem item) => Nav.NavigateTo(item.Href);

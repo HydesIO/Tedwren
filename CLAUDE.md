@@ -46,15 +46,24 @@ Two deployables that talk over HTTP/CORS, plus supporting libraries:
 | `src/Tedwren.Api` | ASP.NET Core Web API (separate deployable, CORS, mobile-ready). |
 | `tests/*` | xUnit unit + integration tests. |
 
-### The mock ↔ database switch
+### The data source (database is standard; Mock is deprecated)
 
-Configuration key **`DataSource`** decides which implementations resolve, behind the **same
-shared interfaces**, so switching never changes UI or business logic:
+**Mock mode is deprecated — the product runs against the database.** The in-memory ("Mock")
+implementations are retained **only as test doubles** (fast, isolated unit/API tests); they are not a
+supported runtime configuration and should not be relied on for new features. New work targets the
+database/API path.
 
-- **API** (`src/Tedwren.Api/appsettings.json`): `DataSource:Mode` = `Mock` | `Database`;
-  `DataSource:Provider` = `SqlServer` | `PostgreSql` (bound to `BackendOptions`). Defaults to Mock.
-- **Client** (`src/Tedwren.Client/wwwroot/appsettings.json`): `DataSource:Mode` = `Mock` |
-  `Api`. Defaults to Mock (today's in-proc sample data).
+Configuration key **`DataSource`** still selects which implementations resolve, behind the **same shared
+interfaces**, so business logic and UI are identical regardless:
+
+- **API** (`src/Tedwren.Api/appsettings.json`): `DataSource:Mode` = `Database` (default) | `Mock`
+  (deprecated, test-only); `DataSource:Provider` = `SqlServer` | `PostgreSql` (bound to `BackendOptions`).
+  Set `ConnectionStrings:SqlServer` (a LocalDB default ships in `appsettings.json`). Get the schema up to
+  date with EF migrations — see `docs/ef-migrations.md`.
+- **Client** (`src/Tedwren.Client/wwwroot/appsettings.json`): `DataSource:Mode` = `Api` (default) | `Mock`
+  (deprecated, in-proc sample data). `Api` mode calls the Web API at `Api:BaseUrl`.
+- **Tests** force `DataSource:Mode=Mock` (via a module initializer in `Tedwren.Api.Tests`) so the suite runs
+  without a database. This is the only sanctioned use of Mock going forward.
 
 ## Engineering standards (apply to every change)
 

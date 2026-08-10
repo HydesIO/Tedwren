@@ -1,18 +1,33 @@
 @page "/"
+@using System.Text
 @inject IDashboardSampleDataService Data
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 
 <PageTitle>Dashboard · Tedwren</PageTitle>
 
 <PageHeader Title="Dashboard" Subtitle="Compliance and workforce overview">
     <Actions>
-        <MudButton Variant="Variant.Outlined"
-                   StartIcon="@Icons.Material.Outlined.CalendarToday"
-                   Color="Color.Default">
-            28 Jul – 3 Aug 2026
-        </MudButton>
+        <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <ActivatorContent>
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Outlined.CalendarToday"
+                           EndIcon="@Icons.Material.Outlined.ArrowDropDown"
+                           Color="Color.Default">
+                    @_rangeLabel
+                </MudButton>
+            </ActivatorContent>
+            <ChildContent>
+                @foreach (var range in _ranges)
+                {
+                    <MudMenuItem OnClick="@(() => SelectRange(range))">@range</MudMenuItem>
+                }
+            </ChildContent>
+        </MudMenu>
         <MudButton Variant="Variant.Filled"
                    StartIcon="@Icons.Material.Outlined.FileDownload"
-                   Color="Color.Primary">
+                   Color="Color.Primary"
+                   OnClick="ExportAsync">
             Export
         </MudButton>
     </Actions>
@@ -114,6 +129,9 @@
     private IReadOnlyList<ActivityItem> _activity = Array.Empty<ActivityItem>();
     private IReadOnlyList<SiteRisk> _sites = Array.Empty<SiteRisk>();
 
+    private static readonly string[] _ranges = { "This week", "Last 30 days", "Last 90 days", "Year to date" };
+    private string _rangeLabel = "This week";
+
     protected override void OnInitialized()
     {
         _kpis = Data.GetKpis();
@@ -122,6 +140,30 @@
         _activity = Data.GetRecentActivity();
         _sites = Data.GetSiteRiskHeatmap();
     }
+
+    // Sets the reporting period shown on the dashboard.
+    private void SelectRange(string range) => _rangeLabel = range;
+
+    // Exports the site risk heatmap to a CSV file the browser downloads (real download, both modes).
+    private async Task ExportAsync()
+    {
+        var csv = new StringBuilder();
+        csv.AppendLine("Site,Operatives,Compliant,Expiring,At risk,Status");
+        foreach (var row in _sites)
+        {
+            csv.AppendLine($"{Escape(row.Site)},{row.Operatives},{row.Compliant},{row.Expiring},{row.AtRisk},{SeverityLabel(row.Severity)}");
+        }
+
+        var fileName = $"tedwren-site-risk-{DateTime.Now:yyyyMMdd}.csv";
+        await JS.InvokeVoidAsync("tedwrenDownload", fileName, "text/csv", csv.ToString());
+        Snackbar.Add($"Exported {_sites.Count} sites to {fileName}.", Severity.Success);
+    }
+
+    // Quotes a CSV field when it contains a comma or quote.
+    private static string Escape(string value)
+        => value.Contains(',') || value.Contains('"')
+            ? $"\"{value.Replace("\"", "\"\"")}\""
+            : value;
 
     private static string SeverityLabel(RiskSeverity s) => s switch
     {

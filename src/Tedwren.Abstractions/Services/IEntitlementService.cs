@@ -14,4 +14,7 @@ public interface IEntitlementService
 
     /// <summary>Whether a specific module is enabled for the company. Fails closed for unknown modules (Q2).</summary>
     Task<bool> IsEnabledAsync(Guid companyId, string moduleKey, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets (upserts) a company's entitlement for a module. Unknown modules are ignored (Q2).</summary>
+    Task SetEnabledAsync(Guid companyId, string moduleKey, bool enabled, CancellationToken cancellationToken = default);
 }

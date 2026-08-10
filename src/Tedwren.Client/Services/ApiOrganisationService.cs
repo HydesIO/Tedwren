@@ -44,6 +44,13 @@ public sealed class ApiOrganisationService : IOrganisationService
         return created?.Id ?? Guid.Empty;
     }
 
+    /// <summary>Updates a company via the API. False on 404.</summary>
+    public async Task<bool> UpdateCompanyAsync(Guid companyId, UpdateCompanyRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/organisation/companies/{companyId}", request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     /// <summary>Adds an operative via the API, returning the outcome (success or SF-2 refusal).</summary>
     public async Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default)
     {

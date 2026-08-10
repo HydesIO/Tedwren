@@ -13,6 +13,7 @@ using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Qualifications;
 using Tedwren.Application.Sites;
+using Tedwren.Application.Users;
 
 namespace Tedwren.Application;
 
@@ -88,6 +89,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic console user-management service (SF-20/SF-23/Q2).</summary>
+    public static IServiceCollection AddUserCore(this IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory user repository and its shared seeded store (mock mode).</summary>
+    public static IServiceCollection AddInMemoryUserStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryUserStore>();
+        services.AddScoped<IUserRepository, InMemoryUserRepository>();
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic sites business service (SF-6/SF-14/SF-25/SF-26).</summary>
     public static IServiceCollection AddSiteCore(this IServiceCollection services)
     {
@@ -158,9 +174,10 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9).</summary>
+    /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9) and the recipient-access throttle.</summary>
     public static IServiceCollection AddCompliancePackCore(this IServiceCollection services)
     {
+        services.AddSingleton<CompliancePacks.IPackAccessThrottle, CompliancePacks.InMemoryPackAccessThrottle>();
         services.AddScoped<ICompliancePackService, CompliancePacks.CompliancePackService>();
         return services;
     }
