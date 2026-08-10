@@ -219,6 +219,7 @@ Generic bordered/shadowed card shell with a title row, body and optional footer 
 | `Body` | `RenderFragment?` | Card content. |
 | `HeaderActions` | `RenderFragment?` | Right-aligned header slot. |
 | `FooterLinkText` / `FooterLinkHref` | `string?` | Optional footer link. |
+| `Class` | `string?` | Extra CSS class(es) appended to the card's root element. |
 
 ### `DonutStat`
 SVG donut + centred value/label. Used by the compliance overview.

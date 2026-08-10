@@ -6,6 +6,9 @@
 truth for all development in this repository.** It supersedes PRD v6.3, PRD v5.0 and Product
 Specification v4.0. Where anything in code, comments, this file, or `TODO.md` disagrees with the
 PRD, **the PRD wins** — and the discrepancy should be raised, not silently worked around.
+`docs/TedwrenPRDv6_4.md` is a plain-text mirror of the same document, kept for in-repo diffing and
+search; the `.docx` is still the file of record; if it is ever revised, re-sync the `.md` mirror
+in the same change.
 
 - Section 5 is requirements (SF / SUB / MC identifiers). Section 7 is rules (R1–R18) that must
   hold — each is a commercial, legal or safety constraint. Section 8 is the later commercial
