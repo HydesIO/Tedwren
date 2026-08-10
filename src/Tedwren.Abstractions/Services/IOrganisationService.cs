@@ -19,6 +19,9 @@ public interface IOrganisationService
     /// <summary>Creates a company and returns its new identifier.</summary>
     Task<Guid> CreateCompanyAsync(CreateCompanyRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Updates an existing company's details. Returns false when the company is not found.</summary>
+    Task<bool> UpdateCompanyAsync(Guid companyId, UpdateCompanyRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Adds an operative to a company: reuses the existing person for that mobile number or creates one
     /// (SF-1), and refuses a second engagement of the same person in the same company (SF-2).

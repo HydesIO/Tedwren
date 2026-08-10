@@ -116,6 +116,27 @@ public sealed class OrganisationService : IOrganisationService
         return company.Id;
     }
 
+    /// <summary>Updates an existing company's editable fields. Returns false when the company is not found.</summary>
+    public async Task<bool> UpdateCompanyAsync(Guid companyId, UpdateCompanyRequest request, CancellationToken cancellationToken = default)
+    {
+        var company = await _companies.GetByIdAsync(companyId, cancellationToken);
+        if (company is null)
+        {
+            return false;
+        }
+
+        company.Name = request.Name;
+        company.Type = request.Type;
+        company.Trade = request.Trade;
+        company.RegistrationNumber = request.RegistrationNumber;
+        company.Address = request.Address;
+        company.ContactName = request.ContactName;
+        company.ContactEmail = request.ContactEmail;
+        company.ContactPhone = request.ContactPhone;
+        await _companies.UpdateAsync(company, cancellationToken);
+        return true;
+    }
+
     /// <summary>
     /// Adds an operative to a company: reuses (or creates) the person for the mobile number (SF-1), and
     /// enforces one engagement per person per company — an active duplicate is refused naming the

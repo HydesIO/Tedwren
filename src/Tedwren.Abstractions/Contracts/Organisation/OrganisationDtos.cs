@@ -61,6 +61,17 @@ public sealed record CreateCompanyRequest(
     string? ContactEmail,
     string? ContactPhone);
 
+/// <summary>Request to update an existing company's editable fields.</summary>
+public sealed record UpdateCompanyRequest(
+    string Name,
+    string? Type,
+    string? Trade,
+    string? RegistrationNumber,
+    string? Address,
+    string? ContactName,
+    string? ContactEmail,
+    string? ContactPhone);
+
 /// <summary>
 /// Request to add an operative to a company. The person is identified by mobile number (SF-1); the
 /// name is recorded per company (SF-2).

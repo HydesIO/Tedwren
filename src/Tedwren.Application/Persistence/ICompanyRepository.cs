@@ -13,4 +13,7 @@ public interface ICompanyRepository
 
     /// <summary>Persists a new company.</summary>
     Task AddAsync(Company company, CancellationToken cancellationToken = default);
+
+    /// <summary>Persists changes to an existing company's editable fields.</summary>
+    Task UpdateAsync(Company company, CancellationToken cancellationToken = default);
 }
