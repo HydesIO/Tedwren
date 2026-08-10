@@ -20,17 +20,23 @@ public sealed class OrganisationService : IOrganisationService
     private readonly ICompanyRepository _companies;
     private readonly IPersonRepository _people;
     private readonly IEngagementRepository _engagements;
+    private readonly IQualificationCardRepository _cards;
 
     /// <summary>Creates the service over its repositories.</summary>
     public OrganisationService(
         ICompanyRepository companies,
         IPersonRepository people,
-        IEngagementRepository engagements)
+        IEngagementRepository engagements,
+        IQualificationCardRepository cards)
     {
         _companies = companies;
         _people = people;
         _engagements = engagements;
+        _cards = cards;
     }
+
+    /// <summary>Today's date for card-status evaluation (UTC; card expiry is date-only, R11).</summary>
+    private static DateOnly Today => DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime);
 
     /// <summary>Returns every company as a list-row summary, with its active operative count.</summary>
     public async Task<IReadOnlyList<CompanySummary>> GetCompaniesAsync(CancellationToken cancellationToken = default)
@@ -39,8 +45,11 @@ public sealed class OrganisationService : IOrganisationService
         var summaries = new List<CompanySummary>(companies.Count);
         foreach (var company in companies)
         {
-            var operatives = await _engagements.CountActiveByCompanyAsync(company.Id, cancellationToken);
-            summaries.Add(ToSummary(company, operatives));
+            var engagements = await _engagements.GetActiveByCompanyAsync(company.Id, cancellationToken);
+            var (state, percent) = await ComputeCompanyComplianceAsync(engagements, cancellationToken);
+            summaries.Add(new CompanySummary(
+                company.Id, Slug.From(company.Name), company.Name, company.Type, company.Trade,
+                engagements.Count, percent, state, ComplianceRollup.Label(state)));
         }
 
         return summaries;
@@ -57,10 +66,18 @@ public sealed class OrganisationService : IOrganisationService
         }
 
         var engagements = await _engagements.GetActiveByCompanyAsync(company.Id, cancellationToken);
-        var operatives = engagements
-            .Select(e => new CompanyOperativeDto(
-                e.Id, e.PersonId, Slug.From(e.Name), e.Name, e.Trade, ComplianceState.Pending, "Pending"))
-            .ToList();
+        var operatives = new List<CompanyOperativeDto>(engagements.Count);
+        var allCurrentCards = new List<QualificationCard>();
+        foreach (var e in engagements)
+        {
+            var current = await GetCurrentCardsAsync(e.PersonId, cancellationToken);
+            allCurrentCards.AddRange(current);
+            var (opState, _) = ComplianceRollup.FromCards(current, Today);
+            operatives.Add(new CompanyOperativeDto(
+                e.Id, e.PersonId, Slug.From(e.Name), e.Name, e.Trade, opState, ComplianceRollup.Label(opState)));
+        }
+
+        var (companyState, companyPercent) = ComplianceRollup.FromCards(allCurrentCards, Today);
 
         return new CompanyDetailDto(
             company.Id,
@@ -68,9 +85,9 @@ public sealed class OrganisationService : IOrganisationService
             company.Name,
             company.Type,
             company.Trade,
-            ComplianceState.Pending,
-            "Pending",
-            CompliancePercent: null,
+            companyState,
+            ComplianceRollup.Label(companyState),
+            CompliancePercent: companyPercent,
             company.RegistrationNumber,
             company.Address,
             company.ContactName,
@@ -175,8 +192,23 @@ public sealed class OrganisationService : IOrganisationService
         return true;
     }
 
-    /// <summary>Maps a company entity and its operative count to a list summary (compliance pending pre-Phase 9).</summary>
-    private static CompanySummary ToSummary(Company company, int operatives) =>
-        new(company.Id, Slug.From(company.Name), company.Name, company.Type, company.Trade,
-            operatives, CompliancePercent: null, ComplianceState.Pending, "Pending");
+    /// <summary>Returns a person's current (non-superseded) cards — the input to the compliance roll-up (SF-8/SF-10).</summary>
+    private async Task<IReadOnlyList<QualificationCard>> GetCurrentCardsAsync(Guid personId, CancellationToken cancellationToken)
+    {
+        var cards = await _cards.GetByPersonAsync(personId, cancellationToken);
+        return cards.Where(c => !c.IsSuperseded).ToList();
+    }
+
+    /// <summary>Aggregates a company's active operatives' current cards into one compliance state and percentage.</summary>
+    private async Task<(ComplianceState State, double? Percent)> ComputeCompanyComplianceAsync(
+        IReadOnlyList<Engagement> engagements, CancellationToken cancellationToken)
+    {
+        var allCurrent = new List<QualificationCard>();
+        foreach (var e in engagements)
+        {
+            allCurrent.AddRange(await GetCurrentCardsAsync(e.PersonId, cancellationToken));
+        }
+
+        return ComplianceRollup.FromCards(allCurrent, Today);
+    }
 }

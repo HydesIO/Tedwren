@@ -15,10 +15,12 @@ public sealed class OrganisationServiceTests
     private static (OrganisationService Service, InMemoryOrganisationStore Store) CreateSut()
     {
         var store = new InMemoryOrganisationStore(seed: false);
+        var qualificationStore = new InMemoryQualificationStore(seed: false);
         var service = new OrganisationService(
             new InMemoryCompanyRepository(store),
             new InMemoryPersonRepository(store),
-            new InMemoryEngagementRepository(store));
+            new InMemoryEngagementRepository(store),
+            new InMemoryQualificationCardRepository(qualificationStore));
         return (service, store);
     }
 
