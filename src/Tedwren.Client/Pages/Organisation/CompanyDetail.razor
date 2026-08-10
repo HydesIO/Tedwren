@@ -147,10 +147,13 @@ else
             new()
             {
                 Title = "", Value = _ => string.Empty, Searchable = false, Sortable = false,
-                CellTemplate = o => @<div @onclick:stopPropagation="true">
+                CellTemplate = o => @<div @onclick:stopPropagation="true" class="op-actions">
                     <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
                                StartIcon="@Icons.Material.Outlined.Badge"
                                OnClick="@(() => ShowCardsAsync(o))">Qualifications</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
+                               StartIcon="@Icons.Material.Outlined.Schedule"
+                               Href="@($"/my-hours?person={o.PersonId}&company={_company!.Id}")" Target="_blank">Hours</MudButton>
                 </div>
             },
         };

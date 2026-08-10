@@ -1,0 +1,135 @@
+@page "/my-hours"
+@layout RecipientLayout
+@using Tedwren.Abstractions.Contracts.Timesheets
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ITimesheetService Timesheets
+@inject NavigationManager Nav
+
+<PageTitle>My hours · Tedwren</PageTitle>
+
+<div class="myhours">
+    @if (_personId == Guid.Empty)
+    {
+        <DashboardCard Title="My hours">
+            <Body>
+                <BannerAlert Severity="StatusKind.Warning" Title="Missing link"
+                             Message="Open this from your personal link to see your hours." />
+            </Body>
+        </DashboardCard>
+    }
+    else
+    {
+        <DashboardCard Title="My hours" Subtitle="@($"Week of {_weekStart:dd MMM yyyy}")">
+            <Body>
+                <div class="myhours__nav">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.ChevronLeft"
+                               OnClick="@(() => ChangeWeek(-7))">Previous</MudButton>
+                    <MudButton Size="Size.Small" Variant="Variant.Text" EndIcon="@Icons.Material.Outlined.ChevronRight"
+                               OnClick="@(() => ChangeWeek(7))" Disabled="_weekStart >= ThisWeekStart">Next</MudButton>
+                </div>
+
+                @if (_hours is null)
+                {
+                    <p>Loading…</p>
+                }
+                else
+                {
+                    <div class="myhours__summary">
+                        <span class="myhours__total">@_hours.TotalHours.ToString("0.##")</span>
+                        <span class="myhours__unit">hours</span>
+                        <StatusPill Label="@_hours.StatusLabel" Status="ToStatus(_hours.StatusLabel)" />
+                    </div>
+
+                    @if (_hours.Lines.Count == 0)
+                    {
+                        <EmptyState Icon="@Icons.Material.Outlined.Schedule"
+                                    Title="No hours yet"
+                                    Description="No time has been recorded for you this week." />
+                    }
+                    else
+                    {
+                        <table class="myhours__table">
+                            <thead><tr><th>Day</th><th>Site</th><th class="myhours__num">Hours</th></tr></thead>
+                            <tbody>
+                                @foreach (var line in _hours.Lines)
+                                {
+                                    <tr>
+                                        <td>@line.WorkDate.ToString("ddd dd MMM")</td>
+                                        <td>@line.SiteName</td>
+                                        <td class="myhours__num">@line.Hours.ToString("0.##")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                }
+            </Body>
+        </DashboardCard>
+    }
+</div>
+
+@code {
+    private Guid _personId;
+    private Guid _companyId;
+    private DateOnly _weekStart;
+    private OperativeHoursDto? _hours;
+
+    private static DateOnly ThisWeekStart => WeekStartOf(DateOnly.FromDateTime(DateTime.Today));
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        _personId = Guid.TryParse(ParseQuery(uri.Query, "person"), out var p) ? p : Guid.Empty;
+        _companyId = Guid.TryParse(ParseQuery(uri.Query, "company"), out var c) ? c : TenantContext.CurrentCompanyId;
+        _weekStart = ThisWeekStart;
+
+        if (_personId != Guid.Empty)
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task LoadAsync() =>
+        _hours = await Timesheets.GetOperativeHoursAsync(_companyId, _personId, _weekStart);
+
+    private async Task ChangeWeek(int days)
+    {
+        _weekStart = _weekStart.AddDays(days);
+        _hours = null;
+        await LoadAsync();
+    }
+
+    private static DateOnly WeekStartOf(DateOnly date)
+    {
+        var offset = ((int)date.DayOfWeek + 6) % 7;   // Monday = 0
+        return date.AddDays(-offset);
+    }
+
+    private static StatusKind ToStatus(string status) => status switch
+    {
+        "Approved" => StatusKind.Success,
+        "Submitted" => StatusKind.Warning,
+        "Returned" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+
+    private static string? ParseQuery(string query, string key)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && string.Equals(Uri.UnescapeDataString(parts[0]), key, StringComparison.OrdinalIgnoreCase))
+            {
+                return Uri.UnescapeDataString(parts[1]);
+            }
+        }
+
+        return null;
+    }
+}
