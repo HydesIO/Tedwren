@@ -36,33 +36,45 @@ public static class CompliancePackEndpoints
                 await service.RevokeAsync(companyId, packId, cancellationToken) ? Results.NoContent() : Results.NotFound())
             .WithName("RevokePack");
 
-        // Recipient access — token + passcode only, no account (R8).
-        group.MapGet("/view", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
+        // Recipient access — token + passcode only, no account (R8). These carry personal data, so responses
+        // must never be cached by browsers or intermediaries.
+        var recipient = app.MapGroup("/api/packs").WithTags("CompliancePacks").AddEndpointFilter(NoStoreFilter);
+
+        recipient.MapGet("/view", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
             {
                 var result = await service.ViewAsync(token, passcode, cancellationToken);
                 return result.Granted ? Results.Ok(result.Pack) : Results.Json(new { reason = result.Reason }, statusCode: StatusCodes.Status403Forbidden);
             })
             .WithName("ViewPack");
 
-        group.MapGet("/download.csv", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
+        recipient.MapGet("/download.csv", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
                 await service.DownloadCsvAsync(token, passcode, cancellationToken) is { } bytes
                     ? Results.File(bytes, "text/csv", "compliance-pack.csv")
                     : Results.StatusCode(StatusCodes.Status403Forbidden))
             .WithName("DownloadPackCsv");
 
-        group.MapGet("/download.zip", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
+        recipient.MapGet("/download.zip", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
                 await service.DownloadZipAsync(token, passcode, cancellationToken) is { } bytes
                     ? Results.File(bytes, "application/zip", "compliance-pack.zip")
                     : Results.StatusCode(StatusCodes.Status403Forbidden))
             .WithName("DownloadPackZip");
 
-        group.MapGet("/download.pdf", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
+        recipient.MapGet("/download.pdf", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
                 await service.DownloadPdfAsync(token, passcode, cancellationToken) is { } bytes
                     ? Results.File(bytes, "application/pdf", "compliance-pack.pdf")
                     : Results.StatusCode(StatusCodes.Status403Forbidden))
             .WithName("DownloadPackPdf");
 
         return app;
+    }
+
+    /// <summary>Marks a response uncacheable — pack data must not be stored by browsers or proxies.</summary>
+    private static async ValueTask<object?> NoStoreFilter(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        var headers = context.HttpContext.Response.Headers;
+        headers.CacheControl = "no-store, no-cache, must-revalidate";
+        headers.Pragma = "no-cache";
+        return await next(context);
     }
 
     /// <summary>Body for the readiness-preview endpoint.</summary>

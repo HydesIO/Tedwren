@@ -30,7 +30,8 @@ public sealed class CompliancePackServiceTests
         return new CompliancePackService(
             new InMemoryCompliancePackRepository(new InMemoryCompliancePackStore()),
             quals,
-            new FakeEngagements());
+            new FakeEngagements(),
+            new InMemoryPackAccessThrottle());
     }
 
     private static BuildPackRequest Request(Guid person, bool acknowledge, Guid? supersedes = null) =>
