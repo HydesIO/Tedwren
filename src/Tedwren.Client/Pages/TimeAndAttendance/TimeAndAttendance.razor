@@ -6,6 +6,7 @@
 @inject ITimesheetService Timesheets
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
+@inject IJSRuntime JS
 
 <PageTitle>Time &amp; Attendance · Tedwren</PageTitle>
 
@@ -24,6 +25,7 @@
                    Items="_timesheets"
                    Columns="_columns"
                    Loading="_loading"
+                   OnRowClick="OpenDetail"
                    SearchPlaceholder="Search operative…"
                    EmptyTitle="No timesheets"
                    EmptyDescription="No timesheets exist for this valuation period."
@@ -89,6 +91,22 @@
         };
     }
 
+    // Opens the timesheet detail dialog for line-level corrections (R16) and scope-configurable approval (SUB-9).
+    private async Task OpenDetail(TimesheetSummaryDto timesheet)
+    {
+        var parameters = new DialogParameters<TimesheetDetailDialog>
+        {
+            { x => x.TimesheetId, timesheet.Id },
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await Dialogs.ShowAsync<TimesheetDetailDialog>($"{timesheet.OperativeName} — timesheet", parameters, options);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: true })
+        {
+            await LoadAsync();
+        }
+    }
+
     // Approves the whole timesheet (SUB-9 scope = All).
     private async Task ApproveAsync(TimesheetSummaryDto timesheet)
     {
@@ -121,11 +139,14 @@
         }
     }
 
-    // Renders the company-week CSV export and hands it to the caller as a notification (a real download in Api mode).
+    // Renders the company-week CSV export and downloads it in the browser (real download in both modes).
     private async Task ExportCsv()
     {
         var csv = await Timesheets.ExportCompanyWeekCsvAsync(CompanyId, WeekStart);
-        Snackbar.Add($"Exported {csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length - 1} timesheet rows to CSV.", Severity.Success);
+        var rows = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length - 1;
+        var fileName = $"tedwren-timesheets-{WeekStart:yyyyMMdd}.csv";
+        await JS.InvokeVoidAsync("tedwrenDownload", fileName, "text/csv", csv);
+        Snackbar.Add($"Exported {rows} timesheet rows to {fileName}.", Severity.Success);
     }
 
     private static StatusKind ToStatusKind(TimesheetState status) => status switch

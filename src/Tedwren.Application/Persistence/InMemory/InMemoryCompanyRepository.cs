@@ -27,4 +27,11 @@ public sealed class InMemoryCompanyRepository : ICompanyRepository
         _store.Companies[company.Id] = company;
         return Task.CompletedTask;
     }
+
+    /// <summary>Updates a company in the store.</summary>
+    public Task UpdateAsync(Company company, CancellationToken cancellationToken = default)
+    {
+        _store.Companies[company.Id] = company;
+        return Task.CompletedTask;
+    }
 }

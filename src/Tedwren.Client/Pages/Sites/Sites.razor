@@ -9,7 +9,8 @@
 
 <PageHeader Title="Sites & Projects" Subtitle="Sites, projects and dispersed schemes">
     <Actions>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="@(() => Nav.NavigateTo("/sites/add"))">
             Add site
         </MudButton>
     </Actions>

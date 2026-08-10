@@ -1,80 +1,78 @@
 @page "/users"
-@inject IFormSampleDataService Options
-@inject ISnackbar Snackbar
+@using Tedwren.Abstractions.Contracts.Users
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.Models
+@inject IUserService UserData
+@inject NavigationManager Nav
 
 <PageTitle>Users · Tedwren</PageTitle>
 
-<PageHeader Title="Invite user" Subtitle="Send an invitation and set the user's permissions" />
+<PageHeader Title="Users" Subtitle="Console access, roles and account status">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAdd"
+                   OnClick="InviteUser">
+            Invite user
+        </MudButton>
+    </Actions>
+</PageHeader>
 
-<div class="form-page">
-    <FormSection Title="User details" Description="We'll email an invitation to join the workspace.">
-        <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true" Placeholder="Full name"
-                          Error="_submitted && string.IsNullOrWhiteSpace(_name)"
-                          ErrorText="Name is required." />
-        <TedwrenTextField Label="Email address" @bind-Value="_email" Required="true"
-                          InputType="InputType.Email" Placeholder="name@company.com"
-                          Error="_submitted && !IsValidEmail(_email)"
-                          ErrorText="Enter a valid email address." />
-        <TedwrenSelect T="string" Label="Role" @bind-Value="_role" Required="true"
-                       Options="_roles" Placeholder="Select a role"
-                       HelperText="Roles set sensible permission defaults, which you can adjust below."
-                       Error="_submitted && string.IsNullOrWhiteSpace(_role)"
-                       ErrorText="Select a role." />
-    </FormSection>
-
-    <FormSection Title="Permissions" Description="Fine-tune what this user can do. Each permission is a simple on/off toggle.">
-        <div class="form-page__full form-page__toggles">
-            @foreach (var flag in _flags)
-            {
-                <TedwrenToggle Label="@flag.Label"
-                               Description="@flag.Description"
-                               Value="_permissions[flag.Key]"
-                               ValueChanged="@(v => _permissions[flag.Key] = v)" />
-                <MudDivider />
-            }
-        </div>
-    </FormSection>
-
-    <FormActions>
-        <Primary>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
-                       OnClick="Send">Send invitation</MudButton>
-        </Primary>
-    </FormActions>
-</div>
+<DashboardCard>
+    <Body>
+        <DataTable TItem="UserDto"
+                   Items="_users"
+                   Columns="_columns"
+                   Loading="_loading"
+                   OnRowClick="OpenUser"
+                   SearchPlaceholder="Search users…"
+                   EmptyTitle="No users yet"
+                   EmptyDescription="Invite a colleague to give them console access."
+                   EmptyIcon="@Icons.Material.Outlined.People" />
+    </Body>
+</DashboardCard>
 
 @code {
-    private string? _name;
-    private string? _email;
-    private string? _role;
-    private bool _submitted;
+    private IReadOnlyList<UserDto> _users = Array.Empty<UserDto>();
+    private List<DataColumn<UserDto>> _columns = new();
+    private bool _loading = true;
 
-    private IReadOnlyList<string> _roles = Array.Empty<string>();
-    private IReadOnlyList<PermissionFlag> _flags = Array.Empty<PermissionFlag>();
-    private readonly Dictionary<string, bool> _permissions = new();
-
-    protected override void OnInitialized()
+    // Loads the users through the shared IUserService, served from mock or the API identically (SF-20).
+    protected override async Task OnInitializedAsync()
     {
-        _roles = Options.GetRoles();
-        _flags = Options.GetPermissionFlags();
-        foreach (var flag in _flags)
-        {
-            _permissions[flag.Key] = flag.Enabled;
-        }
+        BuildColumns();
+        _users = await UserData.GetUsersAsync();
+        _loading = false;
     }
 
-    private void Send()
-    {
-        _submitted = true;
-        if (string.IsNullOrWhiteSpace(_name) || !IsValidEmail(_email) || string.IsNullOrWhiteSpace(_role))
-        {
-            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
-            return;
-        }
+    private void InviteUser() => Nav.NavigateTo("/users/invite");
 
-        Snackbar.Add($"Invitation sent to {_email} (demo — nothing is persisted).", Severity.Success);
+    private void OpenUser(UserDto user) => Nav.NavigateTo($"/users/{user.Id}");
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Name", Value = u => u.Name },
+            new() { Title = "Email", Value = u => u.Email, Filterable = true },
+            new() { Title = "Role", Value = u => u.RoleLabel, Filterable = true },
+            new()
+            {
+                Title = "Last active", Value = u => u.LastActiveUtc ?? DateTimeOffset.MinValue, Searchable = false,
+                CellTemplate = u => @<span>@(u.LastActiveUtc is { } t ? t.LocalDateTime.ToString("dd MMM yyyy") : "—")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = u => u.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = u => @<StatusPill Label="@u.StatusLabel" Status="ToStatus(u.Status)" />
+            },
+        };
     }
 
-    private static bool IsValidEmail(string? value)
-        => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+    // Maps the account status to the shared pill palette.
+    private static StatusKind ToStatus(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "Invited" => StatusKind.Warning,
+        "Suspended" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
 }

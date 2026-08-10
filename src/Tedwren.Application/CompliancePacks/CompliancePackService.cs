@@ -21,14 +21,17 @@ public sealed class CompliancePackService : ICompliancePackService
     private readonly ICompliancePackRepository _packs;
     private readonly IQualificationService _qualifications;
     private readonly IEngagementRepository _engagements;
+    private readonly IPackAccessThrottle _throttle;
 
-    /// <summary>Creates the service over its repositories.</summary>
+    /// <summary>Creates the service over its repositories and the recipient-access throttle.</summary>
     public CompliancePackService(
-        ICompliancePackRepository packs, IQualificationService qualifications, IEngagementRepository engagements)
+        ICompliancePackRepository packs, IQualificationService qualifications, IEngagementRepository engagements,
+        IPackAccessThrottle throttle)
     {
         _packs = packs;
         _qualifications = qualifications;
         _engagements = engagements;
+        _throttle = throttle;
     }
 
     /// <summary>Previews the readiness problems for a selection without sending (SUB-14).</summary>
@@ -170,9 +173,20 @@ public sealed class CompliancePackService : ICompliancePackService
             });
         }
 
-        return PackPasscode.Verify(passcode, pack.PasscodeHash)
-            ? (pack, null)
-            : (null, "Incorrect passcode.");
+        // Rate-limit passcode guessing against a leaked link (security-review hardening).
+        if (_throttle.IsLockedOut(token))
+        {
+            return (null, "Too many incorrect attempts. Please wait a while and try again.");
+        }
+
+        if (PackPasscode.Verify(passcode, pack.PasscodeHash))
+        {
+            _throttle.Reset(token);
+            return (pack, null);
+        }
+
+        _throttle.RegisterFailure(token);
+        return (null, "Incorrect passcode.");
     }
 
     /// <summary>Snapshots each operative's current compliance into the fixed pack subjects (R7).</summary>

@@ -30,6 +30,34 @@
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
     <script src="js/tedwren.js"></script>
+    <script>
+        // Triggers a client-side file download (e.g. CSV export) without a round-trip to the server.
+        window.tedwrenDownload = (fileName, mimeType, content) => {
+            const blob = new Blob([content], { type: mimeType || 'text/plain' });
+            downloadBlob(fileName, blob);
+        };
+
+        // Downloads binary content supplied as base64 (e.g. a pack ZIP or PDF).
+        window.tedwrenDownloadBase64 = (fileName, mimeType, base64) => {
+            const binary = atob(base64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            downloadBlob(fileName, new Blob([bytes], { type: mimeType || 'application/octet-stream' }));
+        };
+
+        function downloadBlob(fileName, blob) {
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        }
+    </script>
 </body>
 
 </html>

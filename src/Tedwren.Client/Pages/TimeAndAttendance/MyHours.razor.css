@@ -1,0 +1,45 @@
+.myhours {
+    width: 100%;
+    max-width: 520px;
+}
+
+.myhours__nav {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: var(--spacing-8, 8px);
+}
+
+.myhours__summary {
+    display: flex;
+    align-items: baseline;
+    gap: var(--spacing-8, 8px);
+    margin-bottom: var(--spacing-16, 16px);
+}
+
+.myhours__total {
+    font-size: var(--font-size-32, 32px);
+    font-weight: 700;
+    color: var(--color-text-primary, #101828);
+}
+
+.myhours__unit {
+    color: var(--color-text-secondary, #475467);
+    margin-right: var(--spacing-8, 8px);
+}
+
+.myhours__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--font-size-14, 14px);
+}
+
+.myhours__table th,
+.myhours__table td {
+    padding: var(--spacing-8, 8px);
+    border-bottom: 1px solid var(--color-border, #e4e7ec);
+    text-align: left;
+}
+
+.myhours__num {
+    text-align: right;
+}

@@ -15,10 +15,12 @@ public sealed class OrganisationServiceTests
     private static (OrganisationService Service, InMemoryOrganisationStore Store) CreateSut()
     {
         var store = new InMemoryOrganisationStore(seed: false);
+        var qualificationStore = new InMemoryQualificationStore(seed: false);
         var service = new OrganisationService(
             new InMemoryCompanyRepository(store),
             new InMemoryPersonRepository(store),
-            new InMemoryEngagementRepository(store));
+            new InMemoryEngagementRepository(store),
+            new InMemoryQualificationCardRepository(qualificationStore));
         return (service, store);
     }
 
@@ -106,5 +108,32 @@ public sealed class OrganisationServiceTests
         var alpha = Assert.Single(companies);
         Assert.Equal("alpha-ltd", alpha.Slug);
         Assert.Equal(1, alpha.Operatives);
+    }
+
+    [Fact]
+    public async Task UpdateCompany_PersistsChanges()
+    {
+        var (service, _) = CreateSut();
+        var id = await AddCompanyAsync(service, "Alpha Ltd");
+
+        var ok = await service.UpdateCompanyAsync(id, new UpdateCompanyRequest(
+            "Alpha Renamed Ltd", "Main Contractor", "Roofing", "12345678", "1 New Road", "Jo", "jo@x.com", "0800"));
+
+        Assert.True(ok);
+        var updated = await service.GetCompanyAsync("alpha-renamed-ltd");
+        Assert.NotNull(updated);
+        Assert.Equal("Main Contractor", updated!.Type);
+        Assert.Equal("jo@x.com", updated.ContactEmail);
+    }
+
+    [Fact]
+    public async Task UpdateCompany_UnknownId_ReturnsFalse()
+    {
+        var (service, _) = CreateSut();
+
+        var ok = await service.UpdateCompanyAsync(Guid.NewGuid(), new UpdateCompanyRequest(
+            "X", null, null, null, null, null, null, null));
+
+        Assert.False(ok);
     }
 }

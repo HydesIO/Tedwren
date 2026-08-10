@@ -1,0 +1,184 @@
+@using Tedwren.Abstractions.Common
+@using Tedwren.Abstractions.Contracts.Timesheets
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ITimesheetService Timesheets
+@inject ISnackbar Snackbar
+
+@* Timesheet detail with line-level corrections (R16) and scope-configurable approval (SUB-9). *@
+
+<MudDialog>
+    <DialogContent>
+        @if (_timesheet is null)
+        {
+            <p class="ts-detail__loading">Loading…</p>
+        }
+        else
+        {
+            <div class="ts-detail">
+                <div class="ts-detail__head">
+                    <div>
+                        <span class="ts-detail__name">@_timesheet.OperativeName</span>
+                        <span class="ts-detail__week">Week of @_timesheet.WeekStart.ToString("dd MMM yyyy")</span>
+                    </div>
+                    <StatusPill Label="@_timesheet.StatusLabel" Status="@ToStatusKind(_timesheet.Status)" />
+                </div>
+
+                <table class="ts-detail__table">
+                    <thead>
+                        <tr><th>Day</th><th>Site</th><th class="ts-detail__num">Hours</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var line in _timesheet.Lines)
+                        {
+                            <tr>
+                                <td>@line.WorkDate.ToString("ddd dd MMM")</td>
+                                <td>@line.SiteName</td>
+                                <td class="ts-detail__num">
+                                    @line.Hours.ToString("0.##")
+                                    @if (line.IsCorrected)
+                                    {
+                                        <MudTooltip Text="@($"Corrected — {line.Reason}")"><span class="ts-detail__flag">corrected</span></MudTooltip>
+                                    }
+                                </td>
+                                <td class="ts-detail__num">
+                                    @if (_canCorrect)
+                                    {
+                                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                   OnClick="@(() => BeginCorrect(line))">Correct</MudButton>
+                                    }
+                                </td>
+                            </tr>
+                            @if (_editingEntryId == line.EntryId)
+                            {
+                                <tr class="ts-detail__editrow">
+                                    <td colspan="4">
+                                        <div class="ts-detail__edit">
+                                            <MudNumericField T="decimal" @bind-Value="_editHours" Label="Corrected hours"
+                                                             Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" Max="24" Step="0.25M" />
+                                            <MudTextField @bind-Value="_editReason" Label="Reason" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary"
+                                                       OnClick="SaveCorrection" Disabled="_busy">Save</MudButton>
+                                            <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => _editingEntryId = null)">Cancel</MudButton>
+                                        </div>
+                                    </td>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr><td colspan="2"><strong>Total</strong></td><td class="ts-detail__num"><strong>@_timesheet.TotalHours.ToString("0.##")</strong></td><td></td></tr>
+                    </tfoot>
+                </table>
+
+                @if (_timesheet.Status == TimesheetState.Submitted)
+                {
+                    <div class="ts-detail__approve">
+                        <MudSelect T="ApprovalScope" @bind-Value="_scope" Label="Approval scope (SUB-9)"
+                                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            <MudSelectItem Value="ApprovalScope.All">Whole timesheet</MudSelectItem>
+                            <MudSelectItem Value="ApprovalScope.Project">Project</MudSelectItem>
+                            <MudSelectItem Value="ApprovalScope.Site">Site</MudSelectItem>
+                            <MudSelectItem Value="ApprovalScope.Line">Single line</MudSelectItem>
+                        </MudSelect>
+                    </div>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="Close">Close</MudButton>
+        @if (_timesheet?.Status == TimesheetState.Submitted)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="ReturnAsync" Disabled="_busy">Return for correction</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ApproveAsync" Disabled="_busy">Approve</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid TimesheetId { get; set; }
+
+    private TimesheetDto? _timesheet;
+    private bool _changed;
+    private bool _busy;
+    private ApprovalScope _scope = ApprovalScope.All;
+
+    private Guid? _editingEntryId;
+    private decimal _editHours;
+    private string _editReason = string.Empty;
+
+    // Corrections are allowed while a timesheet is still open (not yet approved).
+    private bool _canCorrect => _timesheet is not null && _timesheet.Status != TimesheetState.Approved;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => _timesheet = await Timesheets.GetTimesheetAsync(TimesheetId);
+
+    private void BeginCorrect(TimesheetLineDto line)
+    {
+        _editingEntryId = line.EntryId;
+        _editHours = line.Hours;
+        _editReason = string.Empty;
+    }
+
+    private async Task SaveCorrection()
+    {
+        if (string.IsNullOrWhiteSpace(_editReason))
+        {
+            Snackbar.Add("A reason is required for a correction (R16).", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        var updated = await Timesheets.CorrectLineAsync(TimesheetId,
+            new CorrectLineRequest(_editingEntryId!.Value, _editHours, "You", _editReason.Trim()));
+        _busy = false;
+
+        if (updated is not null)
+        {
+            _timesheet = updated;
+            _changed = true;
+            _editingEntryId = null;
+            Snackbar.Add("Line corrected.", Severity.Success);
+        }
+    }
+
+    private async Task ApproveAsync()
+    {
+        _busy = true;
+        var result = await Timesheets.ApproveAsync(TimesheetId, new ApproveTimesheetRequest("You", _scope));
+        _busy = false;
+        if (result is not null)
+        {
+            _changed = true;
+            Snackbar.Add($"Approved ({_scope}).", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private async Task ReturnAsync()
+    {
+        _busy = true;
+        var result = await Timesheets.ReturnAsync(TimesheetId, new ReturnTimesheetRequest("You", "Please review the recorded hours."));
+        _busy = false;
+        if (result is not null)
+        {
+            _changed = true;
+            Snackbar.Add("Returned for correction.", Severity.Info);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+    }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(_changed));
+
+    private static StatusKind ToStatusKind(TimesheetState status) => status switch
+    {
+        TimesheetState.Approved => StatusKind.Success,
+        TimesheetState.Submitted => StatusKind.Warning,
+        TimesheetState.Returned => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -2,6 +2,8 @@
 @using Tedwren.Abstractions.Contracts.Audit
 @using Tedwren.Abstractions.Services
 @inject IAuditService Audit
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 
 <PageTitle>Audit Log · Tedwren</PageTitle>
 
@@ -14,6 +16,11 @@
                             Margin="Margin.Dense"
                             Clearable="true"
                             Class="audit-log__range" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                   StartIcon="@Icons.Material.Outlined.FileDownload"
+                   OnClick="ExportAsync">
+            Export
+        </MudButton>
     </Actions>
 </PageHeader>
 
@@ -57,6 +64,18 @@
         DateOnly? to = _range?.End is { } e ? DateOnly.FromDateTime(e) : null;
         _entries = await Audit.SearchAsync(companyId: null, text: null, from: from, to: to);
         _loading = false;
+    }
+
+    // Exports the audit entries for the current date range as a CSV the browser downloads (SF-20).
+    private async Task ExportAsync()
+    {
+        DateOnly? from = _range?.Start is { } s ? DateOnly.FromDateTime(s) : null;
+        DateOnly? to = _range?.End is { } e ? DateOnly.FromDateTime(e) : null;
+        var csv = await Audit.ExportCsvAsync(companyId: null, text: null, from: from, to: to);
+
+        var fileName = $"tedwren-audit-{DateTime.Now:yyyyMMdd}.csv";
+        await JS.InvokeVoidAsync("tedwrenDownload", fileName, "text/csv", csv);
+        Snackbar.Add($"Exported {_entries.Count} audit entries to {fileName}.", Severity.Success);
     }
 
     private void BuildColumns()

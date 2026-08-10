@@ -1,17 +1,19 @@
 @page "/notifications"
-@inject IShellSampleDataService Shell
+@using Tedwren.Abstractions.Contracts.Expiry
+@using Tedwren.Abstractions.Services
+@inject IExpiryQueryService Expiry
 
 <PageTitle>Notifications · Tedwren</PageTitle>
 
-<PageHeader Title="Notifications" Subtitle="Everything that's happened across your workspace" />
+<PageHeader Title="Notifications" Subtitle="Qualifications approaching or past expiry (SF-9)" />
 
 <DashboardCard>
     <Body>
-        @if (_items.Count == 0)
+        @if (!_loading && _items.Count == 0)
         {
             <EmptyState Icon="@Icons.Material.Outlined.NotificationsNone"
                         Title="You're all caught up"
-                        Description="New notifications will appear here." />
+                        Description="No qualifications are due to expire in the next 60 days." />
         }
         else
         {
@@ -22,11 +24,42 @@
 
 @code {
     private IReadOnlyList<ActivityItem> _items = Array.Empty<ActivityItem>();
+    private bool _loading = true;
 
-    protected override void OnInitialized()
+    // Loads real upcoming/expired qualifications from the API and presents them as a notifications feed (SF-9).
+    protected override async Task OnInitializedAsync()
     {
-        _items = Shell.GetNotifications()
-            .Select(n => new ActivityItem(n.Icon, n.Title, n.Detail, n.RelativeTime, n.Accent))
-            .ToList();
+        var upcoming = await Expiry.GetUpcomingAsync(withinDays: 60);
+        _items = upcoming.Select(ToActivity).ToList();
+        _loading = false;
+    }
+
+    private static ActivityItem ToActivity(UpcomingExpiryDto e) => new(
+        Icon: Icons.Material.Outlined.WarningAmber,
+        Primary: $"{e.QualificationName} — {e.StatusLabel}",
+        Secondary: e.ExpiresOn is { } on ? $"Expires {on:dd MMM yyyy}" : "No expiry date recorded",
+        RelativeTime: RelativeLabel(e.DaysUntilExpiry),
+        Accent: Accent(e.DaysUntilExpiry));
+
+    // "expired", "today", or "in N days".
+    private static string RelativeLabel(int daysUntilExpiry)
+    {
+        if (daysUntilExpiry < 0)
+        {
+            return $"{-daysUntilExpiry}d overdue";
+        }
+
+        return daysUntilExpiry == 0 ? "today" : $"in {daysUntilExpiry}d";
+    }
+
+    // Past due is danger; within a fortnight is a warning; otherwise informational.
+    private static StatusKind Accent(int daysUntilExpiry)
+    {
+        if (daysUntilExpiry < 0)
+        {
+            return StatusKind.Danger;
+        }
+
+        return daysUntilExpiry <= 14 ? StatusKind.Warning : StatusKind.Info;
     }
 }

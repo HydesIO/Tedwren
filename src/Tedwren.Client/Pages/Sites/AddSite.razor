@@ -1,0 +1,135 @@
+@page "/sites/add"
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@inject IOrganisationService Org
+@inject ISiteService SiteData
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Add site · Tedwren</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="px-0" />
+
+<PageHeader Title="Add site" Subtitle="Record a site, project or dispersed scheme (SF-6)" />
+
+<div class="form-page">
+    <FormSection Title="Site details" Description="Recording a site is unlimited and never billed (SF-6).">
+        <TedwrenSelect T="string" Label="Managing company" @bind-Value="_company" Required="true"
+                       Options="_companyNames" Placeholder="Select a company"
+                       HelperText="The company that records and manages this site."
+                       Error="_submitted && string.IsNullOrWhiteSpace(_company)"
+                       ErrorText="Select a company." />
+        <TedwrenTextField Label="Site name" @bind-Value="_name" Required="true"
+                          Placeholder="e.g. Meridian Tower"
+                          Error="_submitted && string.IsNullOrWhiteSpace(_name)"
+                          ErrorText="Site name is required." />
+        <TedwrenTextField Label="Client" @bind-Value="_client" Placeholder="e.g. Meridian Estates" />
+        <TedwrenSelect T="string" Label="Region" @bind-Value="_region" Options="_regions" Placeholder="Select a region" />
+        <TedwrenTextField Label="Address" @bind-Value="_address" Placeholder="Site address" />
+    </FormSection>
+
+    <FormSection Title="Boundary & type" Description="A boundary verifies sign-in (SF-14). Dispersed schemes hold boundaries on their properties (SF-26).">
+        <div class="form-page__full form-page__toggles">
+            <TedwrenToggle Label="Has a fixed point of presence"
+                           Description="A compound, gate or cabin. Turn off for no-compound sites (SF-25)."
+                           Value="_hasCompound" ValueChanged="@(v => _hasCompound = v)" />
+            <MudDivider />
+            <TedwrenToggle Label="Dispersed scheme"
+                           Description="Many properties, each with its own boundary, managed as one site (SF-26)."
+                           Value="_isDispersed" ValueChanged="OnDispersedChanged" />
+        </div>
+
+        @if (!_isDispersed)
+        {
+            <TedwrenTextField Label="Boundary latitude" @bind-Value="_lat"
+                              Placeholder="e.g. 51.5074" HelperText="Optional. Provide all three to set a boundary." />
+            <TedwrenTextField Label="Boundary longitude" @bind-Value="_lng" Placeholder="e.g. -0.1278" />
+            <TedwrenTextField Label="Boundary radius (m)" @bind-Value="_radius" Placeholder="e.g. 150" />
+        }
+    </FormSection>
+
+    <FormActions>
+        <Secondary>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        </Secondary>
+        <Primary>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save site</MudButton>
+        </Primary>
+    </FormActions>
+</div>
+
+@code {
+    private string? _company;
+    private string? _name;
+    private string? _client;
+    private string? _region;
+    private string? _address;
+    private bool _hasCompound = true;
+    private bool _isDispersed;
+    private string? _lat;
+    private string? _lng;
+    private string? _radius;
+    private bool _submitted;
+
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private IReadOnlyList<string> _companyNames = Array.Empty<string>();
+    private IReadOnlyList<string> _regions = new[] { "London", "Manchester", "Leeds", "Bristol", "Birmingham", "Glasgow", "Cardiff" };
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new("Sites & Projects", "/sites"),
+        new("Add site", null, disabled: true),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        _companies = await Org.GetCompaniesAsync();
+        _companyNames = _companies.Select(c => c.Name).ToList();
+    }
+
+    // A dispersed scheme holds boundaries on its properties, not the site — clear the site boundary.
+    private void OnDispersedChanged(bool value)
+    {
+        _isDispersed = value;
+        if (value)
+        {
+            _lat = _lng = _radius = null;
+        }
+    }
+
+    private async Task Save()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_company) || string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        var companyId = _companies.FirstOrDefault(c => c.Name == _company)?.Id ?? Guid.Empty;
+        var boundary = TryBuildBoundary();
+
+        // Persists via the API when DataSource=Api; a no-op demo save under mock data.
+        await SiteData.CreateSiteAsync(new CreateSiteRequest(
+            companyId, _name!, _client, _region, _address, _hasCompound, _isDispersed, boundary));
+
+        Snackbar.Add($"Site \"{_name}\" saved.", Severity.Success);
+        Nav.NavigateTo("/sites");
+    }
+
+    // Builds a boundary only when all three coordinates parse; otherwise none (it is optional, SF-14).
+    private GeofenceDto? TryBuildBoundary()
+    {
+        if (double.TryParse(_lat, out var lat)
+            && double.TryParse(_lng, out var lng)
+            && double.TryParse(_radius, out var radius))
+        {
+            return new GeofenceDto(lat, lng, radius);
+        }
+
+        return null;
+    }
+
+    private void Cancel() => Nav.NavigateTo("/sites");
+}
