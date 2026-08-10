@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ICompliancePackService Packs
+@inject IShellSampleDataService Shell
 @inject ISnackbar Snackbar
 
 <PageTitle>Compliance Packs · Tedwren</PageTitle>
@@ -33,10 +34,16 @@
                          Message="@IssuesSummary()" />
         }
 
+        @if (!_canSend)
+        {
+            <BannerAlert Severity="StatusKind.Info" Title="Sending is restricted"
+                         Message="Only Administrators and Compliance Managers can send compliance packs (SUB-22)." />
+        }
+
         <div class="pack-builder__actions">
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy || _selected.Count == 0"
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy || _selected.Count == 0 || !_canSend"
                        OnClick="@(() => SendAsync(false))">Check &amp; send</MudButton>
-            @if (_issues.Any(i => i.Blocking))
+            @if (_canSend && _issues.Any(i => i.Blocking))
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_busy"
                            OnClick="@(() => SendAsync(true))">Acknowledge &amp; send anyway</MudButton>
@@ -69,9 +76,14 @@
     private bool _loading = true;
     private bool _busy;
 
+    // SUB-22: only nominated roles may send/re-issue packs.
+    private static readonly string[] NominatedRoles = { "Administrator", "Compliance Manager" };
+    private bool _canSend;
+
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
+        _canSend = NominatedRoles.Contains(Shell.GetCurrentUser().Role, StringComparer.OrdinalIgnoreCase);
         _selected.UnionWith(ClientMockCompliancePackService.DemoOperatives.Select(o => o.Id));
         await LoadAsync();
     }
@@ -94,12 +106,27 @@
     }
 
     // Builds/sends the pack. First attempt surfaces blocking readiness issues (SUB-14); acknowledge to proceed.
-    private async Task SendAsync(bool acknowledge)
+    private Task SendAsync(bool acknowledge) => BuildAsync(_title, acknowledge, supersedesPackId: null);
+
+    // Re-issues a pack: builds a fresh snapshot for the current selection that supersedes the old pack (R7).
+    private async Task ReissueAsync(PackListItemDto pack)
+    {
+        if (_selected.Count == 0)
+        {
+            Snackbar.Add("Select the operatives to include, then re-issue.", Severity.Warning);
+            return;
+        }
+
+        await BuildAsync(pack.Title, acknowledge: true, supersedesPackId: pack.Id);
+    }
+
+    // Shared build path used by send and re-issue.
+    private async Task BuildAsync(string title, bool acknowledge, Guid? supersedesPackId)
     {
         _busy = true;
         var request = new BuildPackRequest(
-            CompanyId, _title, "You", SiteId: null, FromDate: null, ToDate: null,
-            _selected.ToList(), Passcode: null, ExpiryDays: null, AcknowledgeIssues: acknowledge, SupersedesPackId: null);
+            CompanyId, title, "You", SiteId: null, FromDate: null, ToDate: null,
+            _selected.ToList(), Passcode: null, ExpiryDays: null, AcknowledgeIssues: acknowledge, SupersedesPackId: supersedesPackId);
         var result = await Packs.BuildAsync(request);
         _busy = false;
 
@@ -153,7 +180,12 @@
             new()
             {
                 Title = "", Value = _ => string.Empty, Searchable = false,
-                CellTemplate = p => @<div>
+                CellTemplate = p => @<div class="pack-row-actions">
+                    @if (_canSend && (p.Status == "Active" || p.Status == "Expired"))
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   OnClick="@(() => ReissueAsync(p))">Re-issue</MudButton>
+                    }
                     @if (p.Status == "Active")
                     {
                         <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default"
