@@ -1,0 +1,11 @@
+.form-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16, 16px);
+    max-width: 880px;
+}
+
+/* Let a field span both columns of the FormSection grid. */
+.form-page__full {
+    grid-column: 1 / -1;
+}

@@ -1,0 +1,208 @@
+@page "/users/{Id:guid}"
+@using Tedwren.Abstractions.Contracts.Users
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.Models
+@using Tedwren.UiComponents.Feedback
+@inject IUserService Users
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_user?.Name ?? "User") · Tedwren</PageTitle>
+
+@if (_loading)
+{
+    <PageHeader Title="Loading…" />
+}
+else if (_user is null)
+{
+    <PageHeader Title="User not found" />
+    <DashboardCard>
+        <Body>
+            <EmptyState Icon="@Icons.Material.Outlined.PersonOff"
+                        Title="User not found"
+                        Description="This user account doesn't exist.">
+                <Action>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/users">Back to users</MudButton>
+                </Action>
+            </EmptyState>
+        </Body>
+    </DashboardCard>
+}
+else
+{
+    <DetailHeader Title="@_user.Name"
+                  Subtitle="@_user.Email"
+                  StatusLabel="@_user.StatusLabel"
+                  Status="ToStatus(_user.Status)"
+                  AvatarText="@Initials(_user.Name)"
+                  Breadcrumbs="_crumbs">
+        <Actions>
+            @if (!_editing)
+            {
+                <MudButton Variant="Variant.Outlined" Color="Color.Default"
+                           StartIcon="@Icons.Material.Outlined.Edit" OnClick="BeginEdit">Edit</MudButton>
+                @if (_user.Status == "Suspended")
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.LockOpen" OnClick="Reactivate">Reactivate</MudButton>
+                }
+                else
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Error"
+                               StartIcon="@Icons.Material.Outlined.Block" OnClick="Suspend">Suspend</MudButton>
+                }
+            }
+        </Actions>
+    </DetailHeader>
+
+    <DashboardCard Title="Account">
+        <Body>
+            @if (_editing)
+            {
+                <div class="user-edit">
+                    <TedwrenTextField Label="Full name" @bind-Value="_editName" Required="true"
+                                      Error="_editSubmitted && string.IsNullOrWhiteSpace(_editName)"
+                                      ErrorText="Name is required." />
+                    <TedwrenSelect T="string" Label="Role" @bind-Value="_editRole" Required="true"
+                                   Options="_roleValues" Placeholder="Select a role"
+                                   HelperText="The auditor role is read-only (SF-23)." />
+                    <div class="user-edit__actions">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CancelEdit">Cancel</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveEdit">Save changes</MudButton>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <KeyValueList Items="_overview" />
+            }
+        </Body>
+    </DashboardCard>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private UserDto? _user;
+    private bool _loading = true;
+    private bool _editing;
+    private bool _editSubmitted;
+    private string? _editName;
+    private string? _editRole;
+
+    private IReadOnlyList<RoleOption> _roles = Array.Empty<RoleOption>();
+    private IReadOnlyList<string> _roleValues = Array.Empty<string>();
+    private List<KeyValueList.Pair> _overview = new();
+    private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _crumbs = new List<DetailHeader.Crumb> { new("Users", "/users"), new("User") };
+        _roles = await Users.GetRolesAsync();
+        _roleValues = _roles.Select(r => r.Value).ToList();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _user = await Users.GetUserAsync(Id);
+        _loading = false;
+        if (_user is not null)
+        {
+            BuildOverview(_user);
+        }
+    }
+
+    private void BuildOverview(UserDto u)
+    {
+        _overview = new()
+        {
+            new("Email", u.Email),
+            new("Role", u.RoleLabel),
+            new("Access", u.CanWrite ? "Can view and change data" : "Read-only"),
+            new("Status", u.StatusLabel),
+            new("Invited", u.CreatedUtc.LocalDateTime.ToString("dd MMM yyyy")),
+            new("Last active", u.LastActiveUtc is { } t ? t.LocalDateTime.ToString("dd MMM yyyy") : "—"),
+        };
+    }
+
+    private void BeginEdit()
+    {
+        _editName = _user!.Name;
+        _editRole = _user.Role;
+        _editSubmitted = false;
+        _editing = true;
+    }
+
+    private void CancelEdit() => _editing = false;
+
+    private async Task SaveEdit()
+    {
+        _editSubmitted = true;
+        if (string.IsNullOrWhiteSpace(_editName) || string.IsNullOrWhiteSpace(_editRole))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        var updated = await Users.UpdateUserAsync(Id, new UpdateUserRequest(_editName!, _editRole!));
+        if (updated is not null)
+        {
+            _user = updated;
+            BuildOverview(updated);
+            _editing = false;
+            Snackbar.Add("User updated.", Severity.Success);
+        }
+    }
+
+    private async Task Suspend()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Suspend {_user!.Name}? They will lose console access. The account and its history are kept." },
+            { x => x.ConfirmText, "Suspend" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Suspend user", parameters);
+        if (await dialog.Result is { Canceled: false })
+        {
+            var updated = await Users.SuspendUserAsync(Id);
+            if (updated is not null)
+            {
+                _user = updated;
+                BuildOverview(updated);
+                Snackbar.Add($"{updated.Name} suspended.", Severity.Info);
+            }
+        }
+    }
+
+    private async Task Reactivate()
+    {
+        var updated = await Users.ReactivateUserAsync(Id);
+        if (updated is not null)
+        {
+            _user = updated;
+            BuildOverview(updated);
+            Snackbar.Add($"{updated.Name} reactivated.", Severity.Success);
+        }
+    }
+
+    private static StatusKind ToStatus(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "Invited" => StatusKind.Warning,
+        "Suspended" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => (parts[0][..1] + parts[^1][..1]).ToUpperInvariant(),
+        };
+    }
+}

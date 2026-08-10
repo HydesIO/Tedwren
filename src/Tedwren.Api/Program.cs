@@ -21,6 +21,7 @@ var backend = dataSourceSection.Get<BackendOptions>() ?? new BackendOptions();
 builder.Services.AddOrganisationCore();
 builder.Services.AddQualificationCore();
 builder.Services.AddExpiryCore();
+builder.Services.AddUserCore();
 builder.Services.AddSiteCore();
 builder.Services.AddAttendanceCore();
 builder.Services.AddTimesheetCore();
@@ -39,6 +40,7 @@ else
     builder.Services.AddInMemoryOrganisationStore();
     builder.Services.AddInMemoryQualificationStore();
     builder.Services.AddInMemoryExpiryStore();
+    builder.Services.AddInMemoryUserStore();
     builder.Services.AddInMemorySiteStore();
     builder.Services.AddInMemoryAttendanceStore();
     builder.Services.AddInMemoryTimesheetStore();
@@ -94,6 +96,7 @@ if (backend.Mode == DataSourceMode.Database)
 app.MapOrganisationEndpoints();
 app.MapQualificationEndpoints();
 app.MapJobEndpoints();
+app.MapUserEndpoints();
 app.MapSiteEndpoints();
 app.MapAttendanceEndpoints();
 app.MapTimesheetEndpoints();
