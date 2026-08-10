@@ -1,0 +1,159 @@
+@using Tedwren.UiComponents.Models
+@inject IJSRuntime JS
+@implements IDisposable
+@* Global command palette: fuzzy-ish search across entities and pages, keyboard driven.
+   Opened via Ctrl/⌘+K or the top-bar search. *@
+
+@if (IsOpen)
+{
+    <div class="palette" role="dialog" aria-modal="true" aria-label="Command palette">
+        <div class="palette__backdrop" @onclick="Close"></div>
+        <div class="palette__panel">
+            <div class="palette__search">
+                <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" Class="palette__search-icon" />
+                <input @ref="_input"
+                       class="palette__input"
+                       type="text"
+                       placeholder="Search operatives, companies, sites, pages…"
+                       aria-label="Search"
+                       value="@_query"
+                       @oninput="OnInput"
+                       @onkeydown="OnKeyDown" />
+                <kbd class="palette__esc">Esc</kbd>
+            </div>
+
+            <div class="palette__results">
+                @if (_results.Count == 0)
+                {
+                    <div class="palette__empty">No matches for "@_query".</div>
+                }
+                else
+                {
+                    @foreach (var group in _results.GroupBy(r => r.Group))
+                    {
+                        <div class="palette__group-label">@group.Key</div>
+                        @foreach (var item in group)
+                        {
+                            var i = _results.IndexOf(item);
+                            <button type="button"
+                                    class="palette__item @(i == _active ? "palette__item--active" : null)"
+                                    @onclick="@(() => Select(item))"
+                                    @onmouseenter="@(() => _active = i)">
+                                <span class="palette__item-icon"><MudIcon Icon="@item.Icon" Size="Size.Small" /></span>
+                                <span class="palette__item-text">
+                                    <span class="palette__item-label">@item.Label</span>
+                                    @if (!string.IsNullOrEmpty(item.Detail))
+                                    {
+                                        <span class="palette__item-detail">@item.Detail</span>
+                                    }
+                                </span>
+                                <MudIcon Icon="@Icons.Material.Outlined.SubdirectoryArrowLeft" Size="Size.Small" Class="palette__item-enter" />
+                            </button>
+                        }
+                    }
+                }
+            </div>
+
+            <div class="palette__footer">
+                <span><kbd>↑</kbd><kbd>↓</kbd> to navigate</span>
+                <span><kbd>↵</kbd> to open</span>
+                <span><kbd>Esc</kbd> to close</span>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public IReadOnlyList<CommandItem> Items { get; set; } = Array.Empty<CommandItem>();
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+    [Parameter] public EventCallback<CommandItem> OnSelect { get; set; }
+    [Parameter] public int MaxResults { get; set; } = 12;
+
+    private ElementReference _input;
+    private string _query = string.Empty;
+    private int _active;
+    private List<CommandItem> _results = new();
+    private bool _wasOpen;
+
+    protected override void OnParametersSet()
+    {
+        if (IsOpen && !_wasOpen)
+        {
+            _query = string.Empty;
+            _active = 0;
+            Filter();
+        }
+        _wasOpen = IsOpen;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (IsOpen)
+        {
+            try { await JS.InvokeVoidAsync("tedwren.focus", _input); } catch { /* JS not ready */ }
+        }
+    }
+
+    private void OnInput(ChangeEventArgs e)
+    {
+        _query = e.Value?.ToString() ?? string.Empty;
+        _active = 0;
+        Filter();
+    }
+
+    private void Filter()
+    {
+        IEnumerable<CommandItem> query = Items;
+        if (!string.IsNullOrWhiteSpace(_query))
+        {
+            var term = _query.Trim();
+            query = Items.Where(i =>
+                i.Label.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || i.Group.Contains(term, StringComparison.OrdinalIgnoreCase)
+                || (i.Detail?.Contains(term, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+        // Flatten in group-contiguous order so the flat _active index lines up with the
+        // grouped render order (the results are re-grouped in markup).
+        _results = query
+            .GroupBy(i => i.Group)
+            .SelectMany(g => g)
+            .Take(MaxResults)
+            .ToList();
+        if (_active >= _results.Count) _active = Math.Max(0, _results.Count - 1);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        switch (e.Key)
+        {
+            case "ArrowDown":
+                if (_results.Count > 0) _active = (_active + 1) % _results.Count;
+                break;
+            case "ArrowUp":
+                if (_results.Count > 0) _active = (_active - 1 + _results.Count) % _results.Count;
+                break;
+            case "Enter":
+                if (_active >= 0 && _active < _results.Count) await Select(_results[_active]);
+                break;
+            case "Escape":
+                await Close();
+                break;
+        }
+    }
+
+    private async Task Select(CommandItem item)
+    {
+        await OnSelect.InvokeAsync(item);
+        await Close();
+    }
+
+    private async Task Close()
+    {
+        IsOpen = false;
+        _wasOpen = false;
+        await IsOpenChanged.InvokeAsync(false);
+    }
+
+    public void Dispose() { }
+}
