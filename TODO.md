@@ -380,30 +380,38 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   dual-engine pre-launch gate are intentionally out of scope for the current push. The EF model already
   lower-cases identifiers for PostgreSQL and the migration scripts exist, so this is a run/verify task when
   picked up, not new build.
-- ⏳ **Phase 18 — Hardening (excluding the PG gate above).** Accessibility pass; load/latency testing against
-  R14; **independent security review of the public pack link** (the only public route to personal data);
-  backup/restore rehearsal.
-- ✅ **Attendance console view** over `/api/attendance` — new `/attendance` page (site selector, on-site
-  workers, append-only log), `ApiAttendanceService` + nav entry. (Done this change; the mock-GUID
-  prerequisite is moot now that Database is the standard mode.)
-- ✅ **Notifications over `/api/expiry`** — `Notifications.razor` now reads real upcoming/expired
-  qualifications via a new `ApiExpiryQueryService` (client vertical + registration). (Done this change.)
+- ⏳ **Phase 18 — Hardening (excluding the PG gate above).** Codeable slices done this change: a **bUnit
+  component render smoke suite** (`tests/Tedwren.Client.Tests`) closing the "WASM render not asserted" gap, an
+  **R14 latency assertion** on the site-entry decision (`SiteEntryLatencyTests`), and a **pack-link security
+  review** (`docs/security-pack-link-review.md`). Still outstanding and non-codeable in this environment:
+  sustained **load/soak testing** against R14, the **independent** security review + the pack-link hardening
+  actions it lists (passcode rate-limiting, token-entropy/KDF audit, `no-store` headers), a broader
+  **accessibility** audit, and backup/restore rehearsal.
+- ✅ **Attendance console view**, **Notifications over `/api/expiry`** — done previously.
+- ✅ **Navigation gating over `/api/entitlements`** (SF-22) — `MainLayout` hides unpurchased modules; client
+  `ApiEntitlementService` + `TenantContext`; fails open on lookup error. (Done this change.)
+- ✅ **Compliance-pack recipient view page** (`/pack`, token+passcode, snapshot + CSV/ZIP/PDF) on a minimal
+  recipient layout; **re-issue** action (R7) and **role-gated send** (SUB-22). (Done this change.)
+- ✅ **Induction take-flow phone UI** (`/induct`: start→steps→server-scored quiz→sign) over the API, linked
+  from the Induction Records console. (Done this change.)
+- ✅ **Timesheet line-level correction UI** (R16) and **scope-configurable approval** (SUB-9) via a timesheet
+  detail dialog. (Done this change.)
+- ✅ **Qualification cards on real operatives** — `CompanyOperativeDto` now carries `PersonId`; a cards dialog
+  on the company detail page shows an operative's server-computed cards (SF-7/SF-8). (Done this change.)
+- ✅ **Module entitlements persist** from System Configuration (`SetEnabledAsync` + PUT endpoint), driving the
+  nav gating above. (Done this change.)
 - ⏳ **Follow-ups (non-blocking), remaining:**
-  - **Induction take-flow phone UI** (start→steps→quiz→sign) over the API.
-  - **Compliance-pack recipient view page** (token+passcode landing) and a "re-issue" action on the packs
-    page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22).
-  - **Timesheet detail/correction UI** (line-level edit) and operative self-service hours view (SUB-27);
-    a "configurable approval" settings surface (SUB-9 line/site/project/all).
-  - **Navigation gating over `/api/entitlements`** (SF-22 — no locked door): hide unpurchased modules.
-  - **Qualification cards on the Operative-detail page**; wire company/operative compliance % from cards
-    into the Phase 8 `OrganisationService`.
-  - **Persist demo-only actions**: several detail-page "Edit"/"Send update link" actions and the System
-    Configuration / Permits "Save" actions are labelled `(demo)` snackbars — wire to services when the
-    corresponding write endpoints exist.
+  - **Operative self-service hours view** (SUB-27) via `GetOperativeHoursAsync` — pending operative
+    authentication (no operative identity/login yet).
+  - **Compliance % roll-up**: compute company/operative compliance % from card statuses in the Phase 8
+    `OrganisationService` read model (currently `Pending`).
+  - **Persist the remaining demo actions**: company / operative / site "Edit" and "Send update link", the
+    System Configuration **general settings**, and Permits "Save" — each needs a dedicated write
+    endpoint/service (only module entitlements persist today).
   - Real SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs
     SUB-4); real card-image storage (R9).
-- ✅ *Done this change (moved from this list):* audit "Export CSV" button; SiteDetail over `ISiteService`;
-  Users management page; `/sites/add` create flow; Dashboard export/date-range; EF migrations tooling.
+- ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
+  `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default.
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,
