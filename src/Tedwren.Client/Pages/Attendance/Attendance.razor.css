@@ -1,0 +1,11 @@
+.attendance-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--spacing-16, 16px);
+}
+
+@media (min-width: 1200px) {
+    .attendance-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}

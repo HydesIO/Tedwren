@@ -383,10 +383,10 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ⏳ **Phase 18 — Hardening (excluding the PG gate above).** Accessibility pass; load/latency testing against
   R14; **independent security review of the public pack link** (the only public route to personal data);
   backup/restore rehearsal.
+- ✅ **Attendance console view** over `/api/attendance` — new `/attendance` page (site selector, on-site
+  workers, append-only log), `ApiAttendanceService` + nav entry. (Done this change; the mock-GUID
+  prerequisite is moot now that Database is the standard mode.)
 - ⏳ **Follow-ups (non-blocking), remaining:**
-  - **Attendance console view** over `/api/attendance` (on-site workers + append-only log). *Prerequisite:*
-    give mock sites stable GUIDs (`ClientMockSiteService` currently returns `Guid.Empty`) so the page is
-    testable in Mock mode; also add `ApiAttendanceService` + `ClientMockAttendanceService` + registration.
   - **Dashboard/Notifications panel over `/api/expiry`** — needs a client expiry service vertical
     (`ApiExpiryService` + mock + registration); `Notifications.razor` still reads `IShellSampleDataService`.
   - **Induction take-flow phone UI** (start→steps→quiz→sign) over the API.
