@@ -18,6 +18,11 @@
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <!-- Aligned with the version Npgsql's logging chain requires (>= 10.0.10) to avoid an NU1605 downgrade. -->
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <!-- Design-time factory reads the connection string / provider from the API's appsettings.json
+         (see TedwrenDbContextFactory), so the EF tooling honours the same config as the running app. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
     <!-- EF Core is used ONLY to author and apply the database schema via migrations (DDL). Runtime data
          access remains Dapper (DML). See docs/ef-migrations.md. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
