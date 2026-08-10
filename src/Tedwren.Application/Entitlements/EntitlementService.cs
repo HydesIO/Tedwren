@@ -38,4 +38,16 @@ public sealed class EntitlementService : IEntitlementService
         var overrides = await _entitlements.GetOverridesByCompanyAsync(companyId, cancellationToken);
         return overrides.TryGetValue(module.Key, out var enabled) ? enabled : module.DefaultEnabled;
     }
+
+    /// <summary>Sets a company's entitlement for a known module; unknown modules are ignored (fails closed, Q2).</summary>
+    public async Task SetEnabledAsync(Guid companyId, string moduleKey, bool enabled, CancellationToken cancellationToken = default)
+    {
+        var module = ModuleCatalog.Find(moduleKey);
+        if (module is null)
+        {
+            return;
+        }
+
+        await _entitlements.SetAsync(companyId, module.Key, enabled, cancellationToken);
+    }
 }

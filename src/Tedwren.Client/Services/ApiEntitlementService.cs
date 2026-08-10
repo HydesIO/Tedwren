@@ -23,4 +23,11 @@ public sealed class ApiEntitlementService : IEntitlementService
     /// <summary>Whether a module is enabled for the company (fails closed on the server, Q2).</summary>
     public async Task<bool> IsEnabledAsync(Guid companyId, string moduleKey, CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<bool>($"api/entitlements/{companyId}/{moduleKey}", cancellationToken);
+
+    /// <summary>Sets a company's entitlement for a module via the API.</summary>
+    public async Task SetEnabledAsync(Guid companyId, string moduleKey, bool enabled, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/entitlements/{companyId}/{moduleKey}", new { enabled }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
 }

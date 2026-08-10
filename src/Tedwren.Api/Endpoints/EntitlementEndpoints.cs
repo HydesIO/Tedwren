@@ -21,6 +21,16 @@ public static class EntitlementEndpoints
                 Results.Ok(await service.IsEnabledAsync(companyId, moduleKey, cancellationToken)))
             .WithName("IsModuleEnabled");
 
+        group.MapPut("/{companyId:guid}/{moduleKey}", async (Guid companyId, string moduleKey, SetEntitlementBody body, IEntitlementService service, CancellationToken cancellationToken) =>
+            {
+                await service.SetEnabledAsync(companyId, moduleKey, body.Enabled, cancellationToken);
+                return Results.NoContent();
+            })
+            .WithName("SetModuleEntitlement");
+
         return app;
     }
+
+    /// <summary>Body for setting a module entitlement.</summary>
+    public sealed record SetEntitlementBody(bool Enabled);
 }
