@@ -1,16 +1,18 @@
 # Tedwren — UI/UX Base Project
 
-A Blazor WebAssembly solution that is the **visual and structural foundation** for
-both Tedwren products (subcontractor and main contractor). It is a deliberate
-**UI/UX exercise**: screens are built with representative sample data, forms validate
-and toggle visually, and nothing persists. Business logic, the data model, API
-contracts and backend services are explicitly out of scope and follow later.
+A .NET 10 solution for both Tedwren products (subcontractor and main contractor).
+Phases 1–6 delivered the **visual and structural foundation** in Blazor WebAssembly:
+screens built with representative sample data behind service interfaces. From **Phase 7**
+the backend (Web API, domain, Dapper data access over SQL Server / PostgreSQL) is being
+added behind those same interfaces, switchable between mock and database via configuration.
 
-See `docs/` and the Plan & Scope of Works v1.0 for the full brief.
+The definitive brief is **`docs/TedwrenPRDv6_4.docx` (PRD v6.4)** — the source of truth.
+See **`docs/plan-and-scope.md`** for the phased plan, **`CLAUDE.md`** for architecture and
+standards, and **`TODO.md`** for the live checklist.
 
 ## Status
 
-**All five base phases are complete, with detail pages added on top.**
+**Phases 1–6 (UI/UX over mock data) are complete; Phase 7 (backend scaffolding) has begun.**
 
 Phase 1 delivered the solution scaffold, design tokens, MudBlazor theme, and the
 application shell (`MainLayout`, `AppSidebar`, `AppTopBar`). Phase 2 added the §5.2

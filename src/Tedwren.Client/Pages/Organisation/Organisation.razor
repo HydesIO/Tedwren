@@ -1,5 +1,8 @@
 @page "/organisation"
-@inject IListSampleDataService Data
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IOrganisationService Org
 @inject NavigationManager Nav
 
 <PageTitle>Organisation · Tedwren</PageTitle>
@@ -15,7 +18,7 @@
 
 <DashboardCard>
     <Body>
-        <DataTable TItem="Company"
+        <DataTable TItem="CompanySummary"
                    Items="_companies"
                    Columns="_columns"
                    Loading="_loading"
@@ -28,37 +31,36 @@
 </DashboardCard>
 
 @code {
-    private IReadOnlyList<Company> _companies = Array.Empty<Company>();
-    private List<DataColumn<Company>> _columns = new();
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private List<DataColumn<CompanySummary>> _columns = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
-        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
-        _companies = Data.GetCompanies();
+        _companies = await Org.GetCompaniesAsync();
         _loading = false;
     }
 
-    private void OpenCompany(Company company) => Nav.NavigateTo($"/organisation/{Slugs.From(company.Name)}");
+    private void OpenCompany(CompanySummary company) => Nav.NavigateTo($"/organisation/{company.Slug}");
 
     private void BuildColumns()
     {
         _columns = new()
         {
             new() { Title = "Company", Value = c => c.Name },
-            new() { Title = "Type", Value = c => c.Type, Filterable = true },
-            new() { Title = "Trade", Value = c => c.Trade, Filterable = true },
+            new() { Title = "Type", Value = c => c.Type ?? "—", Filterable = true },
+            new() { Title = "Trade", Value = c => c.Trade ?? "—", Filterable = true },
             new() { Title = "Operatives", Value = c => c.Operatives, AlignRight = true },
             new()
             {
-                Title = "Compliance", Value = c => c.CompliancePercent, AlignRight = true, Searchable = false,
-                CellTemplate = c => @<span>@c.CompliancePercent.ToString("0")%</span>
+                Title = "Compliance", Value = c => c.CompliancePercent ?? -1, AlignRight = true, Searchable = false,
+                CellTemplate = c => @<span>@(c.CompliancePercent is null ? "—" : c.CompliancePercent.Value.ToString("0") + "%")</span>
             },
             new()
             {
                 Title = "Status", Text = c => c.StatusLabel, Filterable = true, Sortable = false,
-                CellTemplate = c => @<StatusPill Label="@c.StatusLabel" Status="c.Status" />
+                CellTemplate = c => @<StatusPill Label="@c.StatusLabel" Status="ComplianceStatusView.ToStatusKind(c.State)" />
             },
         };
     }

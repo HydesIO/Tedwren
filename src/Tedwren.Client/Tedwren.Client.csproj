@@ -12,6 +12,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Tedwren.Abstractions\Tedwren.Abstractions.csproj" />
     <ProjectReference Include="..\Tedwren.UiComponents\Tedwren.UiComponents.csproj" />
     <ProjectReference Include="..\Tedwren.UiComponents.SampleData\Tedwren.UiComponents.SampleData.csproj" />
   </ItemGroup>

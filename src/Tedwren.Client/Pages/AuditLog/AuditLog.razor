@@ -1,11 +1,14 @@
 @page "/audit-log"
-@inject IListSampleDataService Data
+@using Tedwren.Abstractions.Contracts.Audit
+@using Tedwren.Abstractions.Services
+@inject IAuditService Audit
 
 <PageTitle>Audit Log · Tedwren</PageTitle>
 
 <PageHeader Title="Audit Log" Subtitle="Filterable, searchable activity record">
     <Actions>
-        <MudDateRangePicker @bind-DateRange="_range"
+        <MudDateRangePicker DateRange="_range"
+                            DateRangeChanged="OnRangeChanged"
                             Placeholder="Date range"
                             Variant="Variant.Outlined"
                             Margin="Margin.Dense"
@@ -16,8 +19,8 @@
 
 <DashboardCard>
     <Body>
-        <DataTable TItem="AuditEntry"
-                   Items="_filtered"
+        <DataTable TItem="AuditEntryDto"
+                   Items="_entries"
                    Columns="_columns"
                    Loading="_loading"
                    SearchPlaceholder="Search actor, action or entity…"
@@ -28,16 +31,31 @@
 </DashboardCard>
 
 @code {
-    private IReadOnlyList<AuditEntry> _all = Array.Empty<AuditEntry>();
+    private IReadOnlyList<AuditEntryDto> _entries = Array.Empty<AuditEntryDto>();
     private DateRange? _range;
-    private List<DataColumn<AuditEntry>> _columns = new();
+    private List<DataColumn<AuditEntryDto>> _columns = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
-        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
-        _all = Data.GetAuditEntries();
+        await LoadAsync();
+    }
+
+    // Re-queries the audit service when the date range changes; the service applies the range filter (SF-20).
+    private async Task OnRangeChanged(DateRange? range)
+    {
+        _range = range;
+        await LoadAsync();
+    }
+
+    // Loads (or reloads) the audit entries for the current date range.
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        DateOnly? from = _range?.Start is { } s ? DateOnly.FromDateTime(s) : null;
+        DateOnly? to = _range?.End is { } e ? DateOnly.FromDateTime(e) : null;
+        _entries = await Audit.SearchAsync(companyId: null, text: null, from: from, to: to);
         _loading = false;
     }
 
@@ -47,23 +65,13 @@
         {
             new()
             {
-                Title = "When", Value = e => e.Timestamp, Searchable = false,
-                CellTemplate = e => @<span>@e.Timestamp.ToString("dd MMM yyyy, HH:mm")</span>
+                Title = "When", Value = e => e.OccurredUtc, Searchable = false,
+                CellTemplate = e => @<span>@e.OccurredUtc.ToString("dd MMM yyyy, HH:mm")</span>
             },
             new() { Title = "Actor", Value = e => e.Actor, Filterable = true },
             new() { Title = "Action", Value = e => e.Action },
             new() { Title = "Entity", Value = e => e.Entity },
-            new() { Title = "Category", Value = e => e.Category, Filterable = true },
+            new() { Title = "Category", Value = e => e.Category ?? string.Empty, Filterable = true },
         };
-    }
-
-    private IReadOnlyList<AuditEntry> _filtered =>
-        _all.Where(InRange).ToList();
-
-    private bool InRange(AuditEntry e)
-    {
-        if (_range?.Start is { } start && e.Timestamp.Date < start.Date) return false;
-        if (_range?.End is { } end && e.Timestamp.Date > end.Date) return false;
-        return true;
     }
 }

@@ -1,6 +1,8 @@
 @page "/organisation/{Slug}"
-@using CompanyDetailModel = Tedwren.UiComponents.SampleData.CompanyDetail
-@inject IDetailSampleDataService Details
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IOrganisationService Org
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -13,7 +15,7 @@
         <Body>
             <EmptyState Icon="@Icons.Material.Outlined.Business"
                         Title="Company not found"
-                        Description="This company doesn't exist in the sample data.">
+                        Description="This company doesn't exist.">
                 <Action>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/organisation">
                         Back to organisation
@@ -28,7 +30,7 @@ else
     <DetailHeader Title="@_company.Name"
                   Subtitle="@($"{_company.Type} · {_company.Trade}")"
                   StatusLabel="@_company.StatusLabel"
-                  Status="_company.Status"
+                  Status="ComplianceStatusView.ToStatusKind(_company.State)"
                   AvatarText="@Initials(_company.Name)"
                   Breadcrumbs="_crumbs">
         <Actions>
@@ -56,7 +58,7 @@ else
             <MudTabPanel Text="@($"Documents ({_company.Documents.Count})")">
                 <DashboardCard>
                     <Body>
-                        <DataTable TItem="CompanyDocument"
+                        <DataTable TItem="CompanyDocumentDto"
                                    Items="_company.Documents"
                                    Columns="_docColumns"
                                    SearchPlaceholder="Search documents…"
@@ -69,7 +71,7 @@ else
             <MudTabPanel Text="@($"Operatives ({_company.Operatives.Count})")">
                 <DashboardCard>
                     <Body>
-                        <DataTable TItem="Operative"
+                        <DataTable TItem="CompanyOperativeDto"
                                    Items="_company.Operatives"
                                    Columns="_opColumns"
                                    SearchPlaceholder="Search operatives…"
@@ -86,15 +88,15 @@ else
 @code {
     [Parameter] public string Slug { get; set; } = string.Empty;
 
-    private CompanyDetailModel? _company;
+    private CompanyDetailDto? _company;
     private List<KeyValueList.Pair> _overview = new();
-    private List<DataColumn<CompanyDocument>> _docColumns = new();
-    private List<DataColumn<Operative>> _opColumns = new();
+    private List<DataColumn<CompanyDocumentDto>> _docColumns = new();
+    private List<DataColumn<CompanyOperativeDto>> _opColumns = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        _company = Details.GetCompany(Slug);
+        _company = await Org.GetCompanyAsync(Slug);
         if (_company is null) return;
 
         _crumbs = new List<DetailHeader.Crumb>
@@ -105,15 +107,15 @@ else
 
         _overview = new()
         {
-            new("Company type", _company.Type),
-            new("Primary trade", _company.Trade),
-            new("Registration number", _company.RegistrationNumber),
-            new("Workforce compliance", $"{_company.CompliancePercent:0}%"),
-            new("Registered address", _company.Address),
+            new("Company type", _company.Type ?? "—"),
+            new("Primary trade", _company.Trade ?? "—"),
+            new("Registration number", _company.RegistrationNumber ?? "—"),
+            new("Workforce compliance", _company.CompliancePercent is null ? "Pending" : $"{_company.CompliancePercent.Value:0}%"),
+            new("Registered address", _company.Address ?? "—"),
             new("Operatives", _company.Operatives.Count.ToString()),
-            new("Primary contact", _company.ContactName),
-            new("Email", _company.ContactEmail),
-            new("Phone", _company.ContactPhone),
+            new("Primary contact", _company.ContactName ?? "—"),
+            new("Email", _company.ContactEmail ?? "—"),
+            new("Phone", _company.ContactPhone ?? "—"),
         };
 
         _docColumns = new()
@@ -128,24 +130,23 @@ else
             new()
             {
                 Title = "Status", Text = d => d.StatusLabel, Sortable = false, Filterable = true,
-                CellTemplate = d => @<StatusPill Label="@d.StatusLabel" Status="d.Status" />
+                CellTemplate = d => @<StatusPill Label="@d.StatusLabel" Status="ComplianceStatusView.ToStatusKind(d.State)" />
             },
         };
 
         _opColumns = new()
         {
             new() { Title = "Name", Value = o => o.Name },
-            new() { Title = "Trade", Value = o => o.Trade, Filterable = true },
-            new() { Title = "Primary site", Value = o => o.PrimarySite },
+            new() { Title = "Trade", Value = o => o.Trade ?? "—", Filterable = true },
             new()
             {
                 Title = "Status", Text = o => o.StatusLabel, Sortable = false, Filterable = true,
-                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="o.Status" />
+                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="ComplianceStatusView.ToStatusKind(o.State)" />
             },
         };
     }
 
-    private void OpenOperative(Operative op) => Nav.NavigateTo($"/workforce/{Slugs.From(op.Name)}");
+    private void OpenOperative(CompanyOperativeDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
 
     private static string Initials(string name)
     {

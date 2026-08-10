@@ -1,5 +1,8 @@
 @page "/organisation/add"
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
 @inject IFormSampleDataService Options
+@inject IOrganisationService Org
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -77,7 +80,7 @@
         _trades = Options.GetTrades();
     }
 
-    private void Save()
+    private async Task Save()
     {
         _submitted = true;
         if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_type))
@@ -86,7 +89,11 @@
             return;
         }
 
-        Snackbar.Add($"Company \"{_name}\" saved (demo — nothing is persisted).", Severity.Success);
+        // Persists via the API when DataSource=Api; a no-op demo save under mock data.
+        await Org.CreateCompanyAsync(new CreateCompanyRequest(
+            _name!, _type, _trade, _regNumber, Address: null, _contactName, _contactEmail, _contactPhone));
+
+        Snackbar.Add($"Company \"{_name}\" saved.", Severity.Success);
         Nav.NavigateTo("/organisation");
     }
 
