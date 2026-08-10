@@ -1,19 +1,25 @@
 @page "/sites/{Slug}"
-@using SiteDetailModel = Tedwren.UiComponents.SampleData.SiteDetail
-@inject IDetailSampleDataService Details
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ISiteService SiteData
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
 <PageTitle>@(_site?.Name ?? "Site") · Tedwren</PageTitle>
 
-@if (_site is null)
+@if (_loading)
+{
+    <PageHeader Title="Loading…" />
+}
+else if (_site is null)
 {
     <PageHeader Title="Site not found" />
     <DashboardCard>
         <Body>
             <EmptyState Icon="@Icons.Material.Outlined.Apartment"
                         Title="Site not found"
-                        Description="This site doesn't exist in the sample data.">
+                        Description="This site doesn't exist.">
                 <Action>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/sites">Back to sites</MudButton>
                 </Action>
@@ -24,9 +30,9 @@
 else
 {
     <DetailHeader Title="@_site.Name"
-                  Subtitle="@($"{_site.Client} · {_site.Region}")"
+                  Subtitle="@Subtitle(_site)"
                   StatusLabel="@_site.StatusLabel"
-                  Status="_site.Status"
+                  Status="ComplianceStatusView.ToStatusKind(_site.State)"
                   Breadcrumbs="_crumbs">
         <Actions>
             <MudButton Variant="Variant.Outlined" Color="Color.Default"
@@ -46,28 +52,15 @@ else
                 </DashboardCard>
             </MudTabPanel>
 
-            <MudTabPanel Text="@($"Workforce ({_site.Workforce.Count})")">
-                <DashboardCard>
-                    <Body>
-                        <DataTable TItem="Operative"
-                                   Items="_site.Workforce"
-                                   Columns="_opColumns"
-                                   SearchPlaceholder="Search operatives…"
-                                   OnRowClick="OpenOperative"
-                                   EmptyTitle="No operatives on site"
-                                   EmptyIcon="@Icons.Material.Outlined.Engineering" />
-                    </Body>
-                </DashboardCard>
-            </MudTabPanel>
-
             <MudTabPanel Text="@($"Properties ({_site.Properties.Count})")">
-                <DashboardCard Subtitle="Dispersed scheme — properties within this site">
+                <DashboardCard Subtitle="@(_site.IsDispersed ? "Dispersed scheme — properties within this site" : "Properties within this site")">
                     <Body>
-                        <DataTable TItem="SiteProperty"
+                        <DataTable TItem="SitePropertyDto"
                                    Items="_site.Properties"
                                    Columns="_propColumns"
                                    SearchPlaceholder="Search properties…"
                                    EmptyTitle="No properties"
+                                   EmptyDescription="This site has no individual properties recorded."
                                    EmptyIcon="@Icons.Material.Outlined.Home" />
                     </Body>
                 </DashboardCard>
@@ -79,16 +72,22 @@ else
 @code {
     [Parameter] public string Slug { get; set; } = string.Empty;
 
-    private SiteDetailModel? _site;
+    private SiteDetailDto? _site;
+    private bool _loading = true;
     private List<KeyValueList.Pair> _overview = new();
-    private List<DataColumn<Operative>> _opColumns = new();
-    private List<DataColumn<SiteProperty>> _propColumns = new();
+    private List<DataColumn<SitePropertyDto>> _propColumns = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
 
-    protected override void OnParametersSet()
+    // Loads the site through the shared ISiteService, served from mock or the API identically (SF-6).
+    protected override async Task OnParametersSetAsync()
     {
-        _site = Details.GetSite(Slug);
-        if (_site is null) return;
+        _loading = true;
+        _site = await SiteData.GetSiteAsync(Slug);
+        _loading = false;
+        if (_site is null)
+        {
+            return;
+        }
 
         _crumbs = new List<DetailHeader.Crumb>
         {
@@ -98,25 +97,13 @@ else
 
         _overview = new()
         {
-            new("Client", _site.Client),
-            new("Region", _site.Region),
-            new("Address", _site.Address),
-            new("Site manager", _site.Manager),
-            new("Start date", _site.StartDate.ToString("dd MMM yyyy")),
-            new("Operatives", _site.Operatives.ToString()),
-            new("Workforce compliance", $"{_site.CompliancePercent:0}%"),
-        };
-
-        _opColumns = new()
-        {
-            new() { Title = "Name", Value = o => o.Name },
-            new() { Title = "Trade", Value = o => o.Trade, Filterable = true },
-            new() { Title = "Employer", Value = o => o.Company },
-            new()
-            {
-                Title = "Status", Text = o => o.StatusLabel, Sortable = false, Filterable = true,
-                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="o.Status" />
-            },
+            new("Client", _site.Client ?? "—"),
+            new("Region", _site.Region ?? "—"),
+            new("Address", _site.Address ?? "—"),
+            new("Site type", _site.IsDispersed ? "Dispersed scheme" : "Standard site"),
+            new("Point of presence", _site.HasCompound ? "Fixed (compound / gate / cabin)" : "None — phone sign-in (SF-25)"),
+            new("Boundary", _site.Boundary is { } b ? $"{b.RadiusMetres:0} m radius" : (_site.IsDispersed ? "Per property" : "Not set")),
+            new("Compliance", _site.CompliancePercent is { } p ? $"{p:0}%" : "Pending"),
         };
 
         _propColumns = new()
@@ -125,11 +112,13 @@ else
             new() { Title = "Units", Value = p => p.Units, AlignRight = true },
             new()
             {
-                Title = "Status", Text = p => p.StatusLabel, Sortable = false, Filterable = true,
-                CellTemplate = p => @<StatusPill Label="@p.StatusLabel" Status="p.Status" />
+                Title = "Boundary", Value = p => p.Boundary.RadiusMetres, AlignRight = true, Searchable = false,
+                CellTemplate = p => @<span>@($"{p.Boundary.RadiusMetres:0} m")</span>
             },
         };
     }
 
-    private void OpenOperative(Operative op) => Nav.NavigateTo($"/workforce/{Slugs.From(op.Name)}");
+    // "Client · Region", omitting empty parts.
+    private static string Subtitle(SiteDetailDto s)
+        => string.Join(" · ", new[] { s.Client, s.Region }.Where(v => !string.IsNullOrWhiteSpace(v)));
 }
