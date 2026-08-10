@@ -59,7 +59,7 @@ public sealed class OrganisationService : IOrganisationService
         var engagements = await _engagements.GetActiveByCompanyAsync(company.Id, cancellationToken);
         var operatives = engagements
             .Select(e => new CompanyOperativeDto(
-                e.Id, Slug.From(e.Name), e.Name, e.Trade, ComplianceState.Pending, "Pending"))
+                e.Id, e.PersonId, Slug.From(e.Name), e.Name, e.Trade, ComplianceState.Pending, "Pending"))
             .ToList();
 
         return new CompanyDetailDto(

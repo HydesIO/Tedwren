@@ -43,6 +43,7 @@ public sealed record CompanyDocumentDto(
 /// <summary>An operative engaged by a company, shown on the company detail page.</summary>
 public sealed record CompanyOperativeDto(
     Guid EngagementId,
+    Guid PersonId,
     string Slug,
     string Name,
     string? Trade,

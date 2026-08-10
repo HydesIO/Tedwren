@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject IOrganisationService Org
+@inject IDialogService Dialogs
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -143,10 +144,27 @@ else
                 Title = "Status", Text = o => o.StatusLabel, Sortable = false, Filterable = true,
                 CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="ComplianceStatusView.ToStatusKind(o.State)" />
             },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false, Sortable = false,
+                CellTemplate = o => @<div @onclick:stopPropagation="true">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Badge"
+                               OnClick="@(() => ShowCardsAsync(o))">Qualifications</MudButton>
+                </div>
+            },
         };
     }
 
     private void OpenOperative(CompanyOperativeDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
+
+    // Opens the operative's server-computed qualification cards (SF-7/SF-8), keyed by real person id.
+    private async Task ShowCardsAsync(CompanyOperativeDto op)
+    {
+        var parameters = new DialogParameters<QualificationCardsDialog> { { x => x.PersonId, op.PersonId } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        await Dialogs.ShowAsync<QualificationCardsDialog>($"{op.Name} — qualifications", parameters, options);
+    }
 
     private static string Initials(string name)
     {

@@ -49,7 +49,7 @@ public sealed class ClientMockOrganisationService : IOrganisationService
             .Select(d => new CompanyDocumentDto(d.Name, d.Type, ToState(d.Status), d.StatusLabel, d.ExpiresOn))
             .ToList();
         var operatives = company.Operatives
-            .Select(o => new CompanyOperativeDto(Guid.Empty, Slug.From(o.Name), o.Name, o.Trade, ToState(o.Status), o.StatusLabel))
+            .Select(o => new CompanyOperativeDto(Guid.Empty, Guid.Empty, Slug.From(o.Name), o.Name, o.Trade, ToState(o.Status), o.StatusLabel))
             .ToList();
 
         var dto = new CompanyDetailDto(
