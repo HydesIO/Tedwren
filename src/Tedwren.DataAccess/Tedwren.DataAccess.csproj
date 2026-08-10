@@ -16,7 +16,8 @@
     <PackageReference Include="Dapper" Version="2.1.79" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <!-- Aligned with the version Npgsql's logging chain requires (>= 10.0.10) to avoid an NU1605 downgrade. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
     <!-- EF Core is used ONLY to author and apply the database schema via migrations (DDL). Runtime data
          access remains Dapper (DML). See docs/ef-migrations.md. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
