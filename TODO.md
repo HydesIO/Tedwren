@@ -380,13 +380,14 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   dual-engine pre-launch gate are intentionally out of scope for the current push. The EF model already
   lower-cases identifiers for PostgreSQL and the migration scripts exist, so this is a run/verify task when
   picked up, not new build.
-- ⏳ **Phase 18 — Hardening (excluding the PG gate above).** Codeable slices done this change: a **bUnit
-  component render smoke suite** (`tests/Tedwren.Client.Tests`) closing the "WASM render not asserted" gap, an
-  **R14 latency assertion** on the site-entry decision (`SiteEntryLatencyTests`), and a **pack-link security
-  review** (`docs/security-pack-link-review.md`). Still outstanding and non-codeable in this environment:
-  sustained **load/soak testing** against R14, the **independent** security review + the pack-link hardening
-  actions it lists (passcode rate-limiting, token-entropy/KDF audit, `no-store` headers), a broader
-  **accessibility** audit, and backup/restore rehearsal.
+- ⏳ **Phase 18 — Hardening (excluding the PG gate above).** Done: **bUnit** render smoke suite
+  (`tests/Tedwren.Client.Tests`) closing the "WASM render not asserted" gap; an **R14 latency assertion**
+  (`SiteEntryLatencyTests`); a **pack-link security review** (`docs/security-pack-link-review.md`) **and its
+  concrete hardening actions** — PBKDF2 passcode hashing (legacy-compatible), per-token passcode
+  **rate-limiting** (`IPackAccessThrottle`), `no-store` headers on the recipient endpoints, and a verified
+  256-bit token. Still outstanding and non-codeable in this environment: sustained **load/soak testing**
+  against R14, the **independent** security review (sender-alerting, message unification, HSTS, PII
+  minimisation, single-use links), a broader **accessibility** audit, and backup/restore rehearsal.
 - ✅ **Attendance console view**, **Notifications over `/api/expiry`** — done previously.
 - ✅ **Navigation gating over `/api/entitlements`** (SF-22) — `MainLayout` hides unpurchased modules; client
   `ApiEntitlementService` + `TenantContext`; fails open on lookup error. (Done this change.)
@@ -400,14 +401,17 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   on the company detail page shows an operative's server-computed cards (SF-7/SF-8). (Done this change.)
 - ✅ **Module entitlements persist** from System Configuration (`SetEnabledAsync` + PUT endpoint), driving the
   nav gating above. (Done this change.)
+- ✅ **Operative self-service hours view** (SUB-27) — `/my-hours` page over `GetOperativeHoursAsync`
+  (person+week from the link, week paging), reachable from the company operatives list. (Done this change.)
+- ✅ **Compliance % roll-up** — new `ComplianceRollup` derives company/operative state + % from current card
+  statuses; `OrganisationService` now reports it instead of `Pending`. (Done this change.)
+- ✅ **Company edit persists** — `UpdateCompanyAsync` across the stack + an `EditCompanyDialog`; the
+  CompanyDetail "Edit" action now saves. (Done this change.)
 - ⏳ **Follow-ups (non-blocking), remaining:**
-  - **Operative self-service hours view** (SUB-27) via `GetOperativeHoursAsync` — pending operative
-    authentication (no operative identity/login yet).
-  - **Compliance % roll-up**: compute company/operative compliance % from card statuses in the Phase 8
-    `OrganisationService` read model (currently `Pending`).
-  - **Persist the remaining demo actions**: company / operative / site "Edit" and "Send update link", the
-    System Configuration **general settings**, and Permits "Save" — each needs a dedicated write
-    endpoint/service (only module entitlements persist today).
+  - **Persist the other demo write actions**: operative "Edit"/"Send update link", **site** "Edit", System
+    Configuration **general settings**, and Permits "Save" — each needs a dedicated write endpoint/service
+    (company edit + module entitlements persist today; site repo already has `UpdateAsync` so site edit is a
+    small next step).
   - Real SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs
     SUB-4); real card-image storage (R9).
 - ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
