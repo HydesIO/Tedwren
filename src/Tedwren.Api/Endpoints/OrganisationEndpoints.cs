@@ -33,6 +33,10 @@ public static class OrganisationEndpoints
             })
             .WithName("CreateCompany");
 
+        group.MapPut("/companies/{id:guid}", async (Guid id, UpdateCompanyRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
+                await service.UpdateCompanyAsync(id, request, cancellationToken) ? Results.NoContent() : Results.NotFound())
+            .WithName("UpdateCompany");
+
         group.MapPost("/operatives", async (AddOperativeRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
             {
                 var result = await service.AddOperativeAsync(request, cancellationToken);

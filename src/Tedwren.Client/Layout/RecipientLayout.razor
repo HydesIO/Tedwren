@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+
+@* Minimal, account-free shell for external recipients (e.g. a compliance-pack link). No sidebar, no
+   console navigation, no user identity — the recipient reaches this only via a token + passcode (R8/R9). *@
+
+<MudThemeProvider Theme="@TedwrenTheme.Instance" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="recipient-shell">
+    <header class="recipient-shell__bar">
+        <img class="recipient-shell__logo" src="images/logo-icon.svg" alt="" />
+        <span class="recipient-shell__brand">Tedwren</span>
+    </header>
+    <main class="recipient-shell__content" role="main">
+        @Body
+    </main>
+</div>

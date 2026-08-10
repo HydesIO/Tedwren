@@ -43,6 +43,7 @@ public sealed record CompanyDocumentDto(
 /// <summary>An operative engaged by a company, shown on the company detail page.</summary>
 public sealed record CompanyOperativeDto(
     Guid EngagementId,
+    Guid PersonId,
     string Slug,
     string Name,
     string? Trade,
@@ -51,6 +52,17 @@ public sealed record CompanyOperativeDto(
 
 /// <summary>Request to create a company (Organisation → Add company).</summary>
 public sealed record CreateCompanyRequest(
+    string Name,
+    string? Type,
+    string? Trade,
+    string? RegistrationNumber,
+    string? Address,
+    string? ContactName,
+    string? ContactEmail,
+    string? ContactPhone);
+
+/// <summary>Request to update an existing company's editable fields.</summary>
+public sealed record UpdateCompanyRequest(
     string Name,
     string? Type,
     string? Trade,

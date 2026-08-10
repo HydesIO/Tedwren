@@ -49,7 +49,7 @@ public sealed class ClientMockOrganisationService : IOrganisationService
             .Select(d => new CompanyDocumentDto(d.Name, d.Type, ToState(d.Status), d.StatusLabel, d.ExpiresOn))
             .ToList();
         var operatives = company.Operatives
-            .Select(o => new CompanyOperativeDto(Guid.Empty, Slug.From(o.Name), o.Name, o.Trade, ToState(o.Status), o.StatusLabel))
+            .Select(o => new CompanyOperativeDto(Guid.Empty, Guid.Empty, Slug.From(o.Name), o.Name, o.Trade, ToState(o.Status), o.StatusLabel))
             .ToList();
 
         var dto = new CompanyDetailDto(
@@ -62,6 +62,10 @@ public sealed class ClientMockOrganisationService : IOrganisationService
     /// <summary>Demo create — sample data is static, so nothing is persisted.</summary>
     public Task<Guid> CreateCompanyAsync(CreateCompanyRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(Guid.NewGuid());
+
+    /// <summary>Demo update — sample data is static (deprecated mock mode).</summary>
+    public Task<bool> UpdateCompanyAsync(Guid companyId, UpdateCompanyRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(true);
 
     /// <summary>Demo add — not persisted in mock mode.</summary>
     public Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default) =>

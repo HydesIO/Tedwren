@@ -1,0 +1,61 @@
+@using Tedwren.Abstractions.Contracts.Qualifications
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IQualificationService Qualifications
+
+@* Shows an operative's server-computed qualification cards (SF-7/SF-8), keyed by real person id. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="qual-dialog">
+            @if (_loading)
+            {
+                <p>Loading…</p>
+            }
+            else if (_cards.Count == 0)
+            {
+                <EmptyState Icon="@Icons.Material.Outlined.Badge"
+                            Title="No qualification cards"
+                            Description="No cards have been captured for this operative yet." />
+            }
+            else
+            {
+                <table class="qual-dialog__table">
+                    <thead>
+                        <tr><th>Qualification</th><th>Issuer</th><th>Expires</th><th>Verification</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var card in _cards)
+                        {
+                            <tr>
+                                <td>@card.QualificationName</td>
+                                <td>@(card.Issuer ?? "—")</td>
+                                <td>@(card.ExpiresOn is { } on ? on.ToString("dd MMM yyyy") : "No expiry")</td>
+                                <td>@card.VerificationLabel</td>
+                                <td><StatusPill Label="@card.StatusLabel" Status="ComplianceStatusView.ToStatusKind(card.State)" /></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Close())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid PersonId { get; set; }
+
+    private IReadOnlyList<QualificationCardDto> _cards = Array.Empty<QualificationCardDto>();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _cards = await Qualifications.GetCardsForPersonAsync(PersonId);
+        _loading = false;
+    }
+}

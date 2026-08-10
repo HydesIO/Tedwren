@@ -1,0 +1,236 @@
+@page "/induct"
+@layout RecipientLayout
+@using Tedwren.Abstractions.Contracts.Inductions
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IInductionService Inductions
+@inject ISnackbar Snackbar
+
+<PageTitle>Induction · Tedwren</PageTitle>
+
+<div class="induct">
+    @switch (_phase)
+    {
+        case Phase.Start:
+            <DashboardCard Title="Start your induction" Subtitle="Complete this on your phone before coming to site.">
+                <Body>
+                    <div class="induct__form">
+                        <TedwrenTextField Label="Your full name" @bind-Value="_name" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Your name is required." />
+                        <TedwrenSelect T="string" Label="Induction" Value="_templateName"
+                                       Options="_templateNames" Placeholder="Select an induction"
+                                       ValueChanged="@(v => _templateName = v)" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartAsync"
+                                   Disabled="_busy || _templates.Count == 0">Start</MudButton>
+                        @if (_templates.Count == 0 && !_busy)
+                        {
+                            <BannerAlert Severity="StatusKind.Info" Title="No inductions available"
+                                         Message="There are no inductions to complete for this company yet." />
+                        }
+                    </div>
+                </Body>
+            </DashboardCard>
+            break;
+
+        case Phase.Steps:
+            <DashboardCard Title="@_session!.TemplateName" Subtitle="Work through each step. Required steps must be completed.">
+                <Body>
+                    <div class="induct__steps">
+                        @foreach (var step in _session.Steps)
+                        {
+                            var done = _session.CompletedStepIds.Contains(step.Id);
+                            <div class="induct__step @(done ? "induct__step--done" : null)">
+                                <div class="induct__step-text">
+                                    <span class="induct__step-label">@step.Label</span>
+                                    <span class="induct__step-kind">@step.Kind@(step.Required ? " · required" : "")</span>
+                                </div>
+                                @if (done)
+                                {
+                                    <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" />
+                                }
+                                else
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                               OnClick="@(() => CompleteStepAsync(step.Id))" Disabled="_busy">Mark done</MudButton>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <div class="induct__nav">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AfterSteps"
+                                   Disabled="!RequiredStepsDone">Continue</MudButton>
+                    </div>
+                </Body>
+            </DashboardCard>
+            break;
+
+        case Phase.Quiz:
+            <DashboardCard Title="Quiz" Subtitle="@($"Answer all questions. Pass mark {_session!.PassMark}%.")">
+                <Body>
+                    @foreach (var q in _session.Questions)
+                    {
+                        <div class="induct__question">
+                            <p class="induct__prompt">@q.Prompt</p>
+                            @for (var i = 0; i < q.Options.Count; i++)
+                            {
+                                var idx = i;
+                                <label class="induct__option">
+                                    <input type="radio" name="@q.Id" checked="@(_answers.TryGetValue(q.Id, out var a) && a == idx)"
+                                           @onchange="@(() => _answers[q.Id] = idx)" />
+                                    <span>@q.Options[idx]</span>
+                                </label>
+                            }
+                        </div>
+                    }
+                    @if (_lastResult is { Passed: false })
+                    {
+                        <BannerAlert Severity="StatusKind.Danger" Title="Not passed"
+                                     Message="@($"You scored {_lastResult.Correct}/{_lastResult.Total}. Review the steps and try again.")" />
+                    }
+                    <div class="induct__nav">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitQuizAsync"
+                                   Disabled="_busy || _answers.Count < _session.Questions.Count">Submit answers</MudButton>
+                    </div>
+                </Body>
+            </DashboardCard>
+            break;
+
+        case Phase.Sign:
+            <DashboardCard Title="Sign and confirm" Subtitle="Confirm you have completed this induction (MC-5).">
+                <Body>
+                    <div class="induct__form">
+                        <TedwrenTextField Label="Type your full name to sign" @bind-Value="_signature" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_signature)" ErrorText="A signature is required." />
+                        <TedwrenToggle Label="Consent to share my induction record"
+                                       Description="Optional — lets your induction be shared with the main contractor (MC-20)."
+                                       Value="_consent" ValueChanged="@(v => _consent = v)" />
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="FinalizeAsync" Disabled="_busy">Finish induction</MudButton>
+                    </div>
+                </Body>
+            </DashboardCard>
+            break;
+
+        case Phase.Done:
+            <DashboardCard Title="Induction complete">
+                <Body>
+                    <div class="induct__done">
+                        <MudIcon Icon="@Icons.Material.Outlined.Verified" Color="Color.Success" Size="Size.Large" />
+                        <p>You're all set, @_session!.PersonName.</p>
+                        <p class="induct__ref">Reference: <strong>@_session.CompletionReference</strong></p>
+                        @if (_session.ExpiresUtc is { } exp)
+                        {
+                            <p class="induct__exp">Valid until @exp.LocalDateTime.ToString("dd MMM yyyy")</p>
+                        }
+                    </div>
+                </Body>
+            </DashboardCard>
+            break;
+    }
+</div>
+
+@code {
+    private enum Phase { Start, Steps, Quiz, Sign, Done }
+
+    private Phase _phase = Phase.Start;
+    private bool _busy;
+    private bool _submitted;
+
+    private IReadOnlyList<InductionTemplateDto> _templates = Array.Empty<InductionTemplateDto>();
+    private IReadOnlyList<string> _templateNames = Array.Empty<string>();
+    private string? _templateName;
+    private string? _name;
+
+    private InductionSessionDto? _session;
+    private readonly Dictionary<string, int> _answers = new();
+    private QuizResultDto? _lastResult;
+    private string? _signature;
+    private bool _consent;
+
+    private bool RequiredStepsDone =>
+        _session is not null && _session.Steps.Where(s => s.Required).All(s => _session.CompletedStepIds.Contains(s.Id));
+
+    protected override async Task OnInitializedAsync()
+    {
+        _busy = true;
+        _templates = await Inductions.GetTemplatesAsync(TenantContext.CurrentCompanyId);
+        _templateNames = _templates.Select(t => t.Name).ToList();
+        _templateName = _templateNames.FirstOrDefault();
+        _busy = false;
+    }
+
+    private async Task StartAsync()
+    {
+        _submitted = true;
+        var template = _templates.FirstOrDefault(t => t.Name == _templateName);
+        if (string.IsNullOrWhiteSpace(_name) || template is null)
+        {
+            Snackbar.Add("Enter your name and choose an induction.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        _session = await Inductions.StartAsync(new StartInductionRequest(
+            TenantContext.CurrentCompanyId, template.Id, Guid.NewGuid(), _name!.Trim()));
+        _busy = false;
+        _phase = Phase.Steps;
+    }
+
+    private async Task CompleteStepAsync(string stepId)
+    {
+        _busy = true;
+        var updated = await Inductions.CompleteStepAsync(_session!.Id, stepId);
+        _busy = false;
+        if (updated is not null)
+        {
+            _session = updated;
+        }
+    }
+
+    // Moves past the steps: to the quiz if there are questions, otherwise straight to signing.
+    private void AfterSteps() => _phase = _session!.Questions.Count > 0 ? Phase.Quiz : Phase.Sign;
+
+    private async Task SubmitQuizAsync()
+    {
+        _busy = true;
+        _lastResult = await Inductions.SubmitQuizAsync(_session!.Id, new SubmitQuizRequest(_answers));
+        _busy = false;
+
+        if (_lastResult is { Passed: true })
+        {
+            _phase = Phase.Sign;
+        }
+        else
+        {
+            _answers.Clear();   // let them retry
+        }
+    }
+
+    private async Task FinalizeAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_signature))
+        {
+            Snackbar.Add("Type your name to sign.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var finalised = await Inductions.FinalizeAsync(_session!.Id, new FinalizeInductionRequest(_signature!.Trim(), _consent));
+            if (finalised is not null)
+            {
+                _session = finalised;
+                _phase = Phase.Done;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not finish: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

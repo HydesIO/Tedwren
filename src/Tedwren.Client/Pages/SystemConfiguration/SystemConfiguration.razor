@@ -1,5 +1,9 @@
 @page "/system-configuration"
+@using Tedwren.Abstractions.Contracts.Entitlements
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
 @inject IFormSampleDataService Options
+@inject IEntitlementService Entitlements
 @inject ISnackbar Snackbar
 
 <PageTitle>System Configuration · Tedwren</PageTitle>
@@ -32,7 +36,7 @@
         </div>
     </FormSection>
 
-    <FormSection Title="Modules & entitlements" Description="Turn product modules on or off for this workspace.">
+    <FormSection Title="Modules & entitlements" Description="Turn product modules on or off for this workspace. Disabled modules disappear from navigation (SF-22).">
         <div class="form-page__full form-page__toggles">
             @foreach (var module in _modules)
             {
@@ -57,20 +61,22 @@
 
 @code {
     private GeneralSettingsState _settings = new();
-    private IReadOnlyList<ModuleEntitlement> _modules = Array.Empty<ModuleEntitlement>();
+    private IReadOnlyList<ModuleEntitlementDto> _modules = Array.Empty<ModuleEntitlementDto>();
     private readonly Dictionary<string, bool> _entitlements = new();
+    private bool _busy;
 
     private readonly IReadOnlyList<string> _timeZones = new[]
     {
         "Europe/London", "Europe/Dublin", "Europe/Paris", "UTC",
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        Load();
+        LoadGeneral();
+        await LoadModulesAsync();
     }
 
-    private void Load()
+    private void LoadGeneral()
     {
         var s = Options.GetGeneralSettings();
         _settings = new GeneralSettingsState
@@ -82,8 +88,12 @@
             BlockNonCompliantEntry = s.BlockNonCompliantEntry,
             NotifyOnExpiry = s.NotifyOnExpiry,
         };
+    }
 
-        _modules = Options.GetModuleEntitlements();
+    // Loads real module entitlements for the current company (SF-22).
+    private async Task LoadModulesAsync()
+    {
+        _modules = await Entitlements.GetForCompanyAsync(TenantContext.CurrentCompanyId);
         _entitlements.Clear();
         foreach (var module in _modules)
         {
@@ -91,12 +101,28 @@
         }
     }
 
-    private void Save() => Snackbar.Add("Settings saved (demo — nothing is persisted).", Severity.Success);
-
-    private void Reset()
+    // Persists the module entitlements (general settings have no backing store yet and remain a demo save).
+    private async Task Save()
     {
-        Load();
-        Snackbar.Add("Settings reset to defaults.", Severity.Info);
+        _busy = true;
+        foreach (var module in _modules)
+        {
+            if (_entitlements[module.Key] != module.Enabled)
+            {
+                await Entitlements.SetEnabledAsync(TenantContext.CurrentCompanyId, module.Key, _entitlements[module.Key]);
+            }
+        }
+
+        await LoadModulesAsync();
+        _busy = false;
+        Snackbar.Add("Module entitlements saved. General settings are not yet persisted.", Severity.Success);
+    }
+
+    private async Task Reset()
+    {
+        LoadGeneral();
+        await LoadModulesAsync();
+        Snackbar.Add("Reverted unsaved changes.", Severity.Info);
     }
 
     // Mutable working copy for two-way binding.

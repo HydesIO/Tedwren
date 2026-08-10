@@ -1,0 +1,174 @@
+@page "/pack"
+@layout RecipientLayout
+@using Tedwren.Abstractions.Contracts.CompliancePacks
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject ICompliancePackService Packs
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Compliance pack · Tedwren</PageTitle>
+
+<div class="pack">
+    @if (_pack is null)
+    {
+        <DashboardCard Title="View a compliance pack" Subtitle="Enter the passcode from your invitation to continue.">
+            <Body>
+                <div class="pack__gate">
+                    <TedwrenTextField Label="Passcode" @bind-Value="_passcode" InputType="InputType.Password"
+                                      Placeholder="Passcode"
+                                      Error="_error is not null" ErrorText="@_error" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="ViewAsync"
+                               Disabled="_busy || string.IsNullOrWhiteSpace(_token)">
+                        @(_busy ? "Checking…" : "View pack")
+                    </MudButton>
+                    @if (string.IsNullOrWhiteSpace(_token))
+                    {
+                        <BannerAlert Severity="StatusKind.Warning" Title="Missing link"
+                                     Message="This page needs the secure link from your invitation email." />
+                    }
+                </div>
+            </Body>
+        </DashboardCard>
+    }
+    else
+    {
+        <DashboardCard Title="@_pack.Title" Subtitle="@Subtitle(_pack)">
+            <Body>
+                <div class="pack__actions">
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.FileDownload"
+                               OnClick="@(() => DownloadAsync("csv"))">CSV</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.FolderZip"
+                               OnClick="@(() => DownloadAsync("zip"))">ZIP</MudButton>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.PictureAsPdf"
+                               OnClick="@(() => DownloadAsync("pdf"))">PDF</MudButton>
+                </div>
+
+                @foreach (var subject in _pack.Subjects)
+                {
+                    <div class="pack__subject">
+                        <h3 class="pack__subject-name">@subject.Name</h3>
+                        <table class="pack__table">
+                            <thead>
+                                <tr><th>Qualification</th><th>Expires</th><th>Verification</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var card in subject.Cards)
+                                {
+                                    <tr>
+                                        <td>@card.QualificationName</td>
+                                        <td>@(card.ExpiresOn is { } on ? on.ToString("dd MMM yyyy") : "No expiry")</td>
+                                        <td>@card.VerificationLabel</td>
+                                        <td><StatusPill Label="@card.StatusLabel" Status="ComplianceStatusView.ToStatusKind(card.State)" /></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </Body>
+        </DashboardCard>
+    }
+</div>
+
+@code {
+    private string? _token;
+    private string? _passcode;
+    private string? _error;
+    private bool _busy;
+    private CompliancePackViewDto? _pack;
+
+    protected override void OnInitialized()
+    {
+        var uri = Nav.ToAbsoluteUri(Nav.Uri);
+        _token = ParseQuery(uri.Query, "token");
+        var passcode = ParseQuery(uri.Query, "passcode");
+        if (!string.IsNullOrEmpty(passcode))
+        {
+            _passcode = passcode;
+        }
+    }
+
+    private async Task ViewAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_token))
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        var result = await Packs.ViewAsync(_token!, _passcode ?? string.Empty);
+        _busy = false;
+
+        if (result.Granted && result.Pack is not null)
+        {
+            _pack = result.Pack;
+        }
+        else
+        {
+            _error = result.Reason ?? "The passcode is incorrect, or the link has expired or been revoked.";
+        }
+    }
+
+    private async Task DownloadAsync(string format)
+    {
+        if (_token is null)
+        {
+            return;
+        }
+
+        var passcode = _passcode ?? string.Empty;
+        var bytes = format switch
+        {
+            "csv" => await Packs.DownloadCsvAsync(_token, passcode),
+            "zip" => await Packs.DownloadZipAsync(_token, passcode),
+            _ => await Packs.DownloadPdfAsync(_token, passcode),
+        };
+
+        if (bytes is null)
+        {
+            return;
+        }
+
+        var (mime, name) = format switch
+        {
+            "csv" => ("text/csv", "compliance-pack.csv"),
+            "zip" => ("application/zip", "compliance-pack.zip"),
+            _ => ("application/pdf", "compliance-pack.pdf"),
+        };
+        await JS.InvokeVoidAsync("tedwrenDownloadBase64", name, mime, Convert.ToBase64String(bytes));
+    }
+
+    private static string Subtitle(CompliancePackViewDto pack)
+    {
+        var parts = new List<string>();
+        if (!string.IsNullOrWhiteSpace(pack.SiteName))
+        {
+            parts.Add(pack.SiteName!);
+        }
+
+        parts.Add($"Available until {pack.ExpiresUtc.LocalDateTime:dd MMM yyyy}");
+        return string.Join(" · ", parts);
+    }
+
+    // Reads a single value from a URL query string (e.g. "?token=abc&passcode=1234").
+    private static string? ParseQuery(string query, string key)
+    {
+        if (string.IsNullOrEmpty(query))
+        {
+            return null;
+        }
+
+        foreach (var pair in query.TrimStart('?').Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && string.Equals(Uri.UnescapeDataString(parts[0]), key, StringComparison.OrdinalIgnoreCase))
+            {
+                return Uri.UnescapeDataString(parts[1]);
+            }
+        }
+
+        return null;
+    }
+}

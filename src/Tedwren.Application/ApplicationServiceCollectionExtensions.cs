@@ -174,9 +174,10 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9).</summary>
+    /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9) and the recipient-access throttle.</summary>
     public static IServiceCollection AddCompliancePackCore(this IServiceCollection services)
     {
+        services.AddSingleton<CompliancePacks.IPackAccessThrottle, CompliancePacks.InMemoryPackAccessThrottle>();
         services.AddScoped<ICompliancePackService, CompliancePacks.CompliancePackService>();
         return services;
     }

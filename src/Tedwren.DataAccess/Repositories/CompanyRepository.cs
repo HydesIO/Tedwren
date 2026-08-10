@@ -42,6 +42,19 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
             },
             cancellationToken);
 
+    /// <summary>Updates an existing company's editable fields.</summary>
+    public Task UpdateAsync(Company company, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            "UPDATE Companies SET Name = @Name, Type = @Type, Trade = @Trade, RegistrationNumber = @RegistrationNumber, " +
+            "Address = @Address, ContactName = @ContactName, ContactEmail = @ContactEmail, ContactPhone = @ContactPhone " +
+            "WHERE Id = @Id",
+            new
+            {
+                company.Id, company.Name, company.Type, company.Trade, company.RegistrationNumber,
+                company.Address, company.ContactName, company.ContactEmail, company.ContactPhone,
+            },
+            cancellationToken);
+
     /// <summary>Maps a queried row to the domain entity.</summary>
     private static Company ToEntity(CompanyRow r) => new()
     {
