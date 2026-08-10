@@ -386,9 +386,9 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ **Attendance console view** over `/api/attendance` — new `/attendance` page (site selector, on-site
   workers, append-only log), `ApiAttendanceService` + nav entry. (Done this change; the mock-GUID
   prerequisite is moot now that Database is the standard mode.)
+- ✅ **Notifications over `/api/expiry`** — `Notifications.razor` now reads real upcoming/expired
+  qualifications via a new `ApiExpiryQueryService` (client vertical + registration). (Done this change.)
 - ⏳ **Follow-ups (non-blocking), remaining:**
-  - **Dashboard/Notifications panel over `/api/expiry`** — needs a client expiry service vertical
-    (`ApiExpiryService` + mock + registration); `Notifications.razor` still reads `IShellSampleDataService`.
   - **Induction take-flow phone UI** (start→steps→quiz→sign) over the API.
   - **Compliance-pack recipient view page** (token+passcode landing) and a "re-issue" action on the packs
     page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22).
