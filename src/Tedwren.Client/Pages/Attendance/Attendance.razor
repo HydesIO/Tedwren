@@ -1,0 +1,160 @@
+@page "/attendance"
+@using Tedwren.Abstractions.Contracts.Attendance
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.Models
+@inject ISiteService SiteData
+@inject IAttendanceService AttendanceData
+
+<PageTitle>Attendance · Tedwren</PageTitle>
+
+<PageHeader Title="Attendance" Subtitle="Who is on site now, and the append-only sign-in log (SF-13–SF-19)">
+    <Actions>
+        <TedwrenSelect T="string" Label="Site" Value="_selectedSiteName"
+                       Options="_siteNames" Placeholder="Select a site"
+                       ValueChanged="OnSiteChanged" />
+    </Actions>
+</PageHeader>
+
+@if (_sites.Count == 0 && !_loadingSites)
+{
+    <DashboardCard>
+        <Body>
+            <EmptyState Icon="@Icons.Material.Outlined.Apartment"
+                        Title="No sites yet"
+                        Description="Record a site first — attendance is tracked per site.">
+                <Action>
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/sites/add">Add a site</MudButton>
+                </Action>
+            </EmptyState>
+        </Body>
+    </DashboardCard>
+}
+else
+{
+    <div class="attendance-grid">
+        <DashboardCard Title="On site now" Subtitle="@OnSiteSubtitle">
+            <Body>
+                <DataTable TItem="OnSiteWorkerDto"
+                           Items="_onSite"
+                           Columns="_onSiteColumns"
+                           Loading="_loading"
+                           SearchPlaceholder="Search…"
+                           EmptyTitle="Nobody on site"
+                           EmptyDescription="No workers are currently signed in at this site."
+                           EmptyIcon="@Icons.Material.Outlined.PersonOff" />
+            </Body>
+        </DashboardCard>
+
+        <DashboardCard Title="Recent activity" Subtitle="Append-only sign-in / sign-out log">
+            <Body>
+                <DataTable TItem="AttendanceRecordDto"
+                           Items="_records"
+                           Columns="_recordColumns"
+                           Loading="_loading"
+                           SearchPlaceholder="Search log…"
+                           EmptyTitle="No activity"
+                           EmptyDescription="No sign-in or sign-out events recorded for this site yet."
+                           EmptyIcon="@Icons.Material.Outlined.History" />
+            </Body>
+        </DashboardCard>
+    </div>
+}
+
+@code {
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private IReadOnlyList<string> _siteNames = Array.Empty<string>();
+    private string? _selectedSiteName;
+    private Guid _selectedSiteId;
+
+    private IReadOnlyList<OnSiteWorkerDto> _onSite = Array.Empty<OnSiteWorkerDto>();
+    private IReadOnlyList<AttendanceRecordDto> _records = Array.Empty<AttendanceRecordDto>();
+
+    private List<DataColumn<OnSiteWorkerDto>> _onSiteColumns = new();
+    private List<DataColumn<AttendanceRecordDto>> _recordColumns = new();
+
+    private bool _loadingSites = true;
+    private bool _loading;
+
+    private string OnSiteSubtitle => $"{_onSite.Count} currently signed in";
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _sites = await SiteData.GetSitesAsync();
+        _siteNames = _sites.Select(s => s.Name).ToList();
+        _loadingSites = false;
+
+        if (_sites.Count > 0)
+        {
+            _selectedSiteName = _sites[0].Name;
+            _selectedSiteId = _sites[0].Id;
+            await LoadSiteAsync();
+        }
+    }
+
+    private async Task OnSiteChanged(string? name)
+    {
+        _selectedSiteName = name;
+        _selectedSiteId = _sites.FirstOrDefault(s => s.Name == name)?.Id ?? Guid.Empty;
+        await LoadSiteAsync();
+    }
+
+    private async Task LoadSiteAsync()
+    {
+        if (_selectedSiteId == Guid.Empty)
+        {
+            return;
+        }
+
+        _loading = true;
+        _onSite = await AttendanceData.GetOnSiteAsync(_selectedSiteId);
+        _records = await AttendanceData.GetSiteRecordsAsync(_selectedSiteId, 50);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _onSiteColumns = new()
+        {
+            new() { Title = "Worker", Value = w => w.PersonId.ToString()[..8] },
+            new()
+            {
+                Title = "Since", Value = w => w.SinceUtc, Searchable = false,
+                CellTemplate = w => @<span>@w.SinceUtc.LocalDateTime.ToString("dd MMM, HH:mm")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = w => w.Outcome, Sortable = false,
+                CellTemplate = w => @<StatusPill Label="@w.Outcome" Status="ToStatus(w.Outcome)" />
+            },
+        };
+
+        _recordColumns = new()
+        {
+            new()
+            {
+                Title = "When", Value = r => r.OccurredUtc, Searchable = false,
+                CellTemplate = r => @<span>@r.OccurredUtc.LocalDateTime.ToString("dd MMM, HH:mm")</span>
+            },
+            new() { Title = "Worker", Value = r => r.PersonId.ToString()[..8] },
+            new() { Title = "Event", Value = r => r.Type, Filterable = true },
+            new() { Title = "Method", Value = r => r.Method, Filterable = true },
+            new()
+            {
+                Title = "Outcome", Text = r => r.Outcome, Sortable = false, Filterable = true,
+                CellTemplate = r => @<StatusPill Label="@r.Outcome" Status="ToStatus(r.Outcome)" />
+            },
+            new() { Title = "Reason", Value = r => r.Reason ?? "—" },
+        };
+    }
+
+    // Maps an attendance outcome to the shared pill palette.
+    private static StatusKind ToStatus(string outcome) => outcome switch
+    {
+        "Accepted" => StatusKind.Success,
+        "Flagged" => StatusKind.Warning,
+        "Refused" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -11,6 +11,29 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### UX completeness pass — user management, UI defect closure & EF migrations tooling (this change)
+- ✅ **Console user management (SF-20, SF-23, Q2).** New full vertical: `User` entity + `UserStatus` enum
+  (reusing the existing `AccessRole`); `IUserService` + DTOs; `UserService` (invite with duplicate-email
+  guard, edit, suspend/reactivate — access withdrawn, never deleted, keeping audit history); seeded
+  in-memory store/repository; Dapper `UserRepository` + `010_users.sql` (SQL Server + PostgreSQL);
+  `/api/users` endpoint group; client `ApiUserService` + interactive `ClientMockUserService`; **Users list**
+  page, **InviteUser** form and **UserDetail** (inline edit + suspend/reactivate). Replaces the previous
+  invite-only `/users` form. Unit + API tests added.
+- ✅ **Sites create flow (SF-6/14/25/26).** New `/sites/add` page (company picker, optional boundary,
+  no-compound & dispersed toggles); wired the previously dead "Add site" button.
+- ✅ **Dashboard actions.** Date-range button now opens a working period menu; **Export** button downloads
+  the site-risk heatmap as CSV via a reusable browser-download JS helper (`tedwrenDownload`). Both were
+  dead no-ops.
+- ✅ **SiteDetail migrated to `ISiteService`** (overview + real properties; no invented workforce data).
+- ✅ **Audit "Export CSV" button** on `AuditLog.razor` wired to the existing `IAuditService.ExportCsvAsync`
+  (was a logged follow-up); **Time & Attendance CSV export** now performs a real browser download.
+- ✅ **EF Core migrations tooling (alongside Dapper).** EF authors/applies schema (DDL); Dapper stays for
+  queries (DML). `Tedwren.DataAccess/Ef`: flat `SchemaRecords` mirroring every table, `TedwrenDbContext`
+  (identifiers lower-cased on PostgreSQL to match the Dapper repos' unquoted SQL), design-time factory
+  driven by `TEDWREN_EF_PROVIDER`/`TEDWREN_EF_CONNECTION`. Both provider models validated via
+  `dotnet ef dbcontext info`; no migrations generated (operator runs them). Full command set in
+  `docs/ef-migrations.md`. NuGet audit scoped to direct deps (unactionable transitive advisory).
+
 ### Phases 1–6 — UI/UX foundation over mock data (pre-existing, on `main`)
 - ✅ **Phase 1 — Shell & theme.** Solution scaffold, `tokens.css` design tokens, MudBlazor theme,
   application shell (`MainLayout`, `AppSidebar`, `AppTopBar`).
@@ -353,23 +376,34 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
-- ⏳ **Phase 18 — Hardening & PostgreSQL launch gate.** Accessibility pass; load/latency testing against R14;
-  **independent security review of the public pack link** (the only public route to personal data); backup/restore
-  rehearsal; **full PostgreSQL parity suite** run green (proves the dual-engine promise before production). This is
-  the pre-launch gate before the PRD commercial modules (Phases 19+).
-- ⏳ **Follow-ups (non-blocking):** induction take-flow phone UI (start→steps→quiz→sign) over the API;
-  compliance-pack recipient view page (token+passcode landing) and a "re-issue"
-  action on the packs page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22);
-  timesheet detail/correction UI (line-level edit) and operative self-service
-  hours view (SUB-27) over the API; a "configurable approval" settings surface (SUB-9 line/site/project/all);
-  navigation gating over `/api/entitlements` (SF-22 — no locked door);
-  audit "Export CSV" button + free-text box on `AuditLog.razor` (backend supports both already);
-  a console "on-site"/attendance view over `/api/attendance`; SiteDetail page
-  over `ISiteService`; qualification cards on the
-  Operative-detail page and a Dashboard/Notifications panel over `/api/expiry` (backends + tests already in
-  place); wire company/operative compliance % from cards into the Phase 8 `OrganisationService`; real
-  SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs SUB-4);
-  real card-image storage (R9).
+- ⏸️ **PostgreSQL launch gate — deferred for now (per request).** The full PostgreSQL parity suite and the
+  dual-engine pre-launch gate are intentionally out of scope for the current push. The EF model already
+  lower-cases identifiers for PostgreSQL and the migration scripts exist, so this is a run/verify task when
+  picked up, not new build.
+- ⏳ **Phase 18 — Hardening (excluding the PG gate above).** Accessibility pass; load/latency testing against
+  R14; **independent security review of the public pack link** (the only public route to personal data);
+  backup/restore rehearsal.
+- ✅ **Attendance console view** over `/api/attendance` — new `/attendance` page (site selector, on-site
+  workers, append-only log), `ApiAttendanceService` + nav entry. (Done this change; the mock-GUID
+  prerequisite is moot now that Database is the standard mode.)
+- ✅ **Notifications over `/api/expiry`** — `Notifications.razor` now reads real upcoming/expired
+  qualifications via a new `ApiExpiryQueryService` (client vertical + registration). (Done this change.)
+- ⏳ **Follow-ups (non-blocking), remaining:**
+  - **Induction take-flow phone UI** (start→steps→quiz→sign) over the API.
+  - **Compliance-pack recipient view page** (token+passcode landing) and a "re-issue" action on the packs
+    page (R7); pack send restricted to nominated roles wired to Phase-13 roles (SUB-22).
+  - **Timesheet detail/correction UI** (line-level edit) and operative self-service hours view (SUB-27);
+    a "configurable approval" settings surface (SUB-9 line/site/project/all).
+  - **Navigation gating over `/api/entitlements`** (SF-22 — no locked door): hide unpurchased modules.
+  - **Qualification cards on the Operative-detail page**; wire company/operative compliance % from cards
+    into the Phase 8 `OrganisationService`.
+  - **Persist demo-only actions**: several detail-page "Edit"/"Send update link" actions and the System
+    Configuration / Permits "Save" actions are labelled `(demo)` snackbars — wire to services when the
+    corresponding write endpoints exist.
+  - Real SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs
+    SUB-4); real card-image storage (R9).
+- ✅ *Done this change (moved from this list):* audit "Export CSV" button; SiteDetail over `ISiteService`;
+  Users management page; `/sites/add` create flow; Dashboard export/date-range; EF migrations tooling.
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,

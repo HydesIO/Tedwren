@@ -29,6 +29,20 @@
 
     <script src="_framework/blazor.webassembly.js"></script>
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+    <script>
+        // Triggers a client-side file download (e.g. CSV export) without a round-trip to the server.
+        window.tedwrenDownload = (fileName, mimeType, content) => {
+            const blob = new Blob([content], { type: mimeType || 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement('a');
+            anchor.href = url;
+            anchor.download = fileName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            URL.revokeObjectURL(url);
+        };
+    </script>
 </body>
 
 </html>

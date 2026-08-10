@@ -13,6 +13,7 @@ using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Qualifications;
 using Tedwren.Application.Sites;
+using Tedwren.Application.Users;
 
 namespace Tedwren.Application;
 
@@ -85,6 +86,21 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemoryExpiryStore>();
         services.AddScoped<INotificationLogRepository, InMemoryNotificationLogRepository>();
         services.AddScoped<IJobRunRepository, InMemoryJobRunRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic console user-management service (SF-20/SF-23/Q2).</summary>
+    public static IServiceCollection AddUserCore(this IServiceCollection services)
+    {
+        services.AddScoped<IUserService, UserService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory user repository and its shared seeded store (mock mode).</summary>
+    public static IServiceCollection AddInMemoryUserStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryUserStore>();
+        services.AddScoped<IUserRepository, InMemoryUserRepository>();
         return services;
     }
 

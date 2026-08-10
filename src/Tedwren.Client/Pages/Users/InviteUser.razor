@@ -1,0 +1,104 @@
+@page "/users/invite"
+@using Tedwren.Abstractions.Contracts.Users
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.Models
+@inject IUserService Users
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Invite user · Tedwren</PageTitle>
+
+<MudBreadcrumbs Items="_breadcrumbs" Class="px-0" />
+
+<PageHeader Title="Invite user" Subtitle="Send an invitation and set the user's role" />
+
+<div class="form-page">
+    <FormSection Title="User details" Description="We'll email an invitation to join the workspace.">
+        <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true" Placeholder="Full name"
+                          Error="_submitted && string.IsNullOrWhiteSpace(_name)"
+                          ErrorText="Name is required." />
+        <TedwrenTextField Label="Email address" @bind-Value="_email" Required="true"
+                          InputType="InputType.Email" Placeholder="name@company.com"
+                          Error="_submitted && !IsValidEmail(_email)"
+                          ErrorText="Enter a valid email address." />
+        <TedwrenSelect T="string" Label="Role" @bind-Value="_role" Required="true"
+                       Options="_roleValues" Placeholder="Select a role"
+                       HelperText="The role sets what the user can do. The auditor role is read-only (SF-23)."
+                       Error="_submitted && string.IsNullOrWhiteSpace(_role)"
+                       ErrorText="Select a role." />
+    </FormSection>
+
+    @if (SelectedRole is { } role)
+    {
+        <FormSection Title="What this role can do" Description="Roles set sensible defaults for console access.">
+            <div class="form-page__full">
+                <BannerAlert Severity="@(role.CanWrite ? StatusKind.Info : StatusKind.Warning)"
+                             Title="@role.Label"
+                             Message="@(role.CanWrite
+                                 ? "Can view and change data within the modules the company has enabled."
+                                 : "Read-only access — can view data but cannot make any changes.")" />
+            </div>
+        </FormSection>
+    }
+
+    <FormActions>
+        <Secondary>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        </Secondary>
+        <Primary>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
+                       OnClick="Send">Send invitation</MudButton>
+        </Primary>
+    </FormActions>
+</div>
+
+@code {
+    private string? _name;
+    private string? _email;
+    private string? _role;
+    private bool _submitted;
+
+    private IReadOnlyList<RoleOption> _roles = Array.Empty<RoleOption>();
+    private IReadOnlyList<string> _roleValues = Array.Empty<string>();
+
+    private List<BreadcrumbItem> _breadcrumbs = new()
+    {
+        new("Users", "/users"),
+        new("Invite user", null, disabled: true),
+    };
+
+    private RoleOption? SelectedRole => _roles.FirstOrDefault(r => r.Value == _role);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roles = await Users.GetRolesAsync();
+        _roleValues = _roles.Select(r => r.Value).ToList();
+    }
+
+    private async Task Send()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name) || !IsValidEmail(_email) || string.IsNullOrWhiteSpace(_role))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        try
+        {
+            // Persists via the API when DataSource=Api; adds to the live list under mock data.
+            await Users.InviteUserAsync(new InviteUserRequest(_name!, _email!, _role!));
+            Snackbar.Add($"Invitation sent to {_email}.", Severity.Success);
+            Nav.NavigateTo("/users");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+    }
+
+    private void Cancel() => Nav.NavigateTo("/users");
+
+    private static bool IsValidEmail(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+}
