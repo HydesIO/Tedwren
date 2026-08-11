@@ -21,15 +21,21 @@ public sealed class WorkforceService : IWorkforceService
     private readonly IQualificationCardRepository _cards;
     private readonly IQualificationService _qualifications;
     private readonly IDecisionService _decisions;
+    private readonly ICurrentUserService? _currentUser;
 
-    /// <summary>Creates the service over its repositories and the qualification/decision services.</summary>
+    /// <summary>
+    /// Creates the service over its repositories and the qualification/decision services.
+    /// <paramref name="currentUser"/> supplies the signed-in tenant so the register is scoped to the
+    /// caller's company (R15); it is optional so unit tests that construct the service directly run unscoped.
+    /// </summary>
     public WorkforceService(
         ICompanyRepository companies,
         IEngagementRepository engagements,
         IPersonRepository people,
         IQualificationCardRepository cards,
         IQualificationService qualifications,
-        IDecisionService decisions)
+        IDecisionService decisions,
+        ICurrentUserService? currentUser = null)
     {
         _companies = companies;
         _engagements = engagements;
@@ -37,15 +43,33 @@ public sealed class WorkforceService : IWorkforceService
         _cards = cards;
         _qualifications = qualifications;
         _decisions = decisions;
+        _currentUser = currentUser;
     }
 
     /// <summary>Today's date for card-status evaluation (UTC; card expiry is date-only, R11).</summary>
     private static DateOnly Today => DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime);
 
-    /// <summary>Returns every active operative across all companies, with compliance and next expiry.</summary>
-    public async Task<IReadOnlyList<OperativeListItemDto>> ListOperativesAsync(CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Returns the companies in the caller's tenant scope (R15): just the signed-in company when resolved,
+    /// otherwise every company (unit tests / unauthenticated run unscoped rather than showing nothing).
+    /// </summary>
+    private async Task<IReadOnlyList<Company>> ScopedCompaniesAsync(CancellationToken cancellationToken)
     {
         var companies = await _companies.GetAllAsync(cancellationToken);
+        if (_currentUser is null)
+        {
+            return companies;
+        }
+        var user = await _currentUser.GetCurrentAsync(cancellationToken);
+        return user.CompanyId is { } tenant
+            ? companies.Where(c => c.Id == tenant).ToList()
+            : companies;
+    }
+
+    /// <summary>Returns every active operative in the caller's tenant, with compliance and next expiry (R15).</summary>
+    public async Task<IReadOnlyList<OperativeListItemDto>> ListOperativesAsync(CancellationToken cancellationToken = default)
+    {
+        var companies = await ScopedCompaniesAsync(cancellationToken);
 
         // Gather every active engagement first, then fetch all cards in one batched read (avoids per-person N+1).
         var rows = new List<(Engagement Engagement, string Company)>();
@@ -80,7 +104,7 @@ public sealed class WorkforceService : IWorkforceService
     /// <summary>Returns an operative's full profile by slug, or null when no active operative matches.</summary>
     public async Task<OperativeDetailDto?> GetOperativeBySlugAsync(string slug, CancellationToken cancellationToken = default)
     {
-        var companies = await _companies.GetAllAsync(cancellationToken);
+        var companies = await ScopedCompaniesAsync(cancellationToken);
         foreach (var company in companies)
         {
             var engagements = await _engagements.GetActiveByCompanyAsync(company.Id, cancellationToken);

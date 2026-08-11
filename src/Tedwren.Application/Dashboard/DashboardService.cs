@@ -19,23 +19,30 @@ public sealed class DashboardService : IDashboardService
     private readonly IQualificationCardRepository _cards;
     private readonly ISiteService _sites;
     private readonly IExpiryQueryService _expiry;
+    private readonly ICurrentUserService? _currentUser;
 
     /// <summary>How many days ahead the "upcoming expiries" KPI looks.</summary>
     private const int UpcomingExpiryWindowDays = 30;
 
-    /// <summary>Creates the service over its repositories and the site/expiry services.</summary>
+    /// <summary>
+    /// Creates the service over its repositories and the site/expiry services. <paramref name="currentUser"/>
+    /// supplies the signed-in tenant so the operative tally is scoped to the caller's company (R15); it is
+    /// optional so unit tests that construct the service directly run unscoped.
+    /// </summary>
     public DashboardService(
         ICompanyRepository companies,
         IEngagementRepository engagements,
         IQualificationCardRepository cards,
         ISiteService sites,
-        IExpiryQueryService expiry)
+        IExpiryQueryService expiry,
+        ICurrentUserService? currentUser = null)
     {
         _companies = companies;
         _engagements = engagements;
         _cards = cards;
         _sites = sites;
         _expiry = expiry;
+        _currentUser = currentUser;
     }
 
     /// <summary>Today's date for card-status evaluation (UTC; card expiry is date-only, R11).</summary>
@@ -68,10 +75,27 @@ public sealed class DashboardService : IDashboardService
     public async Task<ComplianceBreakdownDto> GetComplianceAsync(CancellationToken cancellationToken = default) =>
         await ComputeComplianceAsync(cancellationToken);
 
-    /// <summary>Tallies every active operative's compliance state from their current cards (SF-8).</summary>
-    private async Task<ComplianceBreakdownDto> ComputeComplianceAsync(CancellationToken cancellationToken)
+    /// <summary>
+    /// Returns the companies in the caller's tenant scope (R15): just the signed-in company when resolved,
+    /// otherwise every company (unit tests / unauthenticated run unscoped rather than showing nothing).
+    /// </summary>
+    private async Task<IReadOnlyList<Company>> ScopedCompaniesAsync(CancellationToken cancellationToken)
     {
         var companies = await _companies.GetAllAsync(cancellationToken);
+        if (_currentUser is null)
+        {
+            return companies;
+        }
+        var user = await _currentUser.GetCurrentAsync(cancellationToken);
+        return user.CompanyId is { } tenant
+            ? companies.Where(c => c.Id == tenant).ToList()
+            : companies;
+    }
+
+    /// <summary>Tallies the caller's tenant operatives' compliance state from their current cards (SF-8, R15).</summary>
+    private async Task<ComplianceBreakdownDto> ComputeComplianceAsync(CancellationToken cancellationToken)
+    {
+        var companies = await ScopedCompaniesAsync(cancellationToken);
         int compliant = 0, atRisk = 0, nonCompliant = 0, pending = 0, total = 0;
 
         // Collect every active operative's person id, then fetch all cards in one batched read (avoids N+1).

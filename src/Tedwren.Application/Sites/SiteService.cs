@@ -21,30 +21,53 @@ public sealed class SiteService : ISiteService
     private readonly ISitePropertyRepository _properties;
     private readonly IAttendanceRepository _attendance;
     private readonly IQualificationCardRepository _cards;
+    private readonly ICurrentUserService? _currentUser;
 
     /// <summary>How many recent attendance records to scan when deriving a site's operatives.</summary>
     private const int AttendanceScanSize = 500;
 
-    /// <summary>Creates the service over its repositories.</summary>
+    /// <summary>
+    /// Creates the service over its repositories. <paramref name="currentUser"/> supplies the signed-in
+    /// tenant so site queries are scoped to the caller's company (R15/MC-21); it is optional so unit tests
+    /// that construct the service directly run unscoped.
+    /// </summary>
     public SiteService(
         ISiteRepository sites,
         ISitePropertyRepository properties,
         IAttendanceRepository attendance,
-        IQualificationCardRepository cards)
+        IQualificationCardRepository cards,
+        ICurrentUserService? currentUser = null)
     {
         _sites = sites;
         _properties = properties;
         _attendance = attendance;
         _cards = cards;
+        _currentUser = currentUser;
     }
 
     /// <summary>Today's date for card-status evaluation (UTC; card expiry is date-only, R11).</summary>
     private static DateOnly Today => DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime);
 
-    /// <summary>Returns every site as a list-row summary, with its property count and derived compliance.</summary>
+    /// <summary>
+    /// Resolves the signed-in caller's tenant company (R15). Null when no current user is wired (unit tests)
+    /// or the caller is unauthenticated — both of which run unscoped rather than showing an empty screen.
+    /// </summary>
+    private async Task<Guid?> ResolveTenantAsync(CancellationToken cancellationToken)
+    {
+        if (_currentUser is null)
+        {
+            return null;
+        }
+        var user = await _currentUser.GetCurrentAsync(cancellationToken);
+        return user.CompanyId;
+    }
+
+    /// <summary>Returns every site the caller's tenant owns as a list-row summary, with property count and derived compliance (R15).</summary>
     public async Task<IReadOnlyList<SiteSummary>> GetSitesAsync(CancellationToken cancellationToken = default)
     {
-        var sites = await _sites.GetAllAsync(cancellationToken);
+        var tenant = await ResolveTenantAsync(cancellationToken);
+        var all = await _sites.GetAllAsync(cancellationToken);
+        var sites = tenant is null ? all : all.Where(s => s.CompanyId == tenant).ToList();
         var summaries = new List<SiteSummary>(sites.Count);
         foreach (var site in sites)
         {
@@ -90,9 +113,16 @@ public sealed class SiteService : ISiteService
     /// <summary>Returns the full site for a slug, or null when no site matches.</summary>
     public async Task<SiteDetailDto?> GetSiteAsync(string slug, CancellationToken cancellationToken = default)
     {
+        var tenant = await ResolveTenantAsync(cancellationToken);
         var sites = await _sites.GetAllAsync(cancellationToken);
         var site = sites.FirstOrDefault(s => Slug.From(s.Name) == slug);
         if (site is null)
+        {
+            return null;
+        }
+
+        // MC-21: a site outside the caller's tenant fails visibly (404), never leaks across companies (R15).
+        if (tenant is not null && site.CompanyId != tenant)
         {
             return null;
         }

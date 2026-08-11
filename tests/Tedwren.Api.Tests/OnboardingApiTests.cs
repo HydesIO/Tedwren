@@ -1,8 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Onboarding;
-using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Abstractions.Contracts.Qualifications;
 using Tedwren.Abstractions.Contracts.Workforce;
 using Xunit;
@@ -25,8 +25,9 @@ public sealed class OnboardingApiTests : IClassFixture<WebApplicationFactory<Pro
     public async Task Create_View_Submit_Capture_Flow()
     {
         var client = _factory.CreateClient();
-        var companies = await client.GetFromJsonAsync<List<CompanySummary>>("/api/organisation/companies");
-        var companyId = companies![0].Id;
+        // R15: the workforce register is tenant-scoped, so onboard into the caller's own company.
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var companyId = me!.CompanyId!.Value;
 
         var create = await client.PostAsJsonAsync("/api/onboarding",
             new CreateOnboardingLinkRequest(companyId, "Jordan Fields", "Groundworks", RequirePasscode: true));
