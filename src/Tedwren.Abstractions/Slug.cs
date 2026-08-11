@@ -5,8 +5,7 @@ namespace Tedwren.Abstractions;
 /// <summary>
 /// Turns a display name into a URL-safe slug used to key detail routes to records
 /// (e.g. "Meridian Construction Ltd" → "meridian-construction-ltd"). Canonical, dependency-free copy
-/// shared by the API and the client so both derive the same slug from the same name. (The existing
-/// <c>Tedwren.UiComponents.SampleData.Slugs</c> uses the identical algorithm for the sample-only pages.)
+/// shared by the API and the client so both derive the same slug from the same name.
 /// </summary>
 public static class Slug
 {

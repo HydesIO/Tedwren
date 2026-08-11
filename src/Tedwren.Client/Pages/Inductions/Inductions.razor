@@ -1,5 +1,6 @@
 @page "/inductions"
-@inject IFormSampleDataService Options
+@using Tedwren.Abstractions.Services
+@inject ISiteService Sites
 @inject ISnackbar Snackbar
 
 <PageTitle>Inductions · Tedwren</PageTitle>
@@ -68,7 +69,11 @@
 
     private IReadOnlyList<string> _sites = Array.Empty<string>();
 
-    protected override void OnInitialized() => _sites = Options.GetSiteNames();
+    protected override async Task OnInitializedAsync()
+    {
+        var sites = await Sites.GetSitesAsync();
+        _sites = sites.Select(s => s.Name).ToList();
+    }
 
     private void Publish()
         => Snackbar.Add($"Induction \"{_name ?? "Untitled"}\" published (demo — nothing is persisted).", Severity.Success);

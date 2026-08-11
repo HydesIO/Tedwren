@@ -11,7 +11,22 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Sample-data → API migration, Phases M4 (settings) + M5 (permits) (this change)
+### Sample-data → API migration, Phase M6: shell chrome + project removal (this change)
+Completes the migration — no page renders sample data any more.
+- ✅ **Inductions builder** — the "applies to site" dropdown now loads from `ISiteService` (off
+  `IFormSampleDataService`). The video/quiz/publish steps remain explicit UI placeholders (no template-
+  authoring backend exists; publishing arbitrary inductions is out of scope).
+- ✅ **MainLayout shell chrome retired.** Current user → `ICurrentUserService`; top-bar notifications →
+  `IExpiryQueryService` (real upcoming expiries, SF-9); nav/route inventory, platform switcher and
+  environment badge relocated to `Tedwren.Client/Services/ShellChrome.cs` (fixed app config, not tenant
+  data). `IShellSampleDataService` / `IListSampleDataService` no longer used.
+- ✅ **`Tedwren.UiComponents.SampleData` project deleted** — removed from the solution, the client project
+  reference, `Program.cs` registrations and `_Imports`. Presentation view models it used to own
+  (`KpiTile`, the compliance-overview VM) now live in `Tedwren.Client/Services`.
+- ✅ Docs updated (CLAUDE.md architecture table + data-source note; Slug.cs comment). Whole solution builds;
+  `dotnet test` green (API 44, Application 99).
+
+### Sample-data → API migration, Phases M4 (settings) + M5 (permits) (previous change)
 - ✅ **M4 — general settings persistence.** `ISettingsService` (`GetForCompanyAsync`, `SaveForCompanyAsync`) +
   `SettingsService` (returns per-company settings, defaults seeded from company name when unset) +
   `/api/settings/{companyId}` (GET/PUT) + `ApiSettingsService`. Per-company JSON row: `CompanySettings` table

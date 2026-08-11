@@ -5,21 +5,12 @@ using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Services;
 using Tedwren.Client;
 using Tedwren.Client.Services;
-using Tedwren.UiComponents.SampleData;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddMudServices();
-
-// Sample-data services. Pages not yet migrated to the API consume these directly; the client mock
-// organisation service also wraps them so mock mode looks identical to before.
-builder.Services.AddSingleton<IShellSampleDataService, ShellSampleDataService>();
-builder.Services.AddSingleton<IDashboardSampleDataService, DashboardSampleDataService>();
-builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
-builder.Services.AddSingleton<IFormSampleDataService, FormSampleDataService>();
-builder.Services.AddSingleton<IDetailSampleDataService, DetailSampleDataService>();
 
 // The active customer (company). Scoped so it initialises once per app load; onboarding sets it after
 // creating the first company so the whole app scopes to the new organisation (R15).
