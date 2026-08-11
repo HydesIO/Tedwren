@@ -6,6 +6,7 @@ using Tedwren.Application.Jobs;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Audit;
+using Tedwren.Application.Dashboard;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
 using Tedwren.Application.Identity;
@@ -211,6 +212,16 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddWorkforceCore(this IServiceCollection services)
     {
         services.AddScoped<IWorkforceService, WorkforceService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the dashboard aggregation service. It reuses the organisation, qualification, site and
+    /// expiry repositories/services, so no dedicated store registration is required.
+    /// </summary>
+    public static IServiceCollection AddDashboardCore(this IServiceCollection services)
+    {
+        services.AddScoped<IDashboardService, DashboardService>();
         return services;
     }
 

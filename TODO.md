@@ -11,7 +11,27 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Sample-data → API migration, Phase M2: workforce read model (this change)
+### Sample-data → API migration, Phase M3: dashboard aggregation (this change)
+Adds the dashboard aggregation read model and migrates the Dashboard and Compliance pages onto it.
+- ✅ **Dashboard aggregation** — `IDashboardService` (`GetSummaryAsync`, `GetComplianceAsync`) +
+  `DashboardService`, composing company/engagement/qualification-card repositories + `ISiteService` +
+  `IExpiryQueryService` (no new store; reuses `ComplianceRollup` for SF-8). DTOs `DashboardSummaryDto`,
+  `DashboardKpisDto`, `ComplianceBreakdownDto`, `SiteRiskRowDto`.
+- ✅ **API + client** — `/api/dashboard` (summary) + `/api/dashboard/compliance` + `ApiDashboardService`,
+  registered both ends. New client helper `ComplianceOverviewView` maps the breakdown to the donut/legend VM
+  (theme-token colours; no literals in pages).
+- ✅ **Pages migrated:** `Dashboard` — KPIs (companies/operatives/sites/compliance%/upcoming expiries),
+  compliance donut, site-risk heatmap all from `/api/dashboard`; upcoming expiries from `IExpiryQueryService`
+  (SF-9); recent activity from `IAuditService` (SF-20). `Compliance` — overview donut from
+  `GetComplianceAsync`. Both fully off `IDashboardSampleDataService`.
+- ✅ Honest-data note: the heatmap now shows Site / Operatives / Compliance% / Status (the sample
+  Compliant/Expiring/At-risk per-site breakdown has no domain source — there is no person→site compliance
+  link yet); KPI sparklines/trends are dropped (no historical series stored).
+- ✅ Tests: `DashboardApiTests` (API, 2); whole solution builds; `dotnet test` green (API 41, Application 99).
+- ⏳ **Remaining sample-data pages:** SystemConfiguration settings (M4); Permits issue-flow backend (M5);
+  Inductions config + retire `IShellSampleDataService` chrome (M6).
+
+### Sample-data → API migration, Phase M2: workforce read model (previous change)
 Adds the org-wide workforce read model and migrates the operative-facing pages onto it.
 - ✅ **Workforce read model** — `IWorkforceService` (`ListOperativesAsync`, `GetOperativeBySlugAsync`) +
   `WorkforceService`, composing existing company/engagement/person/qualification-card/decision
