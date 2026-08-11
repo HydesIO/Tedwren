@@ -20,6 +20,18 @@ public sealed class CompanyRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>CompanyDocuments</c> table (SUB-4: insurances, accreditations, policies).</summary>
+public sealed class CompanyDocumentRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public DateOnly? ExpiresOn { get; set; }
+    public string? Reference { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>Persons</c> table (SF-1: one person per mobile number).</summary>
 public sealed class PersonRecord
 {

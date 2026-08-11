@@ -29,7 +29,8 @@
 </DashboardCard>
 
 @code {
-    private static readonly Guid CompanyId = ClientMockInductionService.DemoCompanyId;
+    // Demo seed for this not-yet-migrated sample page (formerly on the removed client mock service).
+    private static readonly Guid CompanyId = Guid.Parse("66666666-6666-4666-8666-000000000001");
 
     private IReadOnlyList<InductionSummaryDto> _records = Array.Empty<InductionSummaryDto>();
     private List<DataColumn<InductionSummaryDto>> _columns = new();

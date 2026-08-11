@@ -34,6 +34,13 @@ public sealed record InductionSessionDto(
     DateTimeOffset? ExpiresUtc,
     int AttemptCount);
 
+/// <summary>
+/// Request to create an induction template for a company by seeding the shipped default steps and quiz (MC-3),
+/// so a newly-onboarded main contractor can run an induction immediately (SF-12). The customer refines the
+/// steps and questions afterwards.
+/// </summary>
+public sealed record CreateInductionTemplateRequest(Guid CompanyId, string Name, int ValidityDays, int PassMark);
+
 /// <summary>Request to start an induction for an operative (MC-1).</summary>
 public sealed record StartInductionRequest(Guid CompanyId, Guid TemplateId, Guid PersonId, string PersonName);
 

@@ -4,18 +4,18 @@ using Xunit;
 namespace Tedwren.Application.Tests;
 
 /// <summary>
-/// Verifies the defaults of the mock/database switch. The backend must default to mock data so
-/// that, until a database is configured, behaviour is identical to the current sample-data app.
+/// Verifies the defaults of the data-source options. The backend defaults to the database — the only
+/// supported runtime mode; the in-memory mode is a test-only double selected explicitly by the test host.
 /// </summary>
 public sealed class BackendOptionsTests
 {
-    /// <summary>A freshly-constructed <see cref="BackendOptions"/> defaults to mock data.</summary>
+    /// <summary>A freshly-constructed <see cref="BackendOptions"/> defaults to the database.</summary>
     [Fact]
-    public void Default_Mode_IsMock()
+    public void Default_Mode_IsDatabase()
     {
         var options = new BackendOptions();
 
-        Assert.Equal(DataSourceMode.Mock, options.Mode);
+        Assert.Equal(DataSourceMode.Database, options.Mode);
         Assert.Equal(DatabaseProvider.SqlServer, options.Provider);
     }
 

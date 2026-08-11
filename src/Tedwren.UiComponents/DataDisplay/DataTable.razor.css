@@ -55,6 +55,64 @@
     margin-left: auto;
 }
 
+.data-table__summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-12, 12px);
+    min-height: 24px;
+}
+
+.data-table__chips {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    flex-wrap: wrap;
+}
+
+.data-table__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 6px 2px 10px;
+    border-radius: 999px;
+    font-size: .75rem;
+    color: var(--color-brand-dark, #B8430C);
+    background: var(--color-brand-pale, #FFF1E8);
+}
+
+.data-table__chip-key {
+    font-weight: 600;
+}
+
+.data-table__chip-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: .875rem;
+    line-height: 1;
+    cursor: pointer;
+    border-radius: 50%;
+}
+
+.data-table__chip-x:hover {
+    background: rgba(0, 0, 0, .08);
+}
+
+.data-table__count {
+    font-size: .75rem;
+    color: var(--color-text-muted, #98A2B3);
+    margin-left: auto;
+    white-space: nowrap;
+}
+
 /* MudTable-rendered cells (reached via ::deep because MudBlazor owns that DOM). */
 .data-table ::deep .data-table__th--right,
 .data-table ::deep .data-table__td--right {

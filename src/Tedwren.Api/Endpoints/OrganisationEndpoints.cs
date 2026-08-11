@@ -37,6 +37,14 @@ public static class OrganisationEndpoints
                 await service.UpdateCompanyAsync(id, request, cancellationToken) ? Results.NoContent() : Results.NotFound())
             .WithName("UpdateCompany");
 
+        group.MapPost("/companies/{companyId:guid}/documents",
+                async (Guid companyId, CreateCompanyDocumentRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
+                {
+                    var id = await service.AddCompanyDocumentAsync(request with { CompanyId = companyId }, cancellationToken);
+                    return Results.Created($"/api/organisation/companies/{companyId}/documents/{id}", new { id });
+                })
+            .WithName("AddCompanyDocument");
+
         group.MapPost("/operatives", async (AddOperativeRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
             {
                 var result = await service.AddOperativeAsync(request, cancellationToken);

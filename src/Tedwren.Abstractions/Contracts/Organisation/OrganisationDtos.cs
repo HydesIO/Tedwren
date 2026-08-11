@@ -40,6 +40,14 @@ public sealed record CompanyDocumentDto(
     string StatusLabel,
     DateOnly? ExpiresOn);
 
+/// <summary>Request to add a company-held document — insurance, accreditation or policy (SUB-4).</summary>
+public sealed record CreateCompanyDocumentRequest(
+    Guid CompanyId,
+    string Name,
+    string Type,
+    DateOnly? ExpiresOn,
+    string? Reference);
+
 /// <summary>An operative engaged by a company, shown on the company detail page.</summary>
 public sealed record CompanyOperativeDto(
     Guid EngagementId,

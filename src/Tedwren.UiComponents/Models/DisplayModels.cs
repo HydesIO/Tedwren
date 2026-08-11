@@ -56,6 +56,9 @@ public sealed record ActivityItem(
     string RelativeTime,
     StatusKind Accent = StatusKind.Neutral);
 
+/// <summary>A single searchable entry in the global command palette.</summary>
+public sealed record CommandItem(string Label, string Group, string Icon, string Href, string? Detail = null);
+
 /// <summary>A notification shown in the top-bar bell dropdown and the notifications page.</summary>
 public sealed record NotificationEntry(
     string Icon,

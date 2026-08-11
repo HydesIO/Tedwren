@@ -22,6 +22,9 @@ public interface IOrganisationService
     /// <summary>Updates an existing company's details. Returns false when the company is not found.</summary>
     Task<bool> UpdateCompanyAsync(Guid companyId, UpdateCompanyRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Adds a company-held document (insurance, accreditation or policy) and returns its new id (SUB-4).</summary>
+    Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Adds an operative to a company: reuses the existing person for that mobile number or creates one
     /// (SF-1), and refuses a second engagement of the same person in the same company (SF-2).

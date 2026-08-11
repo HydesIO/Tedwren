@@ -13,10 +13,20 @@
     </div>
 
     <div class="topbar__search">
-        <GlobalSearchBox Placeholder="Search operatives, sites, permits" OnSearch="OnSearch" />
+        <button type="button" class="topbar__search-trigger" @onclick="OnOpenSearch" aria-label="Open search (Ctrl K)">
+            <MudIcon Icon="@Icons.Material.Outlined.Search" Size="Size.Small" Class="topbar__search-icon" />
+            <span class="topbar__search-text">Search operatives, sites, permits…</span>
+            <span class="topbar__search-keys">
+                <kbd>Ctrl</kbd><kbd>K</kbd>
+            </span>
+        </button>
     </div>
 
     <div class="topbar__actions">
+        <MudIconButton Icon="@(IsDark ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                       Size="Size.Medium"
+                       aria-label="@(IsDark ? "Switch to light theme" : "Switch to dark theme")"
+                       OnClick="OnToggleTheme" />
         <NotificationsMenu Notifications="Notifications" ViewAllHref="@NotificationsHref" />
         <MudIconButton Icon="@Icons.Material.Outlined.HelpOutline"
                        Size="Size.Medium"
@@ -35,7 +45,9 @@
     [Parameter] public string CurrentUserRole { get; set; } = string.Empty;
     [Parameter] public string? CurrentUserAvatarUrl { get; set; }
     [Parameter] public bool ShowMenuButton { get; set; }
+    [Parameter] public bool IsDark { get; set; }
     [Parameter] public EventCallback OnMenuClick { get; set; }
-    [Parameter] public EventCallback<string> OnSearch { get; set; }
+    [Parameter] public EventCallback OnOpenSearch { get; set; }
+    [Parameter] public EventCallback OnToggleTheme { get; set; }
     [Parameter] public EventCallback OnSignOut { get; set; }
 }

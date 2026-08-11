@@ -15,7 +15,8 @@ The EF model lives in `src/Tedwren.DataAccess/Ef`:
 - `TedwrenDbContext.cs` — table/column/index mappings. On PostgreSQL every identifier is folded to lower
   case so the Dapper repositories' unquoted SQL resolves to the EF-created tables.
 - `TedwrenDbContextFactory.cs` — a design-time factory so the `dotnet ef` tools can build the context without
-  starting the app. It reads the engine and connection string from environment variables.
+  starting the app. It reads the engine and connection string from the API's `appsettings.json`
+  (`DataSource:Provider` and `ConnectionStrings:*`); environment variables are optional overrides only.
 
 > **Note on the existing SQL scripts.** The idempotent scripts under `Migrations/Scripts/**` and the
 > startup `MigrationRunner` still exist and remain valid. If you adopt EF migrations as the schema authority,
@@ -48,24 +49,23 @@ project changes are needed.
 
 ## 2. Choose the engine and connection string
 
-Both are supplied via environment variables read by the design-time factory:
+**The design-time factory reads the engine and connection string from the API's
+`src/Tedwren.Api/appsettings.json` — the same file the running app uses. No environment variables are
+required.** Configure the database there:
 
-| Variable | Values | Notes |
+| `appsettings.json` key | Values | Notes |
 |---|---|---|
-| `TEDWREN_EF_PROVIDER` | `SqlServer` (default) or `PostgreSql` | Selects the migration SQL dialect. |
-| `TEDWREN_EF_CONNECTION` | a connection string | Only needed for `database update` / `script` against a live DB. `migrations add` does **not** connect. |
+| `DataSource:Provider` | `SqlServer` (default) or `PostgreSql` | Selects the migration SQL dialect. |
+| `ConnectionStrings:SqlServer` | a connection string | Used when the provider is SQL Server. |
+| `ConnectionStrings:PostgreSql` | a connection string | Used when the provider is PostgreSQL. |
 
-Examples:
+The factory locates `appsettings.json` by walking up to the repository root, so the `dotnet ef` commands work
+from any directory. If `ASPNETCORE_ENVIRONMENT` (or `DOTNET_ENVIRONMENT`) is set, the matching
+`appsettings.{Environment}.json` overlay is applied on top, exactly as the API host does.
 
-```bash
-# SQL Server (LocalDB)
-export TEDWREN_EF_PROVIDER=SqlServer
-export TEDWREN_EF_CONNECTION="Server=(localdb)\\MSSQLLocalDB;Database=Tedwren;Trusted_Connection=True;TrustServerCertificate=True"
-
-# PostgreSQL
-export TEDWREN_EF_PROVIDER=PostgreSql
-export TEDWREN_EF_CONNECTION="Host=localhost;Port=5432;Database=tedwren;Username=postgres;Password=postgres"
-```
+> **Optional overrides.** The `TEDWREN_EF_PROVIDER` and `TEDWREN_EF_CONNECTION` environment variables still
+> override the file when set, and standard `ConnectionStrings__SqlServer`-style environment variables are also
+> honoured — but none of these are needed for the normal `appsettings.json`-driven workflow.
 
 All `dotnet ef` commands below point at the data-access project for both the migrations project (`-p`) and
 the startup project (`-s`), because the design-time factory removes the need for the API host:

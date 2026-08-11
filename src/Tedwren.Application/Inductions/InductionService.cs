@@ -32,6 +32,35 @@ public sealed class InductionService : IInductionService
         return templates.Select(ToTemplateDto).ToList();
     }
 
+    /// <summary>Creates an induction template for a company, seeded from the shipped default (MC-3/SF-12), and returns its id.</summary>
+    public async Task<Guid> CreateDefaultTemplateAsync(CreateInductionTemplateRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.CompanyId == Guid.Empty)
+        {
+            throw new ArgumentException("A company id is required.", nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ArgumentException("A template name is required.", nameof(request));
+        }
+
+        // Clone the shipped default's steps and quiz into a new template owned by the company (R15). The
+        // steps/questions are value records, so reusing the same lists is safe (they are immutable content).
+        var template = new InductionTemplate
+        {
+            CompanyId = request.CompanyId,
+            Name = request.Name.Trim(),
+            ValidityDays = request.ValidityDays > 0 ? request.ValidityDays : DefaultInductionTemplate.Template.ValidityDays,
+            PassMark = request.PassMark > 0 ? request.PassMark : DefaultInductionTemplate.Template.PassMark,
+            Steps = DefaultInductionTemplate.Template.Steps.ToList(),
+            Questions = DefaultInductionTemplate.Template.Questions.ToList(),
+        };
+
+        await _templates.AddAsync(template, cancellationToken);
+        return template.Id;
+    }
+
     /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
     public async Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default)
     {

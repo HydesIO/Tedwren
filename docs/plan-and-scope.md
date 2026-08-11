@@ -338,8 +338,9 @@ API; the person/engagement rules are proven by unit + integration tests and API 
 - `Services/IOrganisationService.cs` — async: `GetCompaniesAsync`, `GetCompanyAsync(slug)`,
   `CreateCompanyAsync`, plus `AddOperativeAsync`, `ArchiveEngagementAsync`,
   `ReactivateEngagementAsync` (SF-1/2/3; the latter three are API+test-proven this phase, UI later).
-- `ClientDataSourceMode` enum (`Mock`, `Api`) for the client switch (server side already has
-  `DataSourceMode` from Phase 7).
+- ~~`ClientDataSourceMode` enum (`Mock`, `Api`) for the client switch~~ — **superseded:** runtime Mock mode
+  was removed. The client always calls the API; the server-side `DataSourceMode` retains only a test-only
+  `InMemory` value used by the API test host (the in-memory repositories are now purely a test double).
 
 ### 3. Application — `src/Tedwren.Application`
 - `Organisation/OrganisationService.cs` (real impl) — depends on repository interfaces; holds the

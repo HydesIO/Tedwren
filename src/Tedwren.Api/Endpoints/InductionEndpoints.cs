@@ -20,6 +20,13 @@ public static class InductionEndpoints
                 Results.Ok(await service.GetTemplatesAsync(companyId, cancellationToken)))
             .WithName("GetInductionTemplates");
 
+        group.MapPost("/templates", async (CreateInductionTemplateRequest request, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                var id = await service.CreateDefaultTemplateAsync(request, cancellationToken);
+                return Results.Created($"/api/inductions/templates/{request.CompanyId}", new { id });
+            })
+            .WithName("CreateInductionTemplate");
+
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.StartAsync(request, cancellationToken)))
             .WithName("StartInduction");

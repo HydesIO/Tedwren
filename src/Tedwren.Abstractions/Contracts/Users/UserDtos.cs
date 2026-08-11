@@ -13,8 +13,12 @@ public sealed record UserDto(
     DateTimeOffset CreatedUtc,
     DateTimeOffset? LastActiveUtc);
 
-/// <summary>Request to invite a new console user (SF-20). Sends an invitation to the email address.</summary>
-public sealed record InviteUserRequest(string Name, string Email, string Role);
+/// <summary>
+/// Request to invite a new console user (SF-20). Sends an invitation to the email address. The user is
+/// created against <paramref name="CompanyId"/> so a newly-provisioned organisation can be given its first
+/// administrator during onboarding, rather than every invite landing on a single hard-coded company (R15).
+/// </summary>
+public sealed record InviteUserRequest(Guid CompanyId, string Name, string Email, string Role);
 
 /// <summary>Request to change an existing user's name and role.</summary>
 public sealed record UpdateUserRequest(string Name, string Role);

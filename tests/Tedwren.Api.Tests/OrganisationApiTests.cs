@@ -39,6 +39,27 @@ public sealed class OrganisationApiTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    [Fact] // SUB-4 — a posted document surfaces on the company detail
+    public async Task AddCompanyDocument_IsReturnedOnCompanyDetail()
+    {
+        var client = _factory.CreateClient();
+        var name = "DocCo " + Guid.NewGuid().ToString("N");
+
+        var created = await client.PostAsJsonAsync("/api/organisation/companies",
+            new CreateCompanyRequest(name, "Subcontractor", null, null, null, null, null, null));
+        var companyId = (await created.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var companies = await client.GetFromJsonAsync<List<CompanySummary>>("/api/organisation/companies");
+        var slug = companies!.Single(c => c.Name == name).Slug;
+
+        var docResponse = await client.PostAsJsonAsync($"/api/organisation/companies/{companyId}/documents",
+            new CreateCompanyDocumentRequest(companyId, "Public Liability Insurance", "Insurance", null, "PL-1"));
+        Assert.Equal(HttpStatusCode.Created, docResponse.StatusCode);
+
+        var detail = await client.GetFromJsonAsync<CompanyDetailDto>($"/api/organisation/companies/{slug}");
+        Assert.Contains(detail!.Documents, d => d.Name == "Public Liability Insurance");
+    }
+
     [Fact]
     public async Task AddOperative_DuplicateInSameCompany_ReturnsConflict()
     {
@@ -54,4 +75,7 @@ public sealed class OrganisationApiTests : IClassFixture<WebApplicationFactory<P
         Assert.True(first.IsSuccessStatusCode);
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
     }
+
+    /// <summary>Shape of a create response body.</summary>
+    private sealed record CreatedResponse(Guid Id);
 }

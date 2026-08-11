@@ -51,6 +51,16 @@ public sealed class ApiOrganisationService : IOrganisationService
         return response.IsSuccessStatusCode;
     }
 
+    /// <summary>Adds a company document via the API and returns its new id (SUB-4).</summary>
+    public async Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync(
+            $"api/organisation/companies/{request.CompanyId}/documents", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var created = await response.Content.ReadFromJsonAsync<CreatedResponse>(cancellationToken);
+        return created?.Id ?? Guid.Empty;
+    }
+
     /// <summary>Adds an operative via the API, returning the outcome (success or SF-2 refusal).</summary>
     public async Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default)
     {
