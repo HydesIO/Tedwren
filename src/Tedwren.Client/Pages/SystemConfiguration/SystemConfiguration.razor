@@ -1,8 +1,9 @@
 @page "/system-configuration"
 @using Tedwren.Abstractions.Contracts.Entitlements
+@using Tedwren.Abstractions.Contracts.Settings
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
-@inject IFormSampleDataService Options
+@inject ISettingsService Settings
 @inject IEntitlementService Entitlements
 @inject ITenantState Tenant
 @inject ISnackbar Snackbar
@@ -74,13 +75,13 @@
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
-        LoadGeneral();
+        await LoadGeneralAsync();
         await LoadModulesAsync();
     }
 
-    private void LoadGeneral()
+    private async Task LoadGeneralAsync()
     {
-        var s = Options.GetGeneralSettings();
+        var s = await Settings.GetForCompanyAsync(Tenant.CurrentCompanyId);
         _settings = new GeneralSettingsState
         {
             OrganisationName = s.OrganisationName,
@@ -103,10 +104,18 @@
         }
     }
 
-    // Persists the module entitlements (general settings have no backing store yet and remain a demo save).
+    // Persists the general settings and any changed module entitlements for the current company.
     private async Task Save()
     {
         _busy = true;
+        await Settings.SaveForCompanyAsync(Tenant.CurrentCompanyId, new GeneralSettingsDto(
+            _settings.OrganisationName,
+            _settings.TimeZone,
+            _settings.EnforceGeofencing,
+            _settings.RequirePasscodeOnPackLink,
+            _settings.BlockNonCompliantEntry,
+            _settings.NotifyOnExpiry));
+
         foreach (var module in _modules)
         {
             if (_entitlements[module.Key] != module.Enabled)
@@ -117,12 +126,12 @@
 
         await LoadModulesAsync();
         _busy = false;
-        Snackbar.Add("Module entitlements saved. General settings are not yet persisted.", Severity.Success);
+        Snackbar.Add("Settings saved.", Severity.Success);
     }
 
     private async Task Reset()
     {
-        LoadGeneral();
+        await LoadGeneralAsync();
         await LoadModulesAsync();
         Snackbar.Add("Reverted unsaved changes.", Severity.Info);
     }

@@ -11,7 +11,24 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Sample-data → API migration, Phase M3: dashboard aggregation (this change)
+### Sample-data → API migration, Phases M4 (settings) + M5 (permits) (this change)
+- ✅ **M4 — general settings persistence.** `ISettingsService` (`GetForCompanyAsync`, `SaveForCompanyAsync`) +
+  `SettingsService` (returns per-company settings, defaults seeded from company name when unset) +
+  `/api/settings/{companyId}` (GET/PUT) + `ApiSettingsService`. Per-company JSON row: `CompanySettings` table
+  (migration `013`, SqlServer + Postgres), Dapper `SettingsRepository`, in-memory double (singleton), EF
+  `CompanySettingsRecord`. `SystemConfiguration` now loads and **saves** general settings via the API (the
+  "not yet persisted" caveat is gone), off `IFormSampleDataService`.
+- ✅ **M5 — permits backend.** New `Permit` entity + `PermitStatus` enum; `IPermitService`
+  (`CreateAsync`, `ListForCompanyAsync`) + `PermitService`; `/api/permits` (POST + `company/{id}`) +
+  `ApiPermitService`. `Permits` table (migration `014`, SqlServer + Postgres), Dapper `PermitRepository`,
+  in-memory double (singleton), EF `PermitRecord`. `Permits` page now **persists** issued/draft permits
+  (company via `ITenantState`) and **lists** them in a `DataTable`.
+- ✅ Tests: `SettingsAndPermitApiTests` (API, 3); whole solution builds; `dotnet test` green (API 44,
+  Application 99).
+- ⏳ **Remaining:** M6 — Inductions config page + retire `IShellSampleDataService` chrome (MainLayout
+  nav/platforms/environment/notifications/user) — the last sample-data dependency.
+
+### Sample-data → API migration, Phase M3: dashboard aggregation (previous change)
 Adds the dashboard aggregation read model and migrates the Dashboard and Compliance pages onto it.
 - ✅ **Dashboard aggregation** — `IDashboardService` (`GetSummaryAsync`, `GetComplianceAsync`) +
   `DashboardService`, composing company/engagement/qualification-card repositories + `ISiteService` +

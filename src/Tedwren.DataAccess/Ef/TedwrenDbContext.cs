@@ -31,6 +31,8 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<AttendanceRecord> Attendance => Set<AttendanceRecord>();
     public DbSet<ModuleEntitlementRecord> ModuleEntitlements => Set<ModuleEntitlementRecord>();
     public DbSet<ReferenceValueRecord> ReferenceValues => Set<ReferenceValueRecord>();
+    public DbSet<CompanySettingsRecord> CompanySettings => Set<CompanySettingsRecord>();
+    public DbSet<PermitRecord> Permits => Set<PermitRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
     public DbSet<TimesheetRecord> Timesheets => Set<TimesheetRecord>();
@@ -137,6 +139,21 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ListKey).HasMaxLength(64);
             e.Property(x => x.Value).HasMaxLength(256);
             e.HasIndex(x => new { x.ListKey, x.Value }).IsUnique();
+        });
+
+        model.Entity<CompanySettingsRecord>(e =>
+        {
+            e.ToTable("CompanySettings");
+            e.HasKey(x => x.CompanyId);
+        });
+
+        model.Entity<PermitRecord>(e =>
+        {
+            e.ToTable("Permits");
+            e.Property(x => x.PermitType).HasMaxLength(128);
+            e.Property(x => x.SiteName).HasMaxLength(256);
+            e.Property(x => x.ResponsiblePerson).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.CreatedUtc });
         });
 
         model.Entity<AuditEntryRecord>(e =>

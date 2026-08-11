@@ -31,6 +31,8 @@ builder.Services.AddConsoleFoundationCore();
 builder.Services.AddWorkforceCore();
 builder.Services.AddDashboardCore();
 builder.Services.AddReferenceDataCore();
+builder.Services.AddSettingsCore();
+builder.Services.AddPermitCore();
 
 // Current-operator identity: a configured/dev identity (bound from the "CurrentUser" section) until a real
 // authentication phase lands. Registered as a singleton so the scoped CurrentUserService can consume it.
@@ -53,6 +55,8 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryInductionStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
     builder.Services.AddInMemoryReferenceDataStore();
+    builder.Services.AddInMemorySettingsStore();
+    builder.Services.AddInMemoryPermitStore();
 }
 else
 {
@@ -122,6 +126,8 @@ app.MapReferenceDataEndpoints();
 app.MapCurrentUserEndpoints();
 app.MapWorkforceEndpoints();
 app.MapDashboardEndpoints();
+app.MapSettingsEndpoints();
+app.MapPermitEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

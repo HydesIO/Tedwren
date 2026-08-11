@@ -11,10 +11,12 @@ using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
 using Tedwren.Application.Identity;
 using Tedwren.Application.Organisation;
+using Tedwren.Application.Permits;
 using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Qualifications;
 using Tedwren.Application.Reference;
+using Tedwren.Application.Settings;
 using Tedwren.Application.Sites;
 using Tedwren.Application.Users;
 using Tedwren.Application.Workforce;
@@ -236,6 +238,36 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddInMemoryReferenceDataStore(this IServiceCollection services)
     {
         services.AddScoped<IReferenceDataRepository, InMemoryReferenceDataRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic permits-to-work service.</summary>
+    public static IServiceCollection AddPermitCore(this IServiceCollection services)
+    {
+        services.AddScoped<IPermitService, PermitService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory permit repository (singleton so raised permits persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryPermitStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryPermitRepository>();
+        services.AddScoped<IPermitRepository>(sp => sp.GetRequiredService<InMemoryPermitRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
+    public static IServiceCollection AddSettingsCore(this IServiceCollection services)
+    {
+        services.AddScoped<ISettingsService, SettingsService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory settings repository (singleton so saved settings persist across test requests).</summary>
+    public static IServiceCollection AddInMemorySettingsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemorySettingsRepository>();
+        services.AddScoped<ISettingsRepository>(sp => sp.GetRequiredService<InMemorySettingsRepository>());
         return services;
     }
 

@@ -201,6 +201,31 @@ public sealed class ReferenceValueRecord
     public int SortOrder { get; set; }
 }
 
+/// <summary>Schema row for the <c>CompanySettings</c> table (per-company general settings, System Configuration).</summary>
+public sealed class CompanySettingsRecord
+{
+    public Guid CompanyId { get; set; }
+    public string SettingsJson { get; set; } = string.Empty;
+    public DateTimeOffset UpdatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>Permits</c> table (permits to work).</summary>
+public sealed class PermitRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string PermitType { get; set; } = string.Empty;
+    public string? SiteName { get; set; }
+    public string? ResponsiblePerson { get; set; }
+    public DateOnly? ValidFrom { get; set; }
+    public DateOnly? ValidTo { get; set; }
+    public string? Description { get; set; }
+    public bool HighRisk { get; set; }
+    public bool RamsAttached { get; set; }
+    public int Status { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {
