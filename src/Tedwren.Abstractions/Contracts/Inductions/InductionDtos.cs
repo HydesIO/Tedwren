@@ -18,6 +18,37 @@ public sealed record InductionTemplateDto(
     IReadOnlyList<InductionStepDto> Steps,
     int QuestionCount);
 
+/// <summary>
+/// A quiz question <b>for authoring</b> — includes the correct answer. Returned only to an authorised admin
+/// editing the template (never to an operative's device, R5).
+/// </summary>
+public sealed record InductionQuizAuthoringDto(string Id, string Prompt, IReadOnlyList<string> Options, int CorrectOptionIndex);
+
+/// <summary>The full template as an authorised admin edits it (MC-15) — includes answers and media/config.</summary>
+public sealed record InductionTemplateAuthoringDto(
+    Guid Id,
+    string Name,
+    int ValidityDays,
+    int PassMark,
+    int AttemptLimit,
+    bool Mandatory,
+    string? MediaUrl,
+    Guid? SiteId,
+    IReadOnlyList<InductionStepDto> Steps,
+    IReadOnlyList<InductionQuizAuthoringDto> Questions);
+
+/// <summary>Request to update an induction template's content and configuration (MC-4/MC-5/MC-15).</summary>
+public sealed record UpdateInductionTemplateRequest(
+    string Name,
+    int ValidityDays,
+    int PassMark,
+    int AttemptLimit,
+    bool Mandatory,
+    string? MediaUrl,
+    Guid? SiteId,
+    IReadOnlyList<InductionStepDto> Steps,
+    IReadOnlyList<InductionQuizAuthoringDto> Questions);
+
 /// <summary>The device-facing induction session: what the operative needs to complete the induction (R5).</summary>
 public sealed record InductionSessionDto(
     Guid Id,
@@ -33,6 +64,13 @@ public sealed record InductionSessionDto(
     string? CompletionReference,
     DateTimeOffset? ExpiresUtc,
     int AttemptCount);
+
+/// <summary>
+/// Request to create an induction template for a company by seeding the shipped default steps and quiz (MC-3),
+/// so a newly-onboarded main contractor can run an induction immediately (SF-12). The customer refines the
+/// steps and questions afterwards.
+/// </summary>
+public sealed record CreateInductionTemplateRequest(Guid CompanyId, string Name, int ValidityDays, int PassMark);
 
 /// <summary>Request to start an induction for an operative (MC-1).</summary>
 public sealed record StartInductionRequest(Guid CompanyId, Guid TemplateId, Guid PersonId, string PersonName);

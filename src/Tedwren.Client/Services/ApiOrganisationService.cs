@@ -51,12 +51,30 @@ public sealed class ApiOrganisationService : IOrganisationService
         return response.IsSuccessStatusCode;
     }
 
+    /// <summary>Adds a company document via the API and returns its new id (SUB-4).</summary>
+    public async Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync(
+            $"api/organisation/companies/{request.CompanyId}/documents", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var created = await response.Content.ReadFromJsonAsync<CreatedResponse>(cancellationToken);
+        return created?.Id ?? Guid.Empty;
+    }
+
     /// <summary>Adds an operative via the API, returning the outcome (success or SF-2 refusal).</summary>
     public async Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await _http.PostAsJsonAsync("api/organisation/operatives", request, cancellationToken);
         var result = await response.Content.ReadFromJsonAsync<AddOperativeResult>(cancellationToken);
         return result ?? new AddOperativeResult(false, null, null, "No response from the server.");
+    }
+
+    /// <summary>Updates an operative's engagement (name + trade) via the API. False on 404/conflict.</summary>
+    public async Task<bool> UpdateEngagementAsync(Guid companyId, Guid engagementId, UpdateEngagementRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync(
+            $"api/organisation/companies/{companyId}/operatives/{engagementId}", request, cancellationToken);
+        return response.IsSuccessStatusCode;
     }
 
     /// <summary>Archives an engagement via the API.</summary>

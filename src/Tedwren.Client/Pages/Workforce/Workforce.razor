@@ -1,5 +1,7 @@
 @page "/workforce"
-@inject IListSampleDataService Data
+@using Tedwren.Abstractions.Contracts.Workforce
+@using Tedwren.Abstractions.Services
+@inject IWorkforceService WorkforceSvc
 @inject NavigationManager Nav
 
 <PageTitle>Workforce · Tedwren</PageTitle>
@@ -15,7 +17,7 @@
 
 <DashboardCard>
     <Body>
-        <DataTable TItem="Operative"
+        <DataTable TItem="OperativeListItemDto"
                    Items="_operatives"
                    Columns="_columns"
                    Loading="_loading"
@@ -28,28 +30,26 @@
 </DashboardCard>
 
 @code {
-    private IReadOnlyList<Operative> _operatives = Array.Empty<Operative>();
-    private List<DataColumn<Operative>> _columns = new();
+    private IReadOnlyList<OperativeListItemDto> _operatives = Array.Empty<OperativeListItemDto>();
+    private List<DataColumn<OperativeListItemDto>> _columns = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
-        await Task.Delay(400); // simulate a fetch so the loading skeleton is visible
-        _operatives = Data.GetOperatives();
+        _operatives = await WorkforceSvc.ListOperativesAsync();
         _loading = false;
     }
 
-    private void OpenOperative(Operative op) => Nav.NavigateTo($"/workforce/{Slugs.From(op.Name)}");
+    private void OpenOperative(OperativeListItemDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
 
     private void BuildColumns()
     {
         _columns = new()
         {
             new() { Title = "Name", Value = o => o.Name },
-            new() { Title = "Trade", Value = o => o.Trade, Filterable = true },
+            new() { Title = "Trade", Value = o => o.Trade ?? "—", Filterable = true },
             new() { Title = "Company", Value = o => o.Company, Filterable = true },
-            new() { Title = "Primary site", Value = o => o.PrimarySite, Filterable = true },
             new()
             {
                 Title = "Next expiry", Value = o => o.NextExpiry ?? DateOnly.MaxValue, Searchable = false,
@@ -58,7 +58,7 @@
             new()
             {
                 Title = "Status", Text = o => o.StatusLabel, Filterable = true, Sortable = false,
-                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="o.Status" />
+                CellTemplate = o => @<StatusPill Label="@o.StatusLabel" Status="ComplianceStatusView.ToStatusKind(o.State)" />
             },
         };
     }

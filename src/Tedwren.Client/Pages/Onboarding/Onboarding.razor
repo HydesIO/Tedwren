@@ -1,0 +1,359 @@
+@page "/onboarding"
+@layout OnboardingLayout
+@using Tedwren.Abstractions.Contracts.Inductions
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Contracts.Users
+@using Tedwren.Abstractions.Services
+@inject IOrganisationService Org
+@inject ISiteService Sites
+@inject IUserService Users
+@inject IInductionService Inductions
+@inject IReferenceDataService Reference
+@inject ITenantState Tenant
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+
+<PageTitle>Set up your organisation · Tedwren</PageTitle>
+
+<div class="onboarding">
+    <DashboardCard Title="Set up your organisation"
+                   Subtitle="A few steps to get your account ready to use.">
+        <Body>
+            <TedwrenStepper @bind-ActiveIndex="_activeStep">
+                @* 1. Org type *@
+                <MudStep Title="Type" Icon="@Icons.Material.Outlined.Business">
+                    <div class="onboarding__step">
+                        <p class="onboarding__lead">What kind of organisation is this?</p>
+                        <MudRadioGroup T="OnboardingOrgType" Value="_model.OrgType" ValueChanged="OnOrgTypeChanged">
+                            <div class="onboarding__choice">
+                                <MudRadio T="OnboardingOrgType" Value="OnboardingOrgType.Subcontractor" Color="Color.Primary">
+                                    <span class="onboarding__choice-title">Subcontractor</span>
+                                    <span class="onboarding__choice-desc">Time &amp; attendance, operatives, insurances and the sites your people attend.</span>
+                                </MudRadio>
+                            </div>
+                            <div class="onboarding__choice">
+                                <MudRadio T="OnboardingOrgType" Value="OnboardingOrgType.MainContractor" Color="Color.Primary">
+                                    <span class="onboarding__choice-title">Main contractor</span>
+                                    <span class="onboarding__choice-desc">Workforce management: the sites you run, digital inductions and site entry.</span>
+                                </MudRadio>
+                            </div>
+                        </MudRadioGroup>
+                    </div>
+                </MudStep>
+
+                @* 2. Company details *@
+                <MudStep Title="Company" Icon="@Icons.Material.Outlined.Apartment">
+                    <div class="onboarding__step">
+                        <FormSection Title="Company details" Description="@($"Basic identifying information for this {_model.TypeLabel.ToLower()}.")">
+                            <TedwrenTextField Label="Company name" @bind-Value="_model.CompanyName" Required="true"
+                                              Placeholder="e.g. Meridian Construction Ltd"
+                                              Error="_submitted && string.IsNullOrWhiteSpace(_model.CompanyName)"
+                                              ErrorText="Company name is required." />
+                            <TedwrenTextField Label="Company type" Value="_model.TypeLabel" ReadOnly="true"
+                                              HelperText="Set from your choice on the previous step." />
+                            <TedwrenSelect T="string" Label="Primary trade" @bind-Value="_model.Trade"
+                                           Options="_trades" Placeholder="Select a trade" />
+                            <TedwrenTextField Label="Registration number" @bind-Value="_model.RegistrationNumber"
+                                              Placeholder="e.g. 09876543"
+                                              HelperText="Companies House number, if applicable." />
+                        </FormSection>
+                        <FormSection Title="Primary contact" Description="Who we contact about this company.">
+                            <TedwrenTextField Label="Contact name" @bind-Value="_model.ContactName" Placeholder="Full name" />
+                            <TedwrenTextField Label="Contact email" @bind-Value="_model.ContactEmail"
+                                              InputType="InputType.Email" Placeholder="name@company.com" />
+                            <TedwrenTextField Label="Contact phone" @bind-Value="_model.ContactPhone"
+                                              InputType="InputType.Telephone" Placeholder="+44 …" />
+                        </FormSection>
+                    </div>
+                </MudStep>
+
+                @* 3. First admin *@
+                <MudStep Title="Administrator" Icon="@Icons.Material.Outlined.AdminPanelSettings">
+                    <div class="onboarding__step">
+                        <FormSection Title="First administrator" Description="The first account, with full access. You can invite more users later.">
+                            <TedwrenTextField Label="Full name" @bind-Value="_model.AdminName" Required="true" Placeholder="Full name"
+                                              Error="_submitted && string.IsNullOrWhiteSpace(_model.AdminName)"
+                                              ErrorText="Administrator name is required." />
+                            <TedwrenTextField Label="Email address" @bind-Value="_model.AdminEmail" Required="true"
+                                              InputType="InputType.Email" Placeholder="name@company.com"
+                                              Error="_submitted && !IsValidEmail(_model.AdminEmail)"
+                                              ErrorText="Enter a valid email address." />
+                        </FormSection>
+                    </div>
+                </MudStep>
+
+                @* 4. Sites *@
+                <MudStep Title="Sites" Icon="@Icons.Material.Outlined.Place">
+                    <div class="onboarding__step">
+                        <p class="onboarding__lead">
+                            @(_model.OrgType == OnboardingOrgType.MainContractor
+                                ? "Add the sites you run. A boundary is optional but enables geofenced attendance."
+                                : "Add the sites your people attend. These can belong to other companies.")
+                        </p>
+                        @foreach (var site in _model.Sites)
+                        {
+                            <div class="onboarding__row">
+                                <TedwrenTextField Label="Site name" @bind-Value="site.Name" Placeholder="e.g. Northgate Phase 2" />
+                                <TedwrenTextField Label="Client" @bind-Value="site.Client" Placeholder="Who the site is for" />
+                                <TedwrenTextField Label="Region" @bind-Value="site.Region" Placeholder="Area" />
+                                <TedwrenTextField Label="Address" @bind-Value="site.Address" Placeholder="Site address" />
+                                @if (_model.OrgType == OnboardingOrgType.MainContractor)
+                                {
+                                    <div class="onboarding__geofence">
+                                        <MudNumericField T="double?" Label="Latitude" @bind-Value="site.Latitude" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                        <MudNumericField T="double?" Label="Longitude" @bind-Value="site.Longitude" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                        <MudNumericField T="double?" Label="Radius (m)" @bind-Value="site.RadiusMetres" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                    </div>
+                                }
+                                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
+                                           OnClick="@(() => _model.Sites.Remove(site))">Remove</MudButton>
+                            </div>
+                        }
+                        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                                   OnClick="@(() => _model.Sites.Add(new OnboardingSite()))">Add a site</MudButton>
+                    </div>
+                </MudStep>
+
+                @* 5a. Operatives (subcontractor) *@
+                @if (_model.OrgType == OnboardingOrgType.Subcontractor)
+                {
+                    <MudStep Title="Operatives" Icon="@Icons.Material.Outlined.Engineering">
+                        <div class="onboarding__step">
+                            <p class="onboarding__lead">Add operatives by direct entry. You can also invite them to self-serve later.</p>
+                            @foreach (var op in _model.Operatives)
+                            {
+                                <div class="onboarding__row">
+                                    <TedwrenTextField Label="Full name" @bind-Value="op.Name" Placeholder="Operative name" />
+                                    <TedwrenTextField Label="Mobile" @bind-Value="op.MobileNumber" InputType="InputType.Telephone" Placeholder="+44 …" />
+                                    <TedwrenSelect T="string" Label="Trade" @bind-Value="op.Trade" Options="_trades" Placeholder="Select a trade" />
+                                    <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
+                                               OnClick="@(() => _model.Operatives.Remove(op))">Remove</MudButton>
+                                </div>
+                            }
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                                       OnClick="@(() => _model.Operatives.Add(new OnboardingOperative()))">Add an operative</MudButton>
+                        </div>
+                    </MudStep>
+
+                    @* 6a. Insurances / accreditations (SUB-4) *@
+                    <MudStep Title="Insurances" Icon="@Icons.Material.Outlined.VerifiedUser">
+                        <div class="onboarding__step">
+                            <p class="onboarding__lead">Record the insurances and accreditations you hold. Each can carry an expiry date.</p>
+                            @foreach (var doc in _model.Documents)
+                            {
+                                <div class="onboarding__doc">
+                                    <MudCheckBox T="bool" Value="doc.Selected" ValueChanged="@(v => doc.Selected = v)"
+                                                 Color="Color.Primary" Label="@doc.Name" />
+                                    @if (doc.Selected)
+                                    {
+                                        <div class="onboarding__doc-detail">
+                                            <MudDatePicker Label="Expires on" @bind-Date="doc.ExpiresOn" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                            <TedwrenTextField Label="Reference" @bind-Value="doc.Reference" Placeholder="Policy / certificate no." />
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    </MudStep>
+                }
+                else
+                {
+                    @* 5b. Induction template (main contractor) *@
+                    <MudStep Title="Induction" Icon="@Icons.Material.Outlined.Assignment">
+                        <div class="onboarding__step">
+                            <FormSection Title="Site induction" Description="We seed a default induction (steps + quiz) you can refine later.">
+                                <TedwrenTextField Label="Induction name" @bind-Value="_model.InductionName" Placeholder="e.g. General Site Induction" />
+                                <div class="onboarding__geofence">
+                                    <MudNumericField T="int" Label="Valid for (days)" @bind-Value="_model.InductionValidityDays"
+                                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
+                                    <MudNumericField T="int" Label="Pass mark (correct answers)" @bind-Value="_model.InductionPassMark"
+                                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
+                                </div>
+                            </FormSection>
+                        </div>
+                    </MudStep>
+                }
+
+                @* Review *@
+                <MudStep Title="Review" Icon="@Icons.Material.Outlined.CheckCircle">
+                    <div class="onboarding__step">
+                        <p class="onboarding__lead">Review and finish</p>
+                        <dl class="onboarding__review">
+                            <div><dt>Type</dt><dd>@_model.TypeLabel</dd></div>
+                            <div><dt>Company</dt><dd>@(string.IsNullOrWhiteSpace(_model.CompanyName) ? "—" : _model.CompanyName)</dd></div>
+                            <div><dt>Administrator</dt><dd>@(string.IsNullOrWhiteSpace(_model.AdminName) ? "—" : $"{_model.AdminName} · {_model.AdminEmail}")</dd></div>
+                            <div><dt>Sites</dt><dd>@_model.Sites.Count(s => !string.IsNullOrWhiteSpace(s.Name))</dd></div>
+                            @if (_model.OrgType == OnboardingOrgType.Subcontractor)
+                            {
+                                <div><dt>Operatives</dt><dd>@_model.Operatives.Count(o => !string.IsNullOrWhiteSpace(o.Name))</dd></div>
+                                <div><dt>Insurances</dt><dd>@_model.Documents.Count(d => d.Selected)</dd></div>
+                            }
+                            else
+                            {
+                                <div><dt>Induction</dt><dd>@(_model.InductionName ?? "—")</dd></div>
+                            }
+                        </dl>
+                        <div class="onboarding__finish">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                                       StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
+                                @(_busy ? "Setting up…" : "Finish setup")
+                            </MudButton>
+                        </div>
+                    </div>
+                </MudStep>
+            </TedwrenStepper>
+        </Body>
+    </DashboardCard>
+</div>
+
+@code {
+    private int _activeStep;
+    private bool _submitted;
+    private bool _busy;
+    private readonly OnboardingModel _model = new();
+    private IReadOnlyList<string> _trades = Array.Empty<string>();
+
+    // SUB-4 default document types shipped so a subcontractor is productive quickly.
+    private static readonly (string Name, string Type)[] DefaultDocuments =
+    {
+        ("Employer's Liability Insurance", "Insurance"),
+        ("Public Liability Insurance", "Insurance"),
+        ("Professional Indemnity Insurance", "Insurance"),
+        ("CHAS", "Accreditation"),
+        ("SafeContractor", "Accreditation"),
+        ("Constructionline", "Accreditation"),
+        ("ISO 9001", "Accreditation"),
+        ("ISO 45001", "Accreditation"),
+    };
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        _model.Sites.Add(new OnboardingSite());
+        _model.Operatives.Add(new OnboardingOperative());
+        foreach (var (name, type) in DefaultDocuments)
+        {
+            _model.Documents.Add(new OnboardingDocument(name, type));
+        }
+    }
+
+    private void OnOrgTypeChanged(OnboardingOrgType value)
+    {
+        _model.OrgType = value;
+        // Reset to a safe step so the conditional step set stays in range when the branch changes.
+        if (_activeStep > 3)
+        {
+            _activeStep = 3;
+        }
+    }
+
+    private async Task Finish()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_model.CompanyName)
+            || string.IsNullOrWhiteSpace(_model.AdminName)
+            || !IsValidEmail(_model.AdminEmail))
+        {
+            Snackbar.Add("Please complete the company name and administrator details.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        var problems = new List<string>();
+
+        // 1. The company is the anchor: everything else references its id. Abort if it fails.
+        Guid companyId;
+        try
+        {
+            companyId = await Org.CreateCompanyAsync(new CreateCompanyRequest(
+                _model.CompanyName!.Trim(), _model.TypeLabel, _model.Trade, _model.RegistrationNumber,
+                _model.Address, _model.ContactName, _model.ContactEmail, _model.ContactPhone));
+        }
+        catch (Exception ex)
+        {
+            _busy = false;
+            Snackbar.Add($"Could not create the company: {ex.Message}", Severity.Error);
+            return;
+        }
+
+        // 2. Scope the whole app to the new organisation straight away, so even a partial finish lands the
+        //    user in their own tenant (R15).
+        await Tenant.SetCurrentCompanyAsync(companyId);
+
+        // 3. First administrator (SF-20).
+        await TryAsync(problems, "administrator", () =>
+            Users.InviteUserAsync(new InviteUserRequest(companyId, _model.AdminName!.Trim(), _model.AdminEmail!.Trim(), "Administrator")));
+
+        // 4. Sites (both branches; main-contractor sites may carry a geofence, SF-14).
+        foreach (var site in _model.Sites.Where(s => !string.IsNullOrWhiteSpace(s.Name)))
+        {
+            var boundary = site is { Latitude: { } lat, Longitude: { } lng, RadiusMetres: { } radius }
+                ? new GeofenceDto(lat, lng, radius)
+                : null;
+            await TryAsync(problems, $"site \"{site.Name}\"", () =>
+                Sites.CreateSiteAsync(new CreateSiteRequest(
+                    companyId, site.Name!.Trim(), site.Client, site.Region, site.Address,
+                    HasCompound: false, IsDispersed: false, boundary)));
+        }
+
+        if (_model.OrgType == OnboardingOrgType.Subcontractor)
+        {
+            // 5a. Operatives by direct entry (SUB-1). AddOperative returns a structured result (SF-2).
+            foreach (var op in _model.Operatives.Where(o => !string.IsNullOrWhiteSpace(o.Name) && !string.IsNullOrWhiteSpace(o.MobileNumber)))
+            {
+                var result = await Org.AddOperativeAsync(new AddOperativeRequest(
+                    companyId, op.Name!.Trim(), op.MobileNumber!.Trim(), op.Trade, null));
+                if (!result.Succeeded)
+                {
+                    problems.Add($"operative \"{op.Name}\": {result.Error}");
+                }
+            }
+
+            // 6a. Insurances / accreditations (SUB-4).
+            foreach (var doc in _model.Documents.Where(d => d.Selected))
+            {
+                var expires = doc.ExpiresOn is { } d ? DateOnly.FromDateTime(d) : (DateOnly?)null;
+                await TryAsync(problems, $"document \"{doc.Name}\"", () =>
+                    Org.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(companyId, doc.Name, doc.Type, expires, doc.Reference)));
+            }
+        }
+        else
+        {
+            // 5b. Seed the induction template (MC-3).
+            var name = string.IsNullOrWhiteSpace(_model.InductionName) ? "General Site Induction" : _model.InductionName!.Trim();
+            await TryAsync(problems, "induction template", () =>
+                Inductions.CreateDefaultTemplateAsync(new CreateInductionTemplateRequest(
+                    companyId, name, _model.InductionValidityDays, _model.InductionPassMark)));
+        }
+
+        _busy = false;
+        if (problems.Count == 0)
+        {
+            Snackbar.Add($"\"{_model.CompanyName}\" is set up and ready.", Severity.Success);
+        }
+        else
+        {
+            Snackbar.Add($"Company created, but some items were skipped: {string.Join("; ", problems)}. You can add them from the app.", Severity.Warning);
+        }
+
+        Nav.NavigateTo("/");
+    }
+
+    // Runs a best-effort setup step, collecting a readable problem rather than aborting the whole finish.
+    private static async Task TryAsync(List<string> problems, string what, Func<Task> action)
+    {
+        try
+        {
+            await action();
+        }
+        catch (Exception ex)
+        {
+            problems.Add($"{what}: {ex.Message}");
+        }
+    }
+
+    private static bool IsValidEmail(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+}

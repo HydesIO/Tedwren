@@ -14,7 +14,8 @@ public static class SiteEntryEndpoints
     /// <summary>Registers the <c>/api/site-entry</c> endpoint group.</summary>
     public static IEndpointRouteBuilder MapSiteEntryEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/site-entry").WithTags("SiteEntry");
+        // The gate/kiosk runs unauthenticated at a site (MC-8); the entry decision is recorded server-side (R10).
+        var group = app.MapGroup("/api/site-entry").WithTags("SiteEntry").AllowAnonymous();
 
         group.MapPost("/decide", async (DecideEntryRequest request, ISiteEntryService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.DecideAsync(request, cancellationToken)))

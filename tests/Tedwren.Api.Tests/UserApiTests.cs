@@ -15,6 +15,9 @@ public sealed class UserApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private readonly WebApplicationFactory<Program> _factory;
 
+    /// <summary>The seed company invited users are attached to in these tests.</summary>
+    private static readonly Guid CompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
+
     /// <summary>Uses an isolated host so user state does not leak between tests.</summary>
     public UserApiTests(WebApplicationFactory<Program> factory) => _factory = factory;
 
@@ -47,11 +50,11 @@ public sealed class UserApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task InviteThenSuspendThenReactivate_ChangesStatus()
     {
         var client = CreateClient();
-        var invite = new InviteUserRequest("Test Person", "test.person@example.com", "SiteManager");
+        var invite = new InviteUserRequest(CompanyId, "Test Person", "test.person@example.com", "SiteManager");
 
         var created = await client.PostAsJsonAsync("/api/users", invite);
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        var id = (await created.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+        var id = (await created.Content.ReadFromJsonAsync<InviteUserResult>())!.UserId;
 
         var invited = await client.GetFromJsonAsync<UserDto>($"/api/users/{id}");
         Assert.Equal("Invited", invited!.Status);
@@ -69,11 +72,11 @@ public sealed class UserApiTests : IClassFixture<WebApplicationFactory<Program>>
     public async Task Invite_DuplicateEmail_Conflicts()
     {
         var client = CreateClient();
-        var invite = new InviteUserRequest("Dup One", "dup@example.com", "Administrator");
+        var invite = new InviteUserRequest(CompanyId, "Dup One", "dup@example.com", "Administrator");
         await client.PostAsJsonAsync("/api/users", invite);
 
         var second = await client.PostAsJsonAsync("/api/users",
-            new InviteUserRequest("Dup Two", "dup@example.com", "Auditor"));
+            new InviteUserRequest(CompanyId, "Dup Two", "dup@example.com", "Auditor"));
 
         Assert.Equal(HttpStatusCode.Conflict, second.StatusCode);
     }

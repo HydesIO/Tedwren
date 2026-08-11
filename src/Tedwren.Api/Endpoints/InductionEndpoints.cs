@@ -20,21 +20,47 @@ public static class InductionEndpoints
                 Results.Ok(await service.GetTemplatesAsync(companyId, cancellationToken)))
             .WithName("GetInductionTemplates");
 
+        group.MapPost("/templates", async (CreateInductionTemplateRequest request, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                var id = await service.CreateDefaultTemplateAsync(request, cancellationToken);
+                return Results.Created($"/api/inductions/templates/{request.CompanyId}", new { id });
+            })
+            .WithName("CreateInductionTemplate");
+
+        // Authoring (MC-15) — authorised admin only (fallback policy applies): fetch with answers, then update.
+        group.MapGet("/templates/{templateId:guid}/edit", async (Guid templateId, IInductionService service, CancellationToken cancellationToken) =>
+                await service.GetTemplateForEditAsync(templateId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
+            .WithName("GetInductionTemplateForEdit");
+
+        group.MapPut("/templates/{templateId:guid}", async (Guid templateId, UpdateInductionTemplateRequest request, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.UpdateTemplateAsync(templateId, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("UpdateInductionTemplate");
+
+        // The worker's take-flow runs from a link with no console account (MC-1/MC-2) — anonymous.
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.StartAsync(request, cancellationToken)))
-            .WithName("StartInduction");
+            .WithName("StartInduction").AllowAnonymous();
 
         group.MapGet("/sessions/{sessionId:guid}", async (Guid sessionId, IInductionService service, CancellationToken cancellationToken) =>
                 await service.GetSessionAsync(sessionId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("GetInductionSession");
+            .WithName("GetInductionSession").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/steps/{stepId}/complete", async (Guid sessionId, string stepId, IInductionService service, CancellationToken cancellationToken) =>
                 await service.CompleteStepAsync(sessionId, stepId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("CompleteInductionStep");
+            .WithName("CompleteInductionStep").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/quiz", async (Guid sessionId, SubmitQuizRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 await service.SubmitQuizAsync(sessionId, request, cancellationToken) is { } result ? Results.Ok(result) : Results.NotFound())
-            .WithName("SubmitInductionQuiz");
+            .WithName("SubmitInductionQuiz").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/finalize", async (Guid sessionId, FinalizeInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
             {
@@ -48,7 +74,7 @@ public static class InductionEndpoints
                     return Results.Conflict(new { reason = ex.Message });
                 }
             })
-            .WithName("FinalizeInduction");
+            .WithName("FinalizeInduction").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/reset", async (Guid sessionId, ResetInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 await service.ResetAsync(sessionId, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())

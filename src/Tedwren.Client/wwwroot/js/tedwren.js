@@ -11,6 +11,29 @@ window.tedwren = {
         }
     },
 
+    tenant: {
+        get: function () {
+            try { return localStorage.getItem('tedwren-company') || ''; }
+            catch (e) { return ''; }
+        },
+        set: function (value) {
+            try { localStorage.setItem('tedwren-company', value); } catch (e) { /* ignore */ }
+        }
+    },
+
+    auth: {
+        get: function () {
+            try { return localStorage.getItem('tedwren-auth') || ''; }
+            catch (e) { return ''; }
+        },
+        set: function (value) {
+            try { localStorage.setItem('tedwren-auth', value); } catch (e) { /* ignore */ }
+        },
+        clear: function () {
+            try { localStorage.removeItem('tedwren-auth'); } catch (e) { /* ignore */ }
+        }
+    },
+
     shortcuts: {
         _handler: null,
         register: function (dotnetRef) {

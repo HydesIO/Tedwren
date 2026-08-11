@@ -1,7 +1,7 @@
+using System.Security.Cryptography;
 using Tedwren.Abstractions.Contracts.Users;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
-using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 
@@ -43,8 +43,11 @@ public sealed class UserService : IUserService
         return Task.FromResult(roles);
     }
 
-    /// <summary>Invites a new user (SF-20). Rejects a duplicate email so one account maps to one identity.</summary>
-    public async Task<Guid> InviteUserAsync(InviteUserRequest request, CancellationToken cancellationToken = default)
+    /// <summary>How long an invitation's accept token stays valid.</summary>
+    private static readonly TimeSpan InviteTokenLifetime = TimeSpan.FromDays(14);
+
+    /// <summary>Invites a new user (SF-20). Rejects a duplicate email so one account maps to one identity. Mints a one-time accept token.</summary>
+    public async Task<InviteUserResult> InviteUserAsync(InviteUserRequest request, CancellationToken cancellationToken = default)
     {
         var name = (request.Name ?? string.Empty).Trim();
         var email = (request.Email ?? string.Empty).Trim();
@@ -58,22 +61,30 @@ public sealed class UserService : IUserService
             throw new ArgumentException("A valid email address is required.", nameof(request));
         }
 
+        if (request.CompanyId == Guid.Empty)
+        {
+            throw new ArgumentException("A company id is required to invite a user.", nameof(request));
+        }
+
         var existing = await _users.GetByEmailAsync(email, cancellationToken);
         if (existing is not null)
         {
             throw new InvalidOperationException($"A user with email '{email}' already exists.");
         }
 
+        var acceptToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
         var user = new User
         {
-            CompanyId = InMemoryUserStore.OwnerCompanyId,
+            CompanyId = request.CompanyId,
             Name = name,
             Email = email,
             Role = ParseRole(request.Role),
             Status = UserStatus.Invited,
+            InviteToken = acceptToken,
+            InviteTokenExpiresUtc = DateTimeOffset.UtcNow.Add(InviteTokenLifetime),
         };
         await _users.AddAsync(user, cancellationToken);
-        return user.Id;
+        return new InviteUserResult(user.Id, acceptToken);
     }
 
     /// <summary>Updates a user's name and role. Null when the user is not found.</summary>

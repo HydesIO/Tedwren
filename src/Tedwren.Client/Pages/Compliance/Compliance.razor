@@ -2,7 +2,7 @@
 @using Tedwren.Abstractions.Contracts.Qualifications
 @using Tedwren.Abstractions.Services
 @inject IQualificationService Qualifications
-@inject IDashboardSampleDataService DashData
+@inject IDashboardService Dashboard
 
 <PageTitle>Compliance · Tedwren</PageTitle>
 
@@ -36,17 +36,18 @@
 </div>
 
 @code {
-    private ComplianceOverview _overview = default!;
+    private ComplianceOverviewVm _overview = default!;
     private IReadOnlyList<QualificationTypeDto> _qualifications = Array.Empty<QualificationTypeDto>();
     private List<DataColumn<QualificationTypeDto>> _columns = new();
     private bool _loading = true;
 
-    // Loads the compliance overview (dashboard sample) and the qualification-type library through the
-    // shared IQualificationService, so the table is served from mock or the API identically (SF-12).
+    // Loads the workforce compliance overview (aggregated from current cards, SF-8) and the qualification-type
+    // library, both from the Web API.
     protected override async Task OnInitializedAsync()
     {
-        _overview = DashData.GetComplianceOverview();
         BuildColumns();
+        var breakdown = await Dashboard.GetComplianceAsync();
+        _overview = ComplianceOverviewView.From(breakdown);
         _qualifications = await Qualifications.GetQualificationTypesAsync();
         _loading = false;
     }

@@ -27,6 +27,20 @@ public sealed class InductionApiTests : IClassFixture<WebApplicationFactory<Prog
 
     private static readonly Dictionary<string, int> CorrectAnswers = new() { ["q1"] = 0, ["q2"] = 1, ["q3"] = 2 };
 
+    [Fact] // MC-3/SF-12 — a company can seed a template from the default and then list it
+    public async Task CreateTemplate_ThenListed()
+    {
+        var client = CreateClient();
+        var companyId = Guid.NewGuid();
+
+        var created = await client.PostAsJsonAsync("/api/inductions/templates",
+            new CreateInductionTemplateRequest(companyId, "Depot Induction", 200, 2));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var templates = await client.GetFromJsonAsync<List<InductionTemplateDto>>($"/api/inductions/templates/{companyId}");
+        Assert.Contains(templates!, t => t.Name == "Depot Induction" && t.ValidityDays == 200);
+    }
+
     [Fact] // R5 — the device session response contains no correct answers
     public async Task StartedSession_DoesNotLeakQuizAnswers()
     {

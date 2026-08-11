@@ -20,6 +20,18 @@ public sealed class CompanyRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>CompanyDocuments</c> table (SUB-4: insurances, accreditations, policies).</summary>
+public sealed class CompanyDocumentRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public DateOnly? ExpiresOn { get; set; }
+    public string? Reference { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>Persons</c> table (SF-1: one person per mobile number).</summary>
 public sealed class PersonRecord
 {
@@ -149,6 +161,10 @@ public sealed class UserRecord
     public int Status { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
     public DateTimeOffset? LastActiveUtc { get; set; }
+    public string? PasswordHash { get; set; }
+    public DateTimeOffset? PasswordSetUtc { get; set; }
+    public string? InviteToken { get; set; }
+    public DateTimeOffset? InviteTokenExpiresUtc { get; set; }
 }
 
 /// <summary>Schema row for the <c>Attendance</c> table (SF-13–SF-19).</summary>
@@ -178,6 +194,66 @@ public sealed class ModuleEntitlementRecord
     public string ModuleKey { get; set; } = string.Empty;
     public bool Enabled { get; set; }
     public DateTimeOffset UpdatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>ReferenceValues</c> table (form option lists).</summary>
+public sealed class ReferenceValueRecord
+{
+    public Guid Id { get; set; }
+    public string ListKey { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+}
+
+/// <summary>Schema row for the <c>CompanySettings</c> table (per-company general settings, System Configuration).</summary>
+public sealed class CompanySettingsRecord
+{
+    public Guid CompanyId { get; set; }
+    public string SettingsJson { get; set; } = string.Empty;
+    public DateTimeOffset UpdatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>OnboardingLinks</c> table (self-service onboarding, SF-4/SUB-2).</summary>
+public sealed class OnboardingLinkRecord
+{
+    public Guid Id { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public string? PasscodeHash { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? Name { get; set; }
+    public string? Trade { get; set; }
+    public DateTimeOffset ExpiresUtc { get; set; }
+    public int Status { get; set; }
+    public Guid? PersonId { get; set; }
+    public Guid? EngagementId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>StoredImages</c> table (private card photos, R9).</summary>
+public sealed class StoredImageRecord
+{
+    public Guid Id { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Bytes { get; set; } = Array.Empty<byte>();
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>Permits</c> table (permits to work).</summary>
+public sealed class PermitRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string PermitType { get; set; } = string.Empty;
+    public string? SiteName { get; set; }
+    public string? ResponsiblePerson { get; set; }
+    public DateOnly? ValidFrom { get; set; }
+    public DateOnly? ValidTo { get; set; }
+    public string? Description { get; set; }
+    public bool HighRisk { get; set; }
+    public bool RamsAttached { get; set; }
+    public int Status { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
 }
 
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
@@ -275,6 +351,10 @@ public sealed class InductionTemplateRecord
     public int PassMark { get; set; }
     public string StepsJson { get; set; } = string.Empty;
     public string QuestionsJson { get; set; } = string.Empty;
+    public int AttemptLimit { get; set; }
+    public bool Mandatory { get; set; }
+    public string? MediaUrl { get; set; }
+    public Guid? SiteId { get; set; }
 }
 
 /// <summary>Schema row for the <c>InductionSessions</c> table (MC-1–MC-7, MC-20).</summary>

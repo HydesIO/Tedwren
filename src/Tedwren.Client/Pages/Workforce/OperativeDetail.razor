@@ -1,18 +1,27 @@
 @page "/workforce/{Slug}"
-@using OperativeDetailModel = Tedwren.UiComponents.SampleData.OperativeDetail
-@inject IDetailSampleDataService Details
+@using Tedwren.Abstractions.Contracts.Onboarding
+@using Tedwren.Abstractions.Contracts.Workforce
+@using Tedwren.Abstractions.Services
+@inject IWorkforceService Workforce
+@inject IOnboardingService Onboarding
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
 <PageTitle>@(_op?.Name ?? "Operative") · Tedwren</PageTitle>
 
-@if (_op is null)
+@if (_loading)
+{
+    <PageHeader Title="Loading operative…" />
+}
+else if (_op is null)
 {
     <PageHeader Title="Operative not found" />
     <DashboardCard>
         <Body>
             <EmptyState Icon="@Icons.Material.Outlined.Engineering"
                         Title="Operative not found"
-                        Description="This operative doesn't exist in the sample data.">
+                        Description="No active operative matches this link.">
                 <Action>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/workforce">Back to workforce</MudButton>
                 </Action>
@@ -23,22 +32,28 @@
 else
 {
     <DetailHeader Title="@_op.Name"
-                  Subtitle="@($"{_op.Trade} · {_op.Company}")"
+                  Subtitle="@($"{_op.Trade ?? "—"} · {_op.Company}")"
                   StatusLabel="@_op.StatusLabel"
-                  Status="_op.Status"
+                  Status="ComplianceStatusView.ToStatusKind(_op.State)"
                   AvatarText="@Initials(_op.Name)"
                   Breadcrumbs="_crumbs">
         <Actions>
             <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                       StartIcon="@Icons.Material.Outlined.Edit" OnClick="@(() => Snackbar.Add("Edit operative (demo).", Severity.Info))">
+                       StartIcon="@Icons.Material.Outlined.Edit" OnClick="EditAsync">
                 Edit
             </MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                       StartIcon="@Icons.Material.Outlined.Send" OnClick="@(() => Snackbar.Add("Self-service link sent (demo).", Severity.Info))">
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                       StartIcon="@Icons.Material.Outlined.Send" OnClick="SendUpdateLinkAsync">
                 Send update link
             </MudButton>
         </Actions>
     </DetailHeader>
+
+    @if (_updateLink is not null)
+    {
+        <BannerAlert Severity="StatusKind.Success" Title="Update link created"
+                     Message="@($"Share this link with {_op.Name}{(_updatePasscode is null ? "" : $" (passcode {_updatePasscode})")}: {_updateLink}")" />
+    }
 
     <div class="detail-tabs">
         <MudTabs Elevation="0" Rounded="true" Border="true" ApplyEffectsToContainer="true" PanelClass="detail-tabs__panel">
@@ -51,28 +66,50 @@ else
             </MudTabPanel>
 
             <MudTabPanel Text="@($"Qualifications ({_op.Qualifications.Count})")">
-                <div class="qual-grid">
-                    @foreach (var q in _op.Qualifications)
-                    {
-                        <div class="qual-card">
-                            <div class="qual-card__top">
-                                <span class="qual-card__name">@q.Name</span>
-                                <StatusPill Label="@q.StatusLabel" Status="q.Status" />
+                @if (_op.Qualifications.Count == 0)
+                {
+                    <DashboardCard>
+                        <Body>
+                            <EmptyState Icon="@Icons.Material.Outlined.WorkspacePremium"
+                                        Title="No qualifications recorded"
+                                        Description="This operative has no captured cards yet." />
+                        </Body>
+                    </DashboardCard>
+                }
+                else
+                {
+                    <div class="qual-grid">
+                        @foreach (var q in _op.Qualifications)
+                        {
+                            <div class="qual-card">
+                                <div class="qual-card__top">
+                                    <span class="qual-card__name">@q.Name</span>
+                                    <StatusPill Label="@q.StatusLabel" Status="ComplianceStatusView.ToStatusKind(q.State)" />
+                                </div>
+                                <div class="qual-card__meta">
+                                    <span>Issuer: @(q.Issuer ?? "—")</span>
+                                    <span>Obtained: @(q.ObtainedOn?.ToString("dd MMM yyyy") ?? "—")</span>
+                                    <span>Expires: @(q.ExpiresOn?.ToString("dd MMM yyyy") ?? "No expiry")</span>
+                                </div>
                             </div>
-                            <div class="qual-card__meta">
-                                <span>Issuer: @q.Issuer</span>
-                                <span>Obtained: @q.ObtainedOn.ToString("dd MMM yyyy")</span>
-                                <span>Expires: @(q.ExpiresOn?.ToString("dd MMM yyyy") ?? "No expiry")</span>
-                            </div>
-                        </div>
-                    }
-                </div>
+                        }
+                    </div>
+                }
             </MudTabPanel>
 
             <MudTabPanel Text="History">
                 <DashboardCard Title="Recent history">
                     <Body>
-                        <ActivityFeed Items="_op.History" />
+                        @if (_history.Count == 0)
+                        {
+                            <EmptyState Icon="@Icons.Material.Outlined.History"
+                                        Title="No recent history"
+                                        Description="Site-entry decisions for this operative will appear here." />
+                        }
+                        else
+                        {
+                            <ActivityFeed Items="_history" />
+                        }
                     </Body>
                 </DashboardCard>
             </MudTabPanel>
@@ -83,13 +120,20 @@ else
 @code {
     [Parameter] public string Slug { get; set; } = string.Empty;
 
-    private OperativeDetailModel? _op;
+    private OperativeDetailDto? _op;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _updateLink;
+    private string? _updatePasscode;
     private List<KeyValueList.Pair> _overview = new();
+    private List<ActivityItem> _history = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        _op = Details.GetOperative(Slug);
+        _loading = true;
+        _op = await Workforce.GetOperativeBySlugAsync(Slug);
+        _loading = false;
         if (_op is null) return;
 
         _crumbs = new List<DetailHeader.Crumb>
@@ -100,14 +144,72 @@ else
 
         _overview = new()
         {
-            new("Trade", _op.Trade),
+            new("Trade", _op.Trade ?? "—"),
             new("Employer", _op.Company),
-            new("Primary site", _op.PrimarySite),
-            new("Date of birth", _op.DateOfBirth.ToString("dd MMM yyyy")),
-            new("NI number", _op.NiNumber),
-            new("Phone", _op.Phone),
-            new("Email", _op.Email),
+            new("Phone", _op.Phone ?? "—"),
         };
+
+        _history = _op.History
+            .Select(h => new ActivityItem(
+                h.Title.Contains("blocked", StringComparison.OrdinalIgnoreCase)
+                    ? Icons.Material.Outlined.Block
+                    : Icons.Material.Outlined.HowToReg,
+                h.Title,
+                h.Detail ?? string.Empty,
+                h.OccurredUtc.LocalDateTime.ToString("dd MMM yyyy HH:mm"),
+                h.Title.Contains("blocked", StringComparison.OrdinalIgnoreCase) ? StatusKind.Danger : StatusKind.Success))
+            .ToList();
+    }
+
+    // Opens the edit dialog and reloads on save (persists via IOrganisationService.UpdateEngagementAsync).
+    private async Task EditAsync()
+    {
+        var parameters = new DialogParameters<EditOperativeDialog> { { x => x.Operative, _op! } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await Dialogs.ShowAsync<EditOperativeDialog>("Edit operative", parameters, options);
+        if (await dialog.Result is { Canceled: false, Data: string newName })
+        {
+            var newSlug = Tedwren.Abstractions.Slug.From(newName);
+            if (!string.Equals(newSlug, Slug, StringComparison.OrdinalIgnoreCase))
+            {
+                // The slug follows the name; navigating updates the route and reloads via OnParametersSetAsync.
+                Nav.NavigateTo($"/workforce/{newSlug}");
+            }
+            else
+            {
+                await OnParametersSetAsync();   // same slug — reload the updated fields in place
+            }
+        }
+    }
+
+    // Creates a real self-service onboarding link for this operative (SF-4/SUB-2). No email backend yet, so the
+    // link is surfaced for the admin to share; when the operative opens it and submits their mobile, SF-1 reuses
+    // the existing person, so captured cards attach to this operative.
+    private async Task SendUpdateLinkAsync()
+    {
+        if (_op is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var link = await Onboarding.CreateAsync(
+                new CreateOnboardingLinkRequest(_op.CompanyId, _op.Name, _op.Trade, RequirePasscode: true), null);
+            var passcodePart = link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(link.Passcode)}";
+            _updateLink = $"{Nav.BaseUri}onboard?token={Uri.EscapeDataString(link.Token)}{passcodePart}";
+            _updatePasscode = link.Passcode;
+            Snackbar.Add("Update link created.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Could not create an update link.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private static string Initials(string name)

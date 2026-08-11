@@ -38,7 +38,6 @@ Two deployables that talk over HTTP/CORS, plus supporting libraries:
 |---|---|
 | `src/Tedwren.Client` | Blazor WebAssembly app — UI only. Consumes service **interfaces**, never data-access directly. |
 | `src/Tedwren.UiComponents` | Reusable MudBlazor component kit + theme. No HTTP/auth/data concerns. |
-| `src/Tedwren.UiComponents.SampleData` | In-proc mock implementations of the service interfaces. |
 | `src/Tedwren.Abstractions` | Shared service interfaces + DTOs + config contracts, referenced by both client and API. |
 | `src/Tedwren.Domain` | Entities, value objects, enums. No external dependencies. |
 | `src/Tedwren.Application` | Business services (each behind an interface, SRP). |
@@ -46,24 +45,26 @@ Two deployables that talk over HTTP/CORS, plus supporting libraries:
 | `src/Tedwren.Api` | ASP.NET Core Web API (separate deployable, CORS, mobile-ready). |
 | `tests/*` | xUnit unit + integration tests. |
 
-### The data source (database is standard; Mock is deprecated)
+### The data source (database only; in-memory is a test double)
 
-**Mock mode is deprecated — the product runs against the database.** The in-memory ("Mock")
-implementations are retained **only as test doubles** (fast, isolated unit/API tests); they are not a
-supported runtime configuration and should not be relied on for new features. New work targets the
-database/API path.
+**The product runs against the database — there is no runtime mock mode.** The client always calls the Web
+API; the API always uses the Dapper repositories against SQL Server / PostgreSQL. The in-memory
+implementations under `src/Tedwren.Application/Persistence/InMemory` survive **only as test doubles** (fast,
+isolated unit/API tests) and are never a supported runtime configuration.
 
-Configuration key **`DataSource`** still selects which implementations resolve, behind the **same shared
-interfaces**, so business logic and UI are identical regardless:
+- **API** (`src/Tedwren.Api/appsettings.json`): `DataSource:Mode` defaults to `Database`;
+  `DataSource:Provider` = `SqlServer` | `PostgreSql` (bound to `BackendOptions`). Set
+  `ConnectionStrings:SqlServer`. Get the schema up to date with EF migrations — see `docs/ef-migrations.md`.
+  The only other `Mode` value is `InMemory`, which is **test-only** — selected by the API test host, not for
+  deployment.
+- **Client** (`src/Tedwren.Client/wwwroot/appsettings.json`): calls the Web API at `Api:BaseUrl` (no data-source
+  switch). The API's `Cors:AllowedOrigins` must include the client's served origin.
+- **Tests** force `DataSource:Mode=InMemory` (via a module initializer in `Tedwren.Api.Tests`) so the suite
+  runs without a database. This is the only sanctioned use of the in-memory path.
 
-- **API** (`src/Tedwren.Api/appsettings.json`): `DataSource:Mode` = `Database` (default) | `Mock`
-  (deprecated, test-only); `DataSource:Provider` = `SqlServer` | `PostgreSql` (bound to `BackendOptions`).
-  Set `ConnectionStrings:SqlServer` (a LocalDB default ships in `appsettings.json`). Get the schema up to
-  date with EF migrations — see `docs/ef-migrations.md`.
-- **Client** (`src/Tedwren.Client/wwwroot/appsettings.json`): `DataSource:Mode` = `Api` (default) | `Mock`
-  (deprecated, in-proc sample data). `Api` mode calls the Web API at `Api:BaseUrl`.
-- **Tests** force `DataSource:Mode=Mock` (via a module initializer in `Tedwren.Api.Tests`) so the suite runs
-  without a database. This is the only sanctioned use of Mock going forward.
+Note: every console page now renders live API data — the former `Tedwren.UiComponents.SampleData` project has
+been removed. Static shell chrome (nav/route inventory, platform switcher, environment badge) lives in
+`src/Tedwren.Client/Services/ShellChrome.cs` as fixed app configuration, not a data source.
 
 ## Engineering standards (apply to every change)
 

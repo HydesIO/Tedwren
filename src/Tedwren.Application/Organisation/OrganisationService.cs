@@ -18,18 +18,24 @@ namespace Tedwren.Application.Organisation;
 public sealed class OrganisationService : IOrganisationService
 {
     private readonly ICompanyRepository _companies;
+    private readonly ICompanyDocumentRepository _documents;
     private readonly IPersonRepository _people;
     private readonly IEngagementRepository _engagements;
     private readonly IQualificationCardRepository _cards;
 
+    /// <summary>How soon before expiry a document is flagged as at risk.</summary>
+    private const int DocumentExpiryWarningDays = 30;
+
     /// <summary>Creates the service over its repositories.</summary>
     public OrganisationService(
         ICompanyRepository companies,
+        ICompanyDocumentRepository documents,
         IPersonRepository people,
         IEngagementRepository engagements,
         IQualificationCardRepository cards)
     {
         _companies = companies;
+        _documents = documents;
         _people = people;
         _engagements = engagements;
         _cards = cards;
@@ -79,6 +85,9 @@ public sealed class OrganisationService : IOrganisationService
 
         var (companyState, companyPercent) = ComplianceRollup.FromCards(allCurrentCards, Today);
 
+        var documents = await _documents.GetByCompanyAsync(company.Id, cancellationToken);
+        var documentDtos = documents.Select(ToDocumentDto).ToList();
+
         return new CompanyDetailDto(
             company.Id,
             Slug.From(company.Name),
@@ -93,7 +102,7 @@ public sealed class OrganisationService : IOrganisationService
             company.ContactName,
             company.ContactEmail,
             company.ContactPhone,
-            Documents: Array.Empty<CompanyDocumentDto>(),
+            Documents: documentDtos,
             Operatives: operatives);
     }
 
@@ -114,6 +123,55 @@ public sealed class OrganisationService : IOrganisationService
 
         await _companies.AddAsync(company, cancellationToken);
         return company.Id;
+    }
+
+    /// <summary>Adds a company-held document (insurance, accreditation or policy) and returns its new id (SUB-4).</summary>
+    public async Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default)
+    {
+        if (request.CompanyId == Guid.Empty)
+        {
+            throw new ArgumentException("A company id is required.", nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ArgumentException("A document name is required.", nameof(request));
+        }
+
+        var document = new CompanyDocument
+        {
+            CompanyId = request.CompanyId,
+            Name = request.Name.Trim(),
+            Type = string.IsNullOrWhiteSpace(request.Type) ? "Document" : request.Type.Trim(),
+            ExpiresOn = request.ExpiresOn,
+            Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
+        };
+
+        await _documents.AddAsync(document, cancellationToken);
+        return document.Id;
+    }
+
+    /// <summary>Maps a company document to its DTO, deriving a compliance state from its expiry (SUB-4).</summary>
+    private static CompanyDocumentDto ToDocumentDto(CompanyDocument document)
+    {
+        var state = DocumentState(document.ExpiresOn);
+        return new CompanyDocumentDto(document.Name, document.Type, state, ComplianceRollup.Label(state), document.ExpiresOn);
+    }
+
+    /// <summary>Derives a document's compliance state from its expiry: expired, at risk near expiry, else compliant.</summary>
+    private static ComplianceState DocumentState(DateOnly? expiresOn)
+    {
+        if (expiresOn is not { } expiry)
+        {
+            return ComplianceState.Pending;
+        }
+
+        if (expiry < Today)
+        {
+            return ComplianceState.NonCompliant;
+        }
+
+        return expiry <= Today.AddDays(DocumentExpiryWarningDays) ? ComplianceState.AtRisk : ComplianceState.Compliant;
     }
 
     /// <summary>Updates an existing company's editable fields. Returns false when the company is not found.</summary>
@@ -181,6 +239,37 @@ public sealed class OrganisationService : IOrganisationService
 
         await _engagements.AddAsync(engagement, cancellationToken);
         return new AddOperativeResult(true, engagement.Id, person.Id, null);
+    }
+
+    /// <summary>
+    /// Updates an operative's engagement name + trade (SF-2), tenant-scoped by company (R15). Refuses when the
+    /// engagement is not found, or when a different active engagement in the same company already uses the
+    /// target name — keeping operative names distinct within a company.
+    /// </summary>
+    public async Task<bool> UpdateEngagementAsync(Guid companyId, Guid engagementId, UpdateEngagementRequest request, CancellationToken cancellationToken = default)
+    {
+        var engagement = await _engagements.GetAsync(companyId, engagementId, cancellationToken);
+        if (engagement is null)
+        {
+            return false;
+        }
+
+        var name = request.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        var active = await _engagements.GetActiveByCompanyAsync(companyId, cancellationToken);
+        if (active.Any(e => e.Id != engagementId && string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        engagement.Name = name;
+        engagement.Trade = string.IsNullOrWhiteSpace(request.Trade) ? null : request.Trade.Trim();
+        await _engagements.UpdateAsync(engagement, cancellationToken);
+        return true;
     }
 
     /// <summary>Archives an engagement owned by the company (SF-3). Returns false if not found for that company.</summary>

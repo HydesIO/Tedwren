@@ -11,6 +11,245 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Demo write-actions persisted (D7 — this change)
+- ✅ **Site "Edit" now persists.** `ISiteService.UpdateSiteAsync` + `PUT /api/sites/{id}` (tenant-scoped,
+  R15/MC-21 → 404 for a foreign site) + `ApiSiteService.UpdateSiteAsync` + an `EditSiteDialog`; the
+  SiteDetail "Edit" button replaces the demo snackbar and follows the new slug on rename.
+- ✅ **Operative "Edit" now persists.** `IOrganisationService.UpdateEngagementAsync` + `PUT
+  /api/organisation/companies/{companyId}/operatives/{engagementId}` (SF-2 name stays distinct within a
+  company; tenant-scoped, R15) + `ApiOrganisationService.UpdateEngagementAsync` + an `EditOperativeDialog`.
+  `OperativeDetailDto` now carries `EngagementId` + `CompanyId` so the page can address the engagement.
+- ✅ **Operative "Send update link" now real.** Creates a genuine self-service onboarding link (SF-4/SUB-2)
+  for the operative's company via `IOnboardingService.CreateAsync`; when the operative opens it and submits
+  their mobile, SF-1 reuses the existing person so captured cards attach to them. Surfaced as a copyable
+  banner (no email backend yet).
+- ✅ **CompanyDetail "Compliance pack"** navigates to the real `/compliance-packs` builder instead of a demo
+  snackbar; the stray unused `_busy` field warning on System Configuration is cleared (buttons now disable
+  while saving). System Configuration general-settings + module entitlements and Permits "Save"/"Issue" were
+  already persisted (M4/M5) — no demo write-actions remain under `Pages` (Reports/Integrations stay
+  intentional placeholders, PRD Phase 7).
+- ✅ Tests: `SiteApiTests` (update persists / foreign-tenant 404), `OrganisationApiTests` (engagement update
+  persists / unknown 404), `SiteServiceTests` + `OrganisationServiceTests` unit coverage (update, duplicate-name
+  refusal, cross-company refusal). `dotnet test` green (Application 105, Api 58).
+
+### Deferred items, Phases D4–D6 (previous change)
+- ✅ **D4 — real per-site operatives & compliance (MC-12/13).** `SiteService` now derives a site's operative
+  count from the attendance log (distinct persons who attended) and their aggregate compliance via
+  `ComplianceRollup` (SF-8), replacing the hard-coded `0`/`Pending`. The Dashboard heatmap becomes real
+  automatically. Test: `SiteServiceTests.SiteOperatives_ComeFromAttendance`.
+  ✅ **Follow-up done — tenant-scoping pass (R15/MC-21).** The seeded lead main contractor
+  ("Meridian Construction Ltd") now carries the bootstrap admin's tenant id (`AdminUserSeeder.SeedCompanyId`),
+  so it owns the seeded sites and operatives. `SiteService`, `WorkforceService` and `DashboardService` take
+  the optional `ICurrentUserService` and scope sites / the operative register / the compliance tally to the
+  signed-in caller's `CompanyId`; a site outside the caller's tenant fails visibly (404 via `GetSiteAsync →
+  null`), never leaking across companies. Scoping is skipped when no current user is wired (unit tests) or the
+  caller is unauthenticated, so those paths run unscoped rather than showing an empty screen. Tests:
+  `SiteApiTests.TenantSite_IsListed_AndResolvableBySlug` / `ForeignTenantSite_IsHidden_AndReturns404`;
+  workforce/dashboard/onboarding API tests now onboard into the caller's own company via `/api/me`.
+- ✅ **D5 — retired the last demo constants.** `CompliancePacks`, `SiteGate`, `InductionRecords`,
+  `TimeAndAttendance` now resolve the company from `ITenantState` and operatives/sites from
+  `IWorkforceService`/`ISiteService` (SiteGate also runs a real `DecideAsync`); `TimeAndAttendance` uses the
+  current Monday-anchored week. Fixed a latent SUB-22 bug: the pack-send role check compared against
+  `"Compliance Manager"` but the claim carries the enum name `ComplianceManager`. Grep guard: no `Demo seed`
+  constants remain under `Pages`.
+- ✅ **D6 — N+1 batching.** `IQualificationCardRepository.GetByPersonsAsync` (Dapper `IN`/in-memory) added;
+  `WorkforceService`, `DashboardService` and `SiteService` now fetch all operatives' cards in one read
+  instead of per-person in a loop.
+- ✅ Docs synced (`docs/plan-and-scope.md`, this file). `dotnet test` green (API 54, Application 100).
+- ⚠️ **Still-open production follow-ups (from D1/D2):** set `Jwt:SigningKey` + `Seed:AdminPassword` from
+  secrets; deliver the invite/onboarding links by email; **rotate the committed DB password in
+  `src/Tedwren.Api/appsettings.json`** (still present — a real credential in the repo).
+
+### Deferred items, Phase D3: induction template authoring (previous change)
+Implements MC-15/MC-4 — a manager edits the induction video, questions, pass mark and attempts.
+- ✅ **Template gains** `AttemptLimit`, `Mandatory`, `MediaUrl`, `SiteId` (migration `017_induction_authoring.sql`,
+  both providers; EF fields; Dapper + in-memory `UpdateAsync`).
+- ✅ **Service** — `IInductionService.GetTemplateForEditAsync` (returns answers to the authorised admin only,
+  R5) + `UpdateTemplateAsync` (name/validity/pass mark/attempts/mandatory/media/steps/questions; rejects a
+  pass mark above the question count). New DTOs `InductionQuizAuthoringDto`, `InductionTemplateAuthoringDto`,
+  `UpdateInductionTemplateRequest`. Quiz scoring stays server-side (`SubmitQuizAsync`, R5).
+- ✅ **API** — `GET /api/inductions/templates/{id}/edit` + `PUT /api/inductions/templates/{id}` (authorised).
+- ✅ **Client** — `Inductions.razor` builder is now a real editor: create-or-load the company template, edit
+  details/media/validity/mandatory + a quiz question editor (prompt, options, correct answer), Publish persists.
+- ✅ Tests: `InductionAuthoringApiTests` (create→edit→readback; pass-mark validation). `dotnet test` green (API 52).
+
+### Deferred items, Phase D2: self-service operative onboarding link (previous change)
+Implements SF-4/SUB-2 — an operative completes their own details and uploads card photos from a link.
+- ✅ **Domain** — `OnboardingLink` (+`OnboardingLinkStatus`) and `StoredImage`; migration `016_onboarding.sql`
+  (`OnboardingLinks` + `StoredImages`, both providers) + EF records + Dapper repos + in-memory doubles.
+- ✅ **Service** — `IOnboardingService` (`CreateAsync`, `GetByTokenAsync`, `SubmitDetailsAsync`,
+  `CaptureCardAsync`) reusing `IOrganisationService.AddOperativeAsync` (SF-1/SF-2), `IQualificationService.CaptureCardAsync`
+  (cards land unconfirmed, SF-5/SF-6), and the compliance-pack `PackToken`/`PackPasscode` helpers (SUB-18
+  30-day + passcode). `CaptureCardRequest` gained an optional `ImageReference`; card photos are stored via
+  `IImageStore` and served only through the authorised `GET /api/images/{id}` (R9).
+- ✅ **API** — `/api/onboarding` (create authorised; `view`/`submit`/`cards` anonymous, token+passcode gated);
+  `/api/images/{id}` (authorised). `/api/qualifications/types` made anonymous (global reference library, SF-12,
+  needed by the recipient page).
+- ✅ **Client** — `ApiOnboardingService`; recipient page `/onboard?token=&passcode=` (RecipientLayout) with
+  details form + card capture (photo → base64); `AddOperative` "send link" branch now mints a real link and
+  shows it (no email backend yet).
+- ✅ Tests: `OnboardingApiTests` (create/403/submit→workforce/capture). `dotnet test` green (API 50).
+
+### Deferred items, Phase D1: authentication & authorization (previous change)
+Adds real console sign-in (the PRD leaves the mechanism to the implementer, §10.1 Q1).
+- ✅ **Credentials on `User`** — `PasswordHash`, `PasswordSetUtc`, `InviteToken`, `InviteTokenExpiresUtc`
+  (migration `015_user_auth.sql`, SqlServer+Postgres; EF fields; Dapper+in-memory `GetByInviteTokenAsync`).
+  PBKDF2 `PasswordHasher` (no new dep).
+- ✅ **Auth service + JWT** — `IAuthService` (`LoginAsync`, `AcceptInviteAsync`) + `AuthService`;
+  `ITokenIssuer`→`JwtTokenIssuer` (claims: sub/name/role/company); `JwtOptions` (`Jwt` section);
+  `/api/auth/login` + `/api/auth/accept-invite` (anonymous). Invite now mints a one-time accept token
+  (`InviteUserAsync`→`InviteUserResult`); `InviteUser.razor` surfaces the accept link (no email backend yet).
+- ✅ **API authz** — JWT bearer + **secure-by-default** fallback policy (every endpoint needs a user unless
+  `AllowAnonymous`). Recipient/kiosk flows kept anonymous (auth, `/health`, `/api/site-entry`, packs
+  view/download, induction take-flow sessions). SF-23 **Auditor read-only enforced server-side** via a
+  write-verb middleware. Claims-based `ICurrentUserService` (`ClaimsCurrentUserService`) — `/api/me` now
+  returns the real user with a **real tenant CompanyId** (R15); the config stub is deleted.
+- ✅ **Bootstrap admin** — `AdminUserSeeder` (idempotent, both modes) seeds an Administrator from the `Seed`
+  config section so a fresh install can sign in.
+- ✅ **Client** — `TokenStore` + `AuthTokenHandler` (attaches bearer, 401→`/login`), `AuthState`
+  (login/accept/logout, localStorage token via `tedwren.auth.*`), `/login` + `/accept-invite` pages
+  (RecipientLayout), MainLayout gates the console + sign-out; Auditor UI write-gating via `AuthState.CanWrite`.
+- ✅ **Test hook** — `Auth:TestBypass` authenticates every request as Administrator so the existing 44 API
+  tests run unchanged; auth-specific tests (`AuthApiTests`) flip it off to exercise real JWT. `dotnet test`
+  green (API 48, Application 99, Client 6, Domain 67).
+- ⚠️ **Prod follow-ups:** set a real `Jwt:SigningKey` and `Seed:AdminPassword` from a secret; wire email
+  delivery of the invite link. **Committed DB secret in appsettings.json still needs rotating** (user
+  deferred).
+
+### Sample-data → API migration, Phase M6: shell chrome + project removal (previous change)
+Completes the migration — no page renders sample data any more.
+- ✅ **Inductions builder** — the "applies to site" dropdown now loads from `ISiteService` (off
+  `IFormSampleDataService`). The video/quiz/publish steps remain explicit UI placeholders (no template-
+  authoring backend exists; publishing arbitrary inductions is out of scope).
+- ✅ **MainLayout shell chrome retired.** Current user → `ICurrentUserService`; top-bar notifications →
+  `IExpiryQueryService` (real upcoming expiries, SF-9); nav/route inventory, platform switcher and
+  environment badge relocated to `Tedwren.Client/Services/ShellChrome.cs` (fixed app config, not tenant
+  data). `IShellSampleDataService` / `IListSampleDataService` no longer used.
+- ✅ **`Tedwren.UiComponents.SampleData` project deleted** — removed from the solution, the client project
+  reference, `Program.cs` registrations and `_Imports`. Presentation view models it used to own
+  (`KpiTile`, the compliance-overview VM) now live in `Tedwren.Client/Services`.
+- ✅ Docs updated (CLAUDE.md architecture table + data-source note; Slug.cs comment). Whole solution builds;
+  `dotnet test` green (API 44, Application 99).
+
+### Sample-data → API migration, Phases M4 (settings) + M5 (permits) (previous change)
+- ✅ **M4 — general settings persistence.** `ISettingsService` (`GetForCompanyAsync`, `SaveForCompanyAsync`) +
+  `SettingsService` (returns per-company settings, defaults seeded from company name when unset) +
+  `/api/settings/{companyId}` (GET/PUT) + `ApiSettingsService`. Per-company JSON row: `CompanySettings` table
+  (migration `013`, SqlServer + Postgres), Dapper `SettingsRepository`, in-memory double (singleton), EF
+  `CompanySettingsRecord`. `SystemConfiguration` now loads and **saves** general settings via the API (the
+  "not yet persisted" caveat is gone), off `IFormSampleDataService`.
+- ✅ **M5 — permits backend.** New `Permit` entity + `PermitStatus` enum; `IPermitService`
+  (`CreateAsync`, `ListForCompanyAsync`) + `PermitService`; `/api/permits` (POST + `company/{id}`) +
+  `ApiPermitService`. `Permits` table (migration `014`, SqlServer + Postgres), Dapper `PermitRepository`,
+  in-memory double (singleton), EF `PermitRecord`. `Permits` page now **persists** issued/draft permits
+  (company via `ITenantState`) and **lists** them in a `DataTable`.
+- ✅ Tests: `SettingsAndPermitApiTests` (API, 3); whole solution builds; `dotnet test` green (API 44,
+  Application 99).
+- ⏳ **Remaining:** M6 — Inductions config page + retire `IShellSampleDataService` chrome (MainLayout
+  nav/platforms/environment/notifications/user) — the last sample-data dependency.
+
+### Sample-data → API migration, Phase M3: dashboard aggregation (previous change)
+Adds the dashboard aggregation read model and migrates the Dashboard and Compliance pages onto it.
+- ✅ **Dashboard aggregation** — `IDashboardService` (`GetSummaryAsync`, `GetComplianceAsync`) +
+  `DashboardService`, composing company/engagement/qualification-card repositories + `ISiteService` +
+  `IExpiryQueryService` (no new store; reuses `ComplianceRollup` for SF-8). DTOs `DashboardSummaryDto`,
+  `DashboardKpisDto`, `ComplianceBreakdownDto`, `SiteRiskRowDto`.
+- ✅ **API + client** — `/api/dashboard` (summary) + `/api/dashboard/compliance` + `ApiDashboardService`,
+  registered both ends. New client helper `ComplianceOverviewView` maps the breakdown to the donut/legend VM
+  (theme-token colours; no literals in pages).
+- ✅ **Pages migrated:** `Dashboard` — KPIs (companies/operatives/sites/compliance%/upcoming expiries),
+  compliance donut, site-risk heatmap all from `/api/dashboard`; upcoming expiries from `IExpiryQueryService`
+  (SF-9); recent activity from `IAuditService` (SF-20). `Compliance` — overview donut from
+  `GetComplianceAsync`. Both fully off `IDashboardSampleDataService`.
+- ✅ Honest-data note: the heatmap now shows Site / Operatives / Compliance% / Status (the sample
+  Compliant/Expiring/At-risk per-site breakdown has no domain source — there is no person→site compliance
+  link yet); KPI sparklines/trends are dropped (no historical series stored).
+- ✅ Tests: `DashboardApiTests` (API, 2); whole solution builds; `dotnet test` green (API 41, Application 99).
+- ⏳ **Remaining sample-data pages:** SystemConfiguration settings (M4); Permits issue-flow backend (M5);
+  Inductions config + retire `IShellSampleDataService` chrome (M6).
+
+### Sample-data → API migration, Phase M2: workforce read model (previous change)
+Adds the org-wide workforce read model and migrates the operative-facing pages onto it.
+- ✅ **Workforce read model** — `IWorkforceService` (`ListOperativesAsync`, `GetOperativeBySlugAsync`) +
+  `WorkforceService`, composing existing company/engagement/person/qualification-card/decision
+  repositories & services (no new store — reuses `ComplianceRollup` for SF-8 state). DTOs
+  `OperativeListItemDto` / `OperativeDetailDto` / `OperativeQualificationDto` / `OperativeHistoryDto`.
+- ✅ **API + client** — `/api/workforce` (list + `/{slug}`) + `ApiWorkforceService`, registered both ends.
+- ✅ **Pages migrated:** `Workforce` (register → `ListOperativesAsync`), `OperativeDetail` (→
+  `GetOperativeBySlugAsync`; overview now shows only domain-backed fields — trade, employer, phone,
+  qualifications, and site-entry history — the sample DoB/NI/email/primary-site are dropped as the model
+  doesn't hold them), `Permits` (permit types → reference, sites → `ISiteService`, operatives → workforce —
+  fully off `IFormSampleDataService`), `MainLayout` command-palette search index (companies/operatives/sites
+  → real APIs, off `IListSampleDataService`).
+- ✅ **AddOperative real persistence** — direct entry now creates a real engagement via
+  `IOrganisationService.AddOperativeAsync` (added an Employer/company selector; SF-1/SF-2, surfaces the SF-2
+  duplicate refusal). Self-service link path stays a demo (no backend yet).
+- ✅ Tests: `WorkforceApiTests` (API, 2); whole solution builds; `dotnet test` green (API 39, Application 99).
+- ⏳ **Remaining sample-data pages:** Dashboard + Compliance overview (M3); SystemConfiguration settings (M4);
+  Permits issue-flow backend (M5); Inductions config (M6). `IShellSampleDataService` still supplies
+  MainLayout chrome (nav/platforms/environment/notifications/user) — retire in M6 cleanup.
+
+### Sample-data → API migration, Phase M1: foundations (previous change)
+Begins moving the pages that still render `UiComponents.SampleData` onto real database-backed services.
+Phase M1 delivers the shared foundations and the first page migrations:
+- ✅ **Current-operator service** — `ICurrentUserService` + `CurrentUserService` (configured/dev identity via
+  `CurrentUserOptions`, until an auth phase) + `/api/me` + `ApiCurrentUserService`. Replaces the sample shell
+  user for the SUB-22 role check.
+- ✅ **Reference-data lookup (DB-backed)** — `IReferenceDataService` + `/api/reference/{listKey}` +
+  `ApiReferenceDataService`, `ReferenceValues` table (migration `012_reference_data.sql`, SqlServer +
+  Postgres, idempotent seed) + Dapper repo + in-memory double + EF `ReferenceValueRecord`. Keys: company
+  types, trades, permit types, regions (`ReferenceListKeys`).
+- ✅ **Decisions client wiring** — added `ApiDecisionService` + registered `IDecisionService` (endpoint +
+  backend already existed; only client binding was missing, R10).
+- ✅ **Pages migrated off sample data:** `CompliancePacks` (role → current-user), `AddCompany` (company
+  types/trades → reference), `AddOperative` (trades → reference, sites → `ISiteService`), `Onboarding`
+  (trades → reference).
+- ✅ Tests: `ReferenceAndIdentityApiTests` (API, 4), `ReferenceDataServiceTests` (Application, 2); whole
+  solution builds; `dotnet test` green (API 37, Application 99).
+- ⏳ **Remaining sample-data pages (later M-phases):** Workforce + OperativeDetail + MainLayout search
+  (M2 workforce read model); Dashboard + Compliance overview (M3 aggregation); SystemConfiguration general
+  settings (M4); Permits (M5 backend); Inductions config (M6). `AddOperative` real persistence lands with
+  the M2 workforce write-model (needs a company target the form doesn't yet collect).
+
+### Remove Mock mode + fix client↔API connectivity (previous change)
+- ✅ **Removed runtime Mock mode.** The client always calls the Web API; the API always uses the database.
+  Deleted `ClientDataSourceMode` and all 12 `ClientMock*Service` classes; client `Program.cs` registers only
+  the `Api*` services. Renamed `DataSourceMode.Mock` → `InMemory` (test-only), defaulted `BackendOptions.Mode`
+  to `Database`, and gated the API's in-memory registrations behind `Mode == InMemory` (selected only by the
+  `Tedwren.Api.Tests` module initializer, so the suite still runs without SQL Server).
+- ✅ **Fixed CORS / API base URL.** Client `Api:BaseUrl` → `https://localhost:7296` (the API's real https
+  port); API `Cors:AllowedOrigins` → the client's real origins `https://localhost:11379` / `http://localhost:11380`.
+  These previously pointed at unrelated default ports (5001/5000), causing `NetworkError`/CORS failures.
+- ✅ Inlined the few demo constants that four not-yet-migrated sample pages (SiteGate, CompliancePacks,
+  InductionRecords, TimeAndAttendance) had borrowed from the deleted mock services.
+- ❗ **Follow-up:** ~12 pages still render `UiComponents.SampleData` directly (Dashboard, Workforce,
+  OperativeDetail, Compliance, Permits, etc.) — migrating each to real API data is a separate project.
+  Also `/api/decisions` has no client caller (server-side write path only).
+
+### Organisation onboarding wizard (this change)
+- ✅ **Onboarding wizard (branches by org type: Subcontractor / Main Contractor).** New `OnboardingLayout`
+  (plain centered shell modelled on `RecipientLayout`) + `/onboarding` wizard (`Onboarding.razor` +
+  `OnboardingModel`) built from the existing `TedwrenStepper`/Forms suite/`DashboardCard`. Steps: org type →
+  company details → first administrator → sites → (Sub) operatives + insurances/accreditations (SUB-4 default
+  doc types) / (MC) seeded induction template (MC-3). `Finish()` sequences the service calls with the company
+  as the anchor and best-effort child steps (partial-failure summary; R18-safe copy).
+- ✅ **First-run + in-app triggers.** `MainLayout` redirects to `/onboarding` when the database has no
+  companies (fails open; mock mode is never empty). "Add client" button on the Organisation page reaches the
+  wizard for pre-launch testing.
+- ✅ **Dynamic tenant (replaces the static `TenantContext`).** New `ITenantState`/`TenantState`
+  (localStorage-backed, falls back to the seed company id); the wizard sets the newly-created company as the
+  active tenant (R15). All prior `TenantContext.CurrentCompanyId` readers migrated.
+- ✅ **Invite carries `CompanyId` (R15).** `InviteUserRequest` gains `CompanyId`; `UserService` attaches the
+  new user to it instead of the hard-coded owner company — so onboarding's first admin lands on the new org.
+- ✅ **Company documents persistence (SUB-4).** New `CompanyDocument` entity, `ICompanyDocumentRepository`
+  (in-memory + Dapper both dialects), `CompanyDocuments` table (`011_company_documents.sql` + EF
+  `AddCompanyDocuments` migration); `IOrganisationService.AddCompanyDocumentAsync` and documents surfaced on
+  the company detail with an expiry-derived state. (File bytes not yet stored — metadata only.)
+- ✅ **Induction template seeding (MC-3/SF-12).** `IInductionService.CreateDefaultTemplateAsync` clones the
+  shipped default into a company; `/api/inductions/templates` POST + client impls.
+- ✅ Tests: invite `CompanyId` honoured; company-document add/read + expiry state; induction-template seed;
+  API document + template endpoints; skippable Dapper `CompanyDocumentRepository` integration test.
+
 ### UX completeness pass — user management, UI defect closure & EF migrations tooling (this change)
 - ✅ **Console user management (SF-20, SF-23, Q2).** New full vertical: `User` entity + `UserStatus` enum
   (reusing the existing `AccessRole`); `IUserService` + DTOs; `UserService` (invite with duplicate-email
@@ -415,7 +654,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   - Real SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs
     SUB-4); real card-image storage (R9).
 - ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
-  `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default.
+  `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default; Mock mode removed.
 
 ## Later (per `docs/plan-and-scope.md`)
 - ⏳ Phases 9–13 — Shared Foundation (cards & competency; expiry engine & job heartbeat; sites,

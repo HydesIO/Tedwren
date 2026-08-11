@@ -75,6 +75,7 @@ public sealed class QualificationService : IQualificationService
             IssuedOn = request.IssuedOn,
             ExpiresOn = request.ExpiresOn,
             NeedsReview = request.NeedsReview,
+            ImageReference = request.ImageReference,
             VerificationState = DomainVerificationState.ReadUnchecked,
         };
 

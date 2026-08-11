@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Common;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence.InMemory;
@@ -18,6 +19,7 @@ public sealed class OrganisationServiceTests
         var qualificationStore = new InMemoryQualificationStore(seed: false);
         var service = new OrganisationService(
             new InMemoryCompanyRepository(store),
+            new InMemoryCompanyDocumentRepository(store),
             new InMemoryPersonRepository(store),
             new InMemoryEngagementRepository(store),
             new InMemoryQualificationCardRepository(qualificationStore));
@@ -94,6 +96,74 @@ public sealed class OrganisationServiceTests
         var result = await service.ArchiveEngagementAsync(other, added.EngagementId!.Value);
 
         Assert.False(result);
+    }
+
+    [Fact] // SF-2 edit — updating an engagement changes its name + trade in the register
+    public async Task UpdateEngagement_ChangesNameAndTrade()
+    {
+        var (service, _) = CreateSut();
+        var company = await AddCompanyAsync(service, "Alpha Ltd");
+        var added = await service.AddOperativeAsync(new AddOperativeRequest(company, "Joe Smith", "07700900123", "Labourer", null));
+
+        var ok = await service.UpdateEngagementAsync(company, added.EngagementId!.Value, new UpdateEngagementRequest("Joseph Smith", "Electrician"));
+        var detail = await service.GetCompanyAsync("alpha-ltd");
+
+        Assert.True(ok);
+        var op = Assert.Single(detail!.Operatives);
+        Assert.Equal("Joseph Smith", op.Name);
+        Assert.Equal("Electrician", op.Trade);
+    }
+
+    [Fact] // SF-2 edit — a rename that collides with another active engagement in the company is refused
+    public async Task UpdateEngagement_ToDuplicateName_IsRefused()
+    {
+        var (service, _) = CreateSut();
+        var company = await AddCompanyAsync(service, "Alpha Ltd");
+        await service.AddOperativeAsync(new AddOperativeRequest(company, "Joe Smith", "07700900123", null, null));
+        var second = await service.AddOperativeAsync(new AddOperativeRequest(company, "Dave Jones", "07700900124", null, null));
+
+        var refused = await service.UpdateEngagementAsync(company, second.EngagementId!.Value, new UpdateEngagementRequest("Joe Smith", null));
+
+        Assert.False(refused);
+    }
+
+    [Fact] // R15 — updating an engagement through another company is refused
+    public async Task UpdateEngagement_ThroughAnotherCompany_IsRefused()
+    {
+        var (service, _) = CreateSut();
+        var owner = await AddCompanyAsync(service, "Alpha Ltd");
+        var other = await AddCompanyAsync(service, "Beta Ltd");
+        var added = await service.AddOperativeAsync(new AddOperativeRequest(owner, "Joe Smith", "07700900123", null, null));
+
+        var result = await service.UpdateEngagementAsync(other, added.EngagementId!.Value, new UpdateEngagementRequest("Joe X", null));
+
+        Assert.False(result);
+    }
+
+    [Fact] // SUB-4 — a company document is recorded and surfaces on the detail with a derived state
+    public async Task AddCompanyDocument_IsListedWithExpiryState()
+    {
+        var (service, _) = CreateSut();
+        var companyId = await AddCompanyAsync(service, "Alpha Ltd");
+        var expiredOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+
+        await service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(
+            companyId, "Employer's Liability Insurance", "Insurance", expiredOn, "EL-123"));
+
+        var detail = await service.GetCompanyAsync("alpha-ltd");
+        var document = Assert.Single(detail!.Documents);
+        Assert.Equal("Employer's Liability Insurance", document.Name);
+        Assert.Equal(expiredOn, document.ExpiresOn);
+        Assert.Equal(ComplianceState.NonCompliant, document.State);   // expired
+    }
+
+    [Fact] // a company id is required to record a document
+    public async Task AddCompanyDocument_EmptyCompany_Throws()
+    {
+        var (service, _) = CreateSut();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(Guid.Empty, "Doc", "Insurance", null, null)));
     }
 
     [Fact]

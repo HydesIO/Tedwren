@@ -40,6 +40,14 @@ public sealed record CompanyDocumentDto(
     string StatusLabel,
     DateOnly? ExpiresOn);
 
+/// <summary>Request to add a company-held document — insurance, accreditation or policy (SUB-4).</summary>
+public sealed record CreateCompanyDocumentRequest(
+    Guid CompanyId,
+    string Name,
+    string Type,
+    DateOnly? ExpiresOn,
+    string? Reference);
+
 /// <summary>An operative engaged by a company, shown on the company detail page.</summary>
 public sealed record CompanyOperativeDto(
     Guid EngagementId,
@@ -82,6 +90,9 @@ public sealed record AddOperativeRequest(
     string MobileNumber,
     string? Trade,
     string? InternalReference);
+
+/// <summary>Request to update an operative's per-company engagement details (name + trade, SF-2).</summary>
+public sealed record UpdateEngagementRequest(string Name, string? Trade);
 
 /// <summary>
 /// Outcome of <c>AddOperativeAsync</c>. On refusal (SF-2: already engaged in this company)

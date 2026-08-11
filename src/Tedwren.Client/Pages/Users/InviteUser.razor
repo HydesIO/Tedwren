@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.UiComponents.Models
 @inject IUserService Users
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -41,13 +42,23 @@
         </FormSection>
     }
 
+    @if (_acceptLink is not null)
+    {
+        <FormSection Title="Invitation link" Description="Share this one-time link with the invitee so they can set a password and sign in.">
+            <div class="form-page__full">
+                <BannerAlert Severity="StatusKind.Success" Title="Invitation created"
+                             Message="@_acceptLink" />
+            </div>
+        </FormSection>
+    }
+
     <FormActions>
         <Secondary>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">@(_acceptLink is null ? "Cancel" : "Done")</MudButton>
         </Secondary>
         <Primary>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
-                       OnClick="Send">Send invitation</MudButton>
+                       OnClick="Send" Disabled="_acceptLink is not null">Send invitation</MudButton>
         </Primary>
     </FormActions>
 </div>
@@ -86,16 +97,19 @@
 
         try
         {
-            // Persists via the API when DataSource=Api; adds to the live list under mock data.
-            await Users.InviteUserAsync(new InviteUserRequest(_name!, _email!, _role!));
-            Snackbar.Add($"Invitation sent to {_email}.", Severity.Success);
-            Nav.NavigateTo("/users");
+            var result = await Users.InviteUserAsync(new InviteUserRequest(Tenant.CurrentCompanyId, _name!, _email!, _role!));
+            // No email backend yet: surface the one-time accept link for the admin to share (the invitee
+            // sets their password there, D1). A real deployment emails this link.
+            _acceptLink = $"{Nav.BaseUri}accept-invite?token={result.AcceptToken}";
+            Snackbar.Add($"Invitation created for {_email}.", Severity.Success);
         }
         catch (InvalidOperationException ex)
         {
             Snackbar.Add(ex.Message, Severity.Error);
         }
     }
+
+    private string? _acceptLink;
 
     private void Cancel() => Nav.NavigateTo("/users");
 

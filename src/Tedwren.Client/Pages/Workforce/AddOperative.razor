@@ -1,5 +1,11 @@
 @page "/workforce/add"
-@inject IFormSampleDataService Options
+@using Tedwren.Abstractions.Contracts.Onboarding
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IReferenceDataService Reference
+@inject IOrganisationService Org
+@inject IOnboardingService Onboarding
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -48,8 +54,8 @@
                 {
                     <div class="add-operative__grid">
                         <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true" Placeholder="Full name" />
+                        <TedwrenSelect T="string" Label="Employer" @bind-Value="_company" Options="_companyNames" Placeholder="Select a company" />
                         <TedwrenSelect T="string" Label="Trade" @bind-Value="_trade" Options="_trades" Placeholder="Select a trade" />
-                        <TedwrenSelect T="string" Label="Primary site" @bind-Value="_site" Options="_sites" Placeholder="Select a site" />
                         <TedwrenTextField Label="Mobile" @bind-Value="_contact" InputType="InputType.Telephone" Placeholder="+44 …" />
                     </div>
                 }
@@ -69,15 +75,26 @@
                     }
                     else
                     {
+                        <div><dt>Employer</dt><dd>@(_company ?? "—")</dd></div>
                         <div><dt>Trade</dt><dd>@(_trade ?? "—")</dd></div>
-                        <div><dt>Primary site</dt><dd>@(_site ?? "—")</dd></div>
+                        <div><dt>Mobile</dt><dd>@(string.IsNullOrWhiteSpace(_contact) ? "—" : _contact)</dd></div>
                     }
                 </dl>
+                @if (_onboardingLink is not null)
+                {
+                    <BannerAlert Severity="StatusKind.Success" Title="Onboarding link created"
+                                 Message="@($"Share this link with the operative{(_onboardingPasscode is null ? "" : $" (passcode {_onboardingPasscode})")}: {_onboardingLink}")" />
+                }
+
                 <div class="add-operative__finish">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || _onboardingLink is not null)"
                                StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
-                        @(_method == "link" ? "Send link" : "Create operative")
+                        @(_method == "link" ? "Create link" : "Create operative")
                     </MudButton>
+                    @if (_onboardingLink is not null)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => Nav.NavigateTo("/workforce"))">Done</MudButton>
+                    }
                 </div>
             </div>
         </MudStep>
@@ -90,11 +107,15 @@
     private string? _name;
     private string? _contact;
     private string? _trade;
-    private string? _site;
+    private string? _company;
     private bool _requirePasscode = true;
+    private bool _busy;
+    private string? _onboardingLink;
+    private string? _onboardingPasscode;
 
     private IReadOnlyList<string> _trades = Array.Empty<string>();
-    private IReadOnlyList<string> _sites = Array.Empty<string>();
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private IReadOnlyList<string> _companyNames = Array.Empty<string>();
 
     private List<BreadcrumbItem> _breadcrumbs = new()
     {
@@ -102,20 +123,52 @@
         new("Add operative", null, disabled: true),
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _trades = Options.GetTrades();
-        _sites = Options.GetSiteNames();
+        await Tenant.InitializeAsync();
+        _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        _companies = await Org.GetCompaniesAsync();
+        _companyNames = _companies.Select(c => c.Name).ToList();
     }
 
     private void OnMethodChanged(string value) => _method = value;
 
-    private void Finish()
+    private async Task Finish()
     {
-        var message = _method == "link"
-            ? $"Self-service link sent to {(_contact ?? "recipient")} (demo)."
-            : $"Operative \"{_name}\" created (demo — nothing is persisted).";
-        Snackbar.Add(message, Severity.Success);
+        if (_method == "link")
+        {
+            // Create a real self-service onboarding link (SF-4/SUB-2). No email backend yet, so show the link
+            // for the admin to share; the operative completes their own details and card photos there.
+            _busy = true;
+            var link = await Onboarding.CreateAsync(
+                new CreateOnboardingLinkRequest(Tenant.CurrentCompanyId, _name, _trade, RequirePasscode: _requirePasscode), null);
+            _busy = false;
+            var passcodePart = link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(link.Passcode)}";
+            _onboardingLink = $"{Nav.BaseUri}onboard?token={Uri.EscapeDataString(link.Token)}{passcodePart}";
+            _onboardingPasscode = link.Passcode;
+            return;
+        }
+
+        // Direct entry persists a real engagement via the API (SF-1/SF-2).
+        var company = _companies.FirstOrDefault(c => c.Name == _company);
+        if (string.IsNullOrWhiteSpace(_name) || company is null || string.IsNullOrWhiteSpace(_contact))
+        {
+            Snackbar.Add("Enter a name, employer and mobile number to create an operative.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        var result = await Org.AddOperativeAsync(new AddOperativeRequest(
+            company.Id, _name!.Trim(), _contact!.Trim(), _trade, InternalReference: null));
+        _busy = false;
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Error ?? "Could not create the operative.", Severity.Error);
+            return;
+        }
+
+        Snackbar.Add($"Operative \"{_name}\" added to {company.Name}.", Severity.Success);
         Nav.NavigateTo("/workforce");
     }
 }

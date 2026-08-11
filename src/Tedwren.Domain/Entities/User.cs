@@ -33,4 +33,16 @@ public sealed class User
 
     /// <summary>When the user was last active, if ever (UTC).</summary>
     public DateTimeOffset? LastActiveUtc { get; set; }
+
+    /// <summary>The salted password hash, set when the invitee accepts and chooses a password. Null until then.</summary>
+    public string? PasswordHash { get; set; }
+
+    /// <summary>When the password was last set (UTC). Null until the invite is accepted.</summary>
+    public DateTimeOffset? PasswordSetUtc { get; set; }
+
+    /// <summary>The one-time invite token used to accept the invitation and set a password. Cleared once used.</summary>
+    public string? InviteToken { get; set; }
+
+    /// <summary>When the invite token expires (UTC). After this the invite must be re-sent.</summary>
+    public DateTimeOffset? InviteTokenExpiresUtc { get; set; }
 }

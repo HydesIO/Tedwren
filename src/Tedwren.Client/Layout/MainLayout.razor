@@ -2,9 +2,14 @@
 @implements IDisposable
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
-@inject IShellSampleDataService Shell
+@inject Tedwren.Client.Services.AuthState Auth
+@inject ICurrentUserService CurrentUser
+@inject IExpiryQueryService Expiry
 @inject IEntitlementService Entitlements
-@inject IListSampleDataService ListData
+@inject IOrganisationService Org
+@inject ISiteService SitesSvc
+@inject IWorkforceService Workforce
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
@@ -23,7 +28,7 @@
                     BrandName="Tedwren"
                     ActiveRoute="@_activeRoute"
                     @bind-IsCollapsed="_sidebarCollapsed"
-                    Platforms="@Shell.GetPlatforms()"
+                    Platforms="@ShellChrome.Platforms"
                     SelectedPlatform="@_selectedPlatform"
                     OnPlatformSelected="OnPlatformSelected"
                     Environment="_environment"
@@ -34,9 +39,9 @@
         <AppTopBar PageTitle="@_pageTitle"
                    Notifications="_notifications"
                    NotificationsHref="/notifications"
-                   CurrentUserName="@_user.Name"
-                   CurrentUserRole="@_user.Role"
-                   CurrentUserAvatarUrl="@_user.AvatarUrl"
+                   CurrentUserName="@_userName"
+                   CurrentUserRole="@_userRole"
+                   CurrentUserAvatarUrl="@(string.Empty)"
                    ShowMenuButton="true"
                    IsDark="_isDark"
                    OnMenuClick="ToggleSidebar"
@@ -53,7 +58,8 @@
     private bool _sidebarCollapsed;
     private IReadOnlyList<NavItem> _navItems = Array.Empty<NavItem>();
     private string _selectedPlatform = string.Empty;
-    private ShellUser _user = new("", "");
+    private string _userName = string.Empty;
+    private string _userRole = string.Empty;
     private AppSidebar.EnvironmentInfo? _environment;
     private string _activeRoute = "/";
     private string _pageTitle = "Dashboard";
@@ -82,15 +88,38 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _navItems = await GatedNavItemsAsync(Shell.GetNavItems());
-        _selectedPlatform = Shell.GetSelectedPlatform();
-        _user = Shell.GetCurrentUser();
-        _notifications = Shell.GetNotifications();
+        // Require sign-in for the console (D1). Unauthenticated users go to the login page.
+        await Auth.InitializeAsync();
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
 
-        var env = Shell.GetEnvironment();
+        await Tenant.InitializeAsync();
+
+        // First run against an empty database has no companies: send the operator to onboarding to
+        // provision the first organisation. Mock mode always has seed companies, so this only fires
+        // under DataSource=Database with an empty Companies table. Fails open on lookup error.
+        if (await ShouldOnboardAsync())
+        {
+            Nav.NavigateTo("/onboarding");
+            return;
+        }
+
+        _navItems = await GatedNavItemsAsync(ShellChrome.NavItems);
+        _selectedPlatform = ShellChrome.DefaultPlatform;
+
+        var user = await CurrentUser.GetCurrentAsync();
+        _userName = user.Name;
+        _userRole = user.Role;
+
+        _notifications = await BuildNotificationsAsync();
+
+        var env = ShellChrome.Environment;
         _environment = new AppSidebar.EnvironmentInfo(env.Name, env.Version, env.Build, env.IsHealthy);
 
-        _commandItems = BuildCommandItems();
+        _commandItems = await BuildCommandItemsAsync();
 
         Nav.LocationChanged += OnLocationChanged;
         UpdateActiveRoute();
@@ -123,7 +152,17 @@
 
     private void OpenPalette() => _paletteOpen = true;
 
-    private void OnCommandSelect(CommandItem item) => Nav.NavigateTo(item.Href);
+    private async Task OnCommandSelect(CommandItem item)
+    {
+        if (item.Href == "action:logout")
+        {
+            await Auth.LogoutAsync();
+            Nav.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        Nav.NavigateTo(item.Href);
+    }
 
     private async Task ToggleTheme()
     {
@@ -132,7 +171,7 @@
         catch { /* ignore */ }
     }
 
-    private IReadOnlyList<CommandItem> BuildCommandItems()
+    private async Task<IReadOnlyList<CommandItem>> BuildCommandItemsAsync()
     {
         var items = new List<CommandItem>();
 
@@ -141,25 +180,44 @@
             items.Add(new CommandItem(nav.Label, "Pages", nav.Icon, nav.Href, "Go to page"));
         }
 
-        foreach (var c in ListData.GetCompanies())
+        items.Add(new CommandItem("Sign out", "Account", MudBlazor.Icons.Material.Outlined.Logout, "action:logout", "End your session"));
+
+        // Search index built from real API data (companies, operatives, sites).
+        foreach (var c in await Org.GetCompaniesAsync())
         {
             items.Add(new CommandItem(c.Name, "Companies", MudBlazor.Icons.Material.Outlined.Business,
-                $"/organisation/{Slugs.From(c.Name)}", c.Trade));
+                $"/organisation/{c.Slug}", c.Trade));
         }
 
-        foreach (var o in ListData.GetOperatives())
+        foreach (var o in await Workforce.ListOperativesAsync())
         {
             items.Add(new CommandItem(o.Name, "Operatives", MudBlazor.Icons.Material.Outlined.Engineering,
-                $"/workforce/{Slugs.From(o.Name)}", $"{o.Trade} · {o.Company}"));
+                $"/workforce/{o.Slug}", $"{o.Trade} · {o.Company}"));
         }
 
-        foreach (var s in ListData.GetSites())
+        foreach (var s in await SitesSvc.GetSitesAsync())
         {
             items.Add(new CommandItem(s.Name, "Sites", MudBlazor.Icons.Material.Outlined.Apartment,
-                $"/sites/{Slugs.From(s.Name)}", s.Region));
+                $"/sites/{s.Slug}", s.Region));
         }
 
         return items;
+    }
+
+    // Builds the top-bar notifications from real upcoming qualification expiries (SF-9).
+    private async Task<IReadOnlyList<NotificationEntry>> BuildNotificationsAsync()
+    {
+        var upcoming = await Expiry.GetUpcomingAsync(30);
+        return upcoming
+            .Take(10)
+            .Select(e => new NotificationEntry(
+                MudBlazor.Icons.Material.Outlined.WarningAmber,
+                "Qualification expiring",
+                $"{e.QualificationName} — {e.StatusLabel}",
+                e.ExpiresOn?.ToString("dd MMM yyyy") ?? string.Empty,
+                e.DaysUntilExpiry <= 7 ? StatusKind.Danger : StatusKind.Warning,
+                Unread: true))
+            .ToList();
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)
@@ -203,7 +261,7 @@
     {
         try
         {
-            var entitlements = await Entitlements.GetForCompanyAsync(TenantContext.CurrentCompanyId);
+            var entitlements = await Entitlements.GetForCompanyAsync(Tenant.CurrentCompanyId);
             var enabled = entitlements.Where(e => e.Enabled)
                 .Select(e => e.Key)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -215,6 +273,27 @@
         catch
         {
             return all;
+        }
+    }
+
+    // True when there are no companies yet, so the first-run onboarding wizard should take over. Guarded so
+    // it never fires while already on the wizard, and fails closed (no redirect) on a lookup error.
+    private async Task<bool> ShouldOnboardAsync()
+    {
+        var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri).TrimStart('/').Split('?', '#')[0];
+        if (relative.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            var companies = await Org.GetCompaniesAsync();
+            return companies.Count == 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 

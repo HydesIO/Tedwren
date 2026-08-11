@@ -4,6 +4,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ITimesheetService Timesheets
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 
 <PageTitle>My hours · Tedwren</PageTitle>
@@ -79,9 +80,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         _personId = Guid.TryParse(ParseQuery(uri.Query, "person"), out var p) ? p : Guid.Empty;
-        _companyId = Guid.TryParse(ParseQuery(uri.Query, "company"), out var c) ? c : TenantContext.CurrentCompanyId;
+        _companyId = Guid.TryParse(ParseQuery(uri.Query, "company"), out var c) ? c : Tenant.CurrentCompanyId;
         _weekStart = ThisWeekStart;
 
         if (_personId != Guid.Empty)

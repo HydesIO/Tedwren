@@ -24,6 +24,7 @@ public static class DataAccessServiceCollectionExtensions
             provider == DatabaseProvider.PostgreSql ? new PostgresDialect() : new SqlServerDialect());
         services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<ICompanyDocumentRepository, CompanyDocumentRepository>();
         services.AddScoped<IPersonRepository, PersonRepository>();
         services.AddScoped<IEngagementRepository, EngagementRepository>();
         services.AddScoped<IQualificationTypeRepository, QualificationTypeRepository>();
@@ -40,6 +41,11 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IInductionTemplateRepository, InductionTemplateRepository>();
         services.AddScoped<IInductionSessionRepository, InductionSessionRepository>();
         services.AddScoped<Inductions.InductionTemplateSeeder>();
+        services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<ISettingsRepository, SettingsRepository>();
+        services.AddScoped<IPermitRepository, PermitRepository>();
+        services.AddScoped<IOnboardingLinkRepository, OnboardingLinkRepository>();
+        services.AddScoped<IImageStore, ImageStore>();
         services.AddScoped<IEntitlementRepository, EntitlementRepository>();
         services.AddScoped<IAuditRepository, AuditRepository>();
         services.AddScoped<IDecisionRepository, DecisionRepository>();

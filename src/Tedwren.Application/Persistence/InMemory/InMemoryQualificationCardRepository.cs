@@ -20,6 +20,17 @@ public sealed class InMemoryQualificationCardRepository : IQualificationCardRepo
         return Task.FromResult(cards);
     }
 
+    /// <summary>Returns all cards for the given people in one read (batched).</summary>
+    public Task<IReadOnlyList<QualificationCard>> GetByPersonsAsync(IReadOnlyCollection<Guid> personIds, CancellationToken cancellationToken = default)
+    {
+        var ids = personIds is HashSet<Guid> set ? set : new HashSet<Guid>(personIds);
+        IReadOnlyList<QualificationCard> cards = _store.Cards.Values
+            .Where(c => ids.Contains(c.PersonId))
+            .OrderByDescending(c => c.CreatedUtc)
+            .ToList();
+        return Task.FromResult(cards);
+    }
+
     /// <summary>Returns current (non-superseded) cards that carry an expiry date.</summary>
     public Task<IReadOnlyList<QualificationCard>> GetCurrentWithExpiryAsync(CancellationToken cancellationToken = default)
     {

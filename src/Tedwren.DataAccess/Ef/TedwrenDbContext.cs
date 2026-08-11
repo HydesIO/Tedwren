@@ -17,6 +17,7 @@ public sealed class TedwrenDbContext : DbContext
     }
 
     public DbSet<CompanyRecord> Companies => Set<CompanyRecord>();
+    public DbSet<CompanyDocumentRecord> CompanyDocuments => Set<CompanyDocumentRecord>();
     public DbSet<PersonRecord> Persons => Set<PersonRecord>();
     public DbSet<EngagementRecord> Engagements => Set<EngagementRecord>();
     public DbSet<QualificationTypeRecord> QualificationTypes => Set<QualificationTypeRecord>();
@@ -29,6 +30,11 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<UserRecord> Users => Set<UserRecord>();
     public DbSet<AttendanceRecord> Attendance => Set<AttendanceRecord>();
     public DbSet<ModuleEntitlementRecord> ModuleEntitlements => Set<ModuleEntitlementRecord>();
+    public DbSet<ReferenceValueRecord> ReferenceValues => Set<ReferenceValueRecord>();
+    public DbSet<CompanySettingsRecord> CompanySettings => Set<CompanySettingsRecord>();
+    public DbSet<PermitRecord> Permits => Set<PermitRecord>();
+    public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
+    public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
     public DbSet<TimesheetRecord> Timesheets => Set<TimesheetRecord>();
@@ -42,6 +48,15 @@ public sealed class TedwrenDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.Entity<CompanyRecord>(e => e.ToTable("Companies"));
+
+        model.Entity<CompanyDocumentRecord>(e =>
+        {
+            e.ToTable("CompanyDocuments");
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.Type).HasMaxLength(128);
+            e.Property(x => x.Reference).HasMaxLength(128);
+            e.HasIndex(x => x.CompanyId);                       // SUB-4
+        });
 
         model.Entity<PersonRecord>(e =>
         {
@@ -102,8 +117,11 @@ public sealed class TedwrenDbContext : DbContext
             e.ToTable("Users");
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.PasswordHash).HasMaxLength(512);
+            e.Property(x => x.InviteToken).HasMaxLength(128);
             e.HasIndex(x => x.Email).IsUnique();               // one account per email
             e.HasIndex(x => x.CompanyId);
+            e.HasIndex(x => x.InviteToken);
         });
 
         model.Entity<AttendanceRecord>(e =>
@@ -118,6 +136,45 @@ public sealed class TedwrenDbContext : DbContext
             e.ToTable("ModuleEntitlements");
             e.Property(x => x.ModuleKey).HasMaxLength(64);
             e.HasIndex(x => new { x.CompanyId, x.ModuleKey }).IsUnique();  // Q2
+        });
+
+        model.Entity<ReferenceValueRecord>(e =>
+        {
+            e.ToTable("ReferenceValues");
+            e.Property(x => x.ListKey).HasMaxLength(64);
+            e.Property(x => x.Value).HasMaxLength(256);
+            e.HasIndex(x => new { x.ListKey, x.Value }).IsUnique();
+        });
+
+        model.Entity<CompanySettingsRecord>(e =>
+        {
+            e.ToTable("CompanySettings");
+            e.HasKey(x => x.CompanyId);
+        });
+
+        model.Entity<OnboardingLinkRecord>(e =>
+        {
+            e.ToTable("OnboardingLinks");
+            e.Property(x => x.Token).HasMaxLength(128);
+            e.Property(x => x.PasscodeHash).HasMaxLength(256);
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.Trade).HasMaxLength(128);
+            e.HasIndex(x => x.Token).IsUnique();
+        });
+
+        model.Entity<StoredImageRecord>(e =>
+        {
+            e.ToTable("StoredImages");
+            e.Property(x => x.ContentType).HasMaxLength(128);
+        });
+
+        model.Entity<PermitRecord>(e =>
+        {
+            e.ToTable("Permits");
+            e.Property(x => x.PermitType).HasMaxLength(128);
+            e.Property(x => x.SiteName).HasMaxLength(256);
+            e.Property(x => x.ResponsiblePerson).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.CreatedUtc });
         });
 
         model.Entity<AuditEntryRecord>(e =>
@@ -165,6 +222,7 @@ public sealed class TedwrenDbContext : DbContext
         model.Entity<InductionTemplateRecord>(e =>
         {
             e.ToTable("InductionTemplates");
+            e.Property(x => x.MediaUrl).HasMaxLength(1024);
             e.HasIndex(x => x.CompanyId);
         });
 

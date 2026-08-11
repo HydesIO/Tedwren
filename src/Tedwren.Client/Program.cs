@@ -5,7 +5,6 @@ using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Services;
 using Tedwren.Client;
 using Tedwren.Client.Services;
-using Tedwren.UiComponents.SampleData;
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
@@ -13,48 +12,42 @@ builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Services.AddMudServices();
 
-// Sample-data services. Pages not yet migrated to the API consume these directly; the client mock
-// organisation service also wraps them so mock mode looks identical to before.
-builder.Services.AddSingleton<IShellSampleDataService, ShellSampleDataService>();
-builder.Services.AddSingleton<IDashboardSampleDataService, DashboardSampleDataService>();
-builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
-builder.Services.AddSingleton<IFormSampleDataService, FormSampleDataService>();
-builder.Services.AddSingleton<IDetailSampleDataService, DetailSampleDataService>();
+// The active customer (company). Scoped so it initialises once per app load; onboarding sets it after
+// creating the first company so the whole app scopes to the new organisation (R15).
+builder.Services.AddScoped<ITenantState, TenantState>();
 
-// The mock/API data-source switch (wwwroot/appsettings.json "DataSource:Mode"). The UI injects the
-// same IOrganisationService in both modes — switching requires no component or page changes.
-Enum.TryParse<ClientDataSourceMode>(builder.Configuration["DataSource:Mode"], ignoreCase: true, out var dataSourceMode);
-if (dataSourceMode == ClientDataSourceMode.Api)
+// Data services are served by the Tedwren Web API over HTTP. The API base URL comes from
+// wwwroot/appsettings.json ("Api:BaseUrl"), falling back to the app's own origin. The HttpClient runs
+// through AuthTokenHandler so the bearer token (D1) is attached to every request and a 401 redirects to login.
+var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+builder.Services.AddSingleton<ITokenStore, TokenStore>();
+builder.Services.AddScoped<AuthTokenHandler>();
+builder.Services.AddScoped(sp =>
 {
-    var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
-    builder.Services.AddScoped(_ => new HttpClient { BaseAddress = new Uri(apiBaseUrl) });
-    builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
-    builder.Services.AddScoped<IQualificationService, ApiQualificationService>();
-    builder.Services.AddScoped<IUserService, ApiUserService>();
-    builder.Services.AddScoped<ISiteService, ApiSiteService>();
-    builder.Services.AddScoped<IAttendanceService, ApiAttendanceService>();
-    builder.Services.AddScoped<IExpiryQueryService, ApiExpiryQueryService>();
-    builder.Services.AddScoped<IEntitlementService, ApiEntitlementService>();
-    builder.Services.AddScoped<IAuditService, ApiAuditService>();
-    builder.Services.AddScoped<ITimesheetService, ApiTimesheetService>();
-    builder.Services.AddScoped<ICompliancePackService, ApiCompliancePackService>();
-    builder.Services.AddScoped<IInductionService, ApiInductionService>();
-    builder.Services.AddScoped<ISiteEntryService, ApiSiteEntryService>();
-}
-else
-{
-    builder.Services.AddScoped<IOrganisationService, ClientMockOrganisationService>();
-    builder.Services.AddScoped<IQualificationService, ClientMockQualificationService>();
-    builder.Services.AddScoped<IUserService, ClientMockUserService>();
-    builder.Services.AddScoped<ISiteService, ClientMockSiteService>();
-    builder.Services.AddScoped<IAttendanceService, ClientMockAttendanceService>();
-    builder.Services.AddScoped<IExpiryQueryService, ClientMockExpiryQueryService>();
-    builder.Services.AddScoped<IEntitlementService, ClientMockEntitlementService>();
-    builder.Services.AddScoped<IAuditService, ClientMockAuditService>();
-    builder.Services.AddScoped<ITimesheetService, ClientMockTimesheetService>();
-    builder.Services.AddScoped<ICompliancePackService, ClientMockCompliancePackService>();
-    builder.Services.AddScoped<IInductionService, ClientMockInductionService>();
-    builder.Services.AddScoped<ISiteEntryService, ClientMockSiteEntryService>();
-}
+    var handler = sp.GetRequiredService<AuthTokenHandler>();
+    handler.InnerHandler = new HttpClientHandler();
+    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+});
+builder.Services.AddScoped<AuthState>();
+builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
+builder.Services.AddScoped<IQualificationService, ApiQualificationService>();
+builder.Services.AddScoped<IUserService, ApiUserService>();
+builder.Services.AddScoped<ISiteService, ApiSiteService>();
+builder.Services.AddScoped<IAttendanceService, ApiAttendanceService>();
+builder.Services.AddScoped<IExpiryQueryService, ApiExpiryQueryService>();
+builder.Services.AddScoped<IEntitlementService, ApiEntitlementService>();
+builder.Services.AddScoped<IAuditService, ApiAuditService>();
+builder.Services.AddScoped<ITimesheetService, ApiTimesheetService>();
+builder.Services.AddScoped<ICompliancePackService, ApiCompliancePackService>();
+builder.Services.AddScoped<IInductionService, ApiInductionService>();
+builder.Services.AddScoped<ISiteEntryService, ApiSiteEntryService>();
+builder.Services.AddScoped<IDecisionService, ApiDecisionService>();
+builder.Services.AddScoped<IReferenceDataService, ApiReferenceDataService>();
+builder.Services.AddScoped<ICurrentUserService, ApiCurrentUserService>();
+builder.Services.AddScoped<IWorkforceService, ApiWorkforceService>();
+builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
+builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
+builder.Services.AddScoped<IPermitService, ApiPermitService>();
+builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
 
 await builder.Build().RunAsync();

@@ -3,7 +3,9 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ICompliancePackService Packs
-@inject IShellSampleDataService Shell
+@inject ICurrentUserService CurrentUser
+@inject IWorkforceService Workforce
+@inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
 <PageTitle>Compliance Packs · Tedwren</PageTitle>
@@ -17,7 +19,7 @@
 
         <MudText Typo="Typo.subtitle2" Class="pack-builder__label">Operatives</MudText>
         <div class="pack-builder__operatives">
-            @foreach (var op in ClientMockCompliancePackService.DemoOperatives)
+            @foreach (var op in _operatives)
             {
                 <MudCheckBox T="bool"
                              Value="_selected.Contains(op.Id)"
@@ -66,7 +68,7 @@
 </DashboardCard>
 
 @code {
-    private static readonly Guid CompanyId = ClientMockCompliancePackService.DemoCompanyId;
+    private IReadOnlyList<(Guid Id, string Name)> _operatives = Array.Empty<(Guid, string)>();
 
     private string _title = "Weekly compliance pack";
     private readonly HashSet<Guid> _selected = new();
@@ -76,22 +78,27 @@
     private bool _loading = true;
     private bool _busy;
 
-    // SUB-22: only nominated roles may send/re-issue packs.
-    private static readonly string[] NominatedRoles = { "Administrator", "Compliance Manager" };
+    // SUB-22: only nominated roles may send/re-issue packs (AccessRole names).
+    private static readonly string[] NominatedRoles = { "Administrator", "ComplianceManager" };
     private bool _canSend;
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         BuildColumns();
-        _canSend = NominatedRoles.Contains(Shell.GetCurrentUser().Role, StringComparer.OrdinalIgnoreCase);
-        _selected.UnionWith(ClientMockCompliancePackService.DemoOperatives.Select(o => o.Id));
+        var currentUser = await CurrentUser.GetCurrentAsync();
+        _canSend = NominatedRoles.Contains(currentUser.Role, StringComparer.OrdinalIgnoreCase);
+
+        var operatives = await Workforce.ListOperativesAsync();
+        _operatives = operatives.Select(o => (o.PersonId, o.Name)).ToList();
+        _selected.UnionWith(_operatives.Select(o => o.Id));
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         _loading = true;
-        _packs = await Packs.ListForCompanyAsync(CompanyId);
+        _packs = await Packs.ListForCompanyAsync(Tenant.CurrentCompanyId);
         _loading = false;
     }
 
@@ -125,7 +132,7 @@
     {
         _busy = true;
         var request = new BuildPackRequest(
-            CompanyId, title, "You", SiteId: null, FromDate: null, ToDate: null,
+            Tenant.CurrentCompanyId, title, "You", SiteId: null, FromDate: null, ToDate: null,
             _selected.ToList(), Passcode: null, ExpiryDays: null, AcknowledgeIssues: acknowledge, SupersedesPackId: supersedesPackId);
         var result = await Packs.BuildAsync(request);
         _busy = false;
@@ -144,7 +151,7 @@
 
     private async Task RevokeAsync(PackListItemDto pack)
     {
-        if (await Packs.RevokeAsync(CompanyId, pack.Id))
+        if (await Packs.RevokeAsync(Tenant.CurrentCompanyId, pack.Id))
         {
             Snackbar.Add($"Revoked \"{pack.Title}\".", Severity.Info);
             await LoadAsync();

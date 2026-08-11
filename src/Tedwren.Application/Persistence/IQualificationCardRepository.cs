@@ -11,6 +11,9 @@ public interface IQualificationCardRepository
     /// <summary>Returns all cards held by a person (including superseded ones, for history).</summary>
     Task<IReadOnlyList<QualificationCard>> GetByPersonAsync(Guid personId, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns all cards held by any of the given people, in one read (avoids per-person N+1 in aggregations).</summary>
+    Task<IReadOnlyList<QualificationCard>> GetByPersonsAsync(IReadOnlyCollection<Guid> personIds, CancellationToken cancellationToken = default);
+
     /// <summary>Returns current (non-superseded) cards that carry an expiry date — the expiry engine's input (SF-9).</summary>
     Task<IReadOnlyList<QualificationCard>> GetCurrentWithExpiryAsync(CancellationToken cancellationToken = default);
 

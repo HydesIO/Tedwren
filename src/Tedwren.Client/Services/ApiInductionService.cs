@@ -21,6 +21,49 @@ public sealed class ApiInductionService : IInductionService
         await _http.GetFromJsonAsync<IReadOnlyList<InductionTemplateDto>>($"api/inductions/templates/{companyId}", cancellationToken)
         ?? Array.Empty<InductionTemplateDto>();
 
+    /// <summary>Creates a company induction template seeded from the default (MC-3/SF-12).</summary>
+    public async Task<Guid> CreateDefaultTemplateAsync(CreateInductionTemplateRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/inductions/templates", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var created = await response.Content.ReadFromJsonAsync<CreatedTemplateResponse>(cancellationToken);
+        return created?.Id ?? Guid.Empty;
+    }
+
+    /// <summary>Gets a template for authoring (MC-15), or null when not found.</summary>
+    public async Task<InductionTemplateAuthoringDto?> GetTemplateForEditAsync(Guid templateId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/inductions/templates/{templateId}/edit", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<InductionTemplateAuthoringDto>(cancellationToken);
+    }
+
+    /// <summary>Updates a template's content and configuration (MC-15), or null when not found.</summary>
+    public async Task<InductionTemplateAuthoringDto?> UpdateTemplateAsync(Guid templateId, UpdateInductionTemplateRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/inductions/templates/{templateId}", request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<TemplateError>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? "The template could not be saved.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<InductionTemplateAuthoringDto>(cancellationToken);
+    }
+
+    private sealed record TemplateError(string Error);
+
     /// <summary>Starts an induction (MC-1/MC-7).</summary>
     public async Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default) =>
         (await (await _http.PostAsJsonAsync("api/inductions/sessions", request, cancellationToken))
@@ -60,4 +103,7 @@ public sealed class ApiInductionService : IInductionService
         using var response = await _http.PostAsJsonAsync(url, body, cancellationToken);
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<InductionSessionDto>(cancellationToken) : null;
     }
+
+    /// <summary>Shape of the create-template response body.</summary>
+    private sealed record CreatedTemplateResponse(Guid Id);
 }

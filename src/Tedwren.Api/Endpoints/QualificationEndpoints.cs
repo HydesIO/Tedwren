@@ -15,9 +15,11 @@ public static class QualificationEndpoints
     {
         var group = app.MapGroup("/api/qualifications").WithTags("Qualifications");
 
+        // The qualification-type library is a global reference list (SF-12), also needed by the anonymous
+        // self-service onboarding page, so it is readable without a console account.
         group.MapGet("/types", async (IQualificationService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.GetQualificationTypesAsync(cancellationToken)))
-            .WithName("GetQualificationTypes");
+            .WithName("GetQualificationTypes").AllowAnonymous();
 
         group.MapGet("/people/{personId:guid}/cards",
                 async (Guid personId, IQualificationService service, CancellationToken cancellationToken) =>
