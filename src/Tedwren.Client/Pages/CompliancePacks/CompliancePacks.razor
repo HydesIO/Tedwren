@@ -3,7 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ICompliancePackService Packs
-@inject IShellSampleDataService Shell
+@inject ICurrentUserService CurrentUser
 @inject ISnackbar Snackbar
 
 <PageTitle>Compliance Packs · Tedwren</PageTitle>
@@ -91,7 +91,8 @@
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
-        _canSend = NominatedRoles.Contains(Shell.GetCurrentUser().Role, StringComparer.OrdinalIgnoreCase);
+        var currentUser = await CurrentUser.GetCurrentAsync();
+        _canSend = NominatedRoles.Contains(currentUser.Role, StringComparer.OrdinalIgnoreCase);
         _selected.UnionWith(DemoOperatives.Select(o => o.Id));
         await LoadAsync();
     }

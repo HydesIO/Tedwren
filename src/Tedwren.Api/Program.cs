@@ -28,6 +28,14 @@ builder.Services.AddCompliancePackCore();
 builder.Services.AddInductionCore();
 builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
+builder.Services.AddReferenceDataCore();
+
+// Current-operator identity: a configured/dev identity (bound from the "CurrentUser" section) until a real
+// authentication phase lands. Registered as a singleton so the scoped CurrentUserService can consume it.
+var currentUserOptions = builder.Configuration.GetSection(Tedwren.Application.Identity.CurrentUserOptions.SectionName)
+    .Get<Tedwren.Application.Identity.CurrentUserOptions>() ?? new Tedwren.Application.Identity.CurrentUserOptions();
+builder.Services.AddSingleton(currentUserOptions);
+builder.Services.AddIdentityCore();
 // Database is the only supported runtime backend. The in-memory stores are a test-only double, selected
 // exclusively by the API test host (DataSource:Mode=InMemory) so the end-to-end tests run without SQL Server.
 if (backend.Mode == DataSourceMode.InMemory)
@@ -42,6 +50,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryCompliancePackStore();
     builder.Services.AddInMemoryInductionStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
+    builder.Services.AddInMemoryReferenceDataStore();
 }
 else
 {
@@ -107,6 +116,8 @@ app.MapSiteEntryEndpoints();
 app.MapEntitlementEndpoints();
 app.MapAuditEndpoints();
 app.MapDecisionEndpoints();
+app.MapReferenceDataEndpoints();
+app.MapCurrentUserEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

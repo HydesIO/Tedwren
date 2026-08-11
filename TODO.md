@@ -11,7 +11,29 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Remove Mock mode + fix client↔API connectivity (this change)
+### Sample-data → API migration, Phase M1: foundations (this change)
+Begins moving the pages that still render `UiComponents.SampleData` onto real database-backed services.
+Phase M1 delivers the shared foundations and the first page migrations:
+- ✅ **Current-operator service** — `ICurrentUserService` + `CurrentUserService` (configured/dev identity via
+  `CurrentUserOptions`, until an auth phase) + `/api/me` + `ApiCurrentUserService`. Replaces the sample shell
+  user for the SUB-22 role check.
+- ✅ **Reference-data lookup (DB-backed)** — `IReferenceDataService` + `/api/reference/{listKey}` +
+  `ApiReferenceDataService`, `ReferenceValues` table (migration `012_reference_data.sql`, SqlServer +
+  Postgres, idempotent seed) + Dapper repo + in-memory double + EF `ReferenceValueRecord`. Keys: company
+  types, trades, permit types, regions (`ReferenceListKeys`).
+- ✅ **Decisions client wiring** — added `ApiDecisionService` + registered `IDecisionService` (endpoint +
+  backend already existed; only client binding was missing, R10).
+- ✅ **Pages migrated off sample data:** `CompliancePacks` (role → current-user), `AddCompany` (company
+  types/trades → reference), `AddOperative` (trades → reference, sites → `ISiteService`), `Onboarding`
+  (trades → reference).
+- ✅ Tests: `ReferenceAndIdentityApiTests` (API, 4), `ReferenceDataServiceTests` (Application, 2); whole
+  solution builds; `dotnet test` green (API 37, Application 99).
+- ⏳ **Remaining sample-data pages (later M-phases):** Workforce + OperativeDetail + MainLayout search
+  (M2 workforce read model); Dashboard + Compliance overview (M3 aggregation); SystemConfiguration general
+  settings (M4); Permits (M5 backend); Inductions config (M6). `AddOperative` real persistence lands with
+  the M2 workforce write-model (needs a company target the form doesn't yet collect).
+
+### Remove Mock mode + fix client↔API connectivity (previous change)
 - ✅ **Removed runtime Mock mode.** The client always calls the Web API; the API always uses the database.
   Deleted `ClientDataSourceMode` and all 12 `ClientMock*Service` classes; client `Program.cs` registers only
   the `Api*` services. Renamed `DataSourceMode.Mock` → `InMemory` (test-only), defaulted `BackendOptions.Mode`

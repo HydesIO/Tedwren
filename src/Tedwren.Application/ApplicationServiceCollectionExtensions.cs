@@ -8,10 +8,12 @@ using Tedwren.Application.Attendance;
 using Tedwren.Application.Audit;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
+using Tedwren.Application.Identity;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Qualifications;
+using Tedwren.Application.Reference;
 using Tedwren.Application.Sites;
 using Tedwren.Application.Users;
 
@@ -188,6 +190,30 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<InMemoryCompliancePackStore>();
         services.AddScoped<ICompliancePackRepository, InMemoryCompliancePackRepository>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the current-operator identity service (a configured/dev identity until authentication lands).
+    /// The <see cref="CurrentUserOptions"/> singleton is provided by the composition root (bound from config).
+    /// </summary>
+    public static IServiceCollection AddIdentityCore(this IServiceCollection services)
+    {
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic reference-data service (form option lists).</summary>
+    public static IServiceCollection AddReferenceDataCore(this IServiceCollection services)
+    {
+        services.AddScoped<IReferenceDataService, ReferenceDataService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory reference-data repository seeded with the canonical option lists (test double).</summary>
+    public static IServiceCollection AddInMemoryReferenceDataStore(this IServiceCollection services)
+    {
+        services.AddScoped<IReferenceDataRepository, InMemoryReferenceDataRepository>();
         return services;
     }
 

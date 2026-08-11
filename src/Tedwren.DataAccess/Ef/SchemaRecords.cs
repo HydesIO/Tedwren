@@ -192,6 +192,15 @@ public sealed class ModuleEntitlementRecord
     public DateTimeOffset UpdatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>ReferenceValues</c> table (form option lists).</summary>
+public sealed class ReferenceValueRecord
+{
+    public Guid Id { get; set; }
+    public string ListKey { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {

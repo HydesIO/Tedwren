@@ -1,5 +1,7 @@
 @page "/workforce/add"
-@inject IFormSampleDataService Options
+@using Tedwren.Abstractions.Services
+@inject IReferenceDataService Reference
+@inject ISiteService Sites
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -102,10 +104,11 @@
         new("Add operative", null, disabled: true),
     };
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _trades = Options.GetTrades();
-        _sites = Options.GetSiteNames();
+        _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        var sites = await Sites.GetSitesAsync();
+        _sites = sites.Select(s => s.Name).ToList();
     }
 
     private void OnMethodChanged(string value) => _method = value;
