@@ -30,4 +30,11 @@ public sealed class InMemoryInductionTemplateRepository : IInductionTemplateRepo
         _store.Templates[template.Id] = template;
         return Task.CompletedTask;
     }
+
+    /// <summary>Updates an existing template.</summary>
+    public Task UpdateAsync(InductionTemplate template, CancellationToken cancellationToken = default)
+    {
+        _store.Templates[template.Id] = template;
+        return Task.CompletedTask;
+    }
 }

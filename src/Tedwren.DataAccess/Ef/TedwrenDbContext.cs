@@ -222,6 +222,7 @@ public sealed class TedwrenDbContext : DbContext
         model.Entity<InductionTemplateRecord>(e =>
         {
             e.ToTable("InductionTemplates");
+            e.Property(x => x.MediaUrl).HasMaxLength(1024);
             e.HasIndex(x => x.CompanyId);
         });
 

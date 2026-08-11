@@ -1,80 +1,161 @@
 @page "/inductions"
+@using Tedwren.Abstractions.Contracts.Inductions
 @using Tedwren.Abstractions.Services
+@inject IInductionService InductionSvc
 @inject ISiteService Sites
+@inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
-<PageTitle>Inductions · Tedwren</PageTitle>
+<PageTitle>Induction builder · Tedwren</PageTitle>
 
-<PageHeader Title="Induction builder" Subtitle="Configure a site induction (video and quiz)" />
+<PageHeader Title="Induction builder" Subtitle="Configure the site induction — content, quiz, pass mark and attempts (MC-15)" />
 
 <div class="form-page">
-    <TedwrenStepper @bind-ActiveIndex="_activeStep">
-        <MudStep Title="Details" Icon="@Icons.Material.Outlined.Description">
-            <div class="induction__step">
-                <div class="induction__grid">
-                    <TedwrenTextField Label="Induction name" @bind-Value="_name" Required="true"
-                                      Placeholder="e.g. Meridian Tower — General Induction" />
-                    <TedwrenSelect T="string" Label="Applies to site" @bind-Value="_site" Options="_sites"
-                                   Placeholder="Select a site" />
-                    <div class="form-page__full">
-                        <TedwrenToggle Label="Mandatory before first site entry"
-                                       Description="Operatives must complete this induction before their first entry."
-                                       @bind-Value="_mandatory" />
-                    </div>
-                </div>
+    @if (_template is null)
+    {
+        <DashboardCard><Body><MudText>Loading…</MudText></Body></DashboardCard>
+    }
+    else
+    {
+        <FormSection Title="Induction details" Description="Name, media and how long a completion stays valid.">
+            <TedwrenTextField Label="Induction name" @bind-Value="_name" />
+            <TedwrenSelect T="string" Label="Applies to site" @bind-Value="_site" Options="_siteNames" Placeholder="All sites" />
+            <TedwrenTextField Label="Video / document URL" @bind-Value="_mediaUrl" Placeholder="https://…" />
+            <MudNumericField T="int" Label="Valid for (days)" @bind-Value="_validityDays" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <div class="form-page__full">
+                <TedwrenToggle Label="Mandatory before first site entry" @bind-Value="_mandatory"
+                               Description="A valid induction is a condition of site entry (MC-8)." />
             </div>
-        </MudStep>
+        </FormSection>
 
-        <MudStep Title="Video" Icon="@Icons.Material.Outlined.PlayCircle">
-            <div class="induction__step">
-                <TedwrenFileUpload Label="Induction video"
-                                   PromptText="Drag & drop a video, or click to upload"
-                                   HintText="MP4 up to 500MB (placeholder — not persisted)"
-                                   Accept=".mp4,.mov" />
+        <FormSection Title="Quiz" Description="Scored on the server; answers never reach the worker's device (R5).">
+            <MudNumericField T="int" Label="Pass mark (correct answers)" @bind-Value="_passMark" Min="0" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <MudNumericField T="int" Label="Attempts allowed" @bind-Value="_attemptLimit" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" />
+            <div class="form-page__full">
+                @foreach (var q in _questions)
+                {
+                    <MudPaper Class="pa-4 mb-3" Outlined="true">
+                        <TedwrenTextField Label="Question" @bind-Value="q.Prompt" />
+                        <TedwrenTextField Label="Options (comma separated)" @bind-Value="q.OptionsCsv" />
+                        <MudNumericField T="int" Label="Correct option number (1-based)" @bind-Value="q.CorrectDisplay" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
+                                   OnClick="@(() => _questions.Remove(q))">Remove question</MudButton>
+                    </MudPaper>
+                }
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Add" OnClick="AddQuestion">Add question</MudButton>
             </div>
-        </MudStep>
+        </FormSection>
 
-        <MudStep Title="Quiz" Icon="@Icons.Material.Outlined.Quiz">
-            <div class="induction__step">
-                <p class="induction__lead">Quiz questions</p>
-                <BannerAlert Severity="StatusKind.Info"
-                             Message="Quiz question editing is a placeholder in this UI phase — the builder chrome and flow are what's being demonstrated." />
-                <div class="form-page__full">
-                    <TedwrenToggle Label="Require 100% pass mark"
-                                   Description="Operatives must answer every question correctly to pass."
-                                   @bind-Value="_fullMarks" />
-                </div>
-            </div>
-        </MudStep>
-
-        <MudStep Title="Publish" Icon="@Icons.Material.Outlined.Publish">
-            <div class="induction__step">
-                <p class="induction__lead">Ready to publish</p>
-                <p class="induction__hint">Publishing makes this induction available to assign to operatives.</p>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary"
-                           StartIcon="@Icons.Material.Outlined.Publish" OnClick="Publish">
-                    Publish induction
-                </MudButton>
-            </div>
-        </MudStep>
-    </TedwrenStepper>
+        <FormActions>
+            <Secondary>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadAsync">Reset</MudButton>
+            </Secondary>
+            <Primary>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                           StartIcon="@Icons.Material.Outlined.Publish" OnClick="Publish">Publish induction</MudButton>
+            </Primary>
+        </FormActions>
+    }
 </div>
 
 @code {
-    private int _activeStep;
-    private string? _name;
-    private string? _site;
-    private bool _mandatory = true;
-    private bool _fullMarks;
+    private InductionTemplateAuthoringDto? _template;
+    private IReadOnlyList<string> _siteNames = Array.Empty<string>();
+    private bool _busy;
 
-    private IReadOnlyList<string> _sites = Array.Empty<string>();
+    private string _name = string.Empty;
+    private string? _site;
+    private string? _mediaUrl;
+    private int _validityDays = 365;
+    private bool _mandatory = true;
+    private int _passMark;
+    private int _attemptLimit = 3;
+    private readonly List<QuestionEdit> _questions = new();
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         var sites = await Sites.GetSitesAsync();
-        _sites = sites.Select(s => s.Name).ToList();
+        _siteNames = sites.Select(s => s.Name).ToList();
+        await LoadAsync();
     }
 
-    private void Publish()
-        => Snackbar.Add($"Induction \"{_name ?? "Untitled"}\" published (demo — nothing is persisted).", Severity.Success);
+    private async Task LoadAsync()
+    {
+        var templates = await InductionSvc.GetTemplatesAsync(Tenant.CurrentCompanyId);
+        Guid templateId;
+        if (templates.Count == 0)
+        {
+            templateId = await InductionSvc.CreateDefaultTemplateAsync(
+                new CreateInductionTemplateRequest(Tenant.CurrentCompanyId, "Site induction", 365, 1));
+        }
+        else
+        {
+            templateId = templates[0].Id;
+        }
+
+        _template = await InductionSvc.GetTemplateForEditAsync(templateId);
+        if (_template is null) return;
+
+        _name = _template.Name;
+        _mediaUrl = _template.MediaUrl;
+        _validityDays = _template.ValidityDays;
+        _mandatory = _template.Mandatory;
+        _passMark = _template.PassMark;
+        _attemptLimit = _template.AttemptLimit;
+        _questions.Clear();
+        _questions.AddRange(_template.Questions.Select(q => new QuestionEdit
+        {
+            Id = q.Id,
+            Prompt = q.Prompt,
+            OptionsCsv = string.Join(", ", q.Options),
+            CorrectDisplay = q.CorrectOptionIndex + 1,
+        }));
+    }
+
+    private void AddQuestion() => _questions.Add(new QuestionEdit { OptionsCsv = "Yes, No", CorrectDisplay = 1 });
+
+    private async Task Publish()
+    {
+        if (_template is null) return;
+
+        var questions = _questions
+            .Where(q => !string.IsNullOrWhiteSpace(q.Prompt))
+            .Select(q =>
+            {
+                var options = q.OptionsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+                var correct = Math.Clamp(q.CorrectDisplay - 1, 0, Math.Max(0, options.Count - 1));
+                return new InductionQuizAuthoringDto(q.Id, q.Prompt.Trim(), options, correct);
+            })
+            .ToList();
+
+        _busy = true;
+        try
+        {
+            var siteId = _template.SiteId; // site scoping edited elsewhere; preserved here
+            var updated = await InductionSvc.UpdateTemplateAsync(_template.Id, new UpdateInductionTemplateRequest(
+                _name, _validityDays, _passMark, _attemptLimit, _mandatory, _mediaUrl, siteId, _template.Steps, questions));
+            if (updated is not null)
+            {
+                _template = updated;
+                Snackbar.Add("Induction published.", Severity.Success);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private sealed class QuestionEdit
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Prompt { get; set; } = string.Empty;
+        public string OptionsCsv { get; set; } = string.Empty;
+        public int CorrectDisplay { get; set; } = 1;
+    }
 }

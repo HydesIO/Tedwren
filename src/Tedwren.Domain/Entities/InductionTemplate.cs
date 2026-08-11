@@ -27,4 +27,16 @@ public sealed class InductionTemplate
 
     /// <summary>The number of correct answers required to pass (MC-4).</summary>
     public required int PassMark { get; init; }
+
+    /// <summary>How many quiz attempts a worker gets before a manager must reset them (MC-6/MC-15).</summary>
+    public int AttemptLimit { get; init; } = 3;
+
+    /// <summary>Whether a valid completion is required before first site entry (MC-8 gate).</summary>
+    public bool Mandatory { get; init; } = true;
+
+    /// <summary>Optional media URL for the watch/read step (video or document, MC-4).</summary>
+    public string? MediaUrl { get; init; }
+
+    /// <summary>Optional site this induction is scoped to (MC-4: format chosen per site). Null = company-wide.</summary>
+    public Guid? SiteId { get; init; }
 }

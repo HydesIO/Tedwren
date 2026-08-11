@@ -351,6 +351,10 @@ public sealed class InductionTemplateRecord
     public int PassMark { get; set; }
     public string StepsJson { get; set; } = string.Empty;
     public string QuestionsJson { get; set; } = string.Empty;
+    public int AttemptLimit { get; set; }
+    public bool Mandatory { get; set; }
+    public string? MediaUrl { get; set; }
+    public Guid? SiteId { get; set; }
 }
 
 /// <summary>Schema row for the <c>InductionSessions</c> table (MC-1–MC-7, MC-20).</summary>

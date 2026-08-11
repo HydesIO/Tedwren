@@ -12,7 +12,8 @@ namespace Tedwren.DataAccess.Repositories;
 /// </summary>
 public sealed class InductionTemplateRepository : RepositoryBase, IInductionTemplateRepository
 {
-    private const string Columns = "Id, CompanyId, Name, ValidityDays, PassMark, StepsJson, QuestionsJson";
+    private const string Columns =
+        "Id, CompanyId, Name, ValidityDays, PassMark, StepsJson, QuestionsJson, AttemptLimit, Mandatory, MediaUrl, SiteId";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public InductionTemplateRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -40,13 +41,25 @@ public sealed class InductionTemplateRepository : RepositoryBase, IInductionTemp
     public Task AddAsync(InductionTemplate template, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             $"INSERT INTO InductionTemplates ({Columns}) VALUES " +
-            "(@Id, @CompanyId, @Name, @ValidityDays, @PassMark, @StepsJson, @QuestionsJson)",
-            new
-            {
-                template.Id, template.CompanyId, template.Name, template.ValidityDays, template.PassMark,
-                StepsJson = JsonSerializer.Serialize(template.Steps),
-                QuestionsJson = JsonSerializer.Serialize(template.Questions),
-            }, cancellationToken);
+            "(@Id, @CompanyId, @Name, @ValidityDays, @PassMark, @StepsJson, @QuestionsJson, @AttemptLimit, @Mandatory, @MediaUrl, @SiteId)",
+            ToParameters(template), cancellationToken);
+
+    /// <summary>Updates a template's content and configuration (MC-15).</summary>
+    public Task UpdateAsync(InductionTemplate template, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            "UPDATE InductionTemplates SET Name = @Name, ValidityDays = @ValidityDays, PassMark = @PassMark, " +
+            "StepsJson = @StepsJson, QuestionsJson = @QuestionsJson, AttemptLimit = @AttemptLimit, " +
+            "Mandatory = @Mandatory, MediaUrl = @MediaUrl, SiteId = @SiteId WHERE Id = @Id",
+            ToParameters(template), cancellationToken);
+
+    /// <summary>Flattens a template to Dapper parameters (steps/questions as JSON).</summary>
+    private static object ToParameters(InductionTemplate t) => new
+    {
+        t.Id, t.CompanyId, t.Name, t.ValidityDays, t.PassMark,
+        StepsJson = JsonSerializer.Serialize(t.Steps),
+        QuestionsJson = JsonSerializer.Serialize(t.Questions),
+        t.AttemptLimit, t.Mandatory, t.MediaUrl, t.SiteId,
+    };
 
     /// <summary>Maps a queried row to the domain entity, deserialising steps and questions.</summary>
     private static InductionTemplate ToEntity(Row r) => new()
@@ -58,8 +71,14 @@ public sealed class InductionTemplateRepository : RepositoryBase, IInductionTemp
         PassMark = r.PassMark,
         Steps = JsonSerializer.Deserialize<List<InductionStep>>(r.StepsJson) ?? new List<InductionStep>(),
         Questions = JsonSerializer.Deserialize<List<InductionQuizQuestion>>(r.QuestionsJson) ?? new List<InductionQuizQuestion>(),
+        AttemptLimit = r.AttemptLimit ?? 3,
+        Mandatory = r.Mandatory ?? true,
+        MediaUrl = r.MediaUrl,
+        SiteId = r.SiteId,
     };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
-    private sealed record Row(Guid Id, Guid CompanyId, string Name, int ValidityDays, int PassMark, string StepsJson, string QuestionsJson);
+    private sealed record Row(
+        Guid Id, Guid CompanyId, string Name, int ValidityDays, int PassMark, string StepsJson, string QuestionsJson,
+        int? AttemptLimit, bool? Mandatory, string? MediaUrl, Guid? SiteId);
 }
