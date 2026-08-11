@@ -27,6 +27,20 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
         return rows.Select(ToEntity).ToList();
     }
 
+    /// <summary>Returns all cards for the given people in one read (batched, avoids per-person N+1).</summary>
+    public async Task<IReadOnlyList<QualificationCard>> GetByPersonsAsync(IReadOnlyCollection<Guid> personIds, CancellationToken cancellationToken = default)
+    {
+        if (personIds.Count == 0)
+        {
+            return Array.Empty<QualificationCard>();
+        }
+
+        var rows = await QueryAsync<Row>(
+            $"SELECT {Columns} FROM QualificationCards WHERE PersonId IN @PersonIds ORDER BY CreatedUtc DESC",
+            new { PersonIds = personIds }, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
     /// <summary>Returns a card by id, or null.</summary>
     public async Task<QualificationCard?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {

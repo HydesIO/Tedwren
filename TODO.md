@@ -11,7 +11,29 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Deferred items, Phase D3: induction template authoring (this change)
+### Deferred items, Phases D4–D6 (this change)
+- ✅ **D4 — real per-site operatives & compliance (MC-12/13).** `SiteService` now derives a site's operative
+  count from the attendance log (distinct persons who attended) and their aggregate compliance via
+  `ComplianceRollup` (SF-8), replacing the hard-coded `0`/`Pending`. The Dashboard heatmap becomes real
+  automatically. Test: `SiteServiceTests.SiteOperatives_ComeFromAttendance`.
+  ⏳ **Follow-up:** R15/MC-21 per-company/per-manager site scoping still returns all sites — it needs the
+  seed data aligned to the auth company (the seeded sites belong to different companies than the bootstrap
+  admin), so it was deferred rather than break the site tests.
+- ✅ **D5 — retired the last demo constants.** `CompliancePacks`, `SiteGate`, `InductionRecords`,
+  `TimeAndAttendance` now resolve the company from `ITenantState` and operatives/sites from
+  `IWorkforceService`/`ISiteService` (SiteGate also runs a real `DecideAsync`); `TimeAndAttendance` uses the
+  current Monday-anchored week. Fixed a latent SUB-22 bug: the pack-send role check compared against
+  `"Compliance Manager"` but the claim carries the enum name `ComplianceManager`. Grep guard: no `Demo seed`
+  constants remain under `Pages`.
+- ✅ **D6 — N+1 batching.** `IQualificationCardRepository.GetByPersonsAsync` (Dapper `IN`/in-memory) added;
+  `WorkforceService`, `DashboardService` and `SiteService` now fetch all operatives' cards in one read
+  instead of per-person in a loop.
+- ✅ Docs synced (`docs/plan-and-scope.md`, this file). `dotnet test` green (API 52, Application 100).
+- ⚠️ **Still-open production follow-ups (from D1/D2):** set `Jwt:SigningKey` + `Seed:AdminPassword` from
+  secrets; deliver the invite/onboarding links by email; **rotate the committed DB password in
+  `src/Tedwren.Api/appsettings.json`** (still present — a real credential in the repo).
+
+### Deferred items, Phase D3: induction template authoring (previous change)
 Implements MC-15/MC-4 — a manager edits the induction video, questions, pass mark and attempts.
 - ✅ **Template gains** `AttemptLimit`, `Mandatory`, `MediaUrl`, `SiteId` (migration `017_induction_authoring.sql`,
   both providers; EF fields; Dapper + in-memory `UpdateAsync`).

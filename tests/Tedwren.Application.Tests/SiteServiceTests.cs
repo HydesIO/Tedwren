@@ -16,7 +16,11 @@ public sealed class SiteServiceTests
     private static SiteService CreateSut()
     {
         var store = new InMemorySiteStore(seed: false);
-        return new SiteService(new InMemorySiteRepository(store), new InMemorySitePropertyRepository(store));
+        return new SiteService(
+            new InMemorySiteRepository(store),
+            new InMemorySitePropertyRepository(store),
+            new InMemoryAttendanceRepository(new InMemoryAttendanceStore()),
+            new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false)));
     }
 
     [Fact] // SF-14
@@ -81,5 +85,38 @@ public sealed class SiteServiceTests
             Guid.NewGuid(), "Nowhere", 1, new GeofenceDto(0, 0, 1)));
 
         Assert.Null(result);
+    }
+
+    [Fact] // D4/MC-12: a site's operative count comes from the attendance log, not an invented number
+    public async Task SiteOperatives_ComeFromAttendance()
+    {
+        var siteStore = new InMemorySiteStore(seed: false);
+        var attendance = new InMemoryAttendanceRepository(new InMemoryAttendanceStore());
+        var service = new SiteService(
+            new InMemorySiteRepository(siteStore), new InMemorySitePropertyRepository(siteStore),
+            attendance, new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false)));
+
+        var siteId = await service.CreateSiteAsync(new CreateSiteRequest(
+            CompanyId, "Meridian Tower", null, null, null, HasCompound: true, IsDispersed: false, Boundary: null));
+
+        // No attendance yet → no operatives, pending compliance (never invented).
+        Assert.Equal(0, (await service.GetSitesAsync()).Single().Operatives);
+
+        var p1 = Guid.NewGuid();
+        var p2 = Guid.NewGuid();
+        foreach (var personId in new[] { p1, p2, p1 })   // p1 twice → still one distinct operative
+        {
+            await attendance.AddAsync(new Tedwren.Domain.Entities.AttendanceRecord
+            {
+                PersonId = personId,
+                SiteId = siteId,
+                Type = Tedwren.Domain.Enums.AttendanceEventType.SignIn,
+                Outcome = Tedwren.Domain.Enums.AttendanceOutcome.Accepted,
+            });
+        }
+
+        var summary = (await service.GetSitesAsync()).Single();
+        Assert.Equal(2, summary.Operatives);
+        Assert.Equal(Tedwren.Abstractions.Common.ComplianceState.Pending, summary.State);  // no cards → pending
     }
 }
