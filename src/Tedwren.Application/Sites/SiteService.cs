@@ -164,6 +164,29 @@ public sealed class SiteService : ISiteService
         return site.Id;
     }
 
+    /// <summary>
+    /// Updates a site's editable details. Tenant-scoped: a site outside the caller's company is treated as
+    /// not found (R15/MC-21), so one company can never edit another's site.
+    /// </summary>
+    public async Task<bool> UpdateSiteAsync(Guid siteId, UpdateSiteRequest request, CancellationToken cancellationToken = default)
+    {
+        var tenant = await ResolveTenantAsync(cancellationToken);
+        var site = await _sites.GetByIdAsync(siteId, cancellationToken);
+        if (site is null || (tenant is not null && site.CompanyId != tenant))
+        {
+            return false;
+        }
+
+        site.Name = request.Name;
+        site.Client = request.Client;
+        site.Region = request.Region;
+        site.Address = request.Address;
+        site.HasCompound = request.HasCompound;
+        site.Boundary = ToDomain(request.Boundary);
+        await _sites.UpdateAsync(site, cancellationToken);
+        return true;
+    }
+
     /// <summary>Adds a property to a scheme (SF-26), marking the site dispersed. Null if the site is not found.</summary>
     public async Task<Guid?> AddPropertyAsync(AddSitePropertyRequest request, CancellationToken cancellationToken = default)
     {

@@ -52,6 +52,13 @@ public static class OrganisationEndpoints
             })
             .WithName("AddOperative");
 
+        group.MapPut("/companies/{companyId:guid}/operatives/{engagementId:guid}",
+                async (Guid companyId, Guid engagementId, UpdateEngagementRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
+                    await service.UpdateEngagementAsync(companyId, engagementId, request, cancellationToken)
+                        ? Results.NoContent()
+                        : Results.NotFound())
+            .WithName("UpdateEngagement");
+
         group.MapPost("/companies/{companyId:guid}/operatives/{engagementId:guid}/archive",
                 async (Guid companyId, Guid engagementId, IOrganisationService service, CancellationToken cancellationToken) =>
                     await service.ArchiveEngagementAsync(companyId, engagementId, cancellationToken)

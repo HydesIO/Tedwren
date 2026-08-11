@@ -18,6 +18,9 @@ public interface ISiteService
     /// <summary>Records a site and returns its new identifier (SF-6; unlimited and never billed).</summary>
     Task<Guid> CreateSiteAsync(CreateSiteRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Updates a site's editable details. Returns false when the site is not found or is outside the caller's tenant (R15/MC-21).</summary>
+    Task<bool> UpdateSiteAsync(Guid siteId, UpdateSiteRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Adds a property to a dispersed scheme and returns its new identifier (SF-26). Null if the site is not found.</summary>
     Task<Guid?> AddPropertyAsync(AddSitePropertyRequest request, CancellationToken cancellationToken = default);
 }

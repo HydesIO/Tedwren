@@ -33,6 +33,13 @@ public static class SiteEndpoints
             })
             .WithName("CreateSite");
 
+        group.MapPut("/{siteId:guid}", async (Guid siteId, UpdateSiteRequest request, ISiteService service, CancellationToken cancellationToken) =>
+            {
+                var updated = await service.UpdateSiteAsync(siteId, request, cancellationToken);
+                return updated ? Results.NoContent() : Results.NotFound();
+            })
+            .WithName("UpdateSite");
+
         group.MapPost("/{siteId:guid}/properties",
                 async (Guid siteId, AddPropertyBody body, ISiteService service, CancellationToken cancellationToken) =>
                 {

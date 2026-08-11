@@ -11,7 +11,28 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Deferred items, Phases D4–D6 (this change)
+### Demo write-actions persisted (D7 — this change)
+- ✅ **Site "Edit" now persists.** `ISiteService.UpdateSiteAsync` + `PUT /api/sites/{id}` (tenant-scoped,
+  R15/MC-21 → 404 for a foreign site) + `ApiSiteService.UpdateSiteAsync` + an `EditSiteDialog`; the
+  SiteDetail "Edit" button replaces the demo snackbar and follows the new slug on rename.
+- ✅ **Operative "Edit" now persists.** `IOrganisationService.UpdateEngagementAsync` + `PUT
+  /api/organisation/companies/{companyId}/operatives/{engagementId}` (SF-2 name stays distinct within a
+  company; tenant-scoped, R15) + `ApiOrganisationService.UpdateEngagementAsync` + an `EditOperativeDialog`.
+  `OperativeDetailDto` now carries `EngagementId` + `CompanyId` so the page can address the engagement.
+- ✅ **Operative "Send update link" now real.** Creates a genuine self-service onboarding link (SF-4/SUB-2)
+  for the operative's company via `IOnboardingService.CreateAsync`; when the operative opens it and submits
+  their mobile, SF-1 reuses the existing person so captured cards attach to them. Surfaced as a copyable
+  banner (no email backend yet).
+- ✅ **CompanyDetail "Compliance pack"** navigates to the real `/compliance-packs` builder instead of a demo
+  snackbar; the stray unused `_busy` field warning on System Configuration is cleared (buttons now disable
+  while saving). System Configuration general-settings + module entitlements and Permits "Save"/"Issue" were
+  already persisted (M4/M5) — no demo write-actions remain under `Pages` (Reports/Integrations stay
+  intentional placeholders, PRD Phase 7).
+- ✅ Tests: `SiteApiTests` (update persists / foreign-tenant 404), `OrganisationApiTests` (engagement update
+  persists / unknown 404), `SiteServiceTests` + `OrganisationServiceTests` unit coverage (update, duplicate-name
+  refusal, cross-company refusal). `dotnet test` green (Application 105, Api 58).
+
+### Deferred items, Phases D4–D6 (previous change)
 - ✅ **D4 — real per-site operatives & compliance (MC-12/13).** `SiteService` now derives a site's operative
   count from the attendance log (distinct persons who attended) and their aggregate compliance via
   `ComplianceRollup` (SF-8), replacing the hard-coded `0`/`Pending`. The Dashboard heatmap becomes real

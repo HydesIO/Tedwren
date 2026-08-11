@@ -1,0 +1,66 @@
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Contracts.Workforce
+@using Tedwren.Abstractions.Services
+@inject IOrganisationService Org
+@inject ISnackbar Snackbar
+
+@* Edit an operative's per-company engagement (name + trade) and persist via IOrganisationService.UpdateEngagementAsync. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="edit-operative">
+            <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
+            <TedwrenTextField Label="Trade" @bind-Value="_trade" />
+            <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                Name and trade are recorded per employer (@Operative.Company). The operative's mobile identity is unchanged (SF-1).
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Save changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public OperativeDetailDto Operative { get; set; } = default!;
+
+    private string? _name;
+    private string? _trade;
+    private bool _submitted;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _name = Operative.Name;
+        _trade = Operative.Trade;
+    }
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Name is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        var ok = await Org.UpdateEngagementAsync(
+            Operative.CompanyId, Operative.EngagementId, new UpdateEngagementRequest(_name!, _trade));
+        _busy = false;
+
+        if (ok)
+        {
+            Snackbar.Add("Operative updated.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(_name!));   // return the new name so the caller can follow the slug
+        }
+        else
+        {
+            Snackbar.Add("Could not update the operative — the name may already be in use for this employer.", Severity.Error);
+        }
+    }
+}

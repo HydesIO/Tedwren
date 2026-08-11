@@ -69,6 +69,14 @@ public sealed class ApiOrganisationService : IOrganisationService
         return result ?? new AddOperativeResult(false, null, null, "No response from the server.");
     }
 
+    /// <summary>Updates an operative's engagement (name + trade) via the API. False on 404/conflict.</summary>
+    public async Task<bool> UpdateEngagementAsync(Guid companyId, Guid engagementId, UpdateEngagementRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync(
+            $"api/organisation/companies/{companyId}/operatives/{engagementId}", request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     /// <summary>Archives an engagement via the API.</summary>
     public async Task<bool> ArchiveEngagementAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default)
     {

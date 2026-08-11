@@ -25,6 +25,8 @@ public sealed record OperativeListItemDto(
 /// </summary>
 public sealed record OperativeDetailDto(
     Guid PersonId,
+    Guid EngagementId,
+    Guid CompanyId,
     string Slug,
     string Name,
     string? Trade,

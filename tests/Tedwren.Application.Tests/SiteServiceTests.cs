@@ -87,6 +87,35 @@ public sealed class SiteServiceTests
         Assert.Null(result);
     }
 
+    [Fact] // SF-6 edit: updating a site persists its editable fields
+    public async Task UpdateSite_PersistsChanges()
+    {
+        var service = CreateSut();
+        var siteId = await service.CreateSiteAsync(new CreateSiteRequest(
+            CompanyId, "Old Name", "Old Client", "London", "1 Old St", HasCompound: true, IsDispersed: false, Boundary: null));
+
+        var ok = await service.UpdateSiteAsync(siteId, new UpdateSiteRequest(
+            "New Name", "New Client", "Leeds", "2 New St", HasCompound: false, Boundary: null));
+
+        Assert.True(ok);
+        var detail = await service.GetSiteAsync("new-name");
+        Assert.NotNull(detail);
+        Assert.Equal("New Client", detail!.Client);
+        Assert.Equal("Leeds", detail.Region);
+        Assert.False(detail.HasCompound);
+    }
+
+    [Fact] // updating an unknown site returns false
+    public async Task UpdateSite_Unknown_ReturnsFalse()
+    {
+        var service = CreateSut();
+
+        var ok = await service.UpdateSiteAsync(Guid.NewGuid(), new UpdateSiteRequest(
+            "Nope", null, null, null, HasCompound: true, Boundary: null));
+
+        Assert.False(ok);
+    }
+
     [Fact] // D4/MC-12: a site's operative count comes from the attendance log, not an invented number
     public async Task SiteOperatives_ComeFromAttendance()
     {
