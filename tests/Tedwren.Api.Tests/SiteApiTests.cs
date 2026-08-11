@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Sites;
 using Xunit;
 
@@ -57,6 +58,44 @@ public sealed class SiteApiTests : IClassFixture<WebApplicationFactory<Program>>
             new { Address = "5 Elm Road", Units = 1, Boundary = new GeofenceDto(53.8008, -1.5491, 50) });
 
         Assert.Equal(HttpStatusCode.Created, propertyResponse.StatusCode);
+    }
+
+    [Fact] // R15/MC-21: a site owned by the caller's tenant is listed and resolvable by slug
+    public async Task TenantSite_IsListed_AndResolvableBySlug()
+    {
+        var client = _factory.CreateClient();
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var name = "Tenant Site " + Guid.NewGuid().ToString("N")[..6];
+
+        var created = await client.PostAsJsonAsync("/api/sites", new CreateSiteRequest(
+            me!.CompanyId!.Value, name, "Client", "London", null, HasCompound: true, IsDispersed: false, Boundary: null));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var sites = await client.GetFromJsonAsync<List<SiteSummary>>("/api/sites");
+        var row = Assert.Single(sites!, s => s.Name == name);
+
+        var detail = await client.GetFromJsonAsync<SiteDetailDto>($"/api/sites/{row.Slug}");
+        Assert.NotNull(detail);
+        Assert.Equal(name, detail!.Name);
+    }
+
+    [Fact] // R15/MC-21: a site owned by another company is neither listed nor resolvable (visible 404, no leak)
+    public async Task ForeignTenantSite_IsHidden_AndReturns404()
+    {
+        var client = _factory.CreateClient();
+        var name = "Foreign Site " + Guid.NewGuid().ToString("N")[..6];
+        var otherCompanyId = Guid.NewGuid();   // not the signed-in caller's tenant
+
+        var created = await client.PostAsJsonAsync("/api/sites", new CreateSiteRequest(
+            otherCompanyId, name, "Client", "Leeds", null, HasCompound: true, IsDispersed: false, Boundary: null));
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+
+        var sites = await client.GetFromJsonAsync<List<SiteSummary>>("/api/sites");
+        Assert.DoesNotContain(sites!, s => s.Name == name);
+
+        var slug = name.ToLowerInvariant().Replace(' ', '-');
+        var detail = await client.GetAsync($"/api/sites/{slug}");
+        Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
     }
 
     private sealed record CreatedResponse(Guid Id);

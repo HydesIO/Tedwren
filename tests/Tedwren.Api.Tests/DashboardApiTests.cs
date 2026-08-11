@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Tedwren.Abstractions.Contracts.Dashboard;
+using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Xunit;
 
@@ -21,8 +22,9 @@ public sealed class DashboardApiTests : IClassFixture<WebApplicationFactory<Prog
     public async Task Summary_ReflectsAddedOperative_AndTalliesCompliance()
     {
         var client = _factory.CreateClient();
-        var companies = await client.GetFromJsonAsync<List<CompanySummary>>("/api/organisation/companies");
-        var companyId = companies![0].Id;
+        // R15: the compliance tally is tenant-scoped, so add the operative to the caller's own company.
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var companyId = me!.CompanyId!.Value;
 
         var add = await client.PostAsJsonAsync("/api/organisation/operatives",
             new AddOperativeRequest(companyId, "Dash Tester " + Guid.NewGuid().ToString("N")[..6], "07700900733", "Roofing", null));

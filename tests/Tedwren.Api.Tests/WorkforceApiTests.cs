@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Tedwren.Abstractions.Common;
+using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Abstractions.Contracts.Workforce;
 using Xunit;
@@ -22,8 +23,9 @@ public sealed class WorkforceApiTests : IClassFixture<WebApplicationFactory<Prog
     public async Task AddedOperative_AppearsInRegister_AndResolvesBySlug()
     {
         var client = _factory.CreateClient();
-        var companies = await client.GetFromJsonAsync<List<CompanySummary>>("/api/organisation/companies");
-        var companyId = companies![0].Id;
+        // R15: the register is tenant-scoped, so add the operative to the signed-in caller's own company.
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var companyId = me!.CompanyId!.Value;
         var name = "Workforce Tester " + Guid.NewGuid().ToString("N")[..6];
 
         var add = await client.PostAsJsonAsync("/api/organisation/operatives",

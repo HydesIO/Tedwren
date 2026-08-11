@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Tedwren.Application.Auth;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.ValueObjects;
 
@@ -41,7 +42,9 @@ public sealed class InMemoryOrganisationStore
     /// <summary>Loads a small, deterministic demo dataset (a few companies with operatives).</summary>
     private void Seed()
     {
-        var meridian = AddCompany("Meridian Construction Ltd", "Main Contractor", "General Build");
+        // The lead main contractor is the bootstrap admin's tenant (R15): it owns the seeded sites and
+        // operatives so tenant-scoped queries return data for the signed-in seed administrator.
+        var meridian = AddCompany("Meridian Construction Ltd", "Main Contractor", "General Build", AdminUserSeeder.SeedCompanyId);
         var apex = AddCompany("Apex Groundworks", "Subcontractor", "Groundworks");
         AddCompany("Kingsway M&E", "Subcontractor", "Mechanical & Electrical");
 
@@ -54,10 +57,12 @@ public sealed class InMemoryOrganisationStore
         AddEngagement(meridian.Id, second.Id, "Daniel Marsh", "Site Supervisor");
     }
 
-    /// <summary>Adds a seed company and returns it.</summary>
-    private Company AddCompany(string name, string type, string trade)
+    /// <summary>Adds a seed company (optionally with a fixed id, for tenant alignment) and returns it.</summary>
+    private Company AddCompany(string name, string type, string trade, Guid? id = null)
     {
-        var company = new Company { Name = name, Type = type, Trade = trade };
+        var company = id is null
+            ? new Company { Name = name, Type = type, Trade = trade }
+            : new Company { Id = id.Value, Name = name, Type = type, Trade = trade };
         Companies[company.Id] = company;
         return company;
     }

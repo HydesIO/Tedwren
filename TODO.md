@@ -16,9 +16,15 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   count from the attendance log (distinct persons who attended) and their aggregate compliance via
   `ComplianceRollup` (SF-8), replacing the hard-coded `0`/`Pending`. The Dashboard heatmap becomes real
   automatically. Test: `SiteServiceTests.SiteOperatives_ComeFromAttendance`.
-  ⏳ **Follow-up:** R15/MC-21 per-company/per-manager site scoping still returns all sites — it needs the
-  seed data aligned to the auth company (the seeded sites belong to different companies than the bootstrap
-  admin), so it was deferred rather than break the site tests.
+  ✅ **Follow-up done — tenant-scoping pass (R15/MC-21).** The seeded lead main contractor
+  ("Meridian Construction Ltd") now carries the bootstrap admin's tenant id (`AdminUserSeeder.SeedCompanyId`),
+  so it owns the seeded sites and operatives. `SiteService`, `WorkforceService` and `DashboardService` take
+  the optional `ICurrentUserService` and scope sites / the operative register / the compliance tally to the
+  signed-in caller's `CompanyId`; a site outside the caller's tenant fails visibly (404 via `GetSiteAsync →
+  null`), never leaking across companies. Scoping is skipped when no current user is wired (unit tests) or the
+  caller is unauthenticated, so those paths run unscoped rather than showing an empty screen. Tests:
+  `SiteApiTests.TenantSite_IsListed_AndResolvableBySlug` / `ForeignTenantSite_IsHidden_AndReturns404`;
+  workforce/dashboard/onboarding API tests now onboard into the caller's own company via `/api/me`.
 - ✅ **D5 — retired the last demo constants.** `CompliancePacks`, `SiteGate`, `InductionRecords`,
   `TimeAndAttendance` now resolve the company from `ITenantState` and operatives/sites from
   `IWorkforceService`/`ISiteService` (SiteGate also runs a real `DecideAsync`); `TimeAndAttendance` uses the
@@ -28,7 +34,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ **D6 — N+1 batching.** `IQualificationCardRepository.GetByPersonsAsync` (Dapper `IN`/in-memory) added;
   `WorkforceService`, `DashboardService` and `SiteService` now fetch all operatives' cards in one read
   instead of per-person in a loop.
-- ✅ Docs synced (`docs/plan-and-scope.md`, this file). `dotnet test` green (API 52, Application 100).
+- ✅ Docs synced (`docs/plan-and-scope.md`, this file). `dotnet test` green (API 54, Application 100).
 - ⚠️ **Still-open production follow-ups (from D1/D2):** set `Jwt:SigningKey` + `Seed:AdminPassword` from
   secrets; deliver the invite/onboarding links by email; **rotate the committed DB password in
   `src/Tedwren.Api/appsettings.json`** (still present — a real credential in the repo).
