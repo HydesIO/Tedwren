@@ -1,18 +1,23 @@
 @page "/workforce/{Slug}"
-@using OperativeDetailModel = Tedwren.UiComponents.SampleData.OperativeDetail
-@inject IDetailSampleDataService Details
+@using Tedwren.Abstractions.Contracts.Workforce
+@using Tedwren.Abstractions.Services
+@inject IWorkforceService Workforce
 @inject ISnackbar Snackbar
 
 <PageTitle>@(_op?.Name ?? "Operative") · Tedwren</PageTitle>
 
-@if (_op is null)
+@if (_loading)
+{
+    <PageHeader Title="Loading operative…" />
+}
+else if (_op is null)
 {
     <PageHeader Title="Operative not found" />
     <DashboardCard>
         <Body>
             <EmptyState Icon="@Icons.Material.Outlined.Engineering"
                         Title="Operative not found"
-                        Description="This operative doesn't exist in the sample data.">
+                        Description="No active operative matches this link.">
                 <Action>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/workforce">Back to workforce</MudButton>
                 </Action>
@@ -23,9 +28,9 @@
 else
 {
     <DetailHeader Title="@_op.Name"
-                  Subtitle="@($"{_op.Trade} · {_op.Company}")"
+                  Subtitle="@($"{_op.Trade ?? "—"} · {_op.Company}")"
                   StatusLabel="@_op.StatusLabel"
-                  Status="_op.Status"
+                  Status="ComplianceStatusView.ToStatusKind(_op.State)"
                   AvatarText="@Initials(_op.Name)"
                   Breadcrumbs="_crumbs">
         <Actions>
@@ -51,28 +56,50 @@ else
             </MudTabPanel>
 
             <MudTabPanel Text="@($"Qualifications ({_op.Qualifications.Count})")">
-                <div class="qual-grid">
-                    @foreach (var q in _op.Qualifications)
-                    {
-                        <div class="qual-card">
-                            <div class="qual-card__top">
-                                <span class="qual-card__name">@q.Name</span>
-                                <StatusPill Label="@q.StatusLabel" Status="q.Status" />
+                @if (_op.Qualifications.Count == 0)
+                {
+                    <DashboardCard>
+                        <Body>
+                            <EmptyState Icon="@Icons.Material.Outlined.WorkspacePremium"
+                                        Title="No qualifications recorded"
+                                        Description="This operative has no captured cards yet." />
+                        </Body>
+                    </DashboardCard>
+                }
+                else
+                {
+                    <div class="qual-grid">
+                        @foreach (var q in _op.Qualifications)
+                        {
+                            <div class="qual-card">
+                                <div class="qual-card__top">
+                                    <span class="qual-card__name">@q.Name</span>
+                                    <StatusPill Label="@q.StatusLabel" Status="ComplianceStatusView.ToStatusKind(q.State)" />
+                                </div>
+                                <div class="qual-card__meta">
+                                    <span>Issuer: @(q.Issuer ?? "—")</span>
+                                    <span>Obtained: @(q.ObtainedOn?.ToString("dd MMM yyyy") ?? "—")</span>
+                                    <span>Expires: @(q.ExpiresOn?.ToString("dd MMM yyyy") ?? "No expiry")</span>
+                                </div>
                             </div>
-                            <div class="qual-card__meta">
-                                <span>Issuer: @q.Issuer</span>
-                                <span>Obtained: @q.ObtainedOn.ToString("dd MMM yyyy")</span>
-                                <span>Expires: @(q.ExpiresOn?.ToString("dd MMM yyyy") ?? "No expiry")</span>
-                            </div>
-                        </div>
-                    }
-                </div>
+                        }
+                    </div>
+                }
             </MudTabPanel>
 
             <MudTabPanel Text="History">
                 <DashboardCard Title="Recent history">
                     <Body>
-                        <ActivityFeed Items="_op.History" />
+                        @if (_history.Count == 0)
+                        {
+                            <EmptyState Icon="@Icons.Material.Outlined.History"
+                                        Title="No recent history"
+                                        Description="Site-entry decisions for this operative will appear here." />
+                        }
+                        else
+                        {
+                            <ActivityFeed Items="_history" />
+                        }
                     </Body>
                 </DashboardCard>
             </MudTabPanel>
@@ -83,13 +110,17 @@ else
 @code {
     [Parameter] public string Slug { get; set; } = string.Empty;
 
-    private OperativeDetailModel? _op;
+    private OperativeDetailDto? _op;
+    private bool _loading = true;
     private List<KeyValueList.Pair> _overview = new();
+    private List<ActivityItem> _history = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
 
-    protected override void OnParametersSet()
+    protected override async Task OnParametersSetAsync()
     {
-        _op = Details.GetOperative(Slug);
+        _loading = true;
+        _op = await Workforce.GetOperativeBySlugAsync(Slug);
+        _loading = false;
         if (_op is null) return;
 
         _crumbs = new List<DetailHeader.Crumb>
@@ -100,14 +131,21 @@ else
 
         _overview = new()
         {
-            new("Trade", _op.Trade),
+            new("Trade", _op.Trade ?? "—"),
             new("Employer", _op.Company),
-            new("Primary site", _op.PrimarySite),
-            new("Date of birth", _op.DateOfBirth.ToString("dd MMM yyyy")),
-            new("NI number", _op.NiNumber),
-            new("Phone", _op.Phone),
-            new("Email", _op.Email),
+            new("Phone", _op.Phone ?? "—"),
         };
+
+        _history = _op.History
+            .Select(h => new ActivityItem(
+                h.Title.Contains("blocked", StringComparison.OrdinalIgnoreCase)
+                    ? Icons.Material.Outlined.Block
+                    : Icons.Material.Outlined.HowToReg,
+                h.Title,
+                h.Detail ?? string.Empty,
+                h.OccurredUtc.LocalDateTime.ToString("dd MMM yyyy HH:mm"),
+                h.Title.Contains("blocked", StringComparison.OrdinalIgnoreCase) ? StatusKind.Danger : StatusKind.Success))
+            .ToList();
     }
 
     private static string Initials(string name)

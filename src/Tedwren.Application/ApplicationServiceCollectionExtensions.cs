@@ -6,14 +6,20 @@ using Tedwren.Application.Jobs;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Audit;
+using Tedwren.Application.Dashboard;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
+using Tedwren.Application.Identity;
 using Tedwren.Application.Organisation;
+using Tedwren.Application.Permits;
 using Tedwren.Application.Persistence;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Qualifications;
+using Tedwren.Application.Reference;
+using Tedwren.Application.Settings;
 using Tedwren.Application.Sites;
 using Tedwren.Application.Users;
+using Tedwren.Application.Workforce;
 
 namespace Tedwren.Application;
 
@@ -188,6 +194,80 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<InMemoryCompliancePackStore>();
         services.AddScoped<ICompliancePackRepository, InMemoryCompliancePackRepository>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the current-operator identity service (a configured/dev identity until authentication lands).
+    /// The <see cref="CurrentUserOptions"/> singleton is provided by the composition root (bound from config).
+    /// </summary>
+    public static IServiceCollection AddIdentityCore(this IServiceCollection services)
+    {
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the org-wide workforce read model. It reuses the organisation, qualification and decision
+    /// repositories/services, so no dedicated store registration is required.
+    /// </summary>
+    public static IServiceCollection AddWorkforceCore(this IServiceCollection services)
+    {
+        services.AddScoped<IWorkforceService, WorkforceService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the dashboard aggregation service. It reuses the organisation, qualification, site and
+    /// expiry repositories/services, so no dedicated store registration is required.
+    /// </summary>
+    public static IServiceCollection AddDashboardCore(this IServiceCollection services)
+    {
+        services.AddScoped<IDashboardService, DashboardService>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic reference-data service (form option lists).</summary>
+    public static IServiceCollection AddReferenceDataCore(this IServiceCollection services)
+    {
+        services.AddScoped<IReferenceDataService, ReferenceDataService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory reference-data repository seeded with the canonical option lists (test double).</summary>
+    public static IServiceCollection AddInMemoryReferenceDataStore(this IServiceCollection services)
+    {
+        services.AddScoped<IReferenceDataRepository, InMemoryReferenceDataRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic permits-to-work service.</summary>
+    public static IServiceCollection AddPermitCore(this IServiceCollection services)
+    {
+        services.AddScoped<IPermitService, PermitService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory permit repository (singleton so raised permits persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryPermitStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryPermitRepository>();
+        services.AddScoped<IPermitRepository>(sp => sp.GetRequiredService<InMemoryPermitRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
+    public static IServiceCollection AddSettingsCore(this IServiceCollection services)
+    {
+        services.AddScoped<ISettingsService, SettingsService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory settings repository (singleton so saved settings persist across test requests).</summary>
+    public static IServiceCollection AddInMemorySettingsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemorySettingsRepository>();
+        services.AddScoped<ISettingsRepository>(sp => sp.GetRequiredService<InMemorySettingsRepository>());
         return services;
     }
 

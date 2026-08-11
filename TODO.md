@@ -11,7 +11,87 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Remove Mock mode + fix client↔API connectivity (this change)
+### Sample-data → API migration, Phases M4 (settings) + M5 (permits) (this change)
+- ✅ **M4 — general settings persistence.** `ISettingsService` (`GetForCompanyAsync`, `SaveForCompanyAsync`) +
+  `SettingsService` (returns per-company settings, defaults seeded from company name when unset) +
+  `/api/settings/{companyId}` (GET/PUT) + `ApiSettingsService`. Per-company JSON row: `CompanySettings` table
+  (migration `013`, SqlServer + Postgres), Dapper `SettingsRepository`, in-memory double (singleton), EF
+  `CompanySettingsRecord`. `SystemConfiguration` now loads and **saves** general settings via the API (the
+  "not yet persisted" caveat is gone), off `IFormSampleDataService`.
+- ✅ **M5 — permits backend.** New `Permit` entity + `PermitStatus` enum; `IPermitService`
+  (`CreateAsync`, `ListForCompanyAsync`) + `PermitService`; `/api/permits` (POST + `company/{id}`) +
+  `ApiPermitService`. `Permits` table (migration `014`, SqlServer + Postgres), Dapper `PermitRepository`,
+  in-memory double (singleton), EF `PermitRecord`. `Permits` page now **persists** issued/draft permits
+  (company via `ITenantState`) and **lists** them in a `DataTable`.
+- ✅ Tests: `SettingsAndPermitApiTests` (API, 3); whole solution builds; `dotnet test` green (API 44,
+  Application 99).
+- ⏳ **Remaining:** M6 — Inductions config page + retire `IShellSampleDataService` chrome (MainLayout
+  nav/platforms/environment/notifications/user) — the last sample-data dependency.
+
+### Sample-data → API migration, Phase M3: dashboard aggregation (previous change)
+Adds the dashboard aggregation read model and migrates the Dashboard and Compliance pages onto it.
+- ✅ **Dashboard aggregation** — `IDashboardService` (`GetSummaryAsync`, `GetComplianceAsync`) +
+  `DashboardService`, composing company/engagement/qualification-card repositories + `ISiteService` +
+  `IExpiryQueryService` (no new store; reuses `ComplianceRollup` for SF-8). DTOs `DashboardSummaryDto`,
+  `DashboardKpisDto`, `ComplianceBreakdownDto`, `SiteRiskRowDto`.
+- ✅ **API + client** — `/api/dashboard` (summary) + `/api/dashboard/compliance` + `ApiDashboardService`,
+  registered both ends. New client helper `ComplianceOverviewView` maps the breakdown to the donut/legend VM
+  (theme-token colours; no literals in pages).
+- ✅ **Pages migrated:** `Dashboard` — KPIs (companies/operatives/sites/compliance%/upcoming expiries),
+  compliance donut, site-risk heatmap all from `/api/dashboard`; upcoming expiries from `IExpiryQueryService`
+  (SF-9); recent activity from `IAuditService` (SF-20). `Compliance` — overview donut from
+  `GetComplianceAsync`. Both fully off `IDashboardSampleDataService`.
+- ✅ Honest-data note: the heatmap now shows Site / Operatives / Compliance% / Status (the sample
+  Compliant/Expiring/At-risk per-site breakdown has no domain source — there is no person→site compliance
+  link yet); KPI sparklines/trends are dropped (no historical series stored).
+- ✅ Tests: `DashboardApiTests` (API, 2); whole solution builds; `dotnet test` green (API 41, Application 99).
+- ⏳ **Remaining sample-data pages:** SystemConfiguration settings (M4); Permits issue-flow backend (M5);
+  Inductions config + retire `IShellSampleDataService` chrome (M6).
+
+### Sample-data → API migration, Phase M2: workforce read model (previous change)
+Adds the org-wide workforce read model and migrates the operative-facing pages onto it.
+- ✅ **Workforce read model** — `IWorkforceService` (`ListOperativesAsync`, `GetOperativeBySlugAsync`) +
+  `WorkforceService`, composing existing company/engagement/person/qualification-card/decision
+  repositories & services (no new store — reuses `ComplianceRollup` for SF-8 state). DTOs
+  `OperativeListItemDto` / `OperativeDetailDto` / `OperativeQualificationDto` / `OperativeHistoryDto`.
+- ✅ **API + client** — `/api/workforce` (list + `/{slug}`) + `ApiWorkforceService`, registered both ends.
+- ✅ **Pages migrated:** `Workforce` (register → `ListOperativesAsync`), `OperativeDetail` (→
+  `GetOperativeBySlugAsync`; overview now shows only domain-backed fields — trade, employer, phone,
+  qualifications, and site-entry history — the sample DoB/NI/email/primary-site are dropped as the model
+  doesn't hold them), `Permits` (permit types → reference, sites → `ISiteService`, operatives → workforce —
+  fully off `IFormSampleDataService`), `MainLayout` command-palette search index (companies/operatives/sites
+  → real APIs, off `IListSampleDataService`).
+- ✅ **AddOperative real persistence** — direct entry now creates a real engagement via
+  `IOrganisationService.AddOperativeAsync` (added an Employer/company selector; SF-1/SF-2, surfaces the SF-2
+  duplicate refusal). Self-service link path stays a demo (no backend yet).
+- ✅ Tests: `WorkforceApiTests` (API, 2); whole solution builds; `dotnet test` green (API 39, Application 99).
+- ⏳ **Remaining sample-data pages:** Dashboard + Compliance overview (M3); SystemConfiguration settings (M4);
+  Permits issue-flow backend (M5); Inductions config (M6). `IShellSampleDataService` still supplies
+  MainLayout chrome (nav/platforms/environment/notifications/user) — retire in M6 cleanup.
+
+### Sample-data → API migration, Phase M1: foundations (previous change)
+Begins moving the pages that still render `UiComponents.SampleData` onto real database-backed services.
+Phase M1 delivers the shared foundations and the first page migrations:
+- ✅ **Current-operator service** — `ICurrentUserService` + `CurrentUserService` (configured/dev identity via
+  `CurrentUserOptions`, until an auth phase) + `/api/me` + `ApiCurrentUserService`. Replaces the sample shell
+  user for the SUB-22 role check.
+- ✅ **Reference-data lookup (DB-backed)** — `IReferenceDataService` + `/api/reference/{listKey}` +
+  `ApiReferenceDataService`, `ReferenceValues` table (migration `012_reference_data.sql`, SqlServer +
+  Postgres, idempotent seed) + Dapper repo + in-memory double + EF `ReferenceValueRecord`. Keys: company
+  types, trades, permit types, regions (`ReferenceListKeys`).
+- ✅ **Decisions client wiring** — added `ApiDecisionService` + registered `IDecisionService` (endpoint +
+  backend already existed; only client binding was missing, R10).
+- ✅ **Pages migrated off sample data:** `CompliancePacks` (role → current-user), `AddCompany` (company
+  types/trades → reference), `AddOperative` (trades → reference, sites → `ISiteService`), `Onboarding`
+  (trades → reference).
+- ✅ Tests: `ReferenceAndIdentityApiTests` (API, 4), `ReferenceDataServiceTests` (Application, 2); whole
+  solution builds; `dotnet test` green (API 37, Application 99).
+- ⏳ **Remaining sample-data pages (later M-phases):** Workforce + OperativeDetail + MainLayout search
+  (M2 workforce read model); Dashboard + Compliance overview (M3 aggregation); SystemConfiguration general
+  settings (M4); Permits (M5 backend); Inductions config (M6). `AddOperative` real persistence lands with
+  the M2 workforce write-model (needs a company target the form doesn't yet collect).
+
+### Remove Mock mode + fix client↔API connectivity (previous change)
 - ✅ **Removed runtime Mock mode.** The client always calls the Web API; the API always uses the database.
   Deleted `ClientDataSourceMode` and all 12 `ClientMock*Service` classes; client `Program.cs` registers only
   the `Api*` services. Renamed `DataSourceMode.Mock` → `InMemory` (test-only), defaulted `BackendOptions.Mode`

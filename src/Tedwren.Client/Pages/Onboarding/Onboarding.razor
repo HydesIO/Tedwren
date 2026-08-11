@@ -9,7 +9,7 @@
 @inject ISiteService Sites
 @inject IUserService Users
 @inject IInductionService Inductions
-@inject IFormSampleDataService Options
+@inject IReferenceDataService Reference
 @inject ITenantState Tenant
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
@@ -230,7 +230,7 @@
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
-        _trades = Options.GetTrades();
+        _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
         _model.Sites.Add(new OnboardingSite());
         _model.Operatives.Add(new OnboardingOperative());
         foreach (var (name, type) in DefaultDocuments)

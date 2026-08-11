@@ -41,5 +41,12 @@ builder.Services.AddScoped<ITimesheetService, ApiTimesheetService>();
 builder.Services.AddScoped<ICompliancePackService, ApiCompliancePackService>();
 builder.Services.AddScoped<IInductionService, ApiInductionService>();
 builder.Services.AddScoped<ISiteEntryService, ApiSiteEntryService>();
+builder.Services.AddScoped<IDecisionService, ApiDecisionService>();
+builder.Services.AddScoped<IReferenceDataService, ApiReferenceDataService>();
+builder.Services.AddScoped<ICurrentUserService, ApiCurrentUserService>();
+builder.Services.AddScoped<IWorkforceService, ApiWorkforceService>();
+builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
+builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
+builder.Services.AddScoped<IPermitService, ApiPermitService>();
 
 await builder.Build().RunAsync();
