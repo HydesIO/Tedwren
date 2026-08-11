@@ -16,6 +16,7 @@ using Tedwren.Application.Qualifications;
 using Tedwren.Application.Reference;
 using Tedwren.Application.Sites;
 using Tedwren.Application.Users;
+using Tedwren.Application.Workforce;
 
 namespace Tedwren.Application;
 
@@ -200,6 +201,16 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddIdentityCore(this IServiceCollection services)
     {
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the org-wide workforce read model. It reuses the organisation, qualification and decision
+    /// repositories/services, so no dedicated store registration is required.
+    /// </summary>
+    public static IServiceCollection AddWorkforceCore(this IServiceCollection services)
+    {
+        services.AddScoped<IWorkforceService, WorkforceService>();
         return services;
     }
 

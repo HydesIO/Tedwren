@@ -28,6 +28,7 @@ builder.Services.AddCompliancePackCore();
 builder.Services.AddInductionCore();
 builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
+builder.Services.AddWorkforceCore();
 builder.Services.AddReferenceDataCore();
 
 // Current-operator identity: a configured/dev identity (bound from the "CurrentUser" section) until a real
@@ -118,6 +119,7 @@ app.MapAuditEndpoints();
 app.MapDecisionEndpoints();
 app.MapReferenceDataEndpoints();
 app.MapCurrentUserEndpoints();
+app.MapWorkforceEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.

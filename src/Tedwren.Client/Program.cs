@@ -44,5 +44,6 @@ builder.Services.AddScoped<ISiteEntryService, ApiSiteEntryService>();
 builder.Services.AddScoped<IDecisionService, ApiDecisionService>();
 builder.Services.AddScoped<IReferenceDataService, ApiReferenceDataService>();
 builder.Services.AddScoped<ICurrentUserService, ApiCurrentUserService>();
+builder.Services.AddScoped<IWorkforceService, ApiWorkforceService>();
 
 await builder.Build().RunAsync();

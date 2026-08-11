@@ -1,5 +1,8 @@
 @page "/permits"
-@inject IFormSampleDataService Options
+@using Tedwren.Abstractions.Services
+@inject IReferenceDataService Reference
+@inject ISiteService Sites
+@inject IWorkforceService Workforce
 @inject ISnackbar Snackbar
 
 <PageTitle>Permits · Tedwren</PageTitle>
@@ -62,11 +65,13 @@
     private IReadOnlyList<string> _sites = Array.Empty<string>();
     private IReadOnlyList<string> _operatives = Array.Empty<string>();
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        _permitTypes = Options.GetPermitTypes();
-        _sites = Options.GetSiteNames();
-        _operatives = Options.GetOperativeNames();
+        _permitTypes = await Reference.GetListAsync(ReferenceListKeys.PermitTypes);
+        var sites = await Sites.GetSitesAsync();
+        _sites = sites.Select(s => s.Name).ToList();
+        var operatives = await Workforce.ListOperativesAsync();
+        _operatives = operatives.Select(o => o.Name).Distinct().OrderBy(n => n).ToList();
     }
 
     private void Issue()

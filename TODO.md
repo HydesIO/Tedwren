@@ -11,7 +11,28 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Sample-data → API migration, Phase M1: foundations (this change)
+### Sample-data → API migration, Phase M2: workforce read model (this change)
+Adds the org-wide workforce read model and migrates the operative-facing pages onto it.
+- ✅ **Workforce read model** — `IWorkforceService` (`ListOperativesAsync`, `GetOperativeBySlugAsync`) +
+  `WorkforceService`, composing existing company/engagement/person/qualification-card/decision
+  repositories & services (no new store — reuses `ComplianceRollup` for SF-8 state). DTOs
+  `OperativeListItemDto` / `OperativeDetailDto` / `OperativeQualificationDto` / `OperativeHistoryDto`.
+- ✅ **API + client** — `/api/workforce` (list + `/{slug}`) + `ApiWorkforceService`, registered both ends.
+- ✅ **Pages migrated:** `Workforce` (register → `ListOperativesAsync`), `OperativeDetail` (→
+  `GetOperativeBySlugAsync`; overview now shows only domain-backed fields — trade, employer, phone,
+  qualifications, and site-entry history — the sample DoB/NI/email/primary-site are dropped as the model
+  doesn't hold them), `Permits` (permit types → reference, sites → `ISiteService`, operatives → workforce —
+  fully off `IFormSampleDataService`), `MainLayout` command-palette search index (companies/operatives/sites
+  → real APIs, off `IListSampleDataService`).
+- ✅ **AddOperative real persistence** — direct entry now creates a real engagement via
+  `IOrganisationService.AddOperativeAsync` (added an Employer/company selector; SF-1/SF-2, surfaces the SF-2
+  duplicate refusal). Self-service link path stays a demo (no backend yet).
+- ✅ Tests: `WorkforceApiTests` (API, 2); whole solution builds; `dotnet test` green (API 39, Application 99).
+- ⏳ **Remaining sample-data pages:** Dashboard + Compliance overview (M3); SystemConfiguration settings (M4);
+  Permits issue-flow backend (M5); Inductions config (M6). `IShellSampleDataService` still supplies
+  MainLayout chrome (nav/platforms/environment/notifications/user) — retire in M6 cleanup.
+
+### Sample-data → API migration, Phase M1: foundations (previous change)
 Begins moving the pages that still render `UiComponents.SampleData` onto real database-backed services.
 Phase M1 delivers the shared foundations and the first page migrations:
 - ✅ **Current-operator service** — `ICurrentUserService` + `CurrentUserService` (configured/dev identity via

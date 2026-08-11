@@ -5,7 +5,8 @@
 @inject IShellSampleDataService Shell
 @inject IEntitlementService Entitlements
 @inject IOrganisationService Org
-@inject IListSampleDataService ListData
+@inject ISiteService SitesSvc
+@inject IWorkforceService Workforce
 @inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject IJSRuntime JS
@@ -103,7 +104,7 @@
         var env = Shell.GetEnvironment();
         _environment = new AppSidebar.EnvironmentInfo(env.Name, env.Version, env.Build, env.IsHealthy);
 
-        _commandItems = BuildCommandItems();
+        _commandItems = await BuildCommandItemsAsync();
 
         Nav.LocationChanged += OnLocationChanged;
         UpdateActiveRoute();
@@ -145,7 +146,7 @@
         catch { /* ignore */ }
     }
 
-    private IReadOnlyList<CommandItem> BuildCommandItems()
+    private async Task<IReadOnlyList<CommandItem>> BuildCommandItemsAsync()
     {
         var items = new List<CommandItem>();
 
@@ -154,22 +155,23 @@
             items.Add(new CommandItem(nav.Label, "Pages", nav.Icon, nav.Href, "Go to page"));
         }
 
-        foreach (var c in ListData.GetCompanies())
+        // Search index built from real API data (companies, operatives, sites).
+        foreach (var c in await Org.GetCompaniesAsync())
         {
             items.Add(new CommandItem(c.Name, "Companies", MudBlazor.Icons.Material.Outlined.Business,
-                $"/organisation/{Slugs.From(c.Name)}", c.Trade));
+                $"/organisation/{c.Slug}", c.Trade));
         }
 
-        foreach (var o in ListData.GetOperatives())
+        foreach (var o in await Workforce.ListOperativesAsync())
         {
             items.Add(new CommandItem(o.Name, "Operatives", MudBlazor.Icons.Material.Outlined.Engineering,
-                $"/workforce/{Slugs.From(o.Name)}", $"{o.Trade} · {o.Company}"));
+                $"/workforce/{o.Slug}", $"{o.Trade} · {o.Company}"));
         }
 
-        foreach (var s in ListData.GetSites())
+        foreach (var s in await SitesSvc.GetSitesAsync())
         {
             items.Add(new CommandItem(s.Name, "Sites", MudBlazor.Icons.Material.Outlined.Apartment,
-                $"/sites/{Slugs.From(s.Name)}", s.Region));
+                $"/sites/{s.Slug}", s.Region));
         }
 
         return items;
