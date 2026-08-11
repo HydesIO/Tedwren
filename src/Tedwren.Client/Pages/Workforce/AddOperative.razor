@@ -1,8 +1,11 @@
 @page "/workforce/add"
+@using Tedwren.Abstractions.Contracts.Onboarding
 @using Tedwren.Abstractions.Contracts.Organisation
 @using Tedwren.Abstractions.Services
 @inject IReferenceDataService Reference
 @inject IOrganisationService Org
+@inject IOnboardingService Onboarding
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -77,11 +80,21 @@
                         <div><dt>Mobile</dt><dd>@(string.IsNullOrWhiteSpace(_contact) ? "—" : _contact)</dd></div>
                     }
                 </dl>
+                @if (_onboardingLink is not null)
+                {
+                    <BannerAlert Severity="StatusKind.Success" Title="Onboarding link created"
+                                 Message="@($"Share this link with the operative{(_onboardingPasscode is null ? "" : $" (passcode {_onboardingPasscode})")}: {_onboardingLink}")" />
+                }
+
                 <div class="add-operative__finish">
-                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(_busy || _onboardingLink is not null)"
                                StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
-                        @(_method == "link" ? "Send link" : "Create operative")
+                        @(_method == "link" ? "Create link" : "Create operative")
                     </MudButton>
+                    @if (_onboardingLink is not null)
+                    {
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => Nav.NavigateTo("/workforce"))">Done</MudButton>
+                    }
                 </div>
             </div>
         </MudStep>
@@ -97,6 +110,8 @@
     private string? _company;
     private bool _requirePasscode = true;
     private bool _busy;
+    private string? _onboardingLink;
+    private string? _onboardingPasscode;
 
     private IReadOnlyList<string> _trades = Array.Empty<string>();
     private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
@@ -110,6 +125,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
         _companies = await Org.GetCompaniesAsync();
         _companyNames = _companies.Select(c => c.Name).ToList();
@@ -121,8 +137,15 @@
     {
         if (_method == "link")
         {
-            Snackbar.Add($"Self-service link sent to {(_contact ?? "recipient")} (demo).", Severity.Success);
-            Nav.NavigateTo("/workforce");
+            // Create a real self-service onboarding link (SF-4/SUB-2). No email backend yet, so show the link
+            // for the admin to share; the operative completes their own details and card photos there.
+            _busy = true;
+            var link = await Onboarding.CreateAsync(
+                new CreateOnboardingLinkRequest(Tenant.CurrentCompanyId, _name, _trade, RequirePasscode: _requirePasscode), null);
+            _busy = false;
+            var passcodePart = link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(link.Passcode)}";
+            _onboardingLink = $"{Nav.BaseUri}onboard?token={Uri.EscapeDataString(link.Token)}{passcodePart}";
+            _onboardingPasscode = link.Passcode;
             return;
         }
 

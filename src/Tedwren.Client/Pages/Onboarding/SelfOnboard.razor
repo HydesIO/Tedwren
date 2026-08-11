@@ -1,0 +1,177 @@
+@page "/onboard"
+@layout RecipientLayout
+@using Microsoft.AspNetCore.Components.Forms
+@using Tedwren.Abstractions.Contracts.Onboarding
+@using Tedwren.Abstractions.Contracts.Qualifications
+@using Tedwren.Abstractions.Services
+@inject IOnboardingService Onboarding
+@inject IQualificationService Qualifications
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Complete your details · Tedwren</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-6" MaxWidth="520px" Elevation="0" Outlined="true">
+    @if (_loading)
+    {
+        <MudText>Loading…</MudText>
+    }
+    else if (_view is null)
+    {
+        <MudText Typo="Typo.h5" Class="mb-2">Link not valid</MudText>
+        <BannerAlert Severity="StatusKind.Danger" Title="This link cannot be opened"
+                     Message="The link may have expired, or the passcode is incorrect. Ask whoever sent it for a new link." />
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Complete your details</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">@($"Onboarding for {_view.CompanyName}.")</MudText>
+
+        @if (!_view.DetailsSubmitted)
+        {
+            <TedwrenTextField Label="Full name" @bind-Value="_name" Placeholder="Your full name" />
+            <TedwrenTextField Label="Mobile number" @bind-Value="_mobile" InputType="InputType.Telephone" Placeholder="+44 …" />
+            <TedwrenTextField Label="Trade" @bind-Value="_trade" Placeholder="e.g. Electrician" />
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4" Disabled="_busy"
+                       OnClick="SubmitDetails">Continue</MudButton>
+        }
+        else
+        {
+            <BannerAlert Severity="StatusKind.Success" Title="Details saved"
+                         Message="Your employer will confirm your record. You can add your qualification cards below." />
+
+            <MudText Typo="Typo.subtitle1" Class="mt-4 mb-2">Add a qualification card</MudText>
+            <MudSelect T="Guid" Label="Card type" @bind-Value="_typeId" Dense="true">
+                @foreach (var t in _types)
+                {
+                    <MudSelectItem T="Guid" Value="t.Id">@t.Name</MudSelectItem>
+                }
+            </MudSelect>
+            <TedwrenTextField Label="Card number" @bind-Value="_cardNumber" Placeholder="As printed on the card" />
+            <MudDatePicker Label="Expiry date" @bind-Date="_expiry" />
+            <div class="mt-2">
+                <InputFile OnChange="OnFileSelected" accept="image/*" />
+            </div>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" Disabled="_busy || _typeId == Guid.Empty"
+                       OnClick="AddCard">Add card</MudButton>
+
+            @if (_view.Cards.Count > 0)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-6 mb-2">@($"Cards added ({_view.Cards.Count})")</MudText>
+                <MudList T="string" Dense="true">
+                    @foreach (var c in _view.Cards)
+                    {
+                        <MudListItem T="string" Icon="@Icons.Material.Outlined.Badge">
+                            @c.QualificationName @(c.ExpiresOn is { } e ? $"· expires {e:dd MMM yyyy}" : "")
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+        }
+    }
+</MudPaper>
+
+@code {
+    private string _token = string.Empty;
+    private string? _passcode;
+    private OnboardingViewDto? _view;
+    private IReadOnlyList<QualificationTypeDto> _types = Array.Empty<QualificationTypeDto>();
+    private bool _loading = true;
+    private bool _busy;
+
+    private string? _name;
+    private string? _mobile;
+    private string? _trade;
+
+    private Guid _typeId;
+    private string? _cardNumber;
+    private DateTime? _expiry;
+    private IBrowserFile? _file;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ParseQuery();
+        _view = await Onboarding.GetByTokenAsync(_token, _passcode);
+        if (_view is not null)
+        {
+            _types = await Qualifications.GetQualificationTypesAsync();
+        }
+
+        _loading = false;
+    }
+
+    private async Task SubmitDetails()
+    {
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_mobile))
+        {
+            Snackbar.Add("Enter your name and mobile number.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var updated = await Onboarding.SubmitDetailsAsync(_token, _passcode, new SubmitOnboardingDetailsRequest(_name!, _mobile!, _trade));
+            if (updated is not null)
+            {
+                _view = updated;
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e) => _file = e.File;
+
+    private async Task AddCard()
+    {
+        _busy = true;
+        try
+        {
+            string? imageB64 = null, imageType = null;
+            if (_file is not null)
+            {
+                using var ms = new MemoryStream();
+                await _file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(ms);
+                imageB64 = Convert.ToBase64String(ms.ToArray());
+                imageType = _file.ContentType;
+            }
+
+            var expiry = _expiry is { } d ? DateOnly.FromDateTime(d) : (DateOnly?)null;
+            var updated = await Onboarding.CaptureCardAsync(_token, _passcode, new CaptureOnboardingCardRequest(
+                _typeId, _cardNumber, _name, IssuedOn: null, expiry, imageB64, imageType));
+            if (updated is not null)
+            {
+                _view = updated;
+                _cardNumber = null;
+                _expiry = null;
+                _file = null;
+                Snackbar.Add("Card added.", Severity.Success);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ParseQuery()
+    {
+        var query = Nav.ToAbsoluteUri(Nav.Uri).Query.TrimStart('?');
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length != 2) continue;
+            var key = Uri.UnescapeDataString(parts[0]);
+            var value = Uri.UnescapeDataString(parts[1]);
+            if (key == "token") _token = value;
+            else if (key == "passcode") _passcode = value;
+        }
+    }
+}

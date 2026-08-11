@@ -33,6 +33,7 @@ builder.Services.AddDashboardCore();
 builder.Services.AddReferenceDataCore();
 builder.Services.AddSettingsCore();
 builder.Services.AddPermitCore();
+builder.Services.AddOnboardingCore();
 builder.Services.AddAuthCore();
 
 // Bootstrap admin so a fresh install can be signed into (idempotent). Credentials from the "Seed" section.
@@ -108,6 +109,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryReferenceDataStore();
     builder.Services.AddInMemorySettingsStore();
     builder.Services.AddInMemoryPermitStore();
+    builder.Services.AddInMemoryOnboardingStore();
 }
 else
 {
@@ -206,6 +208,8 @@ app.MapWorkforceEndpoints();
 app.MapDashboardEndpoints();
 app.MapSettingsEndpoints();
 app.MapPermitEndpoints();
+app.MapOnboardingEndpoints();
+app.MapImageEndpoints();
 app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
