@@ -4,6 +4,7 @@
 @using Tedwren.Client.Services
 @inject IFormSampleDataService Options
 @inject IEntitlementService Entitlements
+@inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
 <PageTitle>System Configuration · Tedwren</PageTitle>
@@ -72,6 +73,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         LoadGeneral();
         await LoadModulesAsync();
     }
@@ -93,7 +95,7 @@
     // Loads real module entitlements for the current company (SF-22).
     private async Task LoadModulesAsync()
     {
-        _modules = await Entitlements.GetForCompanyAsync(TenantContext.CurrentCompanyId);
+        _modules = await Entitlements.GetForCompanyAsync(Tenant.CurrentCompanyId);
         _entitlements.Clear();
         foreach (var module in _modules)
         {
@@ -109,7 +111,7 @@
         {
             if (_entitlements[module.Key] != module.Enabled)
             {
-                await Entitlements.SetEnabledAsync(TenantContext.CurrentCompanyId, module.Key, _entitlements[module.Key]);
+                await Entitlements.SetEnabledAsync(Tenant.CurrentCompanyId, module.Key, _entitlements[module.Key]);
             }
         }
 

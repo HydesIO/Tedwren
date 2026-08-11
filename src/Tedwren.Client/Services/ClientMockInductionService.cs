@@ -64,6 +64,10 @@ public sealed class ClientMockInductionService : IInductionService
             new InductionTemplateDto(TemplateId, "General Site Induction", ValidityDays, PassMark, Steps, Questions.Count),
         });
 
+    /// <summary>Demo create — sample data is static, so nothing is persisted (MC-3/SF-12).</summary>
+    public Task<Guid> CreateDefaultTemplateAsync(CreateInductionTemplateRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Guid.NewGuid());
+
     /// <summary>Starts an induction (MC-1).</summary>
     public Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default)
     {

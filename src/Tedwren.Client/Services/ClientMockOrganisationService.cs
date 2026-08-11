@@ -67,6 +67,10 @@ public sealed class ClientMockOrganisationService : IOrganisationService
     public Task<bool> UpdateCompanyAsync(Guid companyId, UpdateCompanyRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(true);
 
+    /// <summary>Demo add — sample data is static, so nothing is persisted (SUB-4).</summary>
+    public Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Guid.NewGuid());
+
     /// <summary>Demo add — not persisted in mock mode.</summary>
     public Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(new AddOperativeResult(true, Guid.NewGuid(), Guid.NewGuid(), null));

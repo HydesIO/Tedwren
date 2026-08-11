@@ -17,6 +17,7 @@ public sealed class TedwrenDbContext : DbContext
     }
 
     public DbSet<CompanyRecord> Companies => Set<CompanyRecord>();
+    public DbSet<CompanyDocumentRecord> CompanyDocuments => Set<CompanyDocumentRecord>();
     public DbSet<PersonRecord> Persons => Set<PersonRecord>();
     public DbSet<EngagementRecord> Engagements => Set<EngagementRecord>();
     public DbSet<QualificationTypeRecord> QualificationTypes => Set<QualificationTypeRecord>();
@@ -42,6 +43,15 @@ public sealed class TedwrenDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder model)
     {
         model.Entity<CompanyRecord>(e => e.ToTable("Companies"));
+
+        model.Entity<CompanyDocumentRecord>(e =>
+        {
+            e.ToTable("CompanyDocuments");
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.Type).HasMaxLength(128);
+            e.Property(x => x.Reference).HasMaxLength(128);
+            e.HasIndex(x => x.CompanyId);                       // SUB-4
+        });
 
         model.Entity<PersonRecord>(e =>
         {

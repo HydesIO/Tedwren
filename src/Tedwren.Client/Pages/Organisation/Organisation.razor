@@ -9,6 +9,10 @@
 
 <PageHeader Title="Organisation Management" Subtitle="Companies, documents and accreditations">
     <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.RocketLaunch"
+                   OnClick="@(() => Nav.NavigateTo("/onboarding"))">
+            Add client
+        </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
                    OnClick="@(() => Nav.NavigateTo("/organisation/add"))">
             Add company

@@ -11,6 +11,30 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Organisation onboarding wizard (this change)
+- ✅ **Onboarding wizard (branches by org type: Subcontractor / Main Contractor).** New `OnboardingLayout`
+  (plain centered shell modelled on `RecipientLayout`) + `/onboarding` wizard (`Onboarding.razor` +
+  `OnboardingModel`) built from the existing `TedwrenStepper`/Forms suite/`DashboardCard`. Steps: org type →
+  company details → first administrator → sites → (Sub) operatives + insurances/accreditations (SUB-4 default
+  doc types) / (MC) seeded induction template (MC-3). `Finish()` sequences the service calls with the company
+  as the anchor and best-effort child steps (partial-failure summary; R18-safe copy).
+- ✅ **First-run + in-app triggers.** `MainLayout` redirects to `/onboarding` when the database has no
+  companies (fails open; mock mode is never empty). "Add client" button on the Organisation page reaches the
+  wizard for pre-launch testing.
+- ✅ **Dynamic tenant (replaces the static `TenantContext`).** New `ITenantState`/`TenantState`
+  (localStorage-backed, falls back to the seed company id); the wizard sets the newly-created company as the
+  active tenant (R15). All prior `TenantContext.CurrentCompanyId` readers migrated.
+- ✅ **Invite carries `CompanyId` (R15).** `InviteUserRequest` gains `CompanyId`; `UserService` attaches the
+  new user to it instead of the hard-coded owner company — so onboarding's first admin lands on the new org.
+- ✅ **Company documents persistence (SUB-4).** New `CompanyDocument` entity, `ICompanyDocumentRepository`
+  (in-memory + Dapper both dialects), `CompanyDocuments` table (`011_company_documents.sql` + EF
+  `AddCompanyDocuments` migration); `IOrganisationService.AddCompanyDocumentAsync` and documents surfaced on
+  the company detail with an expiry-derived state. (File bytes not yet stored — metadata only.)
+- ✅ **Induction template seeding (MC-3/SF-12).** `IInductionService.CreateDefaultTemplateAsync` clones the
+  shipped default into a company; `/api/inductions/templates` POST + client impls.
+- ✅ Tests: invite `CompanyId` honoured; company-document add/read + expiry state; induction-template seed;
+  API document + template endpoints; skippable Dapper `CompanyDocumentRepository` integration test.
+
 ### UX completeness pass — user management, UI defect closure & EF migrations tooling (this change)
 - ✅ **Console user management (SF-20, SF-23, Q2).** New full vertical: `User` entity + `UserStatus` enum
   (reusing the existing `AccessRole`); `IUserService` + DTOs; `UserService` (invite with duplicate-email

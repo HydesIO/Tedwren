@@ -45,6 +45,7 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<InMemoryOrganisationStore>();
         services.AddScoped<ICompanyRepository, InMemoryCompanyRepository>();
+        services.AddScoped<ICompanyDocumentRepository, InMemoryCompanyDocumentRepository>();
         services.AddScoped<IPersonRepository, InMemoryPersonRepository>();
         services.AddScoped<IEngagementRepository, InMemoryEngagementRepository>();
         return services;

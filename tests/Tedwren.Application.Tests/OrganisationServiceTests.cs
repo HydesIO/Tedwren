@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Common;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence.InMemory;
@@ -18,6 +19,7 @@ public sealed class OrganisationServiceTests
         var qualificationStore = new InMemoryQualificationStore(seed: false);
         var service = new OrganisationService(
             new InMemoryCompanyRepository(store),
+            new InMemoryCompanyDocumentRepository(store),
             new InMemoryPersonRepository(store),
             new InMemoryEngagementRepository(store),
             new InMemoryQualificationCardRepository(qualificationStore));
@@ -94,6 +96,32 @@ public sealed class OrganisationServiceTests
         var result = await service.ArchiveEngagementAsync(other, added.EngagementId!.Value);
 
         Assert.False(result);
+    }
+
+    [Fact] // SUB-4 — a company document is recorded and surfaces on the detail with a derived state
+    public async Task AddCompanyDocument_IsListedWithExpiryState()
+    {
+        var (service, _) = CreateSut();
+        var companyId = await AddCompanyAsync(service, "Alpha Ltd");
+        var expiredOn = DateOnly.FromDateTime(DateTime.UtcNow).AddDays(-1);
+
+        await service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(
+            companyId, "Employer's Liability Insurance", "Insurance", expiredOn, "EL-123"));
+
+        var detail = await service.GetCompanyAsync("alpha-ltd");
+        var document = Assert.Single(detail!.Documents);
+        Assert.Equal("Employer's Liability Insurance", document.Name);
+        Assert.Equal(expiredOn, document.ExpiresOn);
+        Assert.Equal(ComplianceState.NonCompliant, document.State);   // expired
+    }
+
+    [Fact] // a company id is required to record a document
+    public async Task AddCompanyDocument_EmptyCompany_Throws()
+    {
+        var (service, _) = CreateSut();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(Guid.Empty, "Doc", "Insurance", null, null)));
     }
 
     [Fact]

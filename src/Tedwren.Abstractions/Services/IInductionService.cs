@@ -14,6 +14,9 @@ public interface IInductionService
     /// <summary>Lists a company's induction templates (MC-3).</summary>
     Task<IReadOnlyList<InductionTemplateDto>> GetTemplatesAsync(Guid companyId, CancellationToken cancellationToken = default);
 
+    /// <summary>Creates an induction template for a company, seeded from the shipped default (MC-3/SF-12), and returns its id.</summary>
+    Task<Guid> CreateDefaultTemplateAsync(CreateInductionTemplateRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
     Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default);
 

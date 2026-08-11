@@ -4,7 +4,9 @@
 @using Tedwren.Client.Services
 @inject IShellSampleDataService Shell
 @inject IEntitlementService Entitlements
+@inject IOrganisationService Org
 @inject IListSampleDataService ListData
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject IJSRuntime JS
 
@@ -82,6 +84,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
+
+        // First run against an empty database has no companies: send the operator to onboarding to
+        // provision the first organisation. Mock mode always has seed companies, so this only fires
+        // under DataSource=Database with an empty Companies table. Fails open on lookup error.
+        if (await ShouldOnboardAsync())
+        {
+            Nav.NavigateTo("/onboarding");
+            return;
+        }
+
         _navItems = await GatedNavItemsAsync(Shell.GetNavItems());
         _selectedPlatform = Shell.GetSelectedPlatform();
         _user = Shell.GetCurrentUser();
@@ -203,7 +216,7 @@
     {
         try
         {
-            var entitlements = await Entitlements.GetForCompanyAsync(TenantContext.CurrentCompanyId);
+            var entitlements = await Entitlements.GetForCompanyAsync(Tenant.CurrentCompanyId);
             var enabled = entitlements.Where(e => e.Enabled)
                 .Select(e => e.Key)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -215,6 +228,27 @@
         catch
         {
             return all;
+        }
+    }
+
+    // True when there are no companies yet, so the first-run onboarding wizard should take over. Guarded so
+    // it never fires while already on the wizard, and fails closed (no redirect) on a lookup error.
+    private async Task<bool> ShouldOnboardAsync()
+    {
+        var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri).TrimStart('/').Split('?', '#')[0];
+        if (relative.StartsWith("/onboarding", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        try
+        {
+            var companies = await Org.GetCompaniesAsync();
+            return companies.Count == 0;
+        }
+        catch
+        {
+            return false;
         }
     }
 

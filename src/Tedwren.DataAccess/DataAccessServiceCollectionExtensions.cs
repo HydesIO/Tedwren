@@ -24,6 +24,7 @@ public static class DataAccessServiceCollectionExtensions
             provider == DatabaseProvider.PostgreSql ? new PostgresDialect() : new SqlServerDialect());
         services.AddSingleton<IDbConnectionFactory, DbConnectionFactory>();
         services.AddScoped<ICompanyRepository, CompanyRepository>();
+        services.AddScoped<ICompanyDocumentRepository, CompanyDocumentRepository>();
         services.AddScoped<IPersonRepository, PersonRepository>();
         services.AddScoped<IEngagementRepository, EngagementRepository>();
         services.AddScoped<IQualificationTypeRepository, QualificationTypeRepository>();

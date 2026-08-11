@@ -21,6 +21,10 @@ builder.Services.AddSingleton<IListSampleDataService, ListSampleDataService>();
 builder.Services.AddSingleton<IFormSampleDataService, FormSampleDataService>();
 builder.Services.AddSingleton<IDetailSampleDataService, DetailSampleDataService>();
 
+// The active customer (company). Scoped so it initialises once per app load; onboarding sets it after
+// creating the first company so the whole app scopes to the new organisation (R15).
+builder.Services.AddScoped<ITenantState, TenantState>();
+
 // The mock/API data-source switch (wwwroot/appsettings.json "DataSource:Mode"). The UI injects the
 // same IOrganisationService in both modes — switching requires no component or page changes.
 Enum.TryParse<ClientDataSourceMode>(builder.Configuration["DataSource:Mode"], ignoreCase: true, out var dataSourceMode);

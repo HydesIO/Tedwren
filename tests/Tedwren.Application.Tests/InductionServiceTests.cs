@@ -28,6 +28,34 @@ public sealed class InductionServiceTests
     private static Task<InductionSessionDto> StartAsync(InductionService service) =>
         service.StartAsync(new StartInductionRequest(Company, Template, Guid.NewGuid(), "M. Adeyemi"));
 
+    [Fact] // MC-3/SF-12 — a new company gets a working template seeded from the default
+    public async Task CreateDefaultTemplate_SeedsStepsAndQuiz_ForTheCompany()
+    {
+        var service = CreateService();
+        var companyId = Guid.Parse("77777777-7777-4777-8777-000000000001");
+
+        var templateId = await service.CreateDefaultTemplateAsync(
+            new CreateInductionTemplateRequest(companyId, "Northgate Induction", 180, 2));
+
+        var templates = await service.GetTemplatesAsync(companyId);
+        var template = Assert.Single(templates);
+        Assert.Equal(templateId, template.Id);
+        Assert.Equal("Northgate Induction", template.Name);
+        Assert.Equal(180, template.ValidityDays);
+        Assert.Equal(2, template.PassMark);
+        Assert.NotEmpty(template.Steps);          // seeded from the default
+        Assert.True(template.QuestionCount > 0);
+    }
+
+    [Fact] // a company id is required to seed a template
+    public async Task CreateDefaultTemplate_EmptyCompany_Throws()
+    {
+        var service = CreateService();
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.CreateDefaultTemplateAsync(new CreateInductionTemplateRequest(Guid.Empty, "X", 365, 3)));
+    }
+
     [Fact] // R5 — the device session never carries the correct answers
     public async Task DeviceSession_NeverExposesQuizAnswers()
     {

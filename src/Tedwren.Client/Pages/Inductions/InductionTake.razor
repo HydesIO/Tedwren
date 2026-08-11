@@ -4,6 +4,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject IInductionService Inductions
+@inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
 <PageTitle>Induction · Tedwren</PageTitle>
@@ -152,7 +153,8 @@
     protected override async Task OnInitializedAsync()
     {
         _busy = true;
-        _templates = await Inductions.GetTemplatesAsync(TenantContext.CurrentCompanyId);
+        await Tenant.InitializeAsync();
+        _templates = await Inductions.GetTemplatesAsync(Tenant.CurrentCompanyId);
         _templateNames = _templates.Select(t => t.Name).ToList();
         _templateName = _templateNames.FirstOrDefault();
         _busy = false;
@@ -170,7 +172,7 @@
 
         _busy = true;
         _session = await Inductions.StartAsync(new StartInductionRequest(
-            TenantContext.CurrentCompanyId, template.Id, Guid.NewGuid(), _name!.Trim()));
+            Tenant.CurrentCompanyId, template.Id, Guid.NewGuid(), _name!.Trim()));
         _busy = false;
         _phase = Phase.Steps;
     }

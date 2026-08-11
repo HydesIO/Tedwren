@@ -21,6 +21,9 @@ public sealed class InMemoryOrganisationStore
     /// <summary>Engagements by id.</summary>
     public ConcurrentDictionary<Guid, Engagement> Engagements { get; } = new();
 
+    /// <summary>Company documents by id (SUB-4).</summary>
+    public ConcurrentDictionary<Guid, CompanyDocument> CompanyDocuments { get; } = new();
+
     /// <summary>Creates the store and loads the demo seed.</summary>
     public InMemoryOrganisationStore() : this(seed: true)
     {

@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.UiComponents.Models
 @inject IUserService Users
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -87,7 +88,7 @@
         try
         {
             // Persists via the API when DataSource=Api; adds to the live list under mock data.
-            await Users.InviteUserAsync(new InviteUserRequest(_name!, _email!, _role!));
+            await Users.InviteUserAsync(new InviteUserRequest(Tenant.CurrentCompanyId, _name!, _email!, _role!));
             Snackbar.Add($"Invitation sent to {_email}.", Severity.Success);
             Nav.NavigateTo("/users");
         }

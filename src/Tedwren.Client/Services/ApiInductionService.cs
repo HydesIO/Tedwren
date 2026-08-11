@@ -21,6 +21,15 @@ public sealed class ApiInductionService : IInductionService
         await _http.GetFromJsonAsync<IReadOnlyList<InductionTemplateDto>>($"api/inductions/templates/{companyId}", cancellationToken)
         ?? Array.Empty<InductionTemplateDto>();
 
+    /// <summary>Creates a company induction template seeded from the default (MC-3/SF-12).</summary>
+    public async Task<Guid> CreateDefaultTemplateAsync(CreateInductionTemplateRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/inductions/templates", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var created = await response.Content.ReadFromJsonAsync<CreatedTemplateResponse>(cancellationToken);
+        return created?.Id ?? Guid.Empty;
+    }
+
     /// <summary>Starts an induction (MC-1/MC-7).</summary>
     public async Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default) =>
         (await (await _http.PostAsJsonAsync("api/inductions/sessions", request, cancellationToken))
@@ -60,4 +69,7 @@ public sealed class ApiInductionService : IInductionService
         using var response = await _http.PostAsJsonAsync(url, body, cancellationToken);
         return response.IsSuccessStatusCode ? await response.Content.ReadFromJsonAsync<InductionSessionDto>(cancellationToken) : null;
     }
+
+    /// <summary>Shape of the create-template response body.</summary>
+    private sealed record CreatedTemplateResponse(Guid Id);
 }

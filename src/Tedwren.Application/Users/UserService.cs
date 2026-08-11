@@ -1,7 +1,6 @@
 using Tedwren.Abstractions.Contracts.Users;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
-using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 
@@ -58,6 +57,11 @@ public sealed class UserService : IUserService
             throw new ArgumentException("A valid email address is required.", nameof(request));
         }
 
+        if (request.CompanyId == Guid.Empty)
+        {
+            throw new ArgumentException("A company id is required to invite a user.", nameof(request));
+        }
+
         var existing = await _users.GetByEmailAsync(email, cancellationToken);
         if (existing is not null)
         {
@@ -66,7 +70,7 @@ public sealed class UserService : IUserService
 
         var user = new User
         {
-            CompanyId = InMemoryUserStore.OwnerCompanyId,
+            CompanyId = request.CompanyId,
             Name = name,
             Email = email,
             Role = ParseRole(request.Role),

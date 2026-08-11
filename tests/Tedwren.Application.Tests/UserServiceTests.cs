@@ -13,6 +13,8 @@ namespace Tedwren.Application.Tests;
 /// </summary>
 public sealed class UserServiceTests
 {
+    private static readonly Guid CompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
+
     private static UserService CreateSut(out InMemoryUserStore store)
     {
         store = new InMemoryUserStore(seed: false);
@@ -24,7 +26,7 @@ public sealed class UserServiceTests
     {
         var service = CreateSut(out _);
 
-        var id = await service.InviteUserAsync(new InviteUserRequest("Jo Bloggs", "jo@example.com", "SiteManager"));
+        var id = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "SiteManager"));
 
         var user = await service.GetUserAsync(id);
         Assert.NotNull(user);
@@ -33,14 +35,34 @@ public sealed class UserServiceTests
         Assert.Single(await service.GetUsersAsync());
     }
 
+    [Fact] // R15 — the invited user is attached to the requested company, not a hard-coded one
+    public async Task InviteUser_AttachesToRequestedCompany()
+    {
+        var service = CreateSut(out var store);
+        var companyId = Guid.Parse("33333333-3333-4333-8333-000000000009");
+
+        var id = await service.InviteUserAsync(new InviteUserRequest(companyId, "Jo Bloggs", "jo@example.com", "Administrator"));
+
+        Assert.Equal(companyId, store.Users[id].CompanyId);
+    }
+
+    [Fact] // a company id is required to place the new user
+    public async Task InviteUser_EmptyCompanyId_Throws()
+    {
+        var service = CreateSut(out _);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.InviteUserAsync(new InviteUserRequest(Guid.Empty, "Jo Bloggs", "jo@example.com", "Administrator")));
+    }
+
     [Fact] // one account per email
     public async Task InviteUser_DuplicateEmail_Throws()
     {
         var service = CreateSut(out _);
-        await service.InviteUserAsync(new InviteUserRequest("Jo Bloggs", "jo@example.com", "Administrator"));
+        await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "Administrator"));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            service.InviteUserAsync(new InviteUserRequest("Jo Two", "JO@EXAMPLE.COM", "Auditor")));
+            service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Two", "JO@EXAMPLE.COM", "Auditor")));
     }
 
     [Theory]
@@ -51,7 +73,7 @@ public sealed class UserServiceTests
         var service = CreateSut(out _);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            service.InviteUserAsync(new InviteUserRequest(name, email, "Administrator")));
+            service.InviteUserAsync(new InviteUserRequest(CompanyId, name, email, "Administrator")));
     }
 
     [Fact] // SF-23
@@ -70,7 +92,7 @@ public sealed class UserServiceTests
     public async Task Suspend_ThenReactivate_KeepsAccount()
     {
         var service = CreateSut(out _);
-        var id = await service.InviteUserAsync(new InviteUserRequest("Jo Bloggs", "jo@example.com", "ComplianceManager"));
+        var id = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "ComplianceManager"));
 
         var suspended = await service.SuspendUserAsync(id);
         Assert.Equal("Suspended", suspended!.Status);
@@ -84,7 +106,7 @@ public sealed class UserServiceTests
     public async Task UpdateUser_ChangesNameAndRole()
     {
         var service = CreateSut(out _);
-        var id = await service.InviteUserAsync(new InviteUserRequest("Jo Bloggs", "jo@example.com", "Auditor"));
+        var id = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "Auditor"));
 
         var updated = await service.UpdateUserAsync(id, new UpdateUserRequest("Josephine Bloggs", "Administrator"));
 
