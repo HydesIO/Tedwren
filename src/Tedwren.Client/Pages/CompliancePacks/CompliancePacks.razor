@@ -17,7 +17,7 @@
 
         <MudText Typo="Typo.subtitle2" Class="pack-builder__label">Operatives</MudText>
         <div class="pack-builder__operatives">
-            @foreach (var op in ClientMockCompliancePackService.DemoOperatives)
+            @foreach (var op in DemoOperatives)
             {
                 <MudCheckBox T="bool"
                              Value="_selected.Contains(op.Id)"
@@ -66,7 +66,15 @@
 </DashboardCard>
 
 @code {
-    private static readonly Guid CompanyId = ClientMockCompliancePackService.DemoCompanyId;
+    // Demo seed for this not-yet-migrated sample page (formerly on the removed client mock service).
+    private static readonly Guid CompanyId = Guid.Parse("55555555-5555-4555-8555-000000000001");
+
+    private static readonly IReadOnlyList<(Guid Id, string Name)> DemoOperatives = new[]
+    {
+        (Guid.Parse("55555555-5555-4555-8555-000000000010"), "M. Adeyemi"),
+        (Guid.Parse("55555555-5555-4555-8555-000000000011"), "J. Fletcher"),
+        (Guid.Parse("55555555-5555-4555-8555-000000000012"), "R. Okafor"),
+    };
 
     private string _title = "Weekly compliance pack";
     private readonly HashSet<Guid> _selected = new();
@@ -84,7 +92,7 @@
     {
         BuildColumns();
         _canSend = NominatedRoles.Contains(Shell.GetCurrentUser().Role, StringComparer.OrdinalIgnoreCase);
-        _selected.UnionWith(ClientMockCompliancePackService.DemoOperatives.Select(o => o.Id));
+        _selected.UnionWith(DemoOperatives.Select(o => o.Id));
         await LoadAsync();
     }
 

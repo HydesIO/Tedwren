@@ -11,8 +11,8 @@ public sealed class BackendOptions
     /// <summary>Name of the configuration section this type binds to.</summary>
     public const string SectionName = "DataSource";
 
-    /// <summary>Whether the backend serves mock or database-backed data. Defaults to mock.</summary>
-    public DataSourceMode Mode { get; set; } = DataSourceMode.Mock;
+    /// <summary>Which backend serves data. Defaults to the database; <see cref="DataSourceMode.InMemory"/> is test-only.</summary>
+    public DataSourceMode Mode { get; set; } = DataSourceMode.Database;
 
     /// <summary>The relational engine used when <see cref="Mode"/> is <see cref="DataSourceMode.Database"/>.</summary>
     public DatabaseProvider Provider { get; set; } = DatabaseProvider.SqlServer;

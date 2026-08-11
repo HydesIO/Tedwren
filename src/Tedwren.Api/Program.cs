@@ -7,12 +7,11 @@ using Tedwren.DataAccess;
 
 // Composition root for the Tedwren Web API. This API is deliberately a separate deployable from
 // the Blazor WebAssembly client and is CORS-enabled, so the same contracts can later serve a
-// mobile application. The mock/database switch chooses which repositories back the (single)
-// organisation business service; the service itself is identical in both modes.
+// mobile application. It runs against the database; the in-memory repositories are a test-only double.
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Bind and read the mock/database switch from the "DataSource" configuration section (defaults to mock).
+// Bind the "DataSource" section (defaults to Database; InMemory is selected only by the API test host).
 var dataSourceSection = builder.Configuration.GetSection(BackendOptions.SectionName);
 builder.Services.Configure<BackendOptions>(dataSourceSection);
 var backend = dataSourceSection.Get<BackendOptions>() ?? new BackendOptions();
@@ -29,13 +28,9 @@ builder.Services.AddCompliancePackCore();
 builder.Services.AddInductionCore();
 builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
-if (backend.Mode == DataSourceMode.Database)
-{
-    var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
-    var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
-    builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
-}
-else
+// Database is the only supported runtime backend. The in-memory stores are a test-only double, selected
+// exclusively by the API test host (DataSource:Mode=InMemory) so the end-to-end tests run without SQL Server.
+if (backend.Mode == DataSourceMode.InMemory)
 {
     builder.Services.AddInMemoryOrganisationStore();
     builder.Services.AddInMemoryQualificationStore();
@@ -47,6 +42,12 @@ else
     builder.Services.AddInMemoryCompliancePackStore();
     builder.Services.AddInMemoryInductionStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
+}
+else
+{
+    var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
+    var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
+    builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
 }
 
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
@@ -77,8 +78,8 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseCors(clientCorsPolicy);
 
-// Apply database migrations at startup when running against a real database.
-if (backend.Mode == DataSourceMode.Database)
+// Apply database migrations at startup when running against a real database (skipped for the in-memory test host).
+if (backend.Mode != DataSourceMode.InMemory)
 {
     using var scope = app.Services.CreateScope();
     var migrationRunner = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Migrations.MigrationRunner>();
