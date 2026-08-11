@@ -11,7 +11,37 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Deferred items, Phase D1: authentication & authorization (this change)
+### Deferred items, Phase D3: induction template authoring (this change)
+Implements MC-15/MC-4 — a manager edits the induction video, questions, pass mark and attempts.
+- ✅ **Template gains** `AttemptLimit`, `Mandatory`, `MediaUrl`, `SiteId` (migration `017_induction_authoring.sql`,
+  both providers; EF fields; Dapper + in-memory `UpdateAsync`).
+- ✅ **Service** — `IInductionService.GetTemplateForEditAsync` (returns answers to the authorised admin only,
+  R5) + `UpdateTemplateAsync` (name/validity/pass mark/attempts/mandatory/media/steps/questions; rejects a
+  pass mark above the question count). New DTOs `InductionQuizAuthoringDto`, `InductionTemplateAuthoringDto`,
+  `UpdateInductionTemplateRequest`. Quiz scoring stays server-side (`SubmitQuizAsync`, R5).
+- ✅ **API** — `GET /api/inductions/templates/{id}/edit` + `PUT /api/inductions/templates/{id}` (authorised).
+- ✅ **Client** — `Inductions.razor` builder is now a real editor: create-or-load the company template, edit
+  details/media/validity/mandatory + a quiz question editor (prompt, options, correct answer), Publish persists.
+- ✅ Tests: `InductionAuthoringApiTests` (create→edit→readback; pass-mark validation). `dotnet test` green (API 52).
+
+### Deferred items, Phase D2: self-service operative onboarding link (previous change)
+Implements SF-4/SUB-2 — an operative completes their own details and uploads card photos from a link.
+- ✅ **Domain** — `OnboardingLink` (+`OnboardingLinkStatus`) and `StoredImage`; migration `016_onboarding.sql`
+  (`OnboardingLinks` + `StoredImages`, both providers) + EF records + Dapper repos + in-memory doubles.
+- ✅ **Service** — `IOnboardingService` (`CreateAsync`, `GetByTokenAsync`, `SubmitDetailsAsync`,
+  `CaptureCardAsync`) reusing `IOrganisationService.AddOperativeAsync` (SF-1/SF-2), `IQualificationService.CaptureCardAsync`
+  (cards land unconfirmed, SF-5/SF-6), and the compliance-pack `PackToken`/`PackPasscode` helpers (SUB-18
+  30-day + passcode). `CaptureCardRequest` gained an optional `ImageReference`; card photos are stored via
+  `IImageStore` and served only through the authorised `GET /api/images/{id}` (R9).
+- ✅ **API** — `/api/onboarding` (create authorised; `view`/`submit`/`cards` anonymous, token+passcode gated);
+  `/api/images/{id}` (authorised). `/api/qualifications/types` made anonymous (global reference library, SF-12,
+  needed by the recipient page).
+- ✅ **Client** — `ApiOnboardingService`; recipient page `/onboard?token=&passcode=` (RecipientLayout) with
+  details form + card capture (photo → base64); `AddOperative` "send link" branch now mints a real link and
+  shows it (no email backend yet).
+- ✅ Tests: `OnboardingApiTests` (create/403/submit→workforce/capture). `dotnet test` green (API 50).
+
+### Deferred items, Phase D1: authentication & authorization (previous change)
 Adds real console sign-in (the PRD leaves the mechanism to the implementer, §10.1 Q1).
 - ✅ **Credentials on `User`** — `PasswordHash`, `PasswordSetUtc`, `InviteToken`, `InviteTokenExpiresUtc`
   (migration `015_user_auth.sql`, SqlServer+Postgres; EF fields; Dapper+in-memory `GetByInviteTokenAsync`).

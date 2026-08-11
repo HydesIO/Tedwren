@@ -27,6 +27,24 @@ public static class InductionEndpoints
             })
             .WithName("CreateInductionTemplate");
 
+        // Authoring (MC-15) — authorised admin only (fallback policy applies): fetch with answers, then update.
+        group.MapGet("/templates/{templateId:guid}/edit", async (Guid templateId, IInductionService service, CancellationToken cancellationToken) =>
+                await service.GetTemplateForEditAsync(templateId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
+            .WithName("GetInductionTemplateForEdit");
+
+        group.MapPut("/templates/{templateId:guid}", async (Guid templateId, UpdateInductionTemplateRequest request, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.UpdateTemplateAsync(templateId, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("UpdateInductionTemplate");
+
         // The worker's take-flow runs from a link with no console account (MC-1/MC-2) — anonymous.
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.StartAsync(request, cancellationToken)))

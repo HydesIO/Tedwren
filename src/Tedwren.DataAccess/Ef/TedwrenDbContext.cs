@@ -33,6 +33,8 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<ReferenceValueRecord> ReferenceValues => Set<ReferenceValueRecord>();
     public DbSet<CompanySettingsRecord> CompanySettings => Set<CompanySettingsRecord>();
     public DbSet<PermitRecord> Permits => Set<PermitRecord>();
+    public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
+    public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
     public DbSet<TimesheetRecord> Timesheets => Set<TimesheetRecord>();
@@ -150,6 +152,22 @@ public sealed class TedwrenDbContext : DbContext
             e.HasKey(x => x.CompanyId);
         });
 
+        model.Entity<OnboardingLinkRecord>(e =>
+        {
+            e.ToTable("OnboardingLinks");
+            e.Property(x => x.Token).HasMaxLength(128);
+            e.Property(x => x.PasscodeHash).HasMaxLength(256);
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.Trade).HasMaxLength(128);
+            e.HasIndex(x => x.Token).IsUnique();
+        });
+
+        model.Entity<StoredImageRecord>(e =>
+        {
+            e.ToTable("StoredImages");
+            e.Property(x => x.ContentType).HasMaxLength(128);
+        });
+
         model.Entity<PermitRecord>(e =>
         {
             e.ToTable("Permits");
@@ -204,6 +222,7 @@ public sealed class TedwrenDbContext : DbContext
         model.Entity<InductionTemplateRecord>(e =>
         {
             e.ToTable("InductionTemplates");
+            e.Property(x => x.MediaUrl).HasMaxLength(1024);
             e.HasIndex(x => x.CompanyId);
         });
 

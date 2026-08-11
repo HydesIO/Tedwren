@@ -48,7 +48,8 @@ public sealed record CaptureCardRequest(
     string? HolderName,
     DateOnly? IssuedOn,
     DateOnly? ExpiresOn,
-    bool NeedsReview);
+    bool NeedsReview,
+    string? ImageReference = null);
 
 /// <summary>Request to confirm a card by a named person (SF-6).</summary>
 public sealed record ConfirmCardRequest(Guid CardId, string ConfirmedBy);

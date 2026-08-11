@@ -13,4 +13,7 @@ public interface IInductionTemplateRepository
 
     /// <summary>Persists a new template.</summary>
     Task AddAsync(InductionTemplate template, CancellationToken cancellationToken = default);
+
+    /// <summary>Persists changes to an existing template (content + configuration, MC-15).</summary>
+    Task UpdateAsync(InductionTemplate template, CancellationToken cancellationToken = default);
 }

@@ -48,5 +48,6 @@ builder.Services.AddScoped<IWorkforceService, ApiWorkforceService>();
 builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
 builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
 builder.Services.AddScoped<IPermitService, ApiPermitService>();
+builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
 
 await builder.Build().RunAsync();

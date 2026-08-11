@@ -10,6 +10,7 @@ using Tedwren.Application.Auth;
 using Tedwren.Application.Dashboard;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
+using Tedwren.Application.Onboarding;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Permits;
 using Tedwren.Application.Persistence;
@@ -238,6 +239,23 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddInMemoryReferenceDataStore(this IServiceCollection services)
     {
         services.AddScoped<IReferenceDataRepository, InMemoryReferenceDataRepository>();
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic self-service onboarding service (SF-4, SUB-2).</summary>
+    public static IServiceCollection AddOnboardingCore(this IServiceCollection services)
+    {
+        services.AddScoped<IOnboardingService, OnboardingService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory onboarding-link + image stores (singletons so they persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryOnboardingStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryOnboardingLinkRepository>();
+        services.AddScoped<IOnboardingLinkRepository>(sp => sp.GetRequiredService<InMemoryOnboardingLinkRepository>());
+        services.AddSingleton<InMemoryImageStore>();
+        services.AddScoped<IImageStore>(sp => sp.GetRequiredService<InMemoryImageStore>());
         return services;
     }
 

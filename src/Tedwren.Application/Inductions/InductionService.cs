@@ -61,6 +61,62 @@ public sealed class InductionService : IInductionService
         return template.Id;
     }
 
+    /// <summary>Returns a template for authoring (includes answers and config, MC-15) — authorised admin only. Null if not found.</summary>
+    public async Task<InductionTemplateAuthoringDto?> GetTemplateForEditAsync(Guid templateId, CancellationToken cancellationToken = default)
+    {
+        var template = await _templates.GetByIdAsync(templateId, cancellationToken);
+        return template is null ? null : ToAuthoringDto(template);
+    }
+
+    /// <summary>Updates a template's content and configuration (MC-4/MC-5/MC-15). Null when the template is not found.</summary>
+    public async Task<InductionTemplateAuthoringDto?> UpdateTemplateAsync(Guid templateId, UpdateInductionTemplateRequest request, CancellationToken cancellationToken = default)
+    {
+        var existing = await _templates.GetByIdAsync(templateId, cancellationToken);
+        if (existing is null)
+        {
+            return null;
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ArgumentException("A template name is required.", nameof(request));
+        }
+
+        if (request.PassMark < 0 || request.PassMark > request.Questions.Count)
+        {
+            throw new ArgumentException("The pass mark cannot exceed the number of questions.", nameof(request));
+        }
+
+        var updated = new InductionTemplate
+        {
+            Id = existing.Id,
+            CompanyId = existing.CompanyId,
+            Name = request.Name.Trim(),
+            ValidityDays = request.ValidityDays > 0 ? request.ValidityDays : existing.ValidityDays,
+            PassMark = request.PassMark,
+            AttemptLimit = request.AttemptLimit > 0 ? request.AttemptLimit : existing.AttemptLimit,
+            Mandatory = request.Mandatory,
+            MediaUrl = string.IsNullOrWhiteSpace(request.MediaUrl) ? null : request.MediaUrl.Trim(),
+            SiteId = request.SiteId,
+            Steps = request.Steps
+                .Select(s => new InductionStep(s.Id, Enum.TryParse<InductionStepKind>(s.Kind, out var k) ? k : InductionStepKind.Declaration, s.Label, s.Required))
+                .ToList(),
+            Questions = request.Questions
+                .Select(q => new InductionQuizQuestion(
+                    string.IsNullOrWhiteSpace(q.Id) ? Guid.NewGuid().ToString("N") : q.Id, q.Prompt, q.Options, q.CorrectOptionIndex))
+                .ToList(),
+        };
+
+        await _templates.UpdateAsync(updated, cancellationToken);
+        return ToAuthoringDto(updated);
+    }
+
+    /// <summary>Maps a template to the authoring DTO — includes answers/config for the authorised editor (MC-15).</summary>
+    private static InductionTemplateAuthoringDto ToAuthoringDto(InductionTemplate t) => new(
+        t.Id, t.Name, t.ValidityDays, t.PassMark, t.AttemptLimit, t.Mandatory, t.MediaUrl, t.SiteId,
+        t.Steps.Select(ToStepDto).ToList(),
+        t.Questions.Select(q => new InductionQuizAuthoringDto(q.Id, q.Prompt, q.Options, q.CorrectOptionIndex)).ToList());
+
     /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
     public async Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default)
     {

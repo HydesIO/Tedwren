@@ -213,6 +213,32 @@ public sealed class CompanySettingsRecord
     public DateTimeOffset UpdatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>OnboardingLinks</c> table (self-service onboarding, SF-4/SUB-2).</summary>
+public sealed class OnboardingLinkRecord
+{
+    public Guid Id { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public string? PasscodeHash { get; set; }
+    public Guid CompanyId { get; set; }
+    public string? Name { get; set; }
+    public string? Trade { get; set; }
+    public DateTimeOffset ExpiresUtc { get; set; }
+    public int Status { get; set; }
+    public Guid? PersonId { get; set; }
+    public Guid? EngagementId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>StoredImages</c> table (private card photos, R9).</summary>
+public sealed class StoredImageRecord
+{
+    public Guid Id { get; set; }
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Bytes { get; set; } = Array.Empty<byte>();
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>Permits</c> table (permits to work).</summary>
 public sealed class PermitRecord
 {
@@ -325,6 +351,10 @@ public sealed class InductionTemplateRecord
     public int PassMark { get; set; }
     public string StepsJson { get; set; } = string.Empty;
     public string QuestionsJson { get; set; } = string.Empty;
+    public int AttemptLimit { get; set; }
+    public bool Mandatory { get; set; }
+    public string? MediaUrl { get; set; }
+    public Guid? SiteId { get; set; }
 }
 
 /// <summary>Schema row for the <c>InductionSessions</c> table (MC-1–MC-7, MC-20).</summary>
