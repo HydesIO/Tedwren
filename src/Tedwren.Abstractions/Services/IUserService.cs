@@ -20,7 +20,7 @@ public interface IUserService
     Task<IReadOnlyList<RoleOption>> GetRolesAsync(CancellationToken cancellationToken = default);
 
     /// <summary>Invites a new user and returns the new account id (SF-20). The account starts as invited.</summary>
-    Task<Guid> InviteUserAsync(InviteUserRequest request, CancellationToken cancellationToken = default);
+    Task<InviteUserResult> InviteUserAsync(InviteUserRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>Updates a user's name and role. Null when the user is not found.</summary>
     Task<UserDto?> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default);

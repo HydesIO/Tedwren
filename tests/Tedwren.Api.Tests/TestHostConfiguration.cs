@@ -18,5 +18,8 @@ internal static class TestHostConfiguration
     {
         Environment.SetEnvironmentVariable("DataSource__Mode", "InMemory");
         Environment.SetEnvironmentVariable("Jobs__SchedulerEnabled", "false");
+        // Authenticate every request as an Administrator so existing endpoint tests run unchanged. Auth-specific
+        // tests turn this off per-client (UseSetting("Auth:TestBypass","false")) to exercise the real JWT path.
+        Environment.SetEnvironmentVariable("Auth__TestBypass", "true");
     }
 }

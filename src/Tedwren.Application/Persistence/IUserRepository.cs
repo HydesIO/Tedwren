@@ -14,6 +14,9 @@ public interface IUserRepository
     /// <summary>Returns a user by email (case-insensitive), or null. Used to prevent duplicate invitations.</summary>
     Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the user holding this (unexpired) invite token, or null (invite acceptance).</summary>
+    Task<User?> GetByInviteTokenAsync(string inviteToken, CancellationToken cancellationToken = default);
+
     /// <summary>Persists a new user.</summary>
     Task AddAsync(User user, CancellationToken cancellationToken = default);
 

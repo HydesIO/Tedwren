@@ -27,21 +27,22 @@ public static class InductionEndpoints
             })
             .WithName("CreateInductionTemplate");
 
+        // The worker's take-flow runs from a link with no console account (MC-1/MC-2) — anonymous.
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.StartAsync(request, cancellationToken)))
-            .WithName("StartInduction");
+            .WithName("StartInduction").AllowAnonymous();
 
         group.MapGet("/sessions/{sessionId:guid}", async (Guid sessionId, IInductionService service, CancellationToken cancellationToken) =>
                 await service.GetSessionAsync(sessionId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("GetInductionSession");
+            .WithName("GetInductionSession").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/steps/{stepId}/complete", async (Guid sessionId, string stepId, IInductionService service, CancellationToken cancellationToken) =>
                 await service.CompleteStepAsync(sessionId, stepId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("CompleteInductionStep");
+            .WithName("CompleteInductionStep").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/quiz", async (Guid sessionId, SubmitQuizRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 await service.SubmitQuizAsync(sessionId, request, cancellationToken) is { } result ? Results.Ok(result) : Results.NotFound())
-            .WithName("SubmitInductionQuiz");
+            .WithName("SubmitInductionQuiz").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/finalize", async (Guid sessionId, FinalizeInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
             {
@@ -55,7 +56,7 @@ public static class InductionEndpoints
                     return Results.Conflict(new { reason = ex.Message });
                 }
             })
-            .WithName("FinalizeInduction");
+            .WithName("FinalizeInduction").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/reset", async (Guid sessionId, ResetInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 await service.ResetAsync(sessionId, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())

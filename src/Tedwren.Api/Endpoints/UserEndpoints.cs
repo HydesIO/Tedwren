@@ -35,8 +35,8 @@ public static class UserEndpoints
             {
                 try
                 {
-                    var id = await service.InviteUserAsync(request, cancellationToken);
-                    return Results.Created($"/api/users/{id}", new { id });
+                    var result = await service.InviteUserAsync(request, cancellationToken);
+                    return Results.Created($"/api/users/{result.UserId}", result);
                 }
                 catch (ArgumentException ex)
                 {

@@ -2,6 +2,7 @@
 @implements IDisposable
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
+@inject Tedwren.Client.Services.AuthState Auth
 @inject ICurrentUserService CurrentUser
 @inject IExpiryQueryService Expiry
 @inject IEntitlementService Entitlements
@@ -87,6 +88,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Require sign-in for the console (D1). Unauthenticated users go to the login page.
+        await Auth.InitializeAsync();
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
         await Tenant.InitializeAsync();
 
         // First run against an empty database has no companies: send the operator to onboarding to
@@ -143,7 +152,17 @@
 
     private void OpenPalette() => _paletteOpen = true;
 
-    private void OnCommandSelect(CommandItem item) => Nav.NavigateTo(item.Href);
+    private async Task OnCommandSelect(CommandItem item)
+    {
+        if (item.Href == "action:logout")
+        {
+            await Auth.LogoutAsync();
+            Nav.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        Nav.NavigateTo(item.Href);
+    }
 
     private async Task ToggleTheme()
     {
@@ -160,6 +179,8 @@
         {
             items.Add(new CommandItem(nav.Label, "Pages", nav.Icon, nav.Href, "Go to page"));
         }
+
+        items.Add(new CommandItem("Sign out", "Account", MudBlazor.Icons.Material.Outlined.Logout, "action:logout", "End your session"));
 
         // Search index built from real API data (companies, operatives, sites).
         foreach (var c in await Org.GetCompaniesAsync())

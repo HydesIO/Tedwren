@@ -1,0 +1,80 @@
+@page "/accept-invite"
+@layout RecipientLayout
+@using Tedwren.Client.Services
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Accept invitation · Tedwren</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-8" MaxWidth="420px" Elevation="0" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mb-2">Set your password</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4">Choose a password to activate your Tedwren console account.</MudText>
+
+    @if (_error is not null)
+    {
+        <div class="mb-4"><BannerAlert Severity="StatusKind.Danger" Title="Could not activate" Message="@_error" /></div>
+    }
+
+    <TedwrenTextField Label="New password" @bind-Value="_password" InputType="InputType.Password"
+                      Placeholder="At least 8 characters" />
+    <TedwrenTextField Label="Confirm password" @bind-Value="_confirm" InputType="InputType.Password"
+                      Placeholder="Re-enter your password" />
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="_busy" Class="mt-4"
+               StartIcon="@Icons.Material.Outlined.Check" OnClick="Submit">Activate account</MudButton>
+</MudPaper>
+
+@code {
+    private string? _password;
+    private string? _confirm;
+    private string? _error;
+    private bool _busy;
+    private string _token = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        var query = Nav.ToAbsoluteUri(Nav.Uri).Query.TrimStart('?');
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length == 2 && Uri.UnescapeDataString(parts[0]) == "token")
+            {
+                _token = Uri.UnescapeDataString(parts[1]);
+            }
+        }
+    }
+
+    private async Task Submit()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_password) || _password!.Length < 8)
+        {
+            _error = "Choose a password of at least 8 characters.";
+            return;
+        }
+
+        if (_password != _confirm)
+        {
+            _error = "The passwords do not match.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_token))
+        {
+            _error = "This invitation link is missing its token.";
+            return;
+        }
+
+        _busy = true;
+        var ok = await Auth.AcceptInviteAsync(_token, _password!);
+        _busy = false;
+        if (ok)
+        {
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        else
+        {
+            _error = "This invitation link is invalid or has expired.";
+        }
+    }
+}

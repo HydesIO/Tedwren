@@ -6,10 +6,10 @@ using Tedwren.Application.Jobs;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Audit;
+using Tedwren.Application.Auth;
 using Tedwren.Application.Dashboard;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
-using Tedwren.Application.Identity;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Permits;
 using Tedwren.Application.Persistence;
@@ -198,12 +198,12 @@ public static class ApplicationServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Registers the current-operator identity service (a configured/dev identity until authentication lands).
-    /// The <see cref="CurrentUserOptions"/> singleton is provided by the composition root (bound from config).
+    /// Registers the console authentication service (login + invite acceptance). The token issuer
+    /// (<see cref="ITokenIssuer"/>) is provided by the API composition root (JWT).
     /// </summary>
-    public static IServiceCollection AddIdentityCore(this IServiceCollection services)
+    public static IServiceCollection AddAuthCore(this IServiceCollection services)
     {
-        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IAuthService, AuthService>();
         return services;
     }
 

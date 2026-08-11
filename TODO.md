@@ -11,7 +11,33 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Sample-data → API migration, Phase M6: shell chrome + project removal (this change)
+### Deferred items, Phase D1: authentication & authorization (this change)
+Adds real console sign-in (the PRD leaves the mechanism to the implementer, §10.1 Q1).
+- ✅ **Credentials on `User`** — `PasswordHash`, `PasswordSetUtc`, `InviteToken`, `InviteTokenExpiresUtc`
+  (migration `015_user_auth.sql`, SqlServer+Postgres; EF fields; Dapper+in-memory `GetByInviteTokenAsync`).
+  PBKDF2 `PasswordHasher` (no new dep).
+- ✅ **Auth service + JWT** — `IAuthService` (`LoginAsync`, `AcceptInviteAsync`) + `AuthService`;
+  `ITokenIssuer`→`JwtTokenIssuer` (claims: sub/name/role/company); `JwtOptions` (`Jwt` section);
+  `/api/auth/login` + `/api/auth/accept-invite` (anonymous). Invite now mints a one-time accept token
+  (`InviteUserAsync`→`InviteUserResult`); `InviteUser.razor` surfaces the accept link (no email backend yet).
+- ✅ **API authz** — JWT bearer + **secure-by-default** fallback policy (every endpoint needs a user unless
+  `AllowAnonymous`). Recipient/kiosk flows kept anonymous (auth, `/health`, `/api/site-entry`, packs
+  view/download, induction take-flow sessions). SF-23 **Auditor read-only enforced server-side** via a
+  write-verb middleware. Claims-based `ICurrentUserService` (`ClaimsCurrentUserService`) — `/api/me` now
+  returns the real user with a **real tenant CompanyId** (R15); the config stub is deleted.
+- ✅ **Bootstrap admin** — `AdminUserSeeder` (idempotent, both modes) seeds an Administrator from the `Seed`
+  config section so a fresh install can sign in.
+- ✅ **Client** — `TokenStore` + `AuthTokenHandler` (attaches bearer, 401→`/login`), `AuthState`
+  (login/accept/logout, localStorage token via `tedwren.auth.*`), `/login` + `/accept-invite` pages
+  (RecipientLayout), MainLayout gates the console + sign-out; Auditor UI write-gating via `AuthState.CanWrite`.
+- ✅ **Test hook** — `Auth:TestBypass` authenticates every request as Administrator so the existing 44 API
+  tests run unchanged; auth-specific tests (`AuthApiTests`) flip it off to exercise real JWT. `dotnet test`
+  green (API 48, Application 99, Client 6, Domain 67).
+- ⚠️ **Prod follow-ups:** set a real `Jwt:SigningKey` and `Seed:AdminPassword` from a secret; wire email
+  delivery of the invite link. **Committed DB secret in appsettings.json still needs rotating** (user
+  deferred).
+
+### Sample-data → API migration, Phase M6: shell chrome + project removal (previous change)
 Completes the migration — no page renders sample data any more.
 - ✅ **Inductions builder** — the "applies to site" dropdown now loads from `ISiteService` (off
   `IFormSampleDataService`). The video/quiz/publish steps remain explicit UI placeholders (no template-

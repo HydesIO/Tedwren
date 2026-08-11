@@ -26,7 +26,7 @@ public sealed class UserServiceTests
     {
         var service = CreateSut(out _);
 
-        var id = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "SiteManager"));
+        var id = (await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "SiteManager"))).UserId;
 
         var user = await service.GetUserAsync(id);
         Assert.NotNull(user);
@@ -41,7 +41,7 @@ public sealed class UserServiceTests
         var service = CreateSut(out var store);
         var companyId = Guid.Parse("33333333-3333-4333-8333-000000000009");
 
-        var id = await service.InviteUserAsync(new InviteUserRequest(companyId, "Jo Bloggs", "jo@example.com", "Administrator"));
+        var id = (await service.InviteUserAsync(new InviteUserRequest(companyId, "Jo Bloggs", "jo@example.com", "Administrator"))).UserId;
 
         Assert.Equal(companyId, store.Users[id].CompanyId);
     }
@@ -92,7 +92,7 @@ public sealed class UserServiceTests
     public async Task Suspend_ThenReactivate_KeepsAccount()
     {
         var service = CreateSut(out _);
-        var id = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "ComplianceManager"));
+        var id = (await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "ComplianceManager"))).UserId;
 
         var suspended = await service.SuspendUserAsync(id);
         Assert.Equal("Suspended", suspended!.Status);
@@ -106,7 +106,7 @@ public sealed class UserServiceTests
     public async Task UpdateUser_ChangesNameAndRole()
     {
         var service = CreateSut(out _);
-        var id = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "Auditor"));
+        var id = (await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "Auditor"))).UserId;
 
         var updated = await service.UpdateUserAsync(id, new UpdateUserRequest("Josephine Bloggs", "Administrator"));
 
