@@ -20,6 +20,9 @@ public sealed record UserDto(
 /// </summary>
 public sealed record InviteUserRequest(Guid CompanyId, string Name, string Email, string Role);
 
+/// <summary>The outcome of an invite: the new user's id and the one-time token for the accept-invite link.</summary>
+public sealed record InviteUserResult(Guid UserId, string AcceptToken);
+
 /// <summary>Request to change an existing user's name and role.</summary>
 public sealed record UpdateUserRequest(string Name, string Role);
 

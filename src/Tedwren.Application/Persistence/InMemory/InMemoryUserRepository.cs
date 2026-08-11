@@ -26,6 +26,11 @@ public sealed class InMemoryUserRepository : IUserRepository
         Task.FromResult(_store.Users.Values
             .FirstOrDefault(u => string.Equals(u.Email, email, StringComparison.OrdinalIgnoreCase)));
 
+    /// <summary>Returns the user holding this invite token, or null.</summary>
+    public Task<User?> GetByInviteTokenAsync(string inviteToken, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.Users.Values
+            .FirstOrDefault(u => u.InviteToken is not null && u.InviteToken == inviteToken));
+
     /// <summary>Adds a user to the store.</summary>
     public Task AddAsync(User user, CancellationToken cancellationToken = default)
     {

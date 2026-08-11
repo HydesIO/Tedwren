@@ -54,7 +54,7 @@ public sealed class UserApiTests : IClassFixture<WebApplicationFactory<Program>>
 
         var created = await client.PostAsJsonAsync("/api/users", invite);
         Assert.Equal(HttpStatusCode.Created, created.StatusCode);
-        var id = (await created.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+        var id = (await created.Content.ReadFromJsonAsync<InviteUserResult>())!.UserId;
 
         var invited = await client.GetFromJsonAsync<UserDto>($"/api/users/{id}");
         Assert.Equal("Invited", invited!.Status);

@@ -38,7 +38,6 @@ Two deployables that talk over HTTP/CORS, plus supporting libraries:
 |---|---|
 | `src/Tedwren.Client` | Blazor WebAssembly app — UI only. Consumes service **interfaces**, never data-access directly. |
 | `src/Tedwren.UiComponents` | Reusable MudBlazor component kit + theme. No HTTP/auth/data concerns. |
-| `src/Tedwren.UiComponents.SampleData` | In-proc sample content for UI pages not yet migrated to the API (not a data source). |
 | `src/Tedwren.Abstractions` | Shared service interfaces + DTOs + config contracts, referenced by both client and API. |
 | `src/Tedwren.Domain` | Entities, value objects, enums. No external dependencies. |
 | `src/Tedwren.Application` | Business services (each behind an interface, SRP). |
@@ -63,8 +62,9 @@ isolated unit/API tests) and are never a supported runtime configuration.
 - **Tests** force `DataSource:Mode=InMemory` (via a module initializer in `Tedwren.Api.Tests`) so the suite
   runs without a database. This is the only sanctioned use of the in-memory path.
 
-Note: `src/Tedwren.UiComponents.SampleData` (the always-on UI sample content) is a **separate** concern from
-the data source — several pages still render sample data directly and are pending migration to the API.
+Note: every console page now renders live API data — the former `Tedwren.UiComponents.SampleData` project has
+been removed. Static shell chrome (nav/route inventory, platform switcher, environment badge) lives in
+`src/Tedwren.Client/Services/ShellChrome.cs` as fixed app configuration, not a data source.
 
 ## Engineering standards (apply to every change)
 

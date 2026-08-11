@@ -2,7 +2,9 @@
 @implements IDisposable
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
-@inject IShellSampleDataService Shell
+@inject Tedwren.Client.Services.AuthState Auth
+@inject ICurrentUserService CurrentUser
+@inject IExpiryQueryService Expiry
 @inject IEntitlementService Entitlements
 @inject IOrganisationService Org
 @inject ISiteService SitesSvc
@@ -26,7 +28,7 @@
                     BrandName="Tedwren"
                     ActiveRoute="@_activeRoute"
                     @bind-IsCollapsed="_sidebarCollapsed"
-                    Platforms="@Shell.GetPlatforms()"
+                    Platforms="@ShellChrome.Platforms"
                     SelectedPlatform="@_selectedPlatform"
                     OnPlatformSelected="OnPlatformSelected"
                     Environment="_environment"
@@ -37,9 +39,9 @@
         <AppTopBar PageTitle="@_pageTitle"
                    Notifications="_notifications"
                    NotificationsHref="/notifications"
-                   CurrentUserName="@_user.Name"
-                   CurrentUserRole="@_user.Role"
-                   CurrentUserAvatarUrl="@_user.AvatarUrl"
+                   CurrentUserName="@_userName"
+                   CurrentUserRole="@_userRole"
+                   CurrentUserAvatarUrl="@(string.Empty)"
                    ShowMenuButton="true"
                    IsDark="_isDark"
                    OnMenuClick="ToggleSidebar"
@@ -56,7 +58,8 @@
     private bool _sidebarCollapsed;
     private IReadOnlyList<NavItem> _navItems = Array.Empty<NavItem>();
     private string _selectedPlatform = string.Empty;
-    private ShellUser _user = new("", "");
+    private string _userName = string.Empty;
+    private string _userRole = string.Empty;
     private AppSidebar.EnvironmentInfo? _environment;
     private string _activeRoute = "/";
     private string _pageTitle = "Dashboard";
@@ -85,6 +88,14 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Require sign-in for the console (D1). Unauthenticated users go to the login page.
+        await Auth.InitializeAsync();
+        if (!Auth.IsAuthenticated)
+        {
+            Nav.NavigateTo("/login");
+            return;
+        }
+
         await Tenant.InitializeAsync();
 
         // First run against an empty database has no companies: send the operator to onboarding to
@@ -96,12 +107,16 @@
             return;
         }
 
-        _navItems = await GatedNavItemsAsync(Shell.GetNavItems());
-        _selectedPlatform = Shell.GetSelectedPlatform();
-        _user = Shell.GetCurrentUser();
-        _notifications = Shell.GetNotifications();
+        _navItems = await GatedNavItemsAsync(ShellChrome.NavItems);
+        _selectedPlatform = ShellChrome.DefaultPlatform;
 
-        var env = Shell.GetEnvironment();
+        var user = await CurrentUser.GetCurrentAsync();
+        _userName = user.Name;
+        _userRole = user.Role;
+
+        _notifications = await BuildNotificationsAsync();
+
+        var env = ShellChrome.Environment;
         _environment = new AppSidebar.EnvironmentInfo(env.Name, env.Version, env.Build, env.IsHealthy);
 
         _commandItems = await BuildCommandItemsAsync();
@@ -137,7 +152,17 @@
 
     private void OpenPalette() => _paletteOpen = true;
 
-    private void OnCommandSelect(CommandItem item) => Nav.NavigateTo(item.Href);
+    private async Task OnCommandSelect(CommandItem item)
+    {
+        if (item.Href == "action:logout")
+        {
+            await Auth.LogoutAsync();
+            Nav.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        Nav.NavigateTo(item.Href);
+    }
 
     private async Task ToggleTheme()
     {
@@ -154,6 +179,8 @@
         {
             items.Add(new CommandItem(nav.Label, "Pages", nav.Icon, nav.Href, "Go to page"));
         }
+
+        items.Add(new CommandItem("Sign out", "Account", MudBlazor.Icons.Material.Outlined.Logout, "action:logout", "End your session"));
 
         // Search index built from real API data (companies, operatives, sites).
         foreach (var c in await Org.GetCompaniesAsync())
@@ -175,6 +202,22 @@
         }
 
         return items;
+    }
+
+    // Builds the top-bar notifications from real upcoming qualification expiries (SF-9).
+    private async Task<IReadOnlyList<NotificationEntry>> BuildNotificationsAsync()
+    {
+        var upcoming = await Expiry.GetUpcomingAsync(30);
+        return upcoming
+            .Take(10)
+            .Select(e => new NotificationEntry(
+                MudBlazor.Icons.Material.Outlined.WarningAmber,
+                "Qualification expiring",
+                $"{e.QualificationName} — {e.StatusLabel}",
+                e.ExpiresOn?.ToString("dd MMM yyyy") ?? string.Empty,
+                e.DaysUntilExpiry <= 7 ? StatusKind.Danger : StatusKind.Warning,
+                Unread: true))
+            .ToList();
     }
 
     private void OnLocationChanged(object? sender, Microsoft.AspNetCore.Components.Routing.LocationChangedEventArgs e)

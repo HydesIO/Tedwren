@@ -33,13 +33,64 @@ builder.Services.AddDashboardCore();
 builder.Services.AddReferenceDataCore();
 builder.Services.AddSettingsCore();
 builder.Services.AddPermitCore();
+builder.Services.AddAuthCore();
 
-// Current-operator identity: a configured/dev identity (bound from the "CurrentUser" section) until a real
-// authentication phase lands. Registered as a singleton so the scoped CurrentUserService can consume it.
-var currentUserOptions = builder.Configuration.GetSection(Tedwren.Application.Identity.CurrentUserOptions.SectionName)
-    .Get<Tedwren.Application.Identity.CurrentUserOptions>() ?? new Tedwren.Application.Identity.CurrentUserOptions();
-builder.Services.AddSingleton(currentUserOptions);
-builder.Services.AddIdentityCore();
+// Bootstrap admin so a fresh install can be signed into (idempotent). Credentials from the "Seed" section.
+var seedAdminOptions = builder.Configuration.GetSection(Tedwren.Application.Auth.SeedAdminOptions.SectionName)
+    .Get<Tedwren.Application.Auth.SeedAdminOptions>() ?? new Tedwren.Application.Auth.SeedAdminOptions();
+builder.Services.AddSingleton(seedAdminOptions);
+builder.Services.AddScoped<Tedwren.Application.Auth.AdminUserSeeder>();
+
+// Authentication (D1): JWT bearer. The current operator is resolved from the request claims — the real
+// signed-in user with a tenant company id (R15), replacing the former config stub.
+var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
+builder.Services.AddSingleton(jwtOptions);
+builder.Services.AddSingleton<Tedwren.Application.Auth.ITokenIssuer, Tedwren.Api.Auth.JwtTokenIssuer>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<Tedwren.Abstractions.Services.ICurrentUserService, Tedwren.Api.Auth.ClaimsCurrentUserService>();
+
+// The API test host authenticates every request as an Administrator via a bypass scheme (Auth:TestBypass),
+// so the end-to-end tests exercise authorised endpoints without minting JWTs. Real deployments use JWT.
+var testBypass = builder.Configuration.GetValue<bool>("Auth:TestBypass");
+var authBuilder = builder.Services.AddAuthentication(testBypass
+    ? Tedwren.Api.Auth.TestBypassAuthenticationHandler.SchemeName
+    : Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme);
+if (testBypass)
+{
+    authBuilder.AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, Tedwren.Api.Auth.TestBypassAuthenticationHandler>(
+        Tedwren.Api.Auth.TestBypassAuthenticationHandler.SchemeName, _ => { });
+}
+else
+{
+    authBuilder.AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = jwtOptions.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtOptions.Audience,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
+                System.Text.Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1),
+        };
+    });
+}
+
+// Secure by default: every endpoint requires an authenticated user unless it opts out with AllowAnonymous
+// (auth, health and the recipient/kiosk flows). Named policies gate writes (SF-23) and admin-only surfaces.
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser().Build();
+    options.AddPolicy("RequireWrite", p => p.RequireRole(
+        Tedwren.Domain.Enums.AccessRole.Administrator.ToString(),
+        Tedwren.Domain.Enums.AccessRole.ComplianceManager.ToString(),
+        Tedwren.Domain.Enums.AccessRole.SiteManager.ToString()));
+    options.AddPolicy("AdminOnly", p => p.RequireRole(Tedwren.Domain.Enums.AccessRole.Administrator.ToString()));
+});
 // Database is the only supported runtime backend. The in-memory stores are a test-only double, selected
 // exclusively by the API test host (DataSource:Mode=InMemory) so the end-to-end tests run without SQL Server.
 if (backend.Mode == DataSourceMode.InMemory)
@@ -92,6 +143,26 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(clientCorsPolicy);
+app.UseAuthentication();
+app.UseAuthorization();
+
+// SF-23: the read-only Auditor role may view but never change data. Enforced server-side for every
+// authenticated write (non-GET) request, so the read-only guarantee does not rely on the UI hiding buttons.
+app.Use(async (context, next) =>
+{
+    var user = context.User;
+    if (user.Identity?.IsAuthenticated == true &&
+        user.IsInRole(Tedwren.Domain.Enums.AccessRole.Auditor.ToString()) &&
+        !HttpMethods.IsGet(context.Request.Method) &&
+        !HttpMethods.IsHead(context.Request.Method) &&
+        !HttpMethods.IsOptions(context.Request.Method))
+    {
+        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+        return;
+    }
+
+    await next();
+});
 
 // Apply database migrations at startup when running against a real database (skipped for the in-memory test host).
 if (backend.Mode != DataSourceMode.InMemory)
@@ -107,6 +178,13 @@ if (backend.Mode != DataSourceMode.InMemory)
     // Seed the default induction template (MC-3) — idempotent.
     var inductionSeeder = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Inductions.InductionTemplateSeeder>();
     await inductionSeeder.RunAsync();
+}
+
+// Seed the bootstrap admin for both modes (idempotent) so the console can be signed into (D1).
+using (var adminScope = app.Services.CreateScope())
+{
+    var adminSeeder = adminScope.ServiceProvider.GetRequiredService<Tedwren.Application.Auth.AdminUserSeeder>();
+    await adminSeeder.RunAsync();
 }
 
 app.MapOrganisationEndpoints();
@@ -128,6 +206,7 @@ app.MapWorkforceEndpoints();
 app.MapDashboardEndpoints();
 app.MapSettingsEndpoints();
 app.MapPermitEndpoints();
+app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
 // is observable at a glance, without exposing any application data.
@@ -139,7 +218,8 @@ app.MapGet("/health", (IOptions<BackendOptions> options) =>
             provider = options.Value.Provider.ToString(),
             utc = DateTimeOffset.UtcNow,
         }))
-    .WithName("HealthCheck");
+    .WithName("HealthCheck")
+    .AllowAnonymous();
 
 app.Run();
 

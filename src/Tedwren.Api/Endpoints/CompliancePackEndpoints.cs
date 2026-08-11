@@ -38,7 +38,8 @@ public static class CompliancePackEndpoints
 
         // Recipient access — token + passcode only, no account (R8). These carry personal data, so responses
         // must never be cached by browsers or intermediaries.
-        var recipient = app.MapGroup("/api/packs").WithTags("CompliancePacks").AddEndpointFilter(NoStoreFilter);
+        // Recipient link flow (SUB-18): token+passcode gated, no console account — must stay anonymous.
+        var recipient = app.MapGroup("/api/packs").WithTags("CompliancePacks").AddEndpointFilter(NoStoreFilter).AllowAnonymous();
 
         recipient.MapGet("/view", async (string token, string passcode, ICompliancePackService service, CancellationToken cancellationToken) =>
             {

@@ -1,0 +1,52 @@
+@page "/login"
+@layout RecipientLayout
+@using Tedwren.Client.Services
+@inject AuthState Auth
+@inject NavigationManager Nav
+
+<PageTitle>Sign in · Tedwren</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-8" MaxWidth="420px" Elevation="0" Outlined="true">
+    <MudText Typo="Typo.h5" Class="mb-2">Sign in</MudText>
+    <MudText Typo="Typo.body2" Class="mb-4">Sign in to the Tedwren console.</MudText>
+
+    @if (_error is not null)
+    {
+        <div class="mb-4"><BannerAlert Severity="StatusKind.Danger" Title="Sign-in failed" Message="@_error" /></div>
+    }
+
+    <TedwrenTextField Label="Email" @bind-Value="_email" InputType="InputType.Email" Placeholder="name@company.com" />
+    <TedwrenTextField Label="Password" @bind-Value="_password" InputType="InputType.Password" Placeholder="Your password" />
+
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="_busy" Class="mt-4"
+               StartIcon="@Icons.Material.Outlined.Login" OnClick="Submit">Sign in</MudButton>
+</MudPaper>
+
+@code {
+    private string? _email;
+    private string? _password;
+    private string? _error;
+    private bool _busy;
+
+    private async Task Submit()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_email) || string.IsNullOrWhiteSpace(_password))
+        {
+            _error = "Enter your email and password.";
+            return;
+        }
+
+        _busy = true;
+        var ok = await Auth.LoginAsync(_email!.Trim(), _password!);
+        _busy = false;
+        if (ok)
+        {
+            Nav.NavigateTo("/", forceLoad: true);
+        }
+        else
+        {
+            _error = "Those credentials were not recognised.";
+        }
+    }
+}

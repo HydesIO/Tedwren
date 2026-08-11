@@ -161,6 +161,10 @@ public sealed class UserRecord
     public int Status { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
     public DateTimeOffset? LastActiveUtc { get; set; }
+    public string? PasswordHash { get; set; }
+    public DateTimeOffset? PasswordSetUtc { get; set; }
+    public string? InviteToken { get; set; }
+    public DateTimeOffset? InviteTokenExpiresUtc { get; set; }
 }
 
 /// <summary>Schema row for the <c>Attendance</c> table (SF-13–SF-19).</summary>

@@ -39,8 +39,8 @@ public sealed class ApiUserService : IUserService
         await _http.GetFromJsonAsync<IReadOnlyList<RoleOption>>("api/users/roles", cancellationToken)
         ?? Array.Empty<RoleOption>();
 
-    /// <summary>Invites a user via the API and returns the new id. Surfaces a duplicate/validation error.</summary>
-    public async Task<Guid> InviteUserAsync(InviteUserRequest request, CancellationToken cancellationToken = default)
+    /// <summary>Invites a user via the API and returns the new id + accept token. Surfaces a duplicate/validation error.</summary>
+    public async Task<InviteUserResult> InviteUserAsync(InviteUserRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await _http.PostAsJsonAsync("api/users", request, cancellationToken);
         if (response.StatusCode is HttpStatusCode.Conflict or HttpStatusCode.BadRequest)
@@ -50,8 +50,8 @@ public sealed class ApiUserService : IUserService
         }
 
         response.EnsureSuccessStatusCode();
-        var created = await response.Content.ReadFromJsonAsync<CreatedResponse>(cancellationToken);
-        return created?.Id ?? Guid.Empty;
+        return await response.Content.ReadFromJsonAsync<InviteUserResult>(cancellationToken)
+            ?? throw new InvalidOperationException("The user could not be invited.");
     }
 
     /// <summary>Updates a user's name and role via the API, or null when not found.</summary>

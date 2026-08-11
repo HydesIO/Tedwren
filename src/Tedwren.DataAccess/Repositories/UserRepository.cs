@@ -9,7 +9,8 @@ namespace Tedwren.DataAccess.Repositories;
 public sealed class UserRepository : RepositoryBase, IUserRepository
 {
     private const string Columns =
-        "Id, CompanyId, Name, Email, Role, Status, CreatedUtc, LastActiveUtc";
+        "Id, CompanyId, Name, Email, Role, Status, CreatedUtc, LastActiveUtc, " +
+        "PasswordHash, PasswordSetUtc, InviteToken, InviteTokenExpiresUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public UserRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -40,18 +41,30 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
         return row is null ? null : ToEntity(row);
     }
 
+    /// <summary>Returns the user holding this invite token, or null.</summary>
+    public async Task<User?> GetByInviteTokenAsync(string inviteToken, CancellationToken cancellationToken = default)
+    {
+        var row = await QuerySingleOrDefaultAsync<Row>(
+            $"SELECT {Columns} FROM Users WHERE InviteToken = @InviteToken",
+            new { InviteToken = inviteToken }, cancellationToken);
+        return row is null ? null : ToEntity(row);
+    }
+
     /// <summary>Inserts a new user.</summary>
     public Task AddAsync(User user, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "INSERT INTO Users (Id, CompanyId, Name, Email, Role, Status, CreatedUtc, LastActiveUtc) " +
-            "VALUES (@Id, @CompanyId, @Name, @Email, @Role, @Status, @CreatedUtc, @LastActiveUtc)",
+            "INSERT INTO Users (Id, CompanyId, Name, Email, Role, Status, CreatedUtc, LastActiveUtc, " +
+            "PasswordHash, PasswordSetUtc, InviteToken, InviteTokenExpiresUtc) " +
+            "VALUES (@Id, @CompanyId, @Name, @Email, @Role, @Status, @CreatedUtc, @LastActiveUtc, " +
+            "@PasswordHash, @PasswordSetUtc, @InviteToken, @InviteTokenExpiresUtc)",
             ToParameters(user), cancellationToken);
 
-    /// <summary>Updates an existing user's mutable fields.</summary>
+    /// <summary>Updates an existing user's mutable fields (including credentials/invite state).</summary>
     public Task UpdateAsync(User user, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             "UPDATE Users SET Name = @Name, Email = @Email, Role = @Role, Status = @Status, " +
-            "LastActiveUtc = @LastActiveUtc WHERE Id = @Id",
+            "LastActiveUtc = @LastActiveUtc, PasswordHash = @PasswordHash, PasswordSetUtc = @PasswordSetUtc, " +
+            "InviteToken = @InviteToken, InviteTokenExpiresUtc = @InviteTokenExpiresUtc WHERE Id = @Id",
             ToParameters(user), cancellationToken);
 
     /// <summary>Flattens a user to Dapper parameters (enums stored as ints).</summary>
@@ -65,6 +78,10 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
         Status = (int)u.Status,
         u.CreatedUtc,
         u.LastActiveUtc,
+        u.PasswordHash,
+        u.PasswordSetUtc,
+        u.InviteToken,
+        u.InviteTokenExpiresUtc,
     };
 
     /// <summary>Maps a queried row to the domain entity.</summary>
@@ -78,10 +95,15 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
         Status = (UserStatus)r.Status,
         CreatedUtc = r.CreatedUtc,
         LastActiveUtc = r.LastActiveUtc,
+        PasswordHash = r.PasswordHash,
+        PasswordSetUtc = r.PasswordSetUtc,
+        InviteToken = r.InviteToken,
+        InviteTokenExpiresUtc = r.InviteTokenExpiresUtc,
     };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
     private sealed record Row(
         Guid Id, Guid CompanyId, string Name, string Email, int Role, int Status,
-        DateTimeOffset CreatedUtc, DateTimeOffset? LastActiveUtc);
+        DateTimeOffset CreatedUtc, DateTimeOffset? LastActiveUtc,
+        string? PasswordHash, DateTimeOffset? PasswordSetUtc, string? InviteToken, DateTimeOffset? InviteTokenExpiresUtc);
 }
