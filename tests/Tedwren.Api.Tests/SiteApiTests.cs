@@ -98,5 +98,42 @@ public sealed class SiteApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.NotFound, detail.StatusCode);
     }
 
+    [Fact] // SF-6 edit: a tenant site's details persist through PUT and are reflected on re-read
+    public async Task UpdateSite_PersistsChanges()
+    {
+        var client = _factory.CreateClient();
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var original = "Edit Me " + Guid.NewGuid().ToString("N")[..6];
+
+        var created = await client.PostAsJsonAsync("/api/sites", new CreateSiteRequest(
+            me!.CompanyId!.Value, original, "Old Client", "London", "1 Old St", HasCompound: true, IsDispersed: false, Boundary: null));
+        var id = (await created.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var renamed = "Edited " + Guid.NewGuid().ToString("N")[..6];
+        var put = await client.PutAsJsonAsync($"/api/sites/{id}", new UpdateSiteRequest(
+            renamed, "New Client", "Leeds", "2 New St", HasCompound: false, Boundary: null));
+        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+
+        var slug = renamed.ToLowerInvariant().Replace(' ', '-');
+        var detail = await client.GetFromJsonAsync<SiteDetailDto>($"/api/sites/{slug}");
+        Assert.NotNull(detail);
+        Assert.Equal(renamed, detail!.Name);
+        Assert.Equal("New Client", detail.Client);
+        Assert.False(detail.HasCompound);
+    }
+
+    [Fact] // R15/MC-21: updating a site outside the caller's tenant is refused (404)
+    public async Task UpdateSite_ForeignTenant_Returns404()
+    {
+        var client = _factory.CreateClient();
+        var created = await client.PostAsJsonAsync("/api/sites", new CreateSiteRequest(
+            Guid.NewGuid(), "Foreign Edit " + Guid.NewGuid().ToString("N")[..6], null, null, null, HasCompound: true, IsDispersed: false, Boundary: null));
+        var id = (await created.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var put = await client.PutAsJsonAsync($"/api/sites/{id}", new UpdateSiteRequest(
+            "Nope", null, null, null, HasCompound: true, Boundary: null));
+        Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
+    }
+
     private sealed record CreatedResponse(Guid Id);
 }

@@ -53,10 +53,10 @@
 
     <FormActions>
         <Secondary>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Reset">Reset</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="_busy" OnClick="Reset">Reset</MudButton>
         </Secondary>
         <Primary>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save changes</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="Save">Save changes</MudButton>
         </Primary>
     </FormActions>
 </div>

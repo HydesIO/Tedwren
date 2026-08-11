@@ -31,6 +31,13 @@ public interface IOrganisationService
     /// </summary>
     Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Updates an operative's per-company engagement details (name + trade, SF-2). Returns false when the
+    /// engagement is not found for that company, or when another active engagement in the company already
+    /// uses the target name (names stay distinct within a company).
+    /// </summary>
+    Task<bool> UpdateEngagementAsync(Guid companyId, Guid engagementId, UpdateEngagementRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Archives an engagement owned by the given company (SF-3). Returns false if not found.</summary>
     Task<bool> ArchiveEngagementAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default);
 

@@ -91,6 +91,9 @@ public sealed record AddOperativeRequest(
     string? Trade,
     string? InternalReference);
 
+/// <summary>Request to update an operative's per-company engagement details (name + trade, SF-2).</summary>
+public sealed record UpdateEngagementRequest(string Name, string? Trade);
+
 /// <summary>
 /// Outcome of <c>AddOperativeAsync</c>. On refusal (SF-2: already engaged in this company)
 /// <see cref="Succeeded"/> is false and <see cref="Error"/> names the existing record.

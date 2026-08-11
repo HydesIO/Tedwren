@@ -241,6 +241,37 @@ public sealed class OrganisationService : IOrganisationService
         return new AddOperativeResult(true, engagement.Id, person.Id, null);
     }
 
+    /// <summary>
+    /// Updates an operative's engagement name + trade (SF-2), tenant-scoped by company (R15). Refuses when the
+    /// engagement is not found, or when a different active engagement in the same company already uses the
+    /// target name — keeping operative names distinct within a company.
+    /// </summary>
+    public async Task<bool> UpdateEngagementAsync(Guid companyId, Guid engagementId, UpdateEngagementRequest request, CancellationToken cancellationToken = default)
+    {
+        var engagement = await _engagements.GetAsync(companyId, engagementId, cancellationToken);
+        if (engagement is null)
+        {
+            return false;
+        }
+
+        var name = request.Name.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return false;
+        }
+
+        var active = await _engagements.GetActiveByCompanyAsync(companyId, cancellationToken);
+        if (active.Any(e => e.Id != engagementId && string.Equals(e.Name, name, StringComparison.OrdinalIgnoreCase)))
+        {
+            return false;
+        }
+
+        engagement.Name = name;
+        engagement.Trade = string.IsNullOrWhiteSpace(request.Trade) ? null : request.Trade.Trim();
+        await _engagements.UpdateAsync(engagement, cancellationToken);
+        return true;
+    }
+
     /// <summary>Archives an engagement owned by the company (SF-3). Returns false if not found for that company.</summary>
     public async Task<bool> ArchiveEngagementAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default)
     {

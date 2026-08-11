@@ -98,6 +98,48 @@ public sealed class OrganisationServiceTests
         Assert.False(result);
     }
 
+    [Fact] // SF-2 edit — updating an engagement changes its name + trade in the register
+    public async Task UpdateEngagement_ChangesNameAndTrade()
+    {
+        var (service, _) = CreateSut();
+        var company = await AddCompanyAsync(service, "Alpha Ltd");
+        var added = await service.AddOperativeAsync(new AddOperativeRequest(company, "Joe Smith", "07700900123", "Labourer", null));
+
+        var ok = await service.UpdateEngagementAsync(company, added.EngagementId!.Value, new UpdateEngagementRequest("Joseph Smith", "Electrician"));
+        var detail = await service.GetCompanyAsync("alpha-ltd");
+
+        Assert.True(ok);
+        var op = Assert.Single(detail!.Operatives);
+        Assert.Equal("Joseph Smith", op.Name);
+        Assert.Equal("Electrician", op.Trade);
+    }
+
+    [Fact] // SF-2 edit — a rename that collides with another active engagement in the company is refused
+    public async Task UpdateEngagement_ToDuplicateName_IsRefused()
+    {
+        var (service, _) = CreateSut();
+        var company = await AddCompanyAsync(service, "Alpha Ltd");
+        await service.AddOperativeAsync(new AddOperativeRequest(company, "Joe Smith", "07700900123", null, null));
+        var second = await service.AddOperativeAsync(new AddOperativeRequest(company, "Dave Jones", "07700900124", null, null));
+
+        var refused = await service.UpdateEngagementAsync(company, second.EngagementId!.Value, new UpdateEngagementRequest("Joe Smith", null));
+
+        Assert.False(refused);
+    }
+
+    [Fact] // R15 — updating an engagement through another company is refused
+    public async Task UpdateEngagement_ThroughAnotherCompany_IsRefused()
+    {
+        var (service, _) = CreateSut();
+        var owner = await AddCompanyAsync(service, "Alpha Ltd");
+        var other = await AddCompanyAsync(service, "Beta Ltd");
+        var added = await service.AddOperativeAsync(new AddOperativeRequest(owner, "Joe Smith", "07700900123", null, null));
+
+        var result = await service.UpdateEngagementAsync(other, added.EngagementId!.Value, new UpdateEngagementRequest("Joe X", null));
+
+        Assert.False(result);
+    }
+
     [Fact] // SUB-4 — a company document is recorded and surfaces on the detail with a derived state
     public async Task AddCompanyDocument_IsListedWithExpiryState()
     {

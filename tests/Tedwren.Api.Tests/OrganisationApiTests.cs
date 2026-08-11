@@ -76,6 +76,45 @@ public sealed class OrganisationApiTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(HttpStatusCode.Conflict, duplicate.StatusCode);
     }
 
+    [Fact] // SF-2 edit: an operative's engagement name + trade persist through PUT
+    public async Task UpdateEngagement_PersistsNameAndTrade()
+    {
+        var client = _factory.CreateClient();
+        // The workforce detail is tenant-scoped (R15), so operate on the caller's own company.
+        var me = await client.GetFromJsonAsync<Tedwren.Abstractions.Contracts.Identity.CurrentUserDto>("/api/me");
+        var companyId = me!.CompanyId!.Value;
+
+        var add = await client.PostAsJsonAsync("/api/organisation/operatives",
+            new AddOperativeRequest(companyId, "Rename Me " + Guid.NewGuid().ToString("N")[..6], "07700900801", "Labourer", null));
+        var result = (await add.Content.ReadFromJsonAsync<AddOperativeResult>())!;
+        Assert.True(result.Succeeded);
+
+        var newName = "Renamed " + Guid.NewGuid().ToString("N")[..6];
+        var put = await client.PutAsJsonAsync(
+            $"/api/organisation/companies/{companyId}/operatives/{result.EngagementId}",
+            new UpdateEngagementRequest(newName, "Electrician"));
+        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+
+        var slug = newName.ToLowerInvariant().Replace(' ', '-');
+        var detail = await client.GetFromJsonAsync<Tedwren.Abstractions.Contracts.Workforce.OperativeDetailDto>($"/api/workforce/{slug}");
+        Assert.NotNull(detail);
+        Assert.Equal(newName, detail!.Name);
+        Assert.Equal("Electrician", detail.Trade);
+    }
+
+    [Fact] // update of an unknown engagement is a visible 404
+    public async Task UpdateEngagement_Unknown_Returns404()
+    {
+        var client = _factory.CreateClient();
+        var companies = await client.GetFromJsonAsync<List<CompanySummary>>("/api/organisation/companies");
+        var companyId = companies![0].Id;
+
+        var put = await client.PutAsJsonAsync(
+            $"/api/organisation/companies/{companyId}/operatives/{Guid.NewGuid()}",
+            new UpdateEngagementRequest("Ghost", null));
+        Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
+    }
+
     /// <summary>Shape of a create response body.</summary>
     private sealed record CreatedResponse(Guid Id);
 }

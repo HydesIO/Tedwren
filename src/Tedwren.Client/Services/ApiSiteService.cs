@@ -43,6 +43,13 @@ public sealed class ApiSiteService : ISiteService
         return created?.Id ?? Guid.Empty;
     }
 
+    /// <summary>Updates a site's details via the API. Returns false when the site is not found (404).</summary>
+    public async Task<bool> UpdateSiteAsync(Guid siteId, UpdateSiteRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/sites/{siteId}", request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     /// <summary>Adds a property to a scheme via the API, or null when the site is not found.</summary>
     public async Task<Guid?> AddPropertyAsync(AddSitePropertyRequest request, CancellationToken cancellationToken = default)
     {

@@ -136,6 +136,8 @@ public sealed class WorkforceService : IWorkforceService
 
             return new OperativeDetailDto(
                 engagement.PersonId,
+                engagement.Id,
+                company.Id,
                 Slug.From(engagement.Name),
                 engagement.Name,
                 engagement.Trade,

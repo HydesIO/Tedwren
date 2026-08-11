@@ -1,0 +1,91 @@
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@inject ISiteService Sites
+@inject ISnackbar Snackbar
+
+@* Edit a site's details and persist via ISiteService.UpdateSiteAsync. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="edit-site">
+            <TedwrenTextField Label="Site name" @bind-Value="_name" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Site name is required." />
+            <TedwrenTextField Label="Client" @bind-Value="_client" />
+            <TedwrenTextField Label="Region" @bind-Value="_region" />
+            <TedwrenTextField Label="Address" @bind-Value="_address" />
+            <TedwrenToggle Label="Fixed point of presence"
+                           Description="A compound, gate or cabin where operatives sign in. Turn off for a phone-only site (SF-25)."
+                           @bind-Value="_hasCompound" />
+            @if (_hasBoundary)
+            {
+                <MudNumericField T="double" Label="Boundary radius (m)" @bind-Value="_radius" Min="1" />
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Save changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public SiteDetailDto Site { get; set; } = default!;
+
+    private string? _name;
+    private string? _client;
+    private string? _region;
+    private string? _address;
+    private bool _hasCompound;
+    private bool _hasBoundary;
+    private double _centreLat;
+    private double _centreLng;
+    private double _radius;
+    private bool _submitted;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _name = Site.Name;
+        _client = Site.Client;
+        _region = Site.Region;
+        _address = Site.Address;
+        _hasCompound = Site.HasCompound;
+        _hasBoundary = Site.Boundary is not null;
+        if (Site.Boundary is { } b)
+        {
+            _centreLat = b.CentreLatitude;
+            _centreLng = b.CentreLongitude;
+            _radius = b.RadiusMetres;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Site name is required.", Severity.Error);
+            return;
+        }
+
+        // Preserve the existing circular boundary, updating only its radius (centre editing is a map-picker follow-up).
+        var boundary = _hasBoundary ? new GeofenceDto(_centreLat, _centreLng, _radius) : null;
+
+        _busy = true;
+        var ok = await Sites.UpdateSiteAsync(Site.Id, new UpdateSiteRequest(
+            _name!, _client, _region, _address, _hasCompound, boundary));
+        _busy = false;
+
+        if (ok)
+        {
+            Snackbar.Add("Site updated.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(_name!));   // return the new name so the caller can follow the slug
+        }
+        else
+        {
+            Snackbar.Add("Could not update the site.", Severity.Error);
+        }
+    }
+}

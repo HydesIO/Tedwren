@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ISiteService SiteData
+@inject IDialogService Dialogs
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -36,7 +37,7 @@ else
                   Breadcrumbs="_crumbs">
         <Actions>
             <MudButton Variant="Variant.Outlined" Color="Color.Default"
-                       StartIcon="@Icons.Material.Outlined.Edit" OnClick="@(() => Snackbar.Add("Edit site (demo).", Severity.Info))">
+                       StartIcon="@Icons.Material.Outlined.Edit" OnClick="EditAsync">
                 Edit
             </MudButton>
         </Actions>
@@ -121,4 +122,25 @@ else
     // "Client · Region", omitting empty parts.
     private static string Subtitle(SiteDetailDto s)
         => string.Join(" · ", new[] { s.Client, s.Region }.Where(v => !string.IsNullOrWhiteSpace(v)));
+
+    // Opens the edit dialog and reloads on save (persists via ISiteService.UpdateSiteAsync).
+    private async Task EditAsync()
+    {
+        var parameters = new DialogParameters<EditSiteDialog> { { x => x.Site, _site! } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await Dialogs.ShowAsync<EditSiteDialog>("Edit site", parameters, options);
+        if (await dialog.Result is { Canceled: false, Data: string newName })
+        {
+            var newSlug = Tedwren.Abstractions.Slug.From(newName);
+            if (!string.Equals(newSlug, Slug, StringComparison.OrdinalIgnoreCase))
+            {
+                // The slug follows the name; navigating updates the route and reloads via OnParametersSetAsync.
+                Nav.NavigateTo($"/sites/{newSlug}");
+            }
+            else
+            {
+                await OnParametersSetAsync();   // same slug — reload the updated fields in place
+            }
+        }
+    }
 }

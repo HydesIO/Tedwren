@@ -50,5 +50,14 @@ public sealed record CreateSiteRequest(
     bool IsDispersed,
     GeofenceDto? Boundary);
 
+/// <summary>Request to update a site's editable details (name, client, region, address, point of presence and boundary).</summary>
+public sealed record UpdateSiteRequest(
+    string Name,
+    string? Client,
+    string? Region,
+    string? Address,
+    bool HasCompound,
+    GeofenceDto? Boundary);
+
 /// <summary>Request to add a property to a dispersed scheme (SF-26). Nothing is installed at the property.</summary>
 public sealed record AddSitePropertyRequest(Guid SiteId, string Address, int Units, GeofenceDto Boundary);
