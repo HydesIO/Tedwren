@@ -74,32 +74,34 @@ public sealed class DashboardService : IDashboardService
         var companies = await _companies.GetAllAsync(cancellationToken);
         int compliant = 0, atRisk = 0, nonCompliant = 0, pending = 0, total = 0;
 
+        // Collect every active operative's person id, then fetch all cards in one batched read (avoids N+1).
+        var personIds = new List<Guid>();
         foreach (var company in companies)
         {
             var engagements = await _engagements.GetActiveByCompanyAsync(company.Id, cancellationToken);
-            foreach (var e in engagements)
+            personIds.AddRange(engagements.Select(e => e.PersonId));
+        }
+
+        var cardsByPerson = (await _cards.GetByPersonsAsync(personIds.Distinct().ToList(), cancellationToken))
+            .Where(c => !c.IsSuperseded)
+            .GroupBy(c => c.PersonId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<QualificationCard>)g.ToList());
+
+        foreach (var personId in personIds)
+        {
+            total++;
+            var current = cardsByPerson.GetValueOrDefault(personId) ?? (IReadOnlyList<QualificationCard>)Array.Empty<QualificationCard>();
+            var (state, _) = ComplianceRollup.FromCards(current, Today);
+            switch (state)
             {
-                total++;
-                var current = await GetCurrentCardsAsync(e.PersonId, cancellationToken);
-                var (state, _) = ComplianceRollup.FromCards(current, Today);
-                switch (state)
-                {
-                    case ComplianceState.Compliant: compliant++; break;
-                    case ComplianceState.AtRisk: atRisk++; break;
-                    case ComplianceState.NonCompliant: nonCompliant++; break;
-                    default: pending++; break;
-                }
+                case ComplianceState.Compliant: compliant++; break;
+                case ComplianceState.AtRisk: atRisk++; break;
+                case ComplianceState.NonCompliant: nonCompliant++; break;
+                default: pending++; break;
             }
         }
 
         double? percent = total == 0 ? null : Math.Round(100.0 * compliant / total);
         return new ComplianceBreakdownDto(percent, compliant, atRisk, nonCompliant, pending, total);
-    }
-
-    /// <summary>Returns a person's current (non-superseded) cards — the input to the compliance roll-up (SF-8/SF-10).</summary>
-    private async Task<IReadOnlyList<QualificationCard>> GetCurrentCardsAsync(Guid personId, CancellationToken cancellationToken)
-    {
-        var cards = await _cards.GetByPersonAsync(personId, cancellationToken);
-        return cards.Where(c => !c.IsSuperseded).ToList();
     }
 }

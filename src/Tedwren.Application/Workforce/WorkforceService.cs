@@ -46,13 +46,21 @@ public sealed class WorkforceService : IWorkforceService
     public async Task<IReadOnlyList<OperativeListItemDto>> ListOperativesAsync(CancellationToken cancellationToken = default)
     {
         var companies = await _companies.GetAllAsync(cancellationToken);
-        var operatives = new List<OperativeListItemDto>();
+
+        // Gather every active engagement first, then fetch all cards in one batched read (avoids per-person N+1).
+        var rows = new List<(Engagement Engagement, string Company)>();
         foreach (var company in companies)
         {
             var engagements = await _engagements.GetActiveByCompanyAsync(company.Id, cancellationToken);
-            foreach (var e in engagements)
+            rows.AddRange(engagements.Select(e => (e, company.Name)));
+        }
+
+        var cardsByPerson = await GetCurrentCardsByPersonAsync(rows.Select(r => r.Engagement.PersonId), cancellationToken);
+
+        return rows
+            .Select(r =>
             {
-                var current = await GetCurrentCardsAsync(e.PersonId, cancellationToken);
+                var current = cardsByPerson.GetValueOrDefault(r.Engagement.PersonId) ?? (IReadOnlyList<QualificationCard>)Array.Empty<QualificationCard>();
                 var (state, _) = ComplianceRollup.FromCards(current, Today);
                 var nextExpiry = current
                     .Where(c => c.ExpiresOn is not null)
@@ -60,14 +68,11 @@ public sealed class WorkforceService : IWorkforceService
                     .DefaultIfEmpty()
                     .Min();
 
-                operatives.Add(new OperativeListItemDto(
-                    e.PersonId, e.Id, Slug.From(e.Name), e.Name, e.Trade, company.Name,
+                return new OperativeListItemDto(
+                    r.Engagement.PersonId, r.Engagement.Id, Slug.From(r.Engagement.Name), r.Engagement.Name, r.Engagement.Trade, r.Company,
                     state, ComplianceRollup.Label(state),
-                    nextExpiry == default ? null : nextExpiry));
-            }
-        }
-
-        return operatives
+                    nextExpiry == default ? null : nextExpiry);
+            })
             .OrderBy(o => o.Name, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
@@ -126,5 +131,16 @@ public sealed class WorkforceService : IWorkforceService
     {
         var cards = await _cards.GetByPersonAsync(personId, cancellationToken);
         return cards.Where(c => !c.IsSuperseded).ToList();
+    }
+
+    /// <summary>Batched: current (non-superseded) cards grouped by person, from one read (avoids N+1).</summary>
+    private async Task<IReadOnlyDictionary<Guid, IReadOnlyList<QualificationCard>>> GetCurrentCardsByPersonAsync(IEnumerable<Guid> personIds, CancellationToken cancellationToken)
+    {
+        var ids = personIds.Distinct().ToList();
+        var cards = await _cards.GetByPersonsAsync(ids, cancellationToken);
+        return cards
+            .Where(c => !c.IsSuperseded)
+            .GroupBy(c => c.PersonId)
+            .ToDictionary(g => g.Key, g => (IReadOnlyList<QualificationCard>)g.ToList());
     }
 }

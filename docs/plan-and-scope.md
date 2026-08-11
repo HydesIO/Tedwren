@@ -8,9 +8,17 @@ main contractor *workforce-management* product) sharing one data foundation, fol
 seven numbered commercial modules. The definitive brief is **PRD v6.4**
 (`TedwrenPRDv6_4.docx`, attached), which supersedes all prior specs.
 
-The repository today is a **UI/UX foundation only**. **Six phases are complete on `origin/main`**
-(PRs #1–#10), all of them **front-end/component work over mock data** — there is no server-side
-code yet:
+> **Delivery status (updated):** the backend is now built out. Phases **7–17** landed the API, data
+> access, and the console-over-API migration (**M1–M6**: every page renders live API data; the
+> `UiComponents.SampleData` project has been removed). The post-migration follow-ups **D1–D6** are also
+> delivered: **D1** console authentication (JWT, roles, SF-23 auditor read-only), **D2** self-service
+> operative onboarding link (SF-4/SUB-2), **D3** induction template authoring (MC-15), **D4** real per-site
+> operatives/compliance (MC-12/13), **D5** removal of the last demo constants, **D6** N+1 batching. See
+> `TODO.md` for the running log and the outstanding production hardening items (secrets, invite email,
+> rotating the committed DB credential). The original UI-phase context below is retained for history.
+
+The repository began as a **UI/UX foundation only**. **Six UI phases were complete on `origin/main`**
+(PRs #1–#10), all of them **front-end/component work over mock data**:
 
 - **Phase 1** Shell & theme · **Phase 2** Dashboard · **Phase 3** generic `DataTable<TItem>` +
   list pages · **Phase 4** full forms suite (`FormField`, `TedwrenTextField/Select/Autocomplete/

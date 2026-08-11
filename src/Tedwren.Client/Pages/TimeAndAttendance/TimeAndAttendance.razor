@@ -4,6 +4,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ITimesheetService Timesheets
+@inject ITenantState Tenant
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 @inject IJSRuntime JS
@@ -34,10 +35,8 @@
 </DashboardCard>
 
 @code {
-    // Mock mode and the API mock seed share this demo company + week so the screen is identical across the switch.
-    // Demo seed for this not-yet-migrated sample page (formerly on the removed client mock service).
-    private static readonly Guid CompanyId = Guid.Parse("44444444-4444-4444-8444-000000000001");
-    private static readonly DateOnly WeekStart = new(2026, 8, 3);
+    // The current Monday-anchored week for the signed-in company.
+    private static readonly DateOnly WeekStart = CurrentWeekStart();
 
     private IReadOnlyList<TimesheetSummaryDto> _timesheets = Array.Empty<TimesheetSummaryDto>();
     private List<DataColumn<TimesheetSummaryDto>> _columns = new();
@@ -45,14 +44,21 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         BuildColumns();
         await LoadAsync();
+    }
+
+    private static DateOnly CurrentWeekStart()
+    {
+        var today = DateOnly.FromDateTime(DateTime.Today);
+        return today.AddDays(-(((int)today.DayOfWeek + 6) % 7));   // back to Monday
     }
 
     private async Task LoadAsync()
     {
         _loading = true;
-        _timesheets = await Timesheets.GetForCompanyWeekAsync(CompanyId, WeekStart);
+        _timesheets = await Timesheets.GetForCompanyWeekAsync(Tenant.CurrentCompanyId, WeekStart);
         _loading = false;
     }
 
@@ -143,7 +149,7 @@
     // Renders the company-week CSV export and downloads it in the browser (real download in both modes).
     private async Task ExportCsv()
     {
-        var csv = await Timesheets.ExportCompanyWeekCsvAsync(CompanyId, WeekStart);
+        var csv = await Timesheets.ExportCompanyWeekCsvAsync(Tenant.CurrentCompanyId, WeekStart);
         var rows = csv.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length - 1;
         var fileName = $"tedwren-timesheets-{WeekStart:yyyyMMdd}.csv";
         await JS.InvokeVoidAsync("tedwrenDownload", fileName, "text/csv", csv);

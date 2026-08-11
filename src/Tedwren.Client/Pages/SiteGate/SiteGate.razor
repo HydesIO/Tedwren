@@ -3,6 +3,9 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ISiteEntryService SiteEntry
+@inject ISiteService Sites
+@inject IWorkforceService Workforce
+@inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
 <PageTitle>Site Gate · Tedwren</PageTitle>
@@ -13,7 +16,7 @@
     <Body>
         <MudText Typo="Typo.h6">Check entry</MudText>
         <div class="gate__operatives">
-            @foreach (var op in DemoOperatives)
+            @foreach (var op in _operatives)
             {
                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="gate__op"
                            OnClick="@(() => DecideAsync(op.Id))">@op.Name</MudButton>
@@ -89,27 +92,33 @@
 </DashboardCard>
 
 @code {
-    // Demo seed for this not-yet-migrated sample page (formerly on the removed client mock service).
-    private static readonly Guid SiteId = Guid.Parse("77777777-7777-4777-8777-000000000001");
-    private static readonly Guid CompanyId = Guid.Parse("77777777-7777-4777-8777-000000000100");
-
-    private static readonly IReadOnlyList<(Guid Id, string Name)> DemoOperatives = new[]
-    {
-        (Guid.Parse("77777777-7777-4777-8777-000000000010"), "M. Adeyemi (clear)"),
-        (Guid.Parse("77777777-7777-4777-8777-000000000011"), "J. Fletcher (expired card)"),
-        (Guid.Parse("77777777-7777-4777-8777-000000000012"), "R. Okafor (no induction)"),
-    };
+    private Guid _siteId;
+    private Guid _companyId;
+    private IReadOnlyList<(Guid Id, string Name)> _operatives = Array.Empty<(Guid, string)>();
 
     private EntryDecisionResultDto? _result;
     private Guid _lastPersonId;
     private MusterDto? _muster;
     private int _dataAgeSeconds;
 
-    protected override async Task OnInitializedAsync() => await LoadMusterAsync();
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        _companyId = Tenant.CurrentCompanyId;
+
+        var sites = await Sites.GetSitesAsync();
+        _siteId = sites.Count > 0 ? sites[0].Id : Guid.Empty;
+
+        var operatives = await Workforce.ListOperativesAsync();
+        _operatives = operatives.Select(o => (o.PersonId, o.Name)).ToList();
+
+        await LoadMusterAsync();
+    }
 
     private async Task LoadMusterAsync()
     {
-        _muster = await SiteEntry.GetMusterAsync(SiteId);
+        if (_siteId == Guid.Empty) return;
+        _muster = await SiteEntry.GetMusterAsync(_siteId);
         _dataAgeSeconds = (int)(DateTimeOffset.UtcNow - _muster.GeneratedUtc).TotalSeconds;
     }
 
@@ -117,14 +126,14 @@
     private async Task DecideAsync(Guid personId)
     {
         _lastPersonId = personId;
-        _result = await SiteEntry.DecideAsync(new DecideEntryRequest(CompanyId, SiteId, personId, null, null));
+        _result = await SiteEntry.DecideAsync(new DecideEntryRequest(_companyId, _siteId, personId, null, null));
     }
 
     // Day-only manager override of a blocked decision, with a reason (MC-11).
     private async Task OverrideAsync()
     {
         _result = await SiteEntry.DecideAsync(new DecideEntryRequest(
-            CompanyId, SiteId, _lastPersonId, null,
+            _companyId, _siteId, _lastPersonId, null,
             new ManagerOverrideDto("You", "Escorted on site for a supervised task")));
         if (_result.Admitted)
         {

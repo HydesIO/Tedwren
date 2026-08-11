@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject IInductionService Inductions
+@inject ITenantState Tenant
 @inject IDialogService Dialogs
 @inject ISnackbar Snackbar
 
@@ -29,15 +30,13 @@
 </DashboardCard>
 
 @code {
-    // Demo seed for this not-yet-migrated sample page (formerly on the removed client mock service).
-    private static readonly Guid CompanyId = Guid.Parse("66666666-6666-4666-8666-000000000001");
-
     private IReadOnlyList<InductionSummaryDto> _records = Array.Empty<InductionSummaryDto>();
     private List<DataColumn<InductionSummaryDto>> _columns = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
         BuildColumns();
         await LoadAsync();
     }
@@ -45,7 +44,7 @@
     private async Task LoadAsync()
     {
         _loading = true;
-        _records = await Inductions.GetForCompanyAsync(CompanyId);
+        _records = await Inductions.GetForCompanyAsync(Tenant.CurrentCompanyId);
         _loading = false;
     }
 
