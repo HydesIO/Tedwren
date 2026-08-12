@@ -20,4 +20,10 @@
     <ProjectReference Include="..\Tedwren.DataAccess\Tedwren.DataAccess.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- The email logo is embedded and served from an anonymous endpoint so email clients can load it by
+         absolute URL (SVG isn't rendered by Outlook/Gmail, so a PNG is used). -->
+    <EmbeddedResource Include="Assets\logo.png" LogicalName="Tedwren.Api.Assets.logo.png" />
+  </ItemGroup>
+
 </Project>

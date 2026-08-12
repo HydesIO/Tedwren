@@ -11,7 +11,31 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Demo write-actions persisted (D7 — this change)
+### Branded HTML email template + Resend delivery (Phase-7 email — this change)
+- ✅ **Branded, HTML-email-compliant template hosted in the API.** Table-based, inline-styled shell
+  (`EmailLayout`) with the Tedwren logo top-left, a white content container and a "Private & Confidential /
+  Tedwren Ltd" footer, built from a new `EmailOptions` config contract (`Email` section). Renders reliably in
+  Outlook/Gmail/webmail (no flexbox/grid, no SVG). `src/Tedwren.Application/Notifications/Email/`.
+- ✅ **Optional component kit** (`EmailComponents` + fluent `EmailContentBuilder`): heading, paragraph,
+  bulletproof button, data table, verification/2FA code block, highlighted callout, inline highlight,
+  key/value rows, bullet list, divider, spacer — all email-safe with caller text HTML-encoded.
+- ✅ **`IEmailTemplateRenderer`/`EmailTemplateRenderer`** wrap either composed components or a plain-text body
+  (auto-split into paragraphs), so the existing SF-9/SUB-5/R12 job emails become branded with no call-site
+  changes.
+- ✅ **Resend.com delivery** — `ResendEmailSender : IEmailSender` (typed `HttpClient` → `POST /emails`, Bearer
+  auth) fulfils the deferred "Real SMS/email providers (PRD-Phase 7)" item for email. Registered from the API
+  composition root and gated by config: `Email:Provider=Outbox` by default (nothing sends), overrides the stub
+  only when `Provider=Resend` + an API key are set. API key in `appsettings.json` for now (rotate to a secret
+  store before launch). SMS provider remains outstanding.
+- ✅ **Logo asset + endpoints hosted in the API**: embedded PNG served anonymously at
+  `GET /api/email-assets/logo.png` (absolute URL used by emails), plus a Development-only
+  `GET /api/email-templates/preview/{template}` to eyeball the layout/components without sending.
+- ✅ Tests: `EmailTemplateRendererTests` (logo/container/footer present, HTML-encoding, components) and
+  `ResendEmailSenderTests` (endpoint/URL, Bearer header, JSON payload, reply-to, non-2xx throws) via a
+  hand-written fake `HttpMessageHandler` (no mocking lib); test host keeps the outbox sender so existing
+  outbox assertions stay green.
+
+### Demo write-actions persisted (D7 — previous change)
 - ✅ **Site "Edit" now persists.** `ISiteService.UpdateSiteAsync` + `PUT /api/sites/{id}` (tenant-scoped,
   R15/MC-21 → 404 for a foreign site) + `ApiSiteService.UpdateSiteAsync` + an `EditSiteDialog`; the
   SiteDetail "Edit" button replaces the demo snackbar and follows the new slug on rename.
@@ -651,8 +675,8 @@ Phase M1 delivers the shared foundations and the first page migrations:
     Configuration **general settings**, and Permits "Save" — each needs a dedicated write endpoint/service
     (company edit + module entitlements persist today; site repo already has `UpdateAsync` so site edit is a
     small next step).
-  - Real SMS/email providers (PRD-Phase 7); company insurance/accreditation docs in the digest (needs
-    SUB-4); real card-image storage (R9).
+  - Real **SMS** provider (PRD-Phase 7) — the email side is now done (Resend + branded template, see
+    Completed); company insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
 - ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
   `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default; Mock mode removed.
 
