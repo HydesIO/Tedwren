@@ -1,0 +1,57 @@
+@inherits LayoutComponentBase
+
+@* Full-screen, split sign-in shell for the anonymous auth pages (login, forgot / reset password). No app
+   bar, no sidebar, no user identity — the operator is not signed in yet (D1). The left panel carries the
+   Tedwren brand; the right panel hosts the routed form (@Body). *@
+
+<MudThemeProvider Theme="@TedwrenTheme.Instance" IsDarkMode="false" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<div class="auth-shell">
+    <section class="auth-shell__brand" aria-hidden="true">
+        <div class="auth-shell__brand-inner">
+            <div class="auth-brand__mark">
+                <img class="auth-brand__logo" src="images/logo-icon.svg" alt="" />
+                <span class="auth-brand__name">Tedwren</span>
+            </div>
+
+            <p class="auth-brand__eyebrow">Construction compliance platform</p>
+            <h1 class="auth-brand__headline">Workforce compliance and site control, all in one place.</h1>
+            <p class="auth-brand__lede">
+                Tedwren keeps qualifications current, inductions completed and every site entry
+                accounted for — for main contractors and subcontractors alike.
+            </p>
+
+            <ul class="auth-brand__features">
+                <li>
+                    <MudIcon Icon="@Icons.Material.Outlined.WorkspacePremium" Size="Size.Small" />
+                    <span>Qualification &amp; expiry tracking</span>
+                </li>
+                <li>
+                    <MudIcon Icon="@Icons.Material.Outlined.HowToReg" Size="Size.Small" />
+                    <span>Site inductions &amp; entry control</span>
+                </li>
+                <li>
+                    <MudIcon Icon="@Icons.Material.Outlined.FactCheck" Size="Size.Small" />
+                    <span>Compliance packs &amp; permits</span>
+                </li>
+                <li>
+                    <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" />
+                    <span>Real-time attendance &amp; timesheets</span>
+                </li>
+                <li>
+                    <MudIcon Icon="@Icons.Material.Outlined.MoreHoriz" Size="Size.Small" />
+                    <span>And much more…</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="auth-shell__form">
+        <main class="auth-shell__form-inner" role="main">
+            @Body
+        </main>
+    </section>
+</div>

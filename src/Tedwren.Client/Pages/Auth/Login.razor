@@ -1,26 +1,40 @@
 @page "/login"
-@layout RecipientLayout
+@layout AuthLayout
 @using Tedwren.Client.Services
 @inject AuthState Auth
 @inject NavigationManager Nav
 
 <PageTitle>Sign in · Tedwren</PageTitle>
 
-<MudPaper Class="pa-8 mx-auto mt-8" MaxWidth="420px" Elevation="0" Outlined="true">
-    <MudText Typo="Typo.h5" Class="mb-2">Sign in</MudText>
-    <MudText Typo="Typo.body2" Class="mb-4">Sign in to the Tedwren console.</MudText>
+<div class="auth-form__brand">
+    <img src="images/logo-icon.svg" alt="" />
+    <span>Tedwren</span>
+</div>
 
-    @if (_error is not null)
-    {
-        <div class="mb-4"><BannerAlert Severity="StatusKind.Danger" Title="Sign-in failed" Message="@_error" /></div>
-    }
+<h1 class="auth-form__title">Sign In</h1>
+<p class="auth-form__subtitle">Enter your credentials to access your account</p>
 
-    <TedwrenTextField Label="Email" @bind-Value="_email" InputType="InputType.Email" Placeholder="name@company.com" />
-    <TedwrenTextField Label="Password" @bind-Value="_password" InputType="InputType.Password" Placeholder="Your password" />
+@if (_error is not null)
+{
+    <div class="mb-4"><BannerAlert Severity="StatusKind.Danger" Title="Sign-in failed" Message="@_error" /></div>
+}
 
-    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Disabled="_busy" Class="mt-4"
-               StartIcon="@Icons.Material.Outlined.Login" OnClick="Submit">Sign in</MudButton>
-</MudPaper>
+<EditForm Model="this" OnValidSubmit="Submit">
+    <TedwrenTextField Label="Username or Email" @bind-Value="_email" InputType="InputType.Email"
+                      Placeholder="name@company.com" Required="true" />
+    <TedwrenTextField Label="Password" @bind-Value="_password" InputType="InputType.Password"
+                      Placeholder="Your password" Required="true" />
+
+    <div class="auth-form__actions">
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                   FullWidth="true" Size="Size.Large" Disabled="_busy"
+                   StartIcon="@Icons.Material.Outlined.Login">Login</MudButton>
+    </div>
+</EditForm>
+
+<div class="auth-form__links">
+    <MudLink Href="/forgot-password" Color="Color.Primary" Typo="Typo.body2">Forgot Password?</MudLink>
+</div>
 
 @code {
     private string? _email;
