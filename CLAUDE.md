@@ -87,6 +87,21 @@ been removed. Static shell chrome (nav/route inventory, platform switcher, envir
   and must not hide a real issue.
 - Each phase is **independently testable** and must **not break existing functionality** or a
   previously completed phase. Deliver a usable increment where possible.
+- **Blazor bindings must reflect live state.** A value that changes after first render must be
+  either two-way bound (`@bind-Value`, or `Value` **paired with** `ValueChanged`) or, when it is
+  read-only/derived (e.g. a label computed from another field), rendered as **plain markup**
+  (`@model.Foo`). Never feed a mutable or derived model value into a MudBlazor input via a one-way
+  `Value=` with no `ValueChanged`: these inputs cache their text and will silently show the value
+  captured at first render (this was the onboarding "Company type" bug — it stuck on the default).
+  When adding such a binding, check the whole flow the same way.
+- **API is secure-by-default.** `Program.cs` sets an authorization `FallbackPolicy` that
+  `RequireAuthenticatedUser()`, so **every** endpoint requires auth unless its group/route
+  explicitly opts out with `.AllowAnonymous()`. Endpoints that a pre-auth flow needs (e.g. the
+  anonymous onboarding wizard: `/api/onboarding`, and the non-sensitive `/api/reference` lookups)
+  **must** be marked `.AllowAnonymous()` — otherwise the client gets a 401 that can crash the page.
+  Conversely, never mark a group `.AllowAnonymous()` unless the data is genuinely public and safe
+  to serve unauthenticated. When adding a public-facing flow, verify each endpoint it calls is
+  reachable unauthenticated; when adding a sensitive endpoint, verify it is **not**.
 
 ## Build & run
 

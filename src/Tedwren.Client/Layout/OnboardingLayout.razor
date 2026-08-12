@@ -1,8 +1,9 @@
 @inherits LayoutComponentBase
 
-@* Minimal, distraction-free shell for the onboarding wizard: brand bar + a centered card area on a plain
-   background. No sidebar or console navigation, so a brand-new customer (or a tester adding a client) sets
-   up their organisation without the full app chrome. Modelled on RecipientLayout. *@
+@* Minimal, distraction-free shell for the onboarding wizard: a plain, centered card area on a sunken
+   background. No app bar, no sidebar, no console navigation — a brand-new customer (or a tester adding a
+   client) sets up their organisation without the full app chrome. The wizard itself carries the brand
+   mark in its top-left, so the shell stays chrome-free. *@
 
 <MudThemeProvider Theme="@TedwrenTheme.Instance" IsDarkMode="false" />
 <MudPopoverProvider />
@@ -10,10 +11,6 @@
 <MudSnackbarProvider />
 
 <div class="onboarding-shell">
-    <header class="onboarding-shell__bar">
-        <img class="onboarding-shell__logo" src="images/logo-icon.svg" alt="" />
-        <span class="onboarding-shell__brand">Tedwren</span>
-    </header>
     <main class="onboarding-shell__content" role="main">
         @Body
     </main>

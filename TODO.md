@@ -11,6 +11,22 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Onboarding wizard polish + binding/auth guardrails (this change)
+- ✅ **Chrome-free layout.** `OnboardingLayout` app bar removed; the wizard now carries the Tedwren brand
+  mark top-left in its own masthead, on a plain sunken (`--color-bg`) centered shell.
+- ✅ **Wizard tidy-up.** Professional step scaffolding: heading/hint per step, selectable choice cards for the
+  org-type step (brand-pale selected state), sites/operatives as titled sub-cards ("Site 1"…) with a header
+  remove action, insurances as a checklist with a selected state, and a bordered review summary. All colour
+  from `tokens.css`.
+- ✅ **`_model.TypeLabel` bug fix.** The company-step "Company type" was a read-only `MudTextField` fed a
+  derived value one-way (`Value=` with no `ValueChanged`) — MudBlazor inputs cache their text, so it stuck on
+  the first-render default. Now rendered as plain markup so it always reflects the chosen type. Audited every
+  other `Value=` binding: all others correctly pair with `ValueChanged`.
+- ✅ **Guardrails in `CLAUDE.md`.** Added engineering standards for (a) Blazor bindings reflecting live state
+  (two-way or plain markup; never one-way `Value=` for mutable/derived values) and (b) the secure-by-default
+  API (`FallbackPolicy` requires auth; pre-auth flows must `.AllowAnonymous()`, sensitive ones must not).
+- ✅ Whole solution builds; `dotnet test` green (API 63, Application 117, others unchanged).
+
 ### Login redesign + forgot-password (D1, this change)
 - ✅ **401 crash fix (root cause).** `MainLayout` redirected unauthenticated users to `/login` but still
   rendered the routed `@Body`, so a console page (e.g. Dashboard) called the API tokenless, threw on the 401
