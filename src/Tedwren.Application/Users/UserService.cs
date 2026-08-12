@@ -1,6 +1,9 @@
 using System.Security.Cryptography;
+using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Users;
+using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Notifications.Email;
 using Tedwren.Application.Persistence;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
@@ -11,14 +14,22 @@ namespace Tedwren.Application.Users;
 /// The single implementation of the console user-management rules (SF-20, SF-23, Q2). Data-store agnostic:
 /// the same logic runs over the in-memory and Dapper repositories. Access is withdrawn by suspension, never
 /// by deleting the account, so the audit trail stays intact (SF-20). The read-only auditor role (SF-23) is
-/// modelled through <see cref="RolePermissions.CanWrite"/>.
+/// modelled through <see cref="RolePermissions.CanWrite"/>. Inviting a user also emails the accept-invite
+/// link (best-effort — a delivery failure never loses the invite).
 /// </summary>
 public sealed class UserService : IUserService
 {
     private readonly IUserRepository _users;
+    private readonly IEmailSender _email;
+    private readonly EmailOptions _emailOptions;
 
-    /// <summary>Creates the service over its repository.</summary>
-    public UserService(IUserRepository users) => _users = users;
+    /// <summary>Creates the service over its repository, the email sender and the email/branding options.</summary>
+    public UserService(IUserRepository users, IEmailSender email, EmailOptions emailOptions)
+    {
+        _users = users;
+        _email = email;
+        _emailOptions = emailOptions;
+    }
 
     /// <summary>Returns every console user as a list row.</summary>
     public async Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken cancellationToken = default)
@@ -84,7 +95,31 @@ public sealed class UserService : IUserService
             InviteTokenExpiresUtc = DateTimeOffset.UtcNow.Add(InviteTokenLifetime),
         };
         await _users.AddAsync(user, cancellationToken);
-        return new InviteUserResult(user.Id, acceptToken);
+
+        var emailSent = await SendInviteEmailAsync(user, acceptToken, cancellationToken);
+        return new InviteUserResult(user.Id, acceptToken, emailSent);
+    }
+
+    /// <summary>
+    /// Emails the branded accept-invite link (best-effort). Returns true only when a real provider delivered
+    /// it: the outbox stub and any delivery failure return false, so the caller falls back to sharing the link.
+    /// </summary>
+    private async Task<bool> SendInviteEmailAsync(User user, string acceptToken, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var baseUrl = (_emailOptions.ConsoleBaseUrl ?? string.Empty).TrimEnd('/');
+            var acceptUrl = $"{baseUrl}/accept-invite?token={acceptToken}";
+            var content = InviteEmail.BuildContent(user.Name, acceptUrl, user.InviteTokenExpiresUtc);
+            await _email.SendHtmlAsync(user.Email, InviteEmail.Subject, content, cancellationToken);
+            return _emailOptions.Provider == EmailProvider.Resend;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Best-effort: the user is already created; the accept token is returned so the admin can share
+            // the link manually rather than losing the invite to a transient mail failure.
+            return false;
+        }
     }
 
     /// <summary>Updates a user's name and role. Null when the user is not found.</summary>

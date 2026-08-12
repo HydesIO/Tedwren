@@ -1,4 +1,7 @@
+using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Users;
+using Tedwren.Abstractions.Notifications;
+using Tedwren.Application.Notifications;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Users;
 using Tedwren.Domain.Enums;
@@ -9,16 +12,37 @@ namespace Tedwren.Application.Tests;
 /// <summary>
 /// Verifies the console user-management rules (SF-20/SF-23/Q2) on <see cref="UserService"/> over a clean
 /// in-memory store: inviting starts an account invited, duplicate emails are rejected, the auditor role is
-/// read-only, and suspending withdraws access without deleting the account.
+/// read-only, suspending withdraws access without deleting the account, and inviting emails the branded
+/// accept-invite link (best-effort).
 /// </summary>
 public sealed class UserServiceTests
 {
     private static readonly Guid CompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
 
-    private static UserService CreateSut(out InMemoryUserStore store)
+    private static UserService CreateSut(out InMemoryUserStore store) =>
+        CreateSut(out store, out _, new EmailOptions());
+
+    private static UserService CreateSut(out InMemoryUserStore store, out NotificationOutbox outbox, EmailOptions options)
     {
         store = new InMemoryUserStore(seed: false);
-        return new UserService(new InMemoryUserRepository(store));
+        outbox = new NotificationOutbox();
+        return new UserService(new InMemoryUserRepository(store), new OutboxEmailSender(outbox), options);
+    }
+
+    private static UserService CreateSut(out InMemoryUserStore store, IEmailSender email, EmailOptions options)
+    {
+        store = new InMemoryUserStore(seed: false);
+        return new UserService(new InMemoryUserRepository(store), email, options);
+    }
+
+    /// <summary>An email sender that always fails, to prove invites survive a delivery outage.</summary>
+    private sealed class ThrowingEmailSender : IEmailSender
+    {
+        public Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("send failed");
+
+        public Task SendHtmlAsync(string toEmail, string subject, string contentHtml, CancellationToken cancellationToken = default) =>
+            throw new InvalidOperationException("send failed");
     }
 
     [Fact] // SF-20
@@ -74,6 +98,46 @@ public sealed class UserServiceTests
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
             service.InviteUserAsync(new InviteUserRequest(CompanyId, name, email, "Administrator")));
+    }
+
+    [Fact] // invite emails the branded accept-invite link when a real provider is configured
+    public async Task InviteUser_WithResendProvider_EmailsAcceptLink_AndReportsSent()
+    {
+        var options = new EmailOptions { Provider = EmailProvider.Resend, ConsoleBaseUrl = "https://console.tedwren.test" };
+        var service = CreateSut(out _, out var outbox, options);
+
+        var result = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "SiteManager"));
+
+        Assert.True(result.EmailSent);
+        var message = Assert.Single(outbox.Messages);
+        Assert.Equal("Email", message.Channel);
+        Assert.Equal("jo@example.com", message.Recipient);
+        Assert.Contains($"https://console.tedwren.test/accept-invite?token={result.AcceptToken}", message.Body);
+    }
+
+    [Fact] // with the outbox stub (default), the message is still recorded but EmailSent is false (fallback link)
+    public async Task InviteUser_WithOutboxProvider_RecordsMessage_ButReportsNotSent()
+    {
+        var service = CreateSut(out _, out var outbox, new EmailOptions()); // Provider defaults to Outbox
+
+        var result = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "SiteManager"));
+
+        Assert.False(result.EmailSent);
+        Assert.Single(outbox.Messages);
+    }
+
+    [Fact] // best-effort: a delivery failure never loses the invite
+    public async Task InviteUser_WhenSendThrows_StillCreatesUser_AndReportsNotSent()
+    {
+        var options = new EmailOptions { Provider = EmailProvider.Resend };
+        var service = CreateSut(out _, new ThrowingEmailSender(), options);
+
+        var result = await service.InviteUserAsync(new InviteUserRequest(CompanyId, "Jo Bloggs", "jo@example.com", "SiteManager"));
+
+        Assert.False(result.EmailSent);
+        Assert.NotEqual(Guid.Empty, result.UserId);
+        var user = await service.GetUserAsync(result.UserId);
+        Assert.Equal("Invited", user!.Status);
     }
 
     [Fact] // SF-23

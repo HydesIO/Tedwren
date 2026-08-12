@@ -19,4 +19,11 @@ public sealed class OutboxEmailSender : IEmailSender
         _outbox.Record(new OutboxMessage("Email", toEmail, subject, body, DateTimeOffset.UtcNow));
         return Task.CompletedTask;
     }
+
+    /// <summary>Records the HTML email to the outbox (the inner content fragment, unwrapped — this is a test double).</summary>
+    public Task SendHtmlAsync(string toEmail, string subject, string contentHtml, CancellationToken cancellationToken = default)
+    {
+        _outbox.Record(new OutboxMessage("Email", toEmail, subject, contentHtml, DateTimeOffset.UtcNow));
+        return Task.CompletedTask;
+    }
 }

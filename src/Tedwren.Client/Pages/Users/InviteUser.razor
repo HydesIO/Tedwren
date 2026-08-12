@@ -44,9 +44,13 @@
 
     @if (_acceptLink is not null)
     {
-        <FormSection Title="Invitation link" Description="Share this one-time link with the invitee so they can set a password and sign in.">
+        <FormSection Title="@(_emailSent ? "Invitation emailed" : "Invitation link")"
+                     Description="@(_emailSent
+                         ? "We've emailed the invitation. You can also share this one-time link directly if needed."
+                         : "No email was sent — share this one-time link with the invitee so they can set a password and sign in.")">
             <div class="form-page__full">
-                <BannerAlert Severity="StatusKind.Success" Title="Invitation created"
+                <BannerAlert Severity="@(_emailSent ? StatusKind.Success : StatusKind.Warning)"
+                             Title="@(_emailSent ? $"Invitation emailed to {_email}" : "Invitation created — email not sent")"
                              Message="@_acceptLink" />
             </div>
         </FormSection>
@@ -98,10 +102,14 @@
         try
         {
             var result = await Users.InviteUserAsync(new InviteUserRequest(Tenant.CurrentCompanyId, _name!, _email!, _role!));
-            // No email backend yet: surface the one-time accept link for the admin to share (the invitee
-            // sets their password there, D1). A real deployment emails this link.
+            // The API emails the branded accept-invite link when a real provider is configured. We still show
+            // the one-time link as a fallback the admin can share (e.g. in local/dev where email is stubbed, or
+            // if delivery failed), so an invite is never blocked by a mail issue.
+            _emailSent = result.EmailSent;
             _acceptLink = $"{Nav.BaseUri}accept-invite?token={result.AcceptToken}";
-            Snackbar.Add($"Invitation created for {_email}.", Severity.Success);
+            Snackbar.Add(
+                result.EmailSent ? $"Invitation emailed to {_email}." : $"Invitation created for {_email} — share the link below.",
+                result.EmailSent ? Severity.Success : Severity.Info);
         }
         catch (InvalidOperationException ex)
         {
@@ -110,6 +118,7 @@
     }
 
     private string? _acceptLink;
+    private bool _emailSent;
 
     private void Cancel() => Nav.NavigateTo("/users");
 
