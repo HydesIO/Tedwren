@@ -11,6 +11,24 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Login redesign + forgot-password (D1, this change)
+- ✅ **401 crash fix (root cause).** `MainLayout` redirected unauthenticated users to `/login` but still
+  rendered the routed `@Body`, so a console page (e.g. Dashboard) called the API tokenless, threw on the 401
+  and crashed the WASM renderer before the redirect landed (surfaced *on* the login page). The shell + `@Body`
+  now render only once the sign-in check passes (`_ready` gate), so no page initialises unauthenticated.
+- ✅ **Full-screen branded login.** New `AuthLayout` (no app bar): split screen — Tedwren brand panel (logo,
+  tagline, feature list, brand-orange gradient from `tokens.css`) on the left, form on the right; stacks on
+  narrow screens. `Login`, `AcceptInvite`, and the new pages moved onto it (off `RecipientLayout`, which stays
+  for external compliance-pack recipients). Login restyled ("Sign In" / credentials copy) with Enter-to-submit.
+- ✅ **Forgot / reset password.** `POST /api/auth/forgot-password` (anonymous) → `IAuthService.
+  RequestPasswordResetAsync`: mints a 1-hour one-time token (reuses the invite-token fields, no schema change)
+  and emails a branded reset link (`PasswordResetEmail` → `{ConsoleBaseUrl}/reset-password?token=…`). Always
+  returns 200 and never discloses whether the email exists (**no account enumeration**); only Active accounts
+  get a link. New `/forgot-password` and `/reset-password` pages; reset reuses the accept-invite endpoint to
+  set the new password and sign in. `AuthState` gains `RequestPasswordResetAsync` / `ResetPasswordAsync`.
+- ✅ Tests: `AuthApiTests` — forgot-password stays anonymous & non-enumerating; forgot → reset → login
+  (old password rejected, new accepted). `dotnet test` green (API 63, Application 117).
+
 ### Email notifications wired into real flows — invite email + test-send (this change)
 - ✅ **Console-user invite now emails the accept-invite link.** `UserService.InviteUserAsync` composes a
   branded invite (greeting, "Accept your invitation" button → `{ConsoleBaseUrl}/accept-invite?token=…`,

@@ -28,6 +28,15 @@ public static class AuthEndpoints
             })
             .WithName("AcceptInvite");
 
+        // Always returns 200 regardless of whether the email is registered — the service reveals nothing about
+        // account existence (no enumeration). The reset link, when sent, lands on /reset-password (D1).
+        group.MapPost("/forgot-password", async (ForgotPasswordRequest request, IAuthService service, CancellationToken cancellationToken) =>
+            {
+                await service.RequestPasswordResetAsync(request, cancellationToken);
+                return Results.Ok();
+            })
+            .WithName("ForgotPassword");
+
         return app;
     }
 }

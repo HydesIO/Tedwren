@@ -2,9 +2,11 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Tedwren.Abstractions.Contracts.Auth;
 using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Users;
+using Tedwren.Application.Persistence;
 using Xunit;
 
 namespace Tedwren.Api.Tests;
@@ -95,5 +97,42 @@ public sealed class AuthApiTests : IClassFixture<WebApplicationFactory<Program>>
     {
         var response = await _auth.CreateClient().GetAsync($"/api/site-entry/muster/{Guid.NewGuid()}");
         Assert.NotEqual(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_IsAnonymous_AndDoesNotEnumerate()
+    {
+        // Unknown address: still 200, so a caller can't tell a registered email from an unregistered one (D1).
+        var unknown = await _auth.CreateClient()
+            .PostAsJsonAsync("/api/auth/forgot-password", new ForgotPasswordRequest($"nobody-{Guid.NewGuid():N}@example.com"));
+        Assert.Equal(HttpStatusCode.OK, unknown.StatusCode);
+    }
+
+    [Fact]
+    public async Task ForgotPassword_Then_Reset_Then_Login()
+    {
+        var (email, oldPassword) = await InviteAndAcceptAsync("ComplianceManager");
+
+        // Request a reset; the endpoint reveals nothing, so read the minted token from the shared store.
+        var forgot = await _auth.CreateClient().PostAsJsonAsync("/api/auth/forgot-password", new ForgotPasswordRequest(email));
+        Assert.Equal(HttpStatusCode.OK, forgot.StatusCode);
+
+        using var scope = _auth.Services.CreateScope();
+        var users = scope.ServiceProvider.GetRequiredService<IUserRepository>();
+        var user = await users.GetByEmailAsync(email);
+        Assert.NotNull(user!.InviteToken);
+
+        // Set a new password with the reset token (same endpoint the reset page posts to).
+        const string newPassword = "N3wSecurePass!";
+        var reset = await _auth.CreateClient()
+            .PostAsJsonAsync("/api/auth/accept-invite", new AcceptInviteRequest(user.InviteToken!, newPassword));
+        Assert.Equal(HttpStatusCode.OK, reset.StatusCode);
+
+        // The old password no longer works; the new one signs in.
+        var withOld = await _auth.CreateClient().PostAsJsonAsync("/api/auth/login", new LoginRequest(email, oldPassword));
+        Assert.Equal(HttpStatusCode.Unauthorized, withOld.StatusCode);
+
+        var withNew = await _auth.CreateClient().PostAsJsonAsync("/api/auth/login", new LoginRequest(email, newPassword));
+        Assert.Equal(HttpStatusCode.OK, withNew.StatusCode);
     }
 }
