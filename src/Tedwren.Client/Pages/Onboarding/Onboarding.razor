@@ -230,7 +230,17 @@
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
-        _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        // The trades list is a convenience lookup; if it can't be loaded (e.g. reached via the dev
+        // "Create Account" shortcut before authentication), fall back to an empty list rather than
+        // failing the whole wizard.
+        try
+        {
+            _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        }
+        catch
+        {
+            _trades = Array.Empty<string>();
+        }
         _model.Sites.Add(new OnboardingSite());
         _model.Operatives.Add(new OnboardingOperative());
         foreach (var (name, type) in DefaultDocuments)
