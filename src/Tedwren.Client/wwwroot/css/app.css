@@ -96,11 +96,31 @@ h1:focus-visible {
 
 .loading-splash {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: var(--spacing-16, 16px);
     height: 100%;
     color: var(--color-text-secondary);
     font-size: .875rem;
+}
+
+/* Brand mark spins clockwise while the WebAssembly runtime loads. */
+.loading-splash__logo {
+    width: 56px;
+    height: 56px;
+    animation: loading-splash-spin 1s linear infinite;
+}
+
+@keyframes loading-splash-spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-splash__logo {
+        animation: none;
+    }
 }
 
 /* Detail-page tab panels: give the tab content some breathing room. */
