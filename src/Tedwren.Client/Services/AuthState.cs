@@ -76,6 +76,24 @@ public sealed class AuthState
         return await ApplyAsync(response);
     }
 
+    /// <summary>
+    /// Requests a password-reset email for the address. Completes without revealing whether the account
+    /// exists — the caller always shows the same "check your inbox" confirmation (no account enumeration).
+    /// </summary>
+    public async Task RequestPasswordResetAsync(string email)
+    {
+        using var response = await _http.PostAsJsonAsync("api/auth/forgot-password", new ForgotPasswordRequest(email));
+        _ = response; // Response is intentionally ignored; the outcome must not depend on account existence.
+    }
+
+    /// <summary>Sets a new password from a reset link and signs in. Returns false on an invalid/expired link.</summary>
+    public async Task<bool> ResetPasswordAsync(string token, string password)
+    {
+        // A reset consumes the same one-time token the invite-acceptance endpoint validates (D1).
+        using var response = await _http.PostAsJsonAsync("api/auth/accept-invite", new AcceptInviteRequest(token, password));
+        return await ApplyAsync(response);
+    }
+
     /// <summary>Clears the token and current user.</summary>
     public async Task LogoutAsync()
     {

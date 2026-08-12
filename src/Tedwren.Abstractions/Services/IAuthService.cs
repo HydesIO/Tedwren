@@ -13,4 +13,11 @@ public interface IAuthService
 
     /// <summary>Accepts an invitation (sets the password, activates the account). Null when the token is invalid/expired.</summary>
     Task<AuthResultDto?> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Starts a password reset: emails a one-time reset link to the address when it belongs to an active
+    /// account. Returns unconditionally and reveals nothing about whether the account exists, so the endpoint
+    /// cannot be used to enumerate registered emails.
+    /// </summary>
+    Task RequestPasswordResetAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default);
 }
