@@ -40,6 +40,12 @@ public sealed class EmailOptions
     /// </summary>
     public string PublicBaseUrl { get; set; } = "https://localhost:7192";
 
+    /// <summary>
+    /// Public base URL of the Blazor console, used to build links in emails such as the accept-invite URL
+    /// (<c>{ConsoleBaseUrl}/accept-invite?token=…</c>). Must be an absolute origin the recipient can open.
+    /// </summary>
+    public string ConsoleBaseUrl { get; set; } = "https://localhost:11379";
+
     /// <summary>Legal entity name shown in the confidential footer.</summary>
     public string CompanyLegalName { get; set; } = "Tedwren Ltd";
 

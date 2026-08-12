@@ -1,4 +1,5 @@
 using System.Reflection;
+using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Application.Notifications.Email;
 
@@ -6,8 +7,9 @@ namespace Tedwren.Api.Endpoints;
 
 /// <summary>
 /// Hosts the branded email template inside the API: the anonymous logo asset that emails reference by absolute
-/// URL, and a Development-only preview that renders the layout and every optional component to the browser so
-/// the design can be checked without sending. These are the "templates hosted within the API".
+/// URL, a Development-only preview that renders the layout and every optional component to the browser, and an
+/// admin-only test-send that delivers a real branded sample so live delivery can be verified. These are the
+/// "templates hosted within the API".
 /// </summary>
 public static class EmailTemplateEndpoints
 {
@@ -45,8 +47,39 @@ public static class EmailTemplateEndpoints
             .WithTags("Email")
             .AllowAnonymous();
 
+        // Admin-only: actually send a branded sample to verify end-to-end delivery. With Provider=Resend this
+        // is a real email; with the default Outbox stub it is captured (see GET /api/jobs/outbox). It sends, so
+        // unlike the anonymous preview it is protected.
+        app.MapPost("/api/email-templates/test-send", async (
+                TestSendRequest request,
+                IEmailSender email,
+                EmailOptions options,
+                CancellationToken cancellationToken) =>
+            {
+                var toEmail = (request.ToEmail ?? string.Empty).Trim();
+                if (toEmail.Length == 0 || !toEmail.Contains('@') || !toEmail.Contains('.'))
+                {
+                    return Results.BadRequest(new { error = "A valid recipient email address is required." });
+                }
+
+                var content = new EmailContentBuilder()
+                    .Heading("Test email from Tedwren")
+                    .Paragraph("If you're reading this, the Tedwren email pipeline is configured correctly and can deliver branded notifications.")
+                    .Callout($"Delivered via the '{options.Provider}' provider.", "Delivery")
+                    .Build();
+
+                await email.SendHtmlAsync(toEmail, "Tedwren test email", content, cancellationToken);
+                return Results.Ok(new { sentTo = toEmail, provider = options.Provider.ToString() });
+            })
+            .WithName("EmailTemplateTestSend")
+            .WithTags("Email")
+            .RequireAuthorization("AdminOnly");
+
         return app;
     }
+
+    /// <summary>Request body for the admin test-send endpoint.</summary>
+    private sealed record TestSendRequest(string ToEmail);
 
     /// <summary>Reads the embedded logo PNG into memory (small, so read per request is fine).</summary>
     private static byte[]? ReadLogoBytes()

@@ -33,9 +33,16 @@ public sealed class ResendEmailSender : IEmailSender
     }
 
     /// <summary>Renders <paramref name="body"/> into the branded template and POSTs it to Resend for delivery.</summary>
-    public async Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default)
+    public Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default) =>
+        DeliverAsync(toEmail, subject, _renderer.RenderPlainText(subject, body), cancellationToken);
+
+    /// <summary>Wraps the composed <paramref name="contentHtml"/> in the branded shell and POSTs it to Resend.</summary>
+    public Task SendHtmlAsync(string toEmail, string subject, string contentHtml, CancellationToken cancellationToken = default) =>
+        DeliverAsync(toEmail, subject, _renderer.Render(subject, contentHtml), cancellationToken);
+
+    /// <summary>POSTs a fully-rendered HTML email to Resend, throwing on a non-success response.</summary>
+    private async Task DeliverAsync(string toEmail, string subject, string html, CancellationToken cancellationToken)
     {
-        var html = _renderer.RenderPlainText(subject, body);
         var request = new ResendEmailRequest(
             From: FormatFrom(),
             To: new[] { toEmail },

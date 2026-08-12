@@ -11,7 +11,27 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
-### Branded HTML email template + Resend delivery (Phase-7 email — this change)
+### Email notifications wired into real flows — invite email + test-send (this change)
+- ✅ **Console-user invite now emails the accept-invite link.** `UserService.InviteUserAsync` composes a
+  branded invite (greeting, "Accept your invitation" button → `{ConsoleBaseUrl}/accept-invite?token=…`,
+  expiry note, fallback link via new `InviteEmail` composer) and sends it. **Best-effort:** the user is still
+  created and the token returned on any delivery failure, so an invite is never lost; `InviteUserResult` now
+  carries `EmailSent`. `InviteUser.razor` shows "emailed to X" and keeps the link as a copy/share fallback.
+- ✅ **Rich-HTML sending seam.** `IEmailSender.SendHtmlAsync(to, subject, contentHtml)` added so component-based
+  emails (buttons/tables/2FA) can be sent; `ResendEmailSender` wraps content via `EmailTemplateRenderer.Render`
+  and `OutboxEmailSender` records it. The plain-text `SendAsync` path (existing jobs) is unchanged.
+- ✅ **Admin test-send endpoint** `POST /api/email-templates/test-send` (AdminOnly) delivers a branded sample
+  and reports the resolved provider, so live Resend delivery can be verified from within the app.
+- ✅ **`EmailOptions.ConsoleBaseUrl`** added (+ appsettings) to build console links in emails.
+- ✅ Confirmed the **scheduled notifications are already wired** to real DB data — `ExpiryWarningJob` (SF-9),
+  `WeeklyDigestJob` (SUB-5), `OvernightSignInJob` (SF-19) and `JobHeartbeatMonitor` (R12) run via
+  `ExpirySchedulerHostedService` and call `IEmailSender`; they send real branded email as soon as
+  `Email:Provider=Resend` + a key are set. No code change needed there.
+- ✅ Tests: `UserServiceTests` (invite emails the link / outbox-stub reports not-sent / a throwing sender still
+  creates the user); `UserApiTests` (invite records the email end-to-end); new `EmailApiTests` (test-send
+  delivers + input validation). Full suite green (Application 117, Api 61).
+
+### Branded HTML email template + Resend delivery (Phase-7 email — previous change)
 - ✅ **Branded, HTML-email-compliant template hosted in the API.** Table-based, inline-styled shell
   (`EmailLayout`) with the Tedwren logo top-left, a white content container and a "Private & Confidential /
   Tedwren Ltd" footer, built from a new `EmailOptions` config contract (`Email` section). Renders reliably in
@@ -81,8 +101,9 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   instead of per-person in a loop.
 - ✅ Docs synced (`docs/plan-and-scope.md`, this file). `dotnet test` green (API 54, Application 100).
 - ⚠️ **Still-open production follow-ups (from D1/D2):** set `Jwt:SigningKey` + `Seed:AdminPassword` from
-  secrets; deliver the invite/onboarding links by email; **rotate the committed DB password in
-  `src/Tedwren.Api/appsettings.json`** (still present — a real credential in the repo).
+  secrets; **rotate the committed DB password in `src/Tedwren.Api/appsettings.json`** (still present — a real
+  credential in the repo). *(Invite-by-email is now delivered — see Completed. Onboarding links still need a
+  delivery channel: the operative has no email captured, so SMS is the right route and isn't built yet.)*
 
 ### Deferred items, Phase D3: induction template authoring (previous change)
 Implements MC-15/MC-4 — a manager edits the induction video, questions, pass mark and attempts.
@@ -675,8 +696,9 @@ Phase M1 delivers the shared foundations and the first page migrations:
     Configuration **general settings**, and Permits "Save" — each needs a dedicated write endpoint/service
     (company edit + module entitlements persist today; site repo already has `UpdateAsync` so site edit is a
     small next step).
-  - Real **SMS** provider (PRD-Phase 7) — the email side is now done (Resend + branded template, see
-    Completed); company insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
+  - Real **SMS** provider (PRD-Phase 7) — email is done (Resend + branded template + invite delivery, see
+    Completed); SMS is the remaining channel (and the natural route for onboarding links). Company
+    insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
 - ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
   `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default; Mock mode removed.
 
