@@ -63,6 +63,8 @@
     line-height: 1.2;
     font-weight: 700;
     letter-spacing: -0.02em;
+    /* Override the global dark heading colour so the headline reads on the dark brand panel. */
+    color: #ffffff;
 }
 
 .auth-brand__lede {

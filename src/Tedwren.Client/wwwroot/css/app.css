@@ -65,6 +65,14 @@ h1, h2, h3, h4, h5, h6 {
     outline-offset: 2px;
 }
 
+/* Headings are focused programmatically by <FocusOnNavigate Selector="h1" /> on each navigation for
+   screen-reader announcement. They are not interactive, so suppress the visible focus ring that would
+   otherwise flash an orange outline around the page title on load. */
+h1:focus,
+h1:focus-visible {
+    outline: none;
+}
+
 /* Blazor's default error UI, restyled to the token palette. */
 #blazor-error-ui {
     display: none;
