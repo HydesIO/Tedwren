@@ -36,6 +36,25 @@ builder.Services.AddPermitCore();
 builder.Services.AddOnboardingCore();
 builder.Services.AddAuthCore();
 
+// Email delivery (PRD-Phase 7): bind the "Email" section and register the branded HTML template renderer.
+// The provider defaults to Outbox (nothing sends); when configured for Resend with an API key, a typed
+// HttpClient sender overrides the Application-layer OutboxEmailSender — mirroring how the JWT ITokenIssuer
+// is provided by the API composition root rather than the Application layer.
+var emailOptions = builder.Configuration.GetSection(EmailOptions.SectionName).Get<EmailOptions>() ?? new EmailOptions();
+builder.Services.AddSingleton(emailOptions);
+builder.Services.AddSingleton<Tedwren.Abstractions.Notifications.IEmailTemplateRenderer,
+    Tedwren.Application.Notifications.Email.EmailTemplateRenderer>();
+if (emailOptions.Provider == EmailProvider.Resend && !string.IsNullOrWhiteSpace(emailOptions.ApiKey))
+{
+    builder.Services.AddHttpClient<Tedwren.Abstractions.Notifications.IEmailSender,
+        Tedwren.Application.Notifications.ResendEmailSender>(client =>
+    {
+        client.BaseAddress = new Uri(emailOptions.ApiBaseUrl.TrimEnd('/') + "/");
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", emailOptions.ApiKey);
+    });
+}
+
 // Bootstrap admin so a fresh install can be signed into (idempotent). Credentials from the "Seed" section.
 var seedAdminOptions = builder.Configuration.GetSection(Tedwren.Application.Auth.SeedAdminOptions.SectionName)
     .Get<Tedwren.Application.Auth.SeedAdminOptions>() ?? new Tedwren.Application.Auth.SeedAdminOptions();
@@ -210,6 +229,7 @@ app.MapSettingsEndpoints();
 app.MapPermitEndpoints();
 app.MapOnboardingEndpoints();
 app.MapImageEndpoints();
+app.MapEmailTemplateEndpoints();
 app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration

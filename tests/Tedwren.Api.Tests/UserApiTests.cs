@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Tedwren.Abstractions.Contracts.Users;
+using Tedwren.Abstractions.Notifications;
 using Xunit;
 
 namespace Tedwren.Api.Tests;
@@ -66,6 +67,21 @@ public sealed class UserApiTests : IClassFixture<WebApplicationFactory<Program>>
         var reactivated = await (await client.PostAsync($"/api/users/{id}/reactivate", null))
             .Content.ReadFromJsonAsync<UserDto>();
         Assert.Equal("Active", reactivated!.Status);
+    }
+
+    [Fact] // the invite is wired to the email pipeline: an invitation email is recorded to the outbox
+    public async Task Invite_SendsInvitationEmail_WithAcceptLink()
+    {
+        var client = CreateClient();
+        var invite = new InviteUserRequest(CompanyId, "Invitee Person", "invitee@example.com", "SiteManager");
+
+        var created = await client.PostAsJsonAsync("/api/users", invite);
+        Assert.Equal(HttpStatusCode.Created, created.StatusCode);
+        var result = (await created.Content.ReadFromJsonAsync<InviteUserResult>())!;
+
+        var outbox = await client.GetFromJsonAsync<List<OutboxMessage>>("/api/jobs/outbox");
+        var email = Assert.Single(outbox!, m => m.Channel == "Email" && m.Recipient == "invitee@example.com");
+        Assert.Contains($"accept-invite?token={result.AcceptToken}", email.Body);
     }
 
     [Fact]

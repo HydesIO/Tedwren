@@ -20,8 +20,12 @@ public sealed record UserDto(
 /// </summary>
 public sealed record InviteUserRequest(Guid CompanyId, string Name, string Email, string Role);
 
-/// <summary>The outcome of an invite: the new user's id and the one-time token for the accept-invite link.</summary>
-public sealed record InviteUserResult(Guid UserId, string AcceptToken);
+/// <summary>
+/// The outcome of an invite: the new user's id, the one-time token for the accept-invite link, and whether
+/// the invitation email was actually sent. <see cref="EmailSent"/> is false when delivery is stubbed
+/// (outbox provider) or the send failed — the caller can then fall back to sharing the link manually.
+/// </summary>
+public sealed record InviteUserResult(Guid UserId, string AcceptToken, bool EmailSent);
 
 /// <summary>Request to change an existing user's name and role.</summary>
 public sealed record UpdateUserRequest(string Name, string Role);
