@@ -1,0 +1,87 @@
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@inject IFormAssignmentService Assignments
+@inject ISiteService Sites
+@inject ISnackbar Snackbar
+@* Assigns a form to a scope (organisation / site / operator), with a cadence and an optional failed-check
+   alert address (requirement 5). *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="form-assign">
+            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Assign <b>@FormName</b> to where it should be completed.</MudText>
+
+            <TedwrenSelect T="string" Label="Assign to" @bind-Value="_scope" Options="_scopes" />
+            @if (_scope == "Site")
+            {
+                <TedwrenSelect T="string" Label="Site" @bind-Value="_siteName" Options="_siteNames" Placeholder="Select a site" />
+            }
+            <TedwrenSelect T="string" Label="How often" @bind-Value="_schedule" Options="_schedules" />
+            <TedwrenTextField Label="Failed-check alert email (optional)" @bind-Value="_alertEmail"
+                              HelperText="A red check emails this address with the completed report attached." />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_busy" OnClick="SaveAsync">Assign</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The form family being assigned.</summary>
+    [Parameter] public Guid FamilyId { get; set; }
+
+    /// <summary>The form's display name.</summary>
+    [Parameter] public string FormName { get; set; } = string.Empty;
+
+    private readonly IReadOnlyList<string> _scopes = new[] { "Organisation", "Site", "Operator" };
+    private readonly IReadOnlyList<string> _schedules = new[] { "AdHoc", "Daily", "Weekly", "Monthly" };
+    private string _scope = "Organisation";
+    private string _schedule = "AdHoc";
+    private string? _alertEmail;
+    private string? _siteName;
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private IReadOnlyList<string> _siteNames = Array.Empty<string>();
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _sites = await Sites.GetSitesAsync();
+        _siteNames = _sites.Select(s => s.Name).ToList();
+    }
+
+    private async Task SaveAsync()
+    {
+        Guid? siteId = null;
+        if (_scope == "Site")
+        {
+            var site = _sites.FirstOrDefault(s => s.Name == _siteName);
+            if (site is null)
+            {
+                Snackbar.Add("Choose a site.", Severity.Warning);
+                return;
+            }
+            siteId = site.Id;
+        }
+
+        _busy = true;
+        try
+        {
+            await Assignments.CreateAsync(new CreateFormAssignmentRequest(
+                FamilyId, _scope, siteId, null, null, _schedule,
+                string.IsNullOrWhiteSpace(_alertEmail) ? null : _alertEmail.Trim()));
+            Snackbar.Add($"Assigned \"{FormName}\".", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

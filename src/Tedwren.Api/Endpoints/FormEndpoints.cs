@@ -138,6 +138,31 @@ public static class FormEndpoints
             .WithName("EmailFormSubmission")
             .RequireAuthorization("RequireWrite");
 
+        // Assignments — assign a form to a site / operator / the organisation / an induction (requirement 5).
+        group.MapGet("/assignments", async (IFormAssignmentService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetAssignmentsAsync(cancellationToken)))
+            .WithName("GetFormAssignments");
+
+        group.MapPost("/assignments", async (CreateFormAssignmentRequest request, IFormAssignmentService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var id = await service.CreateAsync(request, cancellationToken);
+                    return Results.Created($"/api/forms/assignments/{id}", new { id });
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("CreateFormAssignment")
+            .RequireAuthorization("RequireWrite");
+
+        group.MapDelete("/assignments/{id:guid}", async (Guid id, IFormAssignmentService service, CancellationToken cancellationToken) =>
+                await service.DeleteAsync(id, cancellationToken) ? Results.NoContent() : Results.NotFound())
+            .WithName("DeleteFormAssignment")
+            .RequireAuthorization("RequireWrite");
+
         return app;
     }
 }

@@ -187,6 +187,45 @@ public sealed class FormSubmissionServiceTests
         Assert.Contains(".pdf", message.Body);   // the outbox stub notes the attachment name
     }
 
+    [Fact] // PRD §8 — a red (failed) RAG check emails the failed report to the assignment's alert address.
+    public async Task Submit_RedRagCheck_EmailsFailureAlert()
+    {
+        var store = new InMemoryFormStore(seed: false);
+        var templateRepo = new InMemoryFormTemplateRepository(store);
+        var submissionRepo = new InMemoryFormSubmissionRepository(store);
+        var assignmentRepo = new InMemoryFormAssignmentRepository(store);
+        var user = new StubCurrentUser(Company);
+        var templates = new FormTemplateService(templateRepo, user);
+        var assignments = new FormAssignmentService(assignmentRepo, templateRepo, user);
+        var outbox = new NotificationOutbox();
+        var submissions = new FormSubmissionService(submissionRepo, templateRepo, user, new OutboxEmailSender(outbox), sites: null, assignmentRepo);
+
+        // A published form with a RAG field, assigned with a failed-check alert address.
+        var createId = await templates.CreateAsync(new CreateFormTemplateRequest(
+            Company, "Plant Check", null,
+            new List<FormSectionDto> { new("s1", "Checks", new List<FormFieldDto>
+            {
+                new("f1", "RagStatus", "Guards fitted", null, true, null, null, 0),
+            }, 0) }));
+        await templates.PublishAsync(createId);
+        var form = (await templates.GetTemplatesAsync()).Single();
+        await assignments.CreateAsync(new CreateFormAssignmentRequest(form.FamilyId, "Organisation", null, null, null, "Daily", "safety@example.com"));
+
+        // A green check raises no alert…
+        await submissions.SubmitAsync(new CreateFormSubmissionRequest(createId, "Organisation", null, null,
+            new List<FormAnswerDto> { new("f1", "Green", new List<string>()) }, new List<FormSubmissionFileInput>()));
+        Assert.Empty(outbox.Messages);
+
+        // …a red check does, with the report attached.
+        await submissions.SubmitAsync(new CreateFormSubmissionRequest(createId, "Organisation", null, null,
+            new List<FormAnswerDto> { new("f1", "Red", new List<string>()) }, new List<FormSubmissionFileInput>()));
+
+        var alert = Assert.Single(outbox.Messages);
+        Assert.Equal("safety@example.com", alert.Recipient);
+        Assert.Contains("Failed check", alert.Subject);
+        Assert.Contains(".pdf", alert.Body);
+    }
+
     [Fact] // R15 — another company cannot see a submission.
     public async Task GetSubmission_CrossTenant_ReturnsNull()
     {

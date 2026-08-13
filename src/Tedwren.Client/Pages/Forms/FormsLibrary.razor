@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject IFormTemplateService Forms
+@inject IFormAssignmentService Assignments
 @inject ITenantState Tenant
 @inject IDialogService Dialogs
 @inject NavigationManager Nav
@@ -30,15 +31,36 @@
     </Body>
 </DashboardCard>
 
+@if (_assignments.Count > 0)
+{
+    <div class="mt-6">
+        <DashboardCard Title="Assignments">
+            <Body>
+                <DataTable TItem="FormAssignmentDto"
+                           Items="_assignments"
+                           Columns="_assignmentColumns"
+                           Loading="_loading"
+                           SearchPlaceholder="Search assignments…"
+                           EmptyTitle="No assignments"
+                           EmptyDescription="Assign a published form to a site, operator or the organisation."
+                           EmptyIcon="@Icons.Material.Outlined.AssignmentInd" />
+            </Body>
+        </DashboardCard>
+    </div>
+}
+
 @code {
     private IReadOnlyList<FormTemplateSummaryDto> _templates = Array.Empty<FormTemplateSummaryDto>();
+    private IReadOnlyList<FormAssignmentDto> _assignments = Array.Empty<FormAssignmentDto>();
     private List<DataColumn<FormTemplateSummaryDto>> _columns = new();
+    private List<DataColumn<FormAssignmentDto>> _assignmentColumns = new();
     private bool _loading = true;
 
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
         BuildColumns();
+        BuildAssignmentColumns();
         await LoadAsync();
     }
 
@@ -46,7 +68,51 @@
     {
         _loading = true;
         _templates = await Forms.GetTemplatesAsync();
+        _assignments = await Assignments.GetAssignmentsAsync();
         _loading = false;
+    }
+
+    private void BuildAssignmentColumns()
+    {
+        _assignmentColumns = new()
+        {
+            new() { Title = "Form", Value = a => a.FormName, Filterable = true },
+            new()
+            {
+                Title = "Assigned to", Value = a => a.Scope, Searchable = false, Filterable = true,
+                CellTemplate = a => @<span>@(a.Scope == "Site" && a.SiteName is not null ? $"Site: {a.SiteName}" : a.Scope)</span>
+            },
+            new() { Title = "Cadence", Value = a => a.Schedule, Searchable = false, Filterable = true },
+            new() { Title = "Failure alert", Value = a => a.FailureAlertEmail ?? "—", Searchable = false },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = a => @<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                                StartIcon="@Icons.Material.Outlined.Delete"
+                                                OnClick="@(() => UnassignAsync(a))">Remove</MudButton>
+            },
+        };
+    }
+
+    private async Task AssignAsync(FormTemplateSummaryDto template)
+    {
+        var parameters = new DialogParameters<FormAssignDialog>
+        {
+            { x => x.FamilyId, template.FamilyId },
+            { x => x.FormName, template.Name },
+        };
+        var dialog = await Dialogs.ShowAsync<FormAssignDialog>("Assign form", parameters);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task UnassignAsync(FormAssignmentDto assignment)
+    {
+        await Assignments.DeleteAsync(assignment.Id);
+        Snackbar.Add("Assignment removed.", Severity.Info);
+        await LoadAsync();
     }
 
     private void BuildColumns()
@@ -79,6 +145,9 @@
                         <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
                                    StartIcon="@Icons.Material.Outlined.EditNote"
                                    OnClick="@(() => Nav.NavigateTo($"/forms/{t.Id}/fill"))">Fill in</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
+                                   StartIcon="@Icons.Material.Outlined.AssignmentInd"
+                                   OnClick="@(() => AssignAsync(t))">Assign</MudButton>
                     }
                     <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
                                StartIcon="@Icons.Material.Outlined.Archive"

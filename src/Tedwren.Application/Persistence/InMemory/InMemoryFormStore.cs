@@ -20,6 +20,9 @@ public sealed class InMemoryFormStore
     /// <summary>Captured submission files by id.</summary>
     public ConcurrentDictionary<Guid, FormSubmissionFile> Files { get; } = new();
 
+    /// <summary>Form assignments by id.</summary>
+    public ConcurrentDictionary<Guid, FormAssignment> Assignments { get; } = new();
+
     /// <summary>Creates the store and loads the demo seed.</summary>
     public InMemoryFormStore() : this(seed: true)
     {

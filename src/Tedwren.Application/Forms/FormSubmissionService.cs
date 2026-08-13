@@ -23,6 +23,7 @@ public sealed class FormSubmissionService : IFormSubmissionService
     private readonly ICurrentUserService? _currentUser;
     private readonly IEmailSender? _email;
     private readonly ISiteRepository? _sites;
+    private readonly IFormAssignmentRepository? _assignments;
 
     /// <summary>Field kinds that capture no value, so they are never required-validated.</summary>
     private static readonly HashSet<FormFieldKind> DisplayOnly = new() { FormFieldKind.Heading, FormFieldKind.Instruction };
@@ -40,13 +41,15 @@ public sealed class FormSubmissionService : IFormSubmissionService
         IFormTemplateRepository templates,
         ICurrentUserService? currentUser = null,
         IEmailSender? email = null,
-        ISiteRepository? sites = null)
+        ISiteRepository? sites = null,
+        IFormAssignmentRepository? assignments = null)
     {
         _submissions = submissions;
         _templates = templates;
         _currentUser = currentUser;
         _email = email;
         _sites = sites;
+        _assignments = assignments;
     }
 
     /// <summary>Resolves the signed-in caller (tenant company + display name). Company null when unauthenticated / in unit tests.</summary>
@@ -169,7 +172,61 @@ public sealed class FormSubmissionService : IFormSubmissionService
             }, cancellationToken);
         }
 
+        await SendFailureAlertsIfNeededAsync(submission, template, answers, cancellationToken);
         return submission.Id;
+    }
+
+    /// <summary>
+    /// If the submission contains a failed check — any red/amber/green field answered "Red" — emails the report
+    /// (with the branded PDF attached) to every assignment of this form family that carries a failed-check alert
+    /// address (PRD §8 "a failed check auto-alerts by email with the failed report attached"). Best-effort: a
+    /// missing email sender or assignment repository simply skips the alert.
+    /// </summary>
+    private async Task SendFailureAlertsIfNeededAsync(FormSubmission submission, FormTemplate template,
+        IReadOnlyDictionary<string, FormAnswerDto> answers, CancellationToken cancellationToken)
+    {
+        if (_assignments is null || _email is null)
+        {
+            return;
+        }
+
+        var ragFieldIds = template.Sections
+            .SelectMany(s => s.Fields)
+            .Where(f => f.Kind == FormFieldKind.RagStatus)
+            .Select(f => f.Id)
+            .ToHashSet(StringComparer.Ordinal);
+
+        var failed = ragFieldIds.Any(id =>
+            answers.TryGetValue(id, out var a) && string.Equals(a.Value, "Red", StringComparison.OrdinalIgnoreCase));
+        if (!failed)
+        {
+            return;
+        }
+
+        var assignments = await _assignments.GetByFamilyAsync(submission.CompanyId, template.FamilyId, cancellationToken);
+        var recipients = assignments
+            .Where(a => !string.IsNullOrWhiteSpace(a.FailureAlertEmail))
+            .Select(a => a.FailureAlertEmail!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (recipients.Count == 0)
+        {
+            return;
+        }
+
+        var pdf = await GeneratePdfAsync(submission.Id, cancellationToken);
+        if (pdf is null)
+        {
+            return;
+        }
+
+        var content = FormSubmissionEmail.BuildFailureContent(
+            submission.FormName, submission.SubmittedBy, submission.SubmittedUtc, submission.Scope.ToString());
+        var attachment = new[] { new EmailAttachment(pdf.FileName, pdf.ContentType, pdf.Content) };
+        foreach (var recipient in recipients)
+        {
+            await _email.SendHtmlWithAttachmentsAsync(recipient, FormSubmissionEmail.FailureSubjectFor(submission.FormName), content, attachment, cancellationToken);
+        }
     }
 
     /// <summary>Approves a submission (R15). Returns the updated submission, or null when not the caller's.</summary>

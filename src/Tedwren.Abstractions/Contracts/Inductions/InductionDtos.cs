@@ -1,7 +1,11 @@
 namespace Tedwren.Abstractions.Contracts.Inductions;
 
-/// <summary>A configurable induction step as shown on the device (MC-3).</summary>
-public sealed record InductionStepDto(string Id, string Kind, string Label, bool Required);
+/// <summary>
+/// A configurable induction step as shown on the device (MC-3). <see cref="Reference"/> carries an optional
+/// linked resource — for a <c>Form</c> step it is the assigned Forms Library form's family id (requirement 5);
+/// null for every other kind.
+/// </summary>
+public sealed record InductionStepDto(string Id, string Kind, string Label, bool Required, string? Reference = null);
 
 /// <summary>
 /// A quiz question <b>as sent to the device</b> — the prompt and options only. The correct answer is never

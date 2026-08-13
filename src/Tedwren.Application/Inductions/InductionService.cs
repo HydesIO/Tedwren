@@ -99,7 +99,7 @@ public sealed class InductionService : IInductionService
             MediaUrl = string.IsNullOrWhiteSpace(request.MediaUrl) ? null : request.MediaUrl.Trim(),
             SiteId = request.SiteId,
             Steps = request.Steps
-                .Select(s => new InductionStep(s.Id, Enum.TryParse<InductionStepKind>(s.Kind, out var k) ? k : InductionStepKind.Declaration, s.Label, s.Required))
+                .Select(s => new InductionStep(s.Id, Enum.TryParse<InductionStepKind>(s.Kind, out var k) ? k : InductionStepKind.Declaration, s.Label, s.Required, s.Reference))
                 .ToList(),
             Questions = request.Questions
                 .Select(q => new InductionQuizQuestion(
@@ -286,5 +286,5 @@ public sealed class InductionService : IInductionService
         t.PassMark, s.CompletionReference, s.ExpiresUtc, s.AttemptCount);
 
     /// <summary>Maps a step to its DTO.</summary>
-    private static InductionStepDto ToStepDto(InductionStep s) => new(s.Id, s.Kind.ToString(), s.Label, s.Required);
+    private static InductionStepDto ToStepDto(InductionStep s) => new(s.Id, s.Kind.ToString(), s.Label, s.Required, s.Reference);
 }

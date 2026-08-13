@@ -791,8 +791,22 @@ Phase M1 delivers the shared foundations and the first page migrations:
     dialog. Application (PDF render, service PDF + email-with-attachment) + API (pdf/email endpoint) tests.
     Note: the framework-only `PdfWriter` is retained for the tabular compliance-pack exports; QuestPDF is used
     only for branded form output.
-  - ⏳ Phases 24–25 — assignment/scheduling/induction · hardening (entitlement gate, PG parity,
-    default templates).
+  - ✅ **Phase 24 — Assignment & induction integration.** `FormAssignment` domain (+ `FormSchedule`),
+    repos (Dapper + in-memory), `020_form_assignments.sql` (both engines) + EF migration.
+    `IFormAssignmentService` + `FormAssignmentService` (tenant-scoped assign to organisation/site/operator/
+    induction, snapshots form name, validates target; delete). Endpoints `/api/forms/assignments`
+    (GET/POST/DELETE, writes `RequireWrite`). **Failed-check alert**: a red RAG answer emails the assignment's
+    alert address with the branded PDF attached (PRD §8), wired into the submission flow. **Induction
+    integration (authoring)**: `InductionStepKind.Form` + optional `InductionStep.Reference` (form family id,
+    backward-compatible); the induction builder attaches published forms as steps. Assign dialog + assignments
+    table in the Forms Library; client `ApiFormAssignmentService`. Application (assignment CRUD + failure-alert)
+    + API (assignment round-trip) + skip-guarded DataAccess tests. Whole solution builds warning-clean; all
+    suites green.
+    - ⏳ **Deferred to Phase 25** (clearly scoped): the recurring **scheduler job** for Daily/Weekly/Monthly
+      cadences (schedule is stored/surfaced now; the job that raises due-dates/reminders and reports it ran per
+      R12 is hardening), and **rendering induction-embedded forms in the worker take-flow** (`InductionTake`),
+      which needs an anonymous form-fill path and so touches the secure-by-default/R5 boundary — its own change.
+  - ⏳ Phase 25 — hardening (entitlement gate, PG parity, default templates) + the two deferred items above.
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

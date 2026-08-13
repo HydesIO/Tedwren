@@ -1,8 +1,10 @@
 @page "/inductions"
+@using Tedwren.Abstractions.Contracts.Forms
 @using Tedwren.Abstractions.Contracts.Inductions
 @using Tedwren.Abstractions.Services
 @inject IInductionService InductionSvc
 @inject ISiteService Sites
+@inject IFormTemplateService Forms
 @inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
@@ -46,6 +48,28 @@
             </div>
         </FormSection>
 
+        <FormSection Title="Forms" Description="Attach Forms Library forms to this induction — a worker completes them as induction steps (requirement 5).">
+            <TedwrenSelect T="string" Label="Add a published form" Value="@_selectedForm"
+                           ValueChanged="AddFormStep" Options="_publishedFormNames" Placeholder="Select a form to add" />
+            <div class="form-page__full">
+                @if (_formSteps.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No forms attached yet.</MudText>
+                }
+                else
+                {
+                    @foreach (var step in _formSteps)
+                    {
+                        <MudPaper Class="pa-3 mb-2 d-flex align-center justify-space-between" Outlined="true">
+                            <MudText><MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Class="mr-2" />@step.Label</MudText>
+                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Outlined.Delete" OnClick="@(() => _formSteps.Remove(step))">Remove</MudButton>
+                        </MudPaper>
+                    }
+                }
+            </div>
+        </FormSection>
+
         <FormActions>
             <Secondary>
                 <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadAsync">Reset</MudButton>
@@ -72,12 +96,32 @@
     private int _attemptLimit = 3;
     private readonly List<QuestionEdit> _questions = new();
 
+    private IReadOnlyList<FormTemplateSummaryDto> _publishedForms = Array.Empty<FormTemplateSummaryDto>();
+    private IReadOnlyList<string> _publishedFormNames = Array.Empty<string>();
+    private readonly List<InductionStepDto> _formSteps = new();
+    private string? _selectedForm;
+
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
         var sites = await Sites.GetSitesAsync();
         _siteNames = sites.Select(s => s.Name).ToList();
+        _publishedForms = (await Forms.GetTemplatesAsync()).Where(f => f.Status == "Published").ToList();
+        _publishedFormNames = _publishedForms.Select(f => f.Name).ToList();
         await LoadAsync();
+    }
+
+    // Adds the chosen published form as a Form step (its family id is the step reference).
+    private void AddFormStep(string? formName)
+    {
+        _selectedForm = null;
+        var form = _publishedForms.FirstOrDefault(f => f.Name == formName);
+        if (form is null || _formSteps.Any(s => s.Reference == form.FamilyId.ToString()))
+        {
+            return;
+        }
+
+        _formSteps.Add(new InductionStepDto(Guid.NewGuid().ToString("N"), "Form", form.Name, true, form.FamilyId.ToString()));
     }
 
     private async Task LoadAsync()
@@ -111,6 +155,9 @@
             OptionsCsv = string.Join(", ", q.Options),
             CorrectDisplay = q.CorrectOptionIndex + 1,
         }));
+
+        _formSteps.Clear();
+        _formSteps.AddRange(_template.Steps.Where(s => s.Kind == "Form"));
     }
 
     private void AddQuestion() => _questions.Add(new QuestionEdit { OptionsCsv = "Yes, No", CorrectDisplay = 1 });
@@ -133,8 +180,10 @@
         try
         {
             var siteId = _template.SiteId; // site scoping edited elsewhere; preserved here
+            // Preserve the template's non-form steps and replace the Form steps with the current selection.
+            var steps = _template.Steps.Where(s => s.Kind != "Form").Concat(_formSteps).ToList();
             var updated = await InductionSvc.UpdateTemplateAsync(_template.Id, new UpdateInductionTemplateRequest(
-                _name, _validityDays, _passMark, _attemptLimit, _mandatory, _mediaUrl, siteId, _template.Steps, questions));
+                _name, _validityDays, _passMark, _attemptLimit, _mandatory, _mediaUrl, siteId, steps, questions));
             if (updated is not null)
             {
                 _template = updated;

@@ -23,4 +23,7 @@ public enum InductionStepKind
 
     /// <summary>Capture a signature (MC-5).</summary>
     Signature = 5,
+
+    /// <summary>Complete an attached Forms Library form (requirement 5); the step's Reference is the form's family id.</summary>
+    Form = 6,
 }
