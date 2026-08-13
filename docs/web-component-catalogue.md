@@ -56,9 +56,17 @@ from the content layer.
 | `HowItWorks` | Home five-step sequence. | `IContentProvider` | ✅ W3 |
 | `PricingTable` | Pricing bands from `PricingPlan`; formats prices, "Pricing on request" for unpriced bands. | `IContentProvider` | ✅ W4 |
 | `FaqAccordion` | FAQ list as native `<details>` (JS-free). | `IContentProvider` | ✅ W5 |
-| `ConsentBanner` | CMP-backed consent; no script fires pre-consent. | — | ⏳ W6 |
-| `LeadForm` | Server-validated demo/contact form (antiforgery, honeypot, timing, rate limit). | form model | ⏳ W6 |
+| `ConsentBanner` | Cookie-consent banner (form-based, JS-free); one-click reject; shown until a choice is made. | — | ✅ W6 |
+| `PackChrome` | Light header/footer for the product's compliance-pack viewer; UTM-tagged "Book a demo" (Plan §4.1). | `bool footer` | ✅ W6 |
 | `TestimonialWall` | Renders `Testimonial` list — empty at launch. | `IReadOnlyList<Testimonial>` | ⏳ W5 |
+
+The demo (`/demo`) and contact (`/contact`) forms are page views bound to `DemoRequest` / `ContactRequest`
+and processed by `LeadController`: DataAnnotations validation, antiforgery, a honeypot + minimum fill-time
+(`AntiBot`), rate limiting, then routing via the `ILeadRouter` seam (`LoggingLeadRouter` at launch;
+`ContactRouting` maps a reason → inbox). Demo submissions capture UTM attribution and redirect to a
+thank-you page with the booking link. Consent is recorded by `ConsentController` (`/consent`) into the
+`tedwren_consent` cookie; `AnalyticsState` gates GA4 so nothing fires without both consent and a
+configured measurement id.
 
 ## Conventions
 

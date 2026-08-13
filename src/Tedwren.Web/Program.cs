@@ -1,13 +1,17 @@
 using System.Text.Unicode;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Extensions.WebEncoders;
+using Tedwren.Web.Analytics;
 using Tedwren.Web.Configuration;
 using Tedwren.Web.Content;
+using Tedwren.Web.Controllers;
+using Tedwren.Web.Leads;
 
 // Composition root for Tedwren.Web — the public, server-rendered marketing site (Web Plan §2).
-// It is an ASP.NET Core MVC deployable, separate from the product API and Blazor client. W1 stands
-// up the skeleton: shared layout + tokens, the SiteHeader/SiteFooter/Cta components, and routing for
-// every page in the sitemap returning stub views. Content, lead capture, consent and the partner
-// programme arrive in later W-phases.
+// It is an ASP.NET Core MVC deployable, separate from the product API and Blazor client. Through W6 it
+// carries the shared chrome, the content layer, the core/product/legal pages, lead capture (with
+// anti-bot + routing), cookie consent and analytics gating. The partner programme arrives in W7.
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +28,26 @@ builder.Services.AddJsonContent(builder.Configuration, builder.Environment.Conte
 // The HTML-sensitive characters (< > & " ') are still encoded, so output encoding stays safe.
 builder.Services.Configure<WebEncoderOptions>(options =>
     options.TextEncoderSettings = new System.Text.Encodings.Web.TextEncoderSettings(UnicodeRanges.All));
+
+// Lead capture (Web Plan §7): options + the routing seam. LoggingLeadRouter is the launch
+// implementation; a CRM/email integration replaces it behind ILeadRouter with no controller changes.
+builder.Services.Configure<LeadOptions>(builder.Configuration.GetSection(LeadOptions.SectionName));
+builder.Services.AddScoped<ILeadRouter, LoggingLeadRouter>();
+
+// Analytics (Web Plan §8): GA4 is off unless configured AND consented to. Empty id by default.
+builder.Services.Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName));
+
+// Rate limiting on the public form POST endpoints (Web Plan §7), alongside antiforgery + honeypot.
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddFixedWindowLimiter(LeadController.RateLimitPolicy, limiter =>
+    {
+        limiter.PermitLimit = 20;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+    });
+});
 
 builder.Services.AddControllersWithViews();
 
@@ -43,6 +67,7 @@ app.UseStatusCodePagesWithReExecute("/error");
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
+app.UseRateLimiter();
 
 app.MapControllers();
 

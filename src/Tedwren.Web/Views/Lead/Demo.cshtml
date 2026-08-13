@@ -1,7 +1,66 @@
+@model DemoRequest
 @{
     ViewData["Title"] = "Book a demo";
+    ViewData["MetaDescription"] = "See Tedwren on your own sites. Book a short demo — or start a pilot — and we'll show you how it fits the way you already work.";
 }
-@await Html.PartialAsync("_Stub", new StubModel(
-    "Book a demo",
-    "A short, validated form with calendar booking after submit — not \"we'll be in touch\". Built in W6.",
-    "W6"))
+<section class="lead">
+    <h1 class="section-heading">Book a demo</h1>
+    <p class="lead__intro">Tell us a little about your work and we'll show you Tedwren on your own sites. Prefer a pilot? Tick the box.</p>
+
+    <form class="lead-form" method="post" asp-controller="Lead" asp-action="Demo">
+        <input type="hidden" asp-for="RenderedAtUnixMs" />
+        <input type="hidden" asp-for="UtmSource" />
+        <input type="hidden" asp-for="UtmMedium" />
+        <input type="hidden" asp-for="UtmCampaign" />
+        @* Honeypot: hidden from people, tempting to bots. Must stay empty. *@
+        <div class="hp" aria-hidden="true">
+            <label>Website<input asp-for="Website" tabindex="-1" autocomplete="off" /></label>
+        </div>
+
+        <div class="lead-form__field">
+            <label asp-for="Name"></label>
+            <input asp-for="Name" autocomplete="name" />
+            <span asp-validation-for="Name" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="WorkEmail"></label>
+            <input asp-for="WorkEmail" type="email" autocomplete="email" />
+            <span asp-validation-for="WorkEmail" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="Company"></label>
+            <input asp-for="Company" autocomplete="organization" />
+            <span asp-validation-for="Company" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="Role"></label>
+            <input asp-for="Role" autocomplete="organization-title" />
+            <span asp-validation-for="Role" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="CompanyType"></label>
+            <input asp-for="CompanyType" list="company-types" />
+            <datalist id="company-types">
+                <option value="Subcontractor"></option>
+                <option value="Main Contractor"></option>
+                <option value="Other"></option>
+            </datalist>
+            <span asp-validation-for="CompanyType" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="HeadcountOrSites"></label>
+            <input asp-for="HeadcountOrSites" placeholder="e.g. 50 operatives, or 12 sites" />
+            <span asp-validation-for="HeadcountOrSites" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="Phone"></label>
+            <input asp-for="Phone" type="tel" autocomplete="tel" />
+            <span asp-validation-for="Phone" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__check">
+            <label><input asp-for="InterestedInPilot" type="checkbox" /> @Html.DisplayNameFor(m => m.InterestedInPilot)</label>
+        </div>
+
+        <button class="cta cta--primary" type="submit">Book a demo</button>
+    </form>
+</section>

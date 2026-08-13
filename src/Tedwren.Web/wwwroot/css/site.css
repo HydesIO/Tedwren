@@ -344,3 +344,76 @@ a:hover { text-decoration: underline; }
 .legal__section { margin-bottom: var(--spacing-24); }
 .legal__heading { font-size: 1.2rem; margin: 0 0 var(--spacing-8); }
 .legal__body { color: var(--color-text-secondary); margin: 0; }
+
+/* ===== W6 lead capture, consent, pack chrome. Tokens only. ===== */
+
+/* Honeypot: removed from the visual + a11y tree, still submitted by bots. */
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+/* Lead forms */
+.lead__intro { color: var(--color-text-secondary); max-width: 60ch; margin: 0 0 var(--spacing-24); }
+.lead-form { max-width: 560px; display: flex; flex-direction: column; gap: var(--spacing-16); }
+.lead-form__field { display: flex; flex-direction: column; gap: var(--spacing-4); }
+.lead-form__field label { font-weight: 600; font-size: 0.9rem; }
+.lead-form input, .lead-form select, .lead-form textarea {
+    font: inherit;
+    color: var(--color-text-primary);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    padding: var(--spacing-8) var(--spacing-12);
+}
+.lead-form input:focus, .lead-form select:focus, .lead-form textarea:focus {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 1px;
+    border-color: var(--color-brand);
+}
+.lead-form textarea { resize: vertical; }
+.lead-form__check { display: flex; align-items: center; gap: var(--spacing-8); }
+.lead-form__check label { display: flex; align-items: center; gap: var(--spacing-8); font-weight: 500; }
+.lead-form__error { color: var(--color-danger); font-size: 0.85rem; }
+.lead-form .cta { align-self: flex-start; }
+
+/* Thank-you */
+.lead-thanks { max-width: 60ch; }
+.lead-thanks__body { color: var(--color-text-secondary); margin: 0 0 var(--spacing-20); }
+.lead-thanks__fallback { color: var(--color-text-muted); }
+.lead-thanks__actions { margin-top: var(--spacing-16); }
+
+/* Consent banner */
+.consent {
+    position: fixed;
+    left: 0; right: 0; bottom: 0;
+    background: var(--color-surface);
+    border-top: 1px solid var(--color-border);
+    box-shadow: var(--shadow-card);
+    z-index: 200;
+    padding: var(--spacing-16) var(--spacing-24);
+}
+.consent__inner {
+    max-width: 1120px;
+    margin: 0 auto;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-16);
+    justify-content: space-between;
+}
+.consent__text { margin: 0; color: var(--color-text-secondary); font-size: 0.9rem; max-width: 70ch; }
+.consent__actions { display: flex; gap: var(--spacing-12); flex-shrink: 0; }
+.consent__actions .cta { font-size: 0.9rem; }
+
+/* Compliance-pack viewer chrome (Web Plan §4.1) */
+.pack-chrome {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-16);
+    padding: var(--spacing-12) var(--spacing-24);
+    background: var(--color-surface);
+}
+.pack-chrome--header { border-bottom: 1px solid var(--color-border); }
+.pack-chrome--footer { border-top: 1px solid var(--color-border); }
+.pack-chrome__brand { font-weight: 700; font-size: 1.1rem; color: var(--color-text-primary); }
+.pack-chrome__entity { color: var(--color-text-secondary); font-size: 0.9rem; }
+.pack-chrome__demo { font-weight: 600; color: var(--color-brand); }

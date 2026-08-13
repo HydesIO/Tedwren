@@ -1,0 +1,17 @@
+@using Tedwren.Web.ViewComponents
+@model ConsentBannerModel
+<div class="consent" role="dialog" aria-label="Cookie choices" aria-live="polite">
+    <div class="consent__inner">
+        <p class="consent__text">
+            We use essential cookies to make the site work, and — only if you agree — analytics cookies to
+            understand how it's used. See our <a href="/legal/cookies">Cookie Policy</a>.
+        </p>
+        <form class="consent__actions" method="post" action="/consent">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+            @* Reject and Accept are given equal weight; reject is a single click (Web Plan §8). *@
+            <button class="cta cta--secondary" type="submit" name="choice" value="essential">Reject non-essential</button>
+            <button class="cta cta--primary" type="submit" name="choice" value="all">Accept all</button>
+        </form>
+    </div>
+</div>

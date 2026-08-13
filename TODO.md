@@ -11,6 +11,33 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W6 Lead capture & consent (this change)
+- ✅ **Demo + Contact forms (Web Plan §6.9, §7).** `/demo` and `/contact` are server-validated
+  (DataAnnotations) with **antiforgery**, a **honeypot**, a **minimum fill-time** check (`AntiBot`) and
+  **rate limiting** (fixed-window policy on the POST endpoints). Genuine submissions route via the
+  `ILeadRouter` seam (`LoggingLeadRouter` at launch — no CRM/email wired yet, plugs in behind the
+  interface); post/redirect/get to a thank-you page. Demo thank-you shows the real **booking link** from
+  config (not "we'll be in touch"). Bots (honeypot/too-fast) get the same response but route nothing.
+- ✅ **Contact routing by reason.** `ContactRouting.ResolveInbox` maps General/Press/Partner/Support →
+  the configured inbox (falls back to sales, then a visible "unrouted"). Reason→inbox asserted by a test.
+- ✅ **UTM attribution (§4.1, §11).** `/demo` captures `utm_*` from the query into hidden fields → the
+  routed lead carries the source, so pack-driven bookings are attributable. `PackChrome` view component
+  supplies the compliance-pack viewer's light header/footer with a `utm_source=pack` "Book a demo" link.
+- ✅ **Consent before scripts (§5.5, §8).** `ConsentBanner` (form-based, works with JS off) offers a
+  **one-click "Reject non-essential"** with equal weight to Accept; `ConsentController` (`/consent`) stores
+  the choice in the `tedwren_consent` cookie. **No analytics tag is emitted before consent** — GA4 is
+  gated by `AnalyticsState` on *both* analytics consent and a configured measurement id (empty by
+  default, so nothing loads in this environment). Demo-submit fires a consent-gated `generate_lead`
+  conversion event.
+- ✅ **Error route hardening.** `/error` is now verb-agnostic so a failed POST (e.g. antiforgery) keeps
+  its 400 through status-code re-execution instead of 405-ing.
+- ✅ Tests: Web 57 → **73** (valid/invalid/honeypot/too-fast/antiforgery form flows, reason routing, UTM
+  capture, consent banner + one-click reject, no-script-pre-consent, GA gating; plus `AntiBot`,
+  `ContactRouting`, `ConsentState`, `Utm` unit tests). Whole solution builds; Web project 0 warnings.
+- ⏳ **Deferred within W6:** additional conversion events (pricing→demo click, Worker Passport checkout
+  start/complete) — the consent-gated dataLayer/GA mechanism is in place; wiring those specific events is
+  incremental (WP checkout is product-owned). Real CRM/email + calendar provider behind the seams.
+
 ### Tedwren.Web — Phase W5 Trust, About, FAQ, Legal (this change)
 - ✅ **Security & Trust (`/security`, §6.6).** Own stable URL; only makeable claims (data ownership,
   access control, encryption in transit, audit trail, DPA on request). No fabricated ISO/Cyber Essentials

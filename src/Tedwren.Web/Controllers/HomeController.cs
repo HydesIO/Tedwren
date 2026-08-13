@@ -9,8 +9,12 @@ public sealed class HomeController : Controller
     [HttpGet("/")]
     public IActionResult Index() => View();
 
-    /// <summary>Shared error page target used by the production exception handler.</summary>
-    [HttpGet("/error")]
+    /// <summary>
+    /// Shared error page target used by the exception handler and the status-code re-execution. Routed
+    /// for all HTTP methods so a failed POST (e.g. antiforgery) re-executes here and keeps its status
+    /// code, rather than 405-ing because the error route only allowed GET.
+    /// </summary>
+    [Route("/error")]
     [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
     public IActionResult Error() => View();
 }

@@ -1,0 +1,17 @@
+@using Tedwren.Web.ViewComponents
+@model PackChromeModel
+@if (Model.IsFooter)
+{
+    <footer class="pack-chrome pack-chrome--footer">
+        <span class="pack-chrome__entity">Shared securely via @Model.LegalEntity</span>
+        @* utm_source=pack so pack-driven bookings are attributable (Web Plan §4.1). No sign-up wall. *@
+        <a class="cta cta--primary" href="@Model.DemoUrl" rel="noopener">Book a demo</a>
+    </footer>
+}
+else
+{
+    <header class="pack-chrome pack-chrome--header">
+        <span class="pack-chrome__brand">@Model.BrandName</span>
+        <a class="pack-chrome__demo" href="@Model.DemoUrl" rel="noopener">Book a demo</a>
+    </header>
+}
