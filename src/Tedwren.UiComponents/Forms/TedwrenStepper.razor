@@ -4,6 +4,7 @@
 <div class="tedwren-stepper">
     <MudStepper ActiveIndex="@ActiveIndex"
                 ActiveIndexChanged="@OnActiveIndexChanged"
+                OnPreviewInteraction="@OnPreviewInteraction"
                 Linear="@Linear"
                 Class="tedwren-stepper__mud"
                 Variant="Variant.Filled"
@@ -19,6 +20,13 @@
     [Parameter] public EventCallback<int> ActiveIndexChanged { get; set; }
     [Parameter] public bool Linear { get; set; } = true;
     [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Fires before a step interaction (e.g. pressing Next, or activating a step header) is applied,
+    /// so a consumer can validate the current step and cancel the move by setting
+    /// <see cref="StepperInteractionEventArgs.Cancel"/>. Forwarded straight to the underlying MudStepper.
+    /// </summary>
+    [Parameter] public Func<StepperInteractionEventArgs, Task>? OnPreviewInteraction { get; set; }
 
     private async Task OnActiveIndexChanged(int index)
     {

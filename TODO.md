@@ -11,6 +11,16 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Onboarding wizard per-step validation (this change)
+- ✅ **Validate on Next, per step.** The onboarding wizard previously only validated required fields on the
+  final "Finish setup". It now validates the step being left when the user presses Next: `TedwrenStepper`
+  forwards MudStepper's `OnPreviewInteraction` (`Func<StepperInteractionEventArgs, Task>`), and
+  `Onboarding.razor` cancels a forward move off an invalid step (company name required on the Company step;
+  administrator name + valid email on the Administrator step, SF-20). Errors surface only once a step has been
+  attempted (`_validatedSteps` gate via `ShowErrors`), so they appear on the step in question rather than all
+  at once; `Finish` remains a backstop.
+- ✅ Client builds clean (0 errors); pre-existing MUD0002 analyzer casing warnings unchanged.
+
 ### Onboarding wizard polish + binding/auth guardrails (this change)
 - ✅ **Chrome-free layout.** `OnboardingLayout` app bar removed; the wizard now carries the Tedwren brand
   mark top-left in its own masthead, on a plain sunken (`--color-bg`) centered shell.
