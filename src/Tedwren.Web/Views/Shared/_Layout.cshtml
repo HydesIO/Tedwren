@@ -10,6 +10,9 @@
     var fullTitle = string.IsNullOrEmpty(pageTitle) ? brand : $"{pageTitle} — {brand}";
     var metaDescription = ViewData["MetaDescription"] as string;
     var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    // Canonical URL (Web Plan §9): the origin plus the request path, without query/UTM noise, so a page
+    // reached via a tagged link still declares one canonical address to crawlers.
+    var canonicalUrl = baseUrl + Context.Request.Path;
     // No analytics tag is emitted unless analytics is both consented to and configured (Web Plan §8).
     var ga4Id = AnalyticsState.ActiveGa4Id(Context, Analytics.Value);
 }
@@ -23,6 +26,7 @@
     {
         <meta name="description" content="@metaDescription" />
     }
+    <link rel="canonical" href="@canonicalUrl" />
     @* tokens.css is the single source of colour/spacing, linked from Tedwren.Client; site.css layers layout on top. *@
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />

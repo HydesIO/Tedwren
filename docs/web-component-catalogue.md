@@ -76,6 +76,21 @@ site-access controllers) and `ReferralService` (attribution + 20% commission tie
 referral with a 90-day, reversible clawback). Applications never self-activate. Referral links set the
 `tedwren_ref` cookie so a later demo conversion is attributed across sessions.
 
+## Pre-launch QA & crawler infrastructure (Web Plan §8–§10, W8)
+
+- **Content lint** — `Tedwren.Web.Qa.ContentLint` is a pure scanner over the content JSON + Razor views
+  that returns `LintViolation`s for the three commercial/legal breaches (hardcoded price symbol,
+  absolute-compliance claim, CSCS rivalry/replacement/on-demand positioning). It runs as a CI gate
+  (`ContentLintTests`) and takes a reviewed allowlist for genuine exceptions rather than being weakened.
+- **Sitemap / robots** — `Tedwren.Web.Seo.SitemapBuilder` generates `sitemap.xml` and `robots.txt` from
+  the `SiteConfig` route list (de-duplicated, capability URLs excluded/disallowed); `SeoController`
+  serves them at `/sitemap.xml` and `/robots.txt`. Add a page to the nav config and it appears in the
+  sitemap automatically — nothing here is hand-maintained.
+- **Canonical URLs** — `_Layout` emits one `rel="canonical"` per page (origin + path, query/UTM
+  stripped), asserted alongside the one-`<h1>`/page and title/meta budgets in `SeoInfrastructureTests`.
+- The full Spec §14 pre-launch checklist (enforced vs. manual vs. sign-off) is tracked in
+  `docs/web-launch-qa-checklist.md`.
+
 ## Conventions
 
 - **Reuse first.** Extend these components rather than adding page-local markup. A genuinely new

@@ -11,6 +11,30 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
+- ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
+  content JSON + Razor views and fails on three commercial/legal breaches: a hardcoded price symbol
+  outside the single `PricingPlan` source (`hardcoded-price` — `£` always, `$`/`€` only next to a digit
+  so `$"…"` interpolation isn't a false hit), absolute-compliance claims (`absolute-compliance` —
+  guarantee/ensure/100% compliant/fully compliant, §8.1, with a reviewed allowlist seam), and CSCS
+  rivalry/replacement/on-demand-verification or Digital-Skills-Passport positioning (`cscs-positioning`,
+  §8.2 — scanned in titles/meta too, while the understated CSCS add-on line is left untouched).
+- ✅ **SEO/crawler infrastructure (Web Plan §9/§10).** `SitemapBuilder` + `SeoController` generate
+  `/sitemap.xml` and `/robots.txt` from the live `SiteConfig` route list (never hand-maintained),
+  excluding and disallowing the capability URLs (`/partners/dashboard`, `/r/`); `_Layout` now emits a
+  `rel="canonical"` per page (query/UTM stripped). Worker Passport meta-title shortened so the rendered
+  `<title>` fits the ~60-char SERP budget (still CSCS-safe, keeps the "you own" benefit).
+- ✅ **§14 checklist enforced where automatable.** `docs/web-launch-qa-checklist.md` maps every Spec §14
+  item to its enforcing test or its manual/sign-off owner. New tests: `ContentLintTests` (gate + each
+  rule proven on a seeded breach + allowlist), `SeoInfrastructureTests` (sitemap/robots/canonical, one
+  `<h1>`/page, title<60/meta<155 across all indexable pages), `LaunchGuardrailTests` (pack chrome has a
+  UTM-tagged demo CTA and **no** sign-up wall, §4.1).
+- ✅ Tests: Web 84 → **164**. Whole solution builds (0 errors); Web + Web.Tests 0 warnings.
+- ❗ **Manual/sign-off, not codeable here (tracked in the checklist doc):** mobile Core Web Vitals
+  (Lighthouse) and the full axe + manual-mobile WCAG pass need a live browser; legal review of the legal
+  pages, the Companies House footer number/address, and the Plan §11 / Spec §13 open items remain
+  founder/legal sign-off before go-live.
+
 ### Tedwren.Web — Phase W7 Partners programme (this change)
 - ✅ **Approval-gated applications — no self-serve activation (Web Plan §7.2).** `/partners` shows the
   programme content + an application form; submitting only ever creates a **pending** record.
