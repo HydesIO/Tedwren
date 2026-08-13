@@ -90,6 +90,27 @@ public sealed class JsonContentProviderTests : IDisposable
         Assert.Throws<KeyNotFoundException>(() => provider.ResolveToken(key));
     }
 
+    /// <summary>Legal documents resolve by slug, and unknown slugs return null.</summary>
+    [Fact]
+    public void FindLegal_ResolvesBySlug()
+    {
+        var provider = new JsonContentProvider(_dir);
+
+        Assert.Equal("Privacy", provider.FindLegal("privacy")!.Title);
+        Assert.Null(provider.FindLegal("nonexistent"));
+    }
+
+    /// <summary>Money formats in the site currency: whole amounts have no trailing zeros.</summary>
+    [Theory]
+    [InlineData(10, "£10")]
+    [InlineData(12.5, "£12.50")]
+    public void FormatMoney_UsesCurrencySymbol(double amount, string expected)
+    {
+        var provider = new JsonContentProvider(_dir);
+
+        Assert.Equal(expected, provider.FormatMoney((decimal)amount));
+    }
+
     /// <summary>A missing required content file fails fast at construction.</summary>
     [Fact]
     public void Construction_Throws_WhenFileMissing()
@@ -129,6 +150,25 @@ public sealed class JsonContentProviderTests : IDisposable
         Write("trust.json", """ [ { "Claim": "Your data stays yours.", "Logo": null } ] """);
         Write("faqs.json", """ [ { "Question": "Q?", "Answer": "A.", "LinkTarget": null } ] """);
         Write("testimonials.json", "[]");
+        Write("worker-passport.json", """
+            { "Heading": "H", "Subheading": "S", "HeroCopy": "C", "PricingPlanKey": "WorkerPassport",
+              "Benefits": [ { "Heading": "B", "Copy": "b" } ], "ConsumerTerms": [ "t" ],
+              "MetaTitle": "MT", "MetaDescription": "MD" }
+            """);
+        Write("pricing-page.json", """
+            { "Heading": "H", "Intro": "I", "Clarifiers": [ "c" ],
+              "TrustNotes": [ { "Claim": "n", "Logo": null } ], "MetaDescription": "MD" }
+            """);
+        Write("security.json", """
+            { "Heading": "H", "Intro": "I", "Claims": [ { "Heading": "c", "Body": "b" } ], "MetaDescription": "MD" }
+            """);
+        Write("about.json", """
+            { "Heading": "H", "Intro": "I", "Sections": [ { "Heading": "s", "Body": "b" } ], "MetaDescription": "MD" }
+            """);
+        Write("legal.json", """
+            [ { "Slug": "privacy", "Title": "Privacy", "LastReviewed": "draft",
+                "Sections": [ { "Heading": "s", "Body": "b" } ], "MetaDescription": "MD" } ]
+            """);
     }
 
     /// <summary>Writes one content file into the temp directory.</summary>

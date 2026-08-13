@@ -16,6 +16,21 @@ public interface IContentProvider
     /// <summary>The home page's narrative content (hero, problem, differentiators, how-it-works).</summary>
     HomeContent Home { get; }
 
+    /// <summary>The Worker Passport page content (individual-buyer register, consumer terms).</summary>
+    WorkerPassportContent WorkerPassport { get; }
+
+    /// <summary>The pricing page's narrative content (intro, clarifiers, trust notes).</summary>
+    PricingPageContent PricingPage { get; }
+
+    /// <summary>The Security &amp; Trust page content (makeable claims only).</summary>
+    SecurityContent Security { get; }
+
+    /// <summary>The About page content.</summary>
+    AboutContent About { get; }
+
+    /// <summary>All legal documents.</summary>
+    IReadOnlyList<LegalDocument> LegalDocuments { get; }
+
     /// <summary>All product profiles, in declared order.</summary>
     IReadOnlyList<ProductProfile> Products { get; }
 
@@ -38,6 +53,14 @@ public interface IContentProvider
     /// <summary>Finds a pricing plan by its <see cref="PricingPlan.Key"/>, or null.</summary>
     /// <param name="planKey">Stable plan key (e.g. "WorkerPassport").</param>
     PricingPlan? FindPricingPlan(string planKey);
+
+    /// <summary>Finds a legal document by its slug, or null.</summary>
+    /// <param name="slug">Legal slug (privacy, cookies, terms, data-protection).</param>
+    LegalDocument? FindLegal(string slug);
+
+    /// <summary>Formats a decimal amount in the site currency (the single home for the symbol).</summary>
+    /// <param name="amount">Amount in major currency units.</param>
+    string FormatMoney(decimal amount);
 
     /// <summary>
     /// Resolves a dotted content token to its display string, so names and prices can be referenced

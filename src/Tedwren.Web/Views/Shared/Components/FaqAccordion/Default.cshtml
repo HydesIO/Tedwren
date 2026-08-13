@@ -1,0 +1,16 @@
+@model IReadOnlyList<FaqItem>
+<div class="faq">
+    @foreach (var item in Model)
+    {
+        <details class="faq__item">
+            <summary class="faq__question">@item.Question</summary>
+            <div class="faq__answer">
+                <p>@item.Answer</p>
+                @if (!string.IsNullOrEmpty(item.LinkTarget))
+                {
+                    <a class="faq__link" href="@item.LinkTarget">Read more</a>
+                }
+            </div>
+        </details>
+    }
+</div>

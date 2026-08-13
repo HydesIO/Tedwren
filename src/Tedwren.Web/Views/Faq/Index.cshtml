@@ -1,7 +1,22 @@
+@using Tedwren.Web.Seo
+@inject Tedwren.Abstractions.Services.IContentProvider Content
 @{
     ViewData["Title"] = "FAQ";
+    ViewData["MetaDescription"] = "Answers to the questions buyers ask before a demo — compliance packs, Worker Passport, dispersed sites and more.";
 }
-@await Html.PartialAsync("_Stub", new StubModel(
-    "Frequently asked questions",
-    "The questions buyers ask before a demo, each deflecting to the relevant page. FAQPage schema added with the content.",
-    "W5"))
+@* FAQPage schema (Web Plan §10); helper returns the whole <script> block, emitted raw. *@
+@Html.Raw(JsonLd.FaqPage(Content.Faqs))
+
+<section class="faq-intro">
+    <h1 class="section-heading">Frequently asked questions</h1>
+    <p class="faq-intro__body">The questions we hear most, with a link to the page that goes deeper.</p>
+</section>
+
+@await Component.InvokeAsync("FaqAccordion")
+
+<section class="closing">
+    <h2 class="closing__heading">Still have a question?</h2>
+    <div class="closing__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+    </div>
+</section>

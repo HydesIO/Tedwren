@@ -1,9 +1,12 @@
 @using Tedwren.Abstractions.Services
+@using Tedwren.Web.Seo
 @inject IContentProvider Content
 @{
     var brand = Content.Site.BrandName;
     var pageTitle = ViewData["Title"] as string;
     var fullTitle = string.IsNullOrEmpty(pageTitle) ? brand : $"{pageTitle} — {brand}";
+    var metaDescription = ViewData["MetaDescription"] as string;
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -11,9 +14,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@fullTitle</title>
+    @if (!string.IsNullOrEmpty(metaDescription))
+    {
+        <meta name="description" content="@metaDescription" />
+    }
     @* tokens.css is the single source of colour/spacing, linked from Tedwren.Client; site.css layers layout on top. *@
     <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @* Organization schema sitewide (Web Plan §10). The helper returns the whole <script> block, emitted
+       raw so neither the tag nor the JSON-LD is routed through the encoder. *@
+    @Html.Raw(JsonLd.Organization(Content.Site, baseUrl))
 </head>
 <body>
     <a class="skip-link" href="#main">Skip to content</a>

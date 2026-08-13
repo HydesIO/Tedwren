@@ -1,3 +1,5 @@
+using System.Text.Unicode;
+using Microsoft.Extensions.WebEncoders;
 using Tedwren.Web.Configuration;
 using Tedwren.Web.Content;
 
@@ -17,6 +19,11 @@ builder.Services.Configure<SiteConfig>(builder.Configuration.GetSection(SiteConf
 // customer-visible string — brand, legal entity, product names, prices, copy — so changes need no
 // redeploy. A headless CMS can replace it behind the same interface later with no view changes.
 builder.Services.AddJsonContent(builder.Configuration, builder.Environment.ContentRootPath);
+
+// Let Razor emit real Unicode (the £ symbol, em dashes, curly quotes) instead of numeric entities.
+// The HTML-sensitive characters (< > & " ') are still encoded, so output encoding stays safe.
+builder.Services.Configure<WebEncoderOptions>(options =>
+    options.TextEncoderSettings = new System.Text.Encodings.Web.TextEncoderSettings(UnicodeRanges.All));
 
 builder.Services.AddControllersWithViews();
 

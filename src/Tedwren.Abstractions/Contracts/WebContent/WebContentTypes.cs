@@ -112,6 +112,90 @@ public sealed record Differentiator(string Heading, string Body, bool Highlight 
 public sealed record HowItWorksStep(int Order, string Heading, string Body);
 
 /// <summary>
+/// The Worker Passport page content (Plan §6.4) — the individual-buyer register. Carries the "never
+/// locked out for non-payment" benefit (PRD Rule W2), the consumer-contract facts (W7 informed consent
+/// + UK 14-day cancellation), and CSCS-safe meta title/description. The price comes from the linked
+/// <see cref="PricingPlan"/>, so there is a single price source (Plan §6.4, §13.1).
+/// </summary>
+/// <param name="Heading">Page H1.</param>
+/// <param name="Subheading">Supporting hero line.</param>
+/// <param name="HeroCopy">Hero paragraph.</param>
+/// <param name="PricingPlanKey">Key of the pricing plan that carries the price (single source).</param>
+/// <param name="Benefits">Benefit cards, including the "never locked out" benefit.</param>
+/// <param name="ConsumerTerms">Consumer-contract facts (cancellation, distance selling).</param>
+/// <param name="MetaTitle">CSCS-safe title tag (Plan §8.2).</param>
+/// <param name="MetaDescription">CSCS-safe meta description (Plan §8.2).</param>
+public sealed record WorkerPassportContent(
+    string Heading,
+    string Subheading,
+    string HeroCopy,
+    string PricingPlanKey,
+    IReadOnlyList<FeatureCard> Benefits,
+    IReadOnlyList<string> ConsumerTerms,
+    string MetaTitle,
+    string MetaDescription);
+
+/// <summary>
+/// The pricing page's narrative content (Plan §6.5): intro, the plain-language clarifiers (active
+/// operative/site, 10% buffer overage) and the trust notes ("sites are free to record", "a dispersed
+/// scheme = one site"). The numbers themselves come from <see cref="PricingPlan"/> — every number from
+/// config, none typed into the view (Plan §6.5, §8).
+/// </summary>
+/// <param name="Heading">Page H1.</param>
+/// <param name="Intro">Intro paragraph.</param>
+/// <param name="Clarifiers">Plain-language pricing clarifiers.</param>
+/// <param name="TrustNotes">Pricing trust notes.</param>
+/// <param name="MetaDescription">Meta description.</param>
+public sealed record PricingPageContent(
+    string Heading,
+    string Intro,
+    IReadOnlyList<string> Clarifiers,
+    IReadOnlyList<TrustPoint> TrustNotes,
+    string MetaDescription);
+
+/// <summary>
+/// The Security &amp; Trust page content (Plan §6.6) — a stable URL for procurement/DPOs. Only claims
+/// we can actually make now; there are no fabricated certification badges and no absolute-compliance
+/// language (Plan §8.1).
+/// </summary>
+/// <param name="Heading">Page H1.</param>
+/// <param name="Intro">Intro paragraph.</param>
+/// <param name="Claims">The makeable claims, as titled sections.</param>
+/// <param name="MetaDescription">Meta description.</param>
+public sealed record SecurityContent(
+    string Heading,
+    string Intro,
+    IReadOnlyList<ContentSection> Claims,
+    string MetaDescription);
+
+/// <summary>The About page content (Plan §6.7) — founder-led credibility.</summary>
+/// <param name="Heading">Page H1.</param>
+/// <param name="Intro">Intro paragraph.</param>
+/// <param name="Sections">Story sections.</param>
+/// <param name="MetaDescription">Meta description.</param>
+public sealed record AboutContent(
+    string Heading,
+    string Intro,
+    IReadOnlyList<ContentSection> Sections,
+    string MetaDescription);
+
+/// <summary>
+/// A legal document rendered as real content, not a placeholder (Plan §4, W5). The final legal text is
+/// subject to sign-off (Plan §11.4); the structure and drafting live here as content.
+/// </summary>
+/// <param name="Slug">URL slug (privacy, cookies, terms, data-protection).</param>
+/// <param name="Title">Document title.</param>
+/// <param name="LastReviewed">Human-readable review date/label.</param>
+/// <param name="Sections">Document sections.</param>
+/// <param name="MetaDescription">Meta description.</param>
+public sealed record LegalDocument(
+    string Slug,
+    string Title,
+    string LastReviewed,
+    IReadOnlyList<ContentSection> Sections,
+    string MetaDescription);
+
+/// <summary>
 /// A pricing plan (Plan §3, §6.5). Prices are decimals here — the only place they live — so every
 /// "from £x" on the site is formatted from this record, never typed inline (Plan §8).
 /// </summary>

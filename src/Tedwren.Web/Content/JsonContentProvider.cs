@@ -31,12 +31,28 @@ public sealed class JsonContentProvider : IContentProvider
 
     private readonly IReadOnlyDictionary<string, ProductProfile> _productsByKey;
     private readonly IReadOnlyDictionary<string, PricingPlan> _plansByKey;
+    private readonly IReadOnlyDictionary<string, LegalDocument> _legalBySlug;
 
     /// <inheritdoc />
     public SiteContent Site { get; }
 
     /// <inheritdoc />
     public HomeContent Home { get; }
+
+    /// <inheritdoc />
+    public WorkerPassportContent WorkerPassport { get; }
+
+    /// <inheritdoc />
+    public PricingPageContent PricingPage { get; }
+
+    /// <inheritdoc />
+    public SecurityContent Security { get; }
+
+    /// <inheritdoc />
+    public AboutContent About { get; }
+
+    /// <inheritdoc />
+    public IReadOnlyList<LegalDocument> LegalDocuments { get; }
 
     /// <inheritdoc />
     public IReadOnlyList<ProductProfile> Products { get; }
@@ -59,14 +75,20 @@ public sealed class JsonContentProvider : IContentProvider
     {
         Site = LoadObject<SiteContent>(contentDirectory, "site.json");
         Home = LoadObject<HomeContent>(contentDirectory, "home.json");
+        WorkerPassport = LoadObject<WorkerPassportContent>(contentDirectory, "worker-passport.json");
+        PricingPage = LoadObject<PricingPageContent>(contentDirectory, "pricing-page.json");
+        Security = LoadObject<SecurityContent>(contentDirectory, "security.json");
+        About = LoadObject<AboutContent>(contentDirectory, "about.json");
         Products = LoadArray<ProductProfile>(contentDirectory, "products.json");
         PricingPlans = LoadArray<PricingPlan>(contentDirectory, "pricing.json");
         TrustPoints = LoadArray<TrustPoint>(contentDirectory, "trust.json");
         Faqs = LoadArray<FaqItem>(contentDirectory, "faqs.json");
         Testimonials = LoadArray<Testimonial>(contentDirectory, "testimonials.json");
+        LegalDocuments = LoadArray<LegalDocument>(contentDirectory, "legal.json");
 
         _productsByKey = Products.ToDictionary(p => p.ConfigKey, StringComparer.OrdinalIgnoreCase);
         _plansByKey = PricingPlans.ToDictionary(p => p.Key, StringComparer.OrdinalIgnoreCase);
+        _legalBySlug = LegalDocuments.ToDictionary(d => d.Slug, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <inheritdoc />
@@ -76,6 +98,10 @@ public sealed class JsonContentProvider : IContentProvider
     /// <inheritdoc />
     public PricingPlan? FindPricingPlan(string planKey) =>
         _plansByKey.TryGetValue(planKey, out var plan) ? plan : null;
+
+    /// <inheritdoc />
+    public LegalDocument? FindLegal(string slug) =>
+        _legalBySlug.TryGetValue(slug, out var doc) ? doc : null;
 
     /// <inheritdoc />
     public string ResolveToken(string key)
@@ -116,8 +142,8 @@ public sealed class JsonContentProvider : IContentProvider
         };
     }
 
-    /// <summary>Formats a decimal amount using the site currency symbol (Plan §8 — one home for "£").</summary>
-    private string FormatMoney(decimal amount)
+    /// <inheritdoc />
+    public string FormatMoney(decimal amount)
     {
         var symbol = CurrencySymbols.TryGetValue(Site.CurrencyCode, out var s) ? s : Site.CurrencyCode + " ";
         // Whole amounts render without trailing zeros (e.g. £10, not £10.00); otherwise two places.

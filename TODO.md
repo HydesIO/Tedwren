@@ -11,6 +11,40 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W5 Trust, About, FAQ, Legal (this change)
+- ✅ **Security & Trust (`/security`, §6.6).** Own stable URL; only makeable claims (data ownership,
+  access control, encryption in transit, audit trail, DPA on request). No fabricated ISO/Cyber Essentials
+  badges and no absolute-compliance language — asserted by a test scanning for prohibited phrasing.
+- ✅ **About (`/about`, §6.7).** Founder-led credibility from content.
+- ✅ **FAQ (`/faq`, §6.8).** `FaqAccordion` (native `<details>`, JS-free) over content FAQs, plus valid
+  **FAQPage JSON-LD** (parsed + type-checked in a test).
+- ✅ **Legal ×4 (§4).** Privacy, Cookies, Terms, Data Protection served as **real content** (not
+  placeholders) via `LegalController` → `IContentProvider.FindLegal(slug)`; each shows a "Draft — pending
+  legal sign-off" label (Plan §11.4). Wording avoids the W8 compliance-lint tokens.
+- ✅ **Sitewide SEO.** Organization JSON-LD in the layout; `JsonLd` helper returns whole `<script>` blocks
+  emitted raw. Web encoder set to `UnicodeRanges.All` so £/em-dashes render as real characters.
+- ✅ Tests: +6 (security no-fabricated/absolute claims, about renders, FAQ questions + valid schema, four
+  legal pages serve real content, valid Organization schema). Whole solution builds; Web project 0 warnings.
+
+### Tedwren.Web — Phase W4 Worker Passport & Pricing (this change)
+- ✅ **Worker Passport (`/worker-passport`, §6.4).** Individual-buyer register/tone; the "never locked out
+  for non-payment" benefit (PRD Rule W2); price line from the single configured `PricingPlan` source;
+  consumer-contract facts (annual billing, UK 14-day cancellation, informed consent). **CSCS positioning
+  restriction** enforced in copy **and** title/meta — a test scans the `<head>` for prohibited CSCS
+  rivalry/replacement phrasing (§8.2).
+- ✅ **Pricing (`/pricing`, §6.5).** `PricingTable` renders every number from config; unpriced bands show
+  "Pricing on request" (not a fabricated number) pending the §11.2 sign-off; plain-language clarifiers
+  (active operative/site, 10% buffer) and trust notes ("sites are free to record", "a dispersed scheme =
+  one site"). SoftwareApplication JSON-LD emitted + validated.
+- ✅ **Single price source; £ in one place.** Prices are decimals in `PricingPlan`; `IContentProvider.FormatMoney`
+  applies the currency symbol (one map). Worker Passport £10 (PRD value) — **£10/£12 conflict still flagged
+  for sign-off (Plan §11.1)**; bands at 0 → "Pricing on request" (Plan §11.2). No `£` literal in views/content.
+- ✅ **Meta descriptions** added to the layout (`ViewData["MetaDescription"]`), set per page from content.
+- ✅ Content model extended (Abstractions): `WorkerPassportContent`, `PricingPageContent`, `SecurityContent`,
+  `AboutContent`, `LegalDocument`; provider exposes them + `FindLegal` + public `FormatMoney`.
+- ✅ Tests: +8 (WP benefit, WP price from config, CSCS meta restriction, pricing clarifiers + unpriced band,
+  valid SoftwareApplication schema, provider FindLegal + FormatMoney). Web tests 41 → 57.
+
 ### Tedwren.Web — Phase W3 Core pages (this change)
 - ✅ **Home, Subcontractors, Main Contractors from content (Web Plan §6.1–6.3).** The three core pages
   now render from the content layer, not stubs. Home: hero + audience split, problem section, the two

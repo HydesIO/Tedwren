@@ -1,8 +1,28 @@
+@inject Tedwren.Abstractions.Services.IContentProvider Content
 @{
+    var about = Content.About;
     ViewData["Title"] = "About";
+    ViewData["MetaDescription"] = about.MetaDescription;
 }
-@await Html.PartialAsync("_Stub", new StubModel(
-    "Why we built Tedwren",
-    "Founder-led credibility and the story behind the product.",
-    "W5",
-    CtaAction.BookDemo))
+
+<section class="about-intro">
+    <h1 class="section-heading">@about.Heading</h1>
+    <p class="about-intro__body">@about.Intro</p>
+</section>
+
+<section class="about-sections">
+    @foreach (var part in about.Sections)
+    {
+        <div class="about-section">
+            <h2 class="about-section__heading">@part.Heading</h2>
+            <p class="about-section__body">@part.Body</p>
+        </div>
+    }
+</section>
+
+<section class="closing">
+    <h2 class="closing__heading">Want to see it in action?</h2>
+    <div class="closing__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+    </div>
+</section>

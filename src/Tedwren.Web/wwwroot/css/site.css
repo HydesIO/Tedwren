@@ -285,3 +285,62 @@ a:hover { text-decoration: underline; }
     .hero__heading { font-size: 1.75rem; }
     .product-detail__title { font-size: 1.6rem; }
 }
+
+/* ===== W4/W5 pages (Worker Passport, Pricing, Security, About, FAQ, Legal). Tokens only. ===== */
+
+/* Worker Passport */
+.wp-hero { padding: var(--spacing-16) 0 var(--spacing-8); max-width: 68ch; }
+.wp-hero__heading { font-size: 2.25rem; line-height: 1.15; margin: 0 0 var(--spacing-12); }
+.wp-hero__subheading { font-size: 1.15rem; color: var(--color-text-secondary); margin: 0 0 var(--spacing-16); }
+.wp-hero__copy { color: var(--color-text-secondary); margin: 0 0 var(--spacing-20); }
+.wp-hero__price { font-size: 1.75rem; font-weight: 700; color: var(--color-brand-dark); margin: 0 0 var(--spacing-16); }
+.wp-hero__per { font-size: 1rem; font-weight: 400; color: var(--color-text-secondary); }
+.wp-hero__actions { display: flex; gap: var(--spacing-12); }
+.wp-terms__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--spacing-12); max-width: 70ch; }
+.wp-terms__item { position: relative; padding-left: var(--spacing-24); color: var(--color-text-secondary); }
+.wp-terms__item::before { content: "i"; position: absolute; left: 0; top: 0; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; font-style: italic; color: var(--color-info); border: 1px solid var(--color-info); border-radius: 50%; }
+
+/* Pricing */
+.pricing-intro__body { font-size: 1.1rem; color: var(--color-text-secondary); max-width: 66ch; margin: 0; }
+.pricing-table { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--spacing-20); }
+.pricing-plan { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); box-shadow: var(--shadow-card); padding: var(--spacing-24); }
+.pricing-plan__name { font-size: 1.1rem; margin: 0 0 var(--spacing-8); }
+.pricing-plan__price { font-size: 1.5rem; font-weight: 700; color: var(--color-brand-dark); margin: 0 0 var(--spacing-4); }
+.pricing-plan__monthly { font-size: 0.9rem; color: var(--color-text-muted); margin: 0 0 var(--spacing-8); }
+.pricing-plan__band { color: var(--color-text-secondary); margin: 0; }
+.pricing-clarifiers__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--spacing-8); max-width: 72ch; }
+.pricing-clarifiers__item { position: relative; padding-left: var(--spacing-24); color: var(--color-text-secondary); }
+.pricing-clarifiers__item::before { content: "–"; position: absolute; left: var(--spacing-8); color: var(--color-brand); }
+.pricing-trust__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-16); }
+.pricing-trust__item { position: relative; padding-left: var(--spacing-24); font-weight: 600; }
+.pricing-trust__item::before { content: "✓"; position: absolute; left: 0; color: var(--color-success); }
+
+/* Security */
+.security-intro__body { font-size: 1.1rem; color: var(--color-text-secondary); max-width: 68ch; margin: 0; }
+.security-claims { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--spacing-16); }
+.security-claim { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: var(--spacing-20); }
+.security-claim__heading { font-size: 1.05rem; margin: 0 0 var(--spacing-8); }
+.security-claim__body { color: var(--color-text-secondary); margin: 0; }
+
+/* About */
+.about-intro__body { font-size: 1.1rem; color: var(--color-text-secondary); max-width: 68ch; margin: 0; }
+.about-sections { display: flex; flex-direction: column; gap: var(--spacing-24); max-width: 72ch; }
+.about-section__heading { font-size: 1.2rem; margin: 0 0 var(--spacing-8); }
+.about-section__body { color: var(--color-text-secondary); margin: 0; }
+
+/* FAQ */
+.faq-intro__body { color: var(--color-text-secondary); max-width: 66ch; margin: 0; }
+.faq { display: flex; flex-direction: column; gap: var(--spacing-8); max-width: 76ch; }
+.faq__item { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-control); padding: var(--spacing-16) var(--spacing-20); }
+.faq__question { font-weight: 600; cursor: pointer; }
+.faq__answer { margin-top: var(--spacing-12); color: var(--color-text-secondary); }
+.faq__answer p { margin: 0 0 var(--spacing-8); }
+.faq__link { font-weight: 600; }
+
+/* Legal */
+.legal { max-width: 72ch; }
+.legal__title { font-size: 2rem; margin: 0 0 var(--spacing-4); }
+.legal__reviewed { font-size: 0.85rem; color: var(--color-text-muted); margin: 0 0 var(--spacing-24); }
+.legal__section { margin-bottom: var(--spacing-24); }
+.legal__heading { font-size: 1.2rem; margin: 0 0 var(--spacing-8); }
+.legal__body { color: var(--color-text-secondary); margin: 0; }

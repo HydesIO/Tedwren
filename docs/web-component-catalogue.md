@@ -19,10 +19,15 @@ product-owned compliance-pack viewer (Plan §4.1) can reuse the same site/brand 
 | `SiteContent` | `site.json` | Header, footer, titles | Brand, legal entity, company no./office, currency, launch social accounts. |
 | `HomeContent` | `home.json` | Home | Hero, problem, differentiators, how-it-works steps, closing block (Plan §6.1). |
 | `ProductProfile` | `products.json` | Home card (short) + product page (long) | One entry → both renderers; no copy fork (Plan §6.1). Carries optional `ContentSection[]`. |
-| `FeatureCard` | (within `products.json`) | Product pages, Home | Heading + copy. |
-| `ContentSection` | (within `products.json`) | Product pages | Titled narrative section; `Emphasis` for distinct treatment (CSCS line, retrofit section). |
+| `FeatureCard` | (within `products.json` / `worker-passport.json`) | Product pages, Home, Worker Passport | Heading + copy. |
+| `ContentSection` | (within products/security/about/legal) | Product, Security, About, Legal pages | Titled section; `Emphasis` for distinct treatment (CSCS line, retrofit section). |
 | `Differentiator` | (within `home.json`) | Home | Card with optional `Highlight` for the strongest differentiator. |
 | `HowItWorksStep` | (within `home.json`) | Home | Ordered "how it works" step. |
+| `WorkerPassportContent` | `worker-passport.json` | `/worker-passport` | Individual-buyer register: benefits (incl. "never locked out"), consumer terms, CSCS-safe meta (Plan §6.4, §8.2). |
+| `PricingPageContent` | `pricing-page.json` | `/pricing` | Intro, plain-language clarifiers, trust notes (Plan §6.5). Numbers come from `PricingPlan`. |
+| `SecurityContent` | `security.json` | `/security` | Makeable claims only — no fabricated badges (Plan §6.6, §8.1). |
+| `AboutContent` | `about.json` | `/about` | Founder-led credibility. |
+| `LegalDocument` | `legal.json` | `/legal/{slug}` | Real legal content (draft pending sign-off, Plan §11.4). |
 | `PricingPlan` | `pricing.json` | `/pricing`, any "from £x" | Prices are decimals here — the **only** home for prices (Plan §8). |
 | `TrustPoint` | `trust.json` | Trust strip, `/security` | Only claims we can actually make (Plan §8.1). |
 | `FaqItem` | `faqs.json` | `/faq`, FAQPage schema | Question, answer, optional deflect link. |
@@ -49,8 +54,8 @@ from the content layer.
 | `FeatureGrid` | Grid of feature cards, reused on product pages and Home. | `IReadOnlyList<FeatureCard>` | ✅ W3 |
 | `Differentiators` | Home differentiator cards; highlights the strongest one. | `IContentProvider` | ✅ W3 |
 | `HowItWorks` | Home five-step sequence. | `IContentProvider` | ✅ W3 |
-| `PricingTable` | Pricing bands from `PricingPlan`, all numbers from content. | `IReadOnlyList<PricingPlan>` | ⏳ W4 |
-| `FaqAccordion` | FAQ list + FAQPage schema. | `IReadOnlyList<FaqItem>` | ⏳ W5 |
+| `PricingTable` | Pricing bands from `PricingPlan`; formats prices, "Pricing on request" for unpriced bands. | `IContentProvider` | ✅ W4 |
+| `FaqAccordion` | FAQ list as native `<details>` (JS-free). | `IContentProvider` | ✅ W5 |
 | `ConsentBanner` | CMP-backed consent; no script fires pre-consent. | — | ⏳ W6 |
 | `LeadForm` | Server-validated demo/contact form (antiforgery, honeypot, timing, rate limit). | form model | ⏳ W6 |
 | `TestimonialWall` | Renders `Testimonial` list — empty at launch. | `IReadOnlyList<Testimonial>` | ⏳ W5 |
@@ -64,3 +69,8 @@ from the content layer.
 - **No price/name literals in views.** Prices come from `PricingPlan`; names from `ProductProfile` /
   `ResolveToken`. (Enforced by the W8 content lint.)
 - **Summary comment on every class and method**, single responsibility per component.
+- **SEO schema** is built by `Tedwren.Web.Seo.JsonLd` (Organization sitewide via the layout,
+  FAQPage on `/faq`, SoftwareApplication on `/pricing`). Each method returns a complete `<script>`
+  block emitted with `@Html.Raw` so it isn't routed through the encoder. Page meta descriptions are set
+  via `ViewData["MetaDescription"]`. The web encoder is configured for `UnicodeRanges.All` so the £
+  symbol and typographic punctuation render as real characters, not numeric entities.
