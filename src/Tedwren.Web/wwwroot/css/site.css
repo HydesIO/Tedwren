@@ -421,8 +421,22 @@ a:hover { text-decoration: underline; }
 }
 .pack-chrome--header { border-bottom: 1px solid var(--color-border); }
 .pack-chrome--footer { border-top: 1px solid var(--color-border); }
-.pack-chrome__brand { font-weight: 700; font-size: 1.1rem; color: var(--color-text-primary); }
-.pack-chrome__entity { color: var(--color-text-secondary); font-size: 0.9rem; }
+.pack-chrome__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-8);
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--color-text-primary);
+}
+.pack-chrome__entity {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-8);
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+.pack-chrome__logo { border-radius: var(--radius-control, 6px); }
 .pack-chrome__demo { font-weight: 600; color: var(--color-brand); }
 
 /* ===== W7 partner programme. Tokens only. ===== */
