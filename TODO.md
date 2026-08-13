@@ -11,6 +11,33 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W2 Content layer (this change)
+- ✅ **`IContentProvider` seam + content types (Web Plan §3).** Added
+  `Tedwren.Abstractions.Services.IContentProvider` and the content model
+  (`Tedwren.Abstractions.Contracts.WebContent`: `SiteContent`, `ProductProfile`, `FeatureCard`,
+  `PricingPlan`, `TrustPoint`, `FaqItem`, `Testimonial`, `SocialAccount`). Types live in Abstractions so
+  the product-owned compliance-pack viewer (Plan §4.1) can reuse the same site/brand content.
+- ✅ **JSON-backed provider.** `Tedwren.Web.Content.JsonContentProvider` loads `Content/*.json`
+  (`site`, `products`, `pricing`, `trust`, `faqs`, `testimonials`) once at startup, registered as a
+  singleton via `AddJsonContent`. Fails fast on a missing file. A CMS can replace it behind the same
+  interface with no view changes. Content files copy to publish output; content root is the project dir
+  in dev/test.
+- ✅ **Naming/price key indirection (Plan §2, §8).** `ResolveToken` resolves dotted keys
+  (`Site:Brand`, `Products:{key}:Name|Slug|Tagline`, `Pricing:{key}:Annual|Monthly`) so names/prices are
+  referenced by key, never inline; unknown tokens throw. Prices are decimals in `PricingPlan` (the only
+  home for prices) formatted via a single currency-symbol map — no "£" literal in views/content.
+  Worker Passport price seeded at £10 (PRD value) with the £10/£12 conflict still flagged for sign-off
+  (Plan §11.1); band prices left at 0 pending the publish-vs-"from £x" decision (Plan §11.2).
+- ✅ **Chrome now consumes content.** `SiteHeader`/`SiteFooter`/`_Layout` read brand, legal entity and
+  social from `IContentProvider`; `SiteConfig` (appsettings) is trimmed to nav **structure** only
+  (which pages, in what order). Identity moved out of appsettings into `site.json`.
+- ✅ **Component catalogue.** Added `docs/web-component-catalogue.md` (content types + view components,
+  built and planned, plus conventions), per the W2 exit criteria.
+- ✅ **Tests + build.** `Tedwren.Web.Tests` now 36 (was 22): isolated provider unit tests (load, lookup,
+  token/price indirection, fail-fast on missing file) + DI/integration tests proving the shipped content
+  loads at the real content root and reaches the footer. Whole solution builds (0 errors); Web project 0
+  warnings.
+
 ### Tedwren.Web — Phase W1 Skeleton (this change)
 - ✅ **New marketing-site project.** Added `src/Tedwren.Web` (ASP.NET Core MVC, `Microsoft.NET.Sdk.Web`,
   `net10.0`) and `tests/Tedwren.Web.Tests`, both wired into `Tedwren.sln`. Server-rendered Razor, no auth

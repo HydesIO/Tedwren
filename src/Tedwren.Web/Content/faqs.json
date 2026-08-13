@@ -1,0 +1,17 @@
+[
+  {
+    "Question": "Do main contractors need an account to view a compliance pack?",
+    "Answer": "No. A subcontractor sends a pack and the main contractor opens it with no sign-up.",
+    "LinkTarget": "/subcontractors"
+  },
+  {
+    "Question": "Does a worker lose access if a payment is missed?",
+    "Answer": "No. A worker is never locked out of their own Worker Passport for non-payment.",
+    "LinkTarget": "/worker-passport"
+  },
+  {
+    "Question": "Does Tedwren work on sites without a fixed gate?",
+    "Answer": "Yes. Dispersed and retrofit schemes are managed without a single site gate.",
+    "LinkTarget": "/main-contractors"
+  }
+]

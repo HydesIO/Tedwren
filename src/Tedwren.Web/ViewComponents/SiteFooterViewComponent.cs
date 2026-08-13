@@ -1,32 +1,42 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
+using Tedwren.Abstractions.Contracts.WebContent;
+using Tedwren.Abstractions.Services;
 using Tedwren.Web.Configuration;
 
 namespace Tedwren.Web.ViewComponents;
 
 /// <summary>
-/// Renders the site footer (Web Plan §5): legal entity + company number/office, site links, legal
-/// links, and social icons — but only for accounts that exist at launch, so the footer never shows
-/// an icon for an account that does not exist. Everything is sourced from <see cref="SiteConfig"/>.
+/// Renders the site footer (Web Plan §5): legal entity + company number/office and social icons from
+/// the content layer (<see cref="IContentProvider"/>), and the site/legal link lists from
+/// <see cref="SiteConfig"/>. Social icons render only for accounts that exist at launch, so the footer
+/// never shows an icon for an account that does not exist.
 /// </summary>
 public sealed class SiteFooterViewComponent : ViewComponent
 {
     private readonly SiteConfig _site;
+    private readonly IContentProvider _content;
 
-    /// <summary>Injects the config-bound site chrome.</summary>
-    /// <param name="site">Bound "Site" configuration.</param>
-    public SiteFooterViewComponent(IOptions<SiteConfig> site) => _site = site.Value;
+    /// <summary>Injects the navigation structure and the content layer.</summary>
+    /// <param name="site">Bound "Site" navigation configuration.</param>
+    /// <param name="content">Content provider for legal entity/social.</param>
+    public SiteFooterViewComponent(IOptions<SiteConfig> site, IContentProvider content)
+    {
+        _site = site.Value;
+        _content = content;
+    }
 
-    /// <summary>Builds the footer view model from config.</summary>
+    /// <summary>Builds the footer view model from content + nav config.</summary>
     public IViewComponentResult Invoke()
     {
+        var identity = _content.Site;
         var model = new SiteFooterModel(
-            _site.LegalEntity,
-            _site.CompanyNumber,
-            _site.RegisteredOffice,
+            identity.LegalEntity,
+            identity.CompanyNumber,
+            identity.RegisteredOffice,
             _site.FooterLinks,
             _site.LegalLinks,
-            _site.SocialLinks,
+            identity.Social,
             DateTime.UtcNow.Year);
         return View(model);
     }
@@ -46,5 +56,5 @@ public sealed record SiteFooterModel(
     string? RegisteredOffice,
     IReadOnlyList<NavLink> FooterLinks,
     IReadOnlyList<NavLink> LegalLinks,
-    IReadOnlyList<SocialLink> SocialLinks,
+    IReadOnlyList<SocialAccount> SocialLinks,
     int Year);
