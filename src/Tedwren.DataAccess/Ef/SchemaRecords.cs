@@ -424,3 +424,19 @@ public sealed class FormSubmissionFileRecord
     public byte[] Content { get; set; } = Array.Empty<byte>();
     public DateTimeOffset UploadedUtc { get; set; }
 }
+
+/// <summary>Schema row for the <c>FormAssignments</c> table (PRD-Phase 2 Forms Library); assigns a form family to a scope.</summary>
+public sealed class FormAssignmentRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FormTemplateFamilyId { get; set; }
+    public string FormName { get; set; } = string.Empty;
+    public int Scope { get; set; }
+    public Guid? SiteId { get; set; }
+    public Guid? PersonId { get; set; }
+    public Guid? InductionTemplateId { get; set; }
+    public int Schedule { get; set; }
+    public string? FailureAlertEmail { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}

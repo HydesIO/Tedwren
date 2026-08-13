@@ -791,8 +791,35 @@ Phase M1 delivers the shared foundations and the first page migrations:
     dialog. Application (PDF render, service PDF + email-with-attachment) + API (pdf/email endpoint) tests.
     Note: the framework-only `PdfWriter` is retained for the tabular compliance-pack exports; QuestPDF is used
     only for branded form output.
-  - ⏳ Phases 24–25 — assignment/scheduling/induction · hardening (entitlement gate, PG parity,
-    default templates).
+  - ✅ **Phase 24 — Assignment & induction integration.** `FormAssignment` domain (+ `FormSchedule`),
+    repos (Dapper + in-memory), `020_form_assignments.sql` (both engines) + EF migration.
+    `IFormAssignmentService` + `FormAssignmentService` (tenant-scoped assign to organisation/site/operator/
+    induction, snapshots form name, validates target; delete). Endpoints `/api/forms/assignments`
+    (GET/POST/DELETE, writes `RequireWrite`). **Failed-check alert**: a red RAG answer emails the assignment's
+    alert address with the branded PDF attached (PRD §8), wired into the submission flow. **Induction
+    integration (authoring)**: `InductionStepKind.Form` + optional `InductionStep.Reference` (form family id,
+    backward-compatible); the induction builder attaches published forms as steps. Assign dialog + assignments
+    table in the Forms Library; client `ApiFormAssignmentService`. Application (assignment CRUD + failure-alert)
+    + API (assignment round-trip) + skip-guarded DataAccess tests. Whole solution builds warning-clean; all
+    suites green.
+  - ✅ **Phase 25 — Hardening.** **Entitlement gate**: added the paid `forms` module to `ModuleCatalog`
+    (default off); **server-side, fail-closed** enforcement via a reusable `ModuleGate.Require("forms")` endpoint
+    filter on the whole `/api/forms` group (the first server-side entitlement enforcement in the app — client
+    nav is only cosmetic); client nav gating for `/forms` + `/form-submissions`; the demo/test company is seeded
+    with `forms` enabled so the mock and API tests exercise the module. **Default template library**:
+    `DefaultFormTemplates` ships three ready-made forms (Daily Site Diary, Plant & Equipment Checklist, Welfare
+    Check); `SeedStarterTemplatesAsync` creates+publishes them idempotently; endpoint
+    `POST /api/forms/templates/seed-starter` + an "Add starter forms" action in the library. **PostgreSQL
+    parity**: the `018`/`019`/`020` scripts exist for both engines with verified column parity (the full PG
+    parity run remains the pre-launch gate, deferred with the other PG work). Application (starter seed) + API
+    (module gate 200→403→200, starter seed) tests. Whole solution builds warning-clean; all suites green.
+    - ⏳ **Still deferred** (larger features, not hardening): the recurring **scheduler job** for
+      Daily/Weekly/Monthly cadences (schedule stored/surfaced; the R12-reporting due-date/reminder job is its own
+      change), and **rendering induction-embedded forms in the worker take-flow** (`InductionTake`), which needs
+      an anonymous form-fill path touching the secure-by-default/R5 boundary.
+
+  The Forms Library (Phases 19–25) is now feature-complete against requirements 1–11 bar the two deferred items
+  above; the remaining work is the pre-launch PostgreSQL parity run and those two follow-ups.
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

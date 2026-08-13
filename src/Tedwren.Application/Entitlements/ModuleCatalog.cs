@@ -21,6 +21,7 @@ public static class ModuleCatalog
         new("permits", "Permits", "Permit issuance and tracking", DefaultEnabled: true),
         new("reports", "Reports & Analytics", "Dashboards, reports and exports", DefaultEnabled: true),
         new("integrations", "Integrations", "Connected third-party services", DefaultEnabled: false),
+        new("forms", "Forms Library", "Custom forms, submissions and assignments", DefaultEnabled: false),
     };
 
     /// <summary>Returns the catalogue module for a key, or null when the key is unknown (fails closed, Q2).</summary>

@@ -46,6 +46,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<FormTemplateRecord> FormTemplates => Set<FormTemplateRecord>();
     public DbSet<FormSubmissionRecord> FormSubmissions => Set<FormSubmissionRecord>();
     public DbSet<FormSubmissionFileRecord> FormSubmissionFiles => Set<FormSubmissionFileRecord>();
+    public DbSet<FormAssignmentRecord> FormAssignments => Set<FormAssignmentRecord>();
 
     /// <summary>Maps every schema record to its table, keys and indexes, mirroring the hand-written scripts.</summary>
     protected override void OnModelCreating(ModelBuilder model)
@@ -261,6 +262,15 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.FileName).HasMaxLength(512);
             e.Property(x => x.ContentType).HasMaxLength(128);
             e.HasIndex(x => x.SubmissionId);
+        });
+
+        model.Entity<FormAssignmentRecord>(e =>
+        {
+            e.ToTable("FormAssignments");
+            e.Property(x => x.FormName).HasMaxLength(256);
+            e.Property(x => x.FailureAlertEmail).HasMaxLength(256);
+            e.HasIndex(x => x.CompanyId);
+            e.HasIndex(x => new { x.CompanyId, x.FormTemplateFamilyId });
         });
 
         // PostgreSQL: the Dapper repositories issue unquoted SQL, which PostgreSQL folds to lower case, so the

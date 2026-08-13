@@ -182,11 +182,12 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the store-agnostic Forms Library template + submission services (PRD-Phase 2 checklist/inspection engine).</summary>
+    /// <summary>Registers the store-agnostic Forms Library services — templates, submissions and assignments (PRD-Phase 2 checklist/inspection engine).</summary>
     public static IServiceCollection AddFormCore(this IServiceCollection services)
     {
         services.AddScoped<IFormTemplateService, Forms.FormTemplateService>();
         services.AddScoped<IFormSubmissionService, Forms.FormSubmissionService>();
+        services.AddScoped<IFormAssignmentService, Forms.FormAssignmentService>();
         return services;
     }
 
@@ -196,6 +197,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemoryFormStore>();
         services.AddScoped<IFormTemplateRepository, InMemoryFormTemplateRepository>();
         services.AddScoped<IFormSubmissionRepository, InMemoryFormSubmissionRepository>();
+        services.AddScoped<IFormAssignmentRepository, InMemoryFormAssignmentRepository>();
         return services;
     }
 

@@ -57,6 +57,17 @@ public sealed class ApiFormTemplateService : IFormTemplateService
     public Task<FormTemplateDto?> ArchiveAsync(Guid id, CancellationToken cancellationToken = default) =>
         PostForTemplateAsync($"api/forms/templates/{id}/archive", cancellationToken);
 
+    /// <summary>Seeds (and publishes) the shipped starter forms, returning how many were created.</summary>
+    public async Task<int> SeedStarterTemplatesAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsync("api/forms/templates/seed-starter", null, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var result = await response.Content.ReadFromJsonAsync<SeedResult>(cancellationToken);
+        return result?.Created ?? 0;
+    }
+
+    private sealed record SeedResult(int Created);
+
     private async Task<FormTemplateDto?> GetOrNullAsync(string url, CancellationToken cancellationToken)
     {
         using var response = await _http.GetAsync(url, cancellationToken);

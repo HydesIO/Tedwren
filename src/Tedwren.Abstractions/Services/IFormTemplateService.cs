@@ -32,4 +32,7 @@ public interface IFormTemplateService
 
     /// <summary>Archives a template version (retires it from the library). Returns the archived template, or null when not found / not the caller's.</summary>
     Task<FormTemplateDto?> ArchiveAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Creates (and publishes) the shipped starter forms for the caller's company, skipping any whose name already exists. Returns how many were created.</summary>
+    Task<int> SeedStarterTemplatesAsync(CancellationToken cancellationToken = default);
 }

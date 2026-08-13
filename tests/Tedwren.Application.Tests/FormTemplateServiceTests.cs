@@ -133,6 +133,24 @@ public sealed class FormTemplateServiceTests
         Assert.Empty(await service.GetTemplatesAsync());
     }
 
+    [Fact] // PRD §6 — the shipped starter forms seed as published, and re-running is idempotent.
+    public async Task SeedStarters_CreatesPublishedForms_AndIsIdempotent()
+    {
+        var service = CreateService(Company, out _);
+
+        var created = await service.SeedStarterTemplatesAsync();
+        Assert.Equal(3, created);
+
+        var list = await service.GetTemplatesAsync();
+        Assert.Equal(3, list.Count);
+        Assert.All(list, t => Assert.Equal("Published", t.Status));
+        Assert.Contains(list, t => t.Name == "Daily Site Diary");
+
+        // Running again creates nothing further.
+        Assert.Equal(0, await service.SeedStarterTemplatesAsync());
+        Assert.Equal(3, (await service.GetTemplatesAsync()).Count);
+    }
+
     [Fact] // R15 — a template owned by another company is invisible (treated as not found).
     public async Task GetTemplate_CrossTenant_ReturnsNull()
     {

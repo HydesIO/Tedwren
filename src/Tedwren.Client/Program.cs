@@ -42,6 +42,7 @@ builder.Services.AddScoped<ICompliancePackService, ApiCompliancePackService>();
 builder.Services.AddScoped<IInductionService, ApiInductionService>();
 builder.Services.AddScoped<IFormTemplateService, ApiFormTemplateService>();
 builder.Services.AddScoped<IFormSubmissionService, ApiFormSubmissionService>();
+builder.Services.AddScoped<IFormAssignmentService, ApiFormAssignmentService>();
 builder.Services.AddScoped<ISiteEntryService, ApiSiteEntryService>();
 builder.Services.AddScoped<IDecisionService, ApiDecisionService>();
 builder.Services.AddScoped<IReferenceDataService, ApiReferenceDataService>();
