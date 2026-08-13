@@ -1,0 +1,23 @@
+@model SiteHeaderModel
+<header class="site-header">
+    <div class="site-header__inner">
+        <a class="site-header__brand" href="/" aria-label="@Model.BrandName home">@Model.BrandName</a>
+
+        <input type="checkbox" id="nav-toggle" class="site-header__nav-toggle" hidden />
+        <label for="nav-toggle" class="site-header__hamburger" aria-label="Toggle navigation">
+            <span></span><span></span><span></span>
+        </label>
+
+        <nav class="site-header__nav" aria-label="Primary">
+            @foreach (var link in Model.PrimaryNav)
+            {
+                <a class="site-header__nav-link" href="@link.Href">@link.Label</a>
+            }
+        </nav>
+
+        @* CTA stays outside the collapsed menu on mobile — never two taps (Web Plan §5). *@
+        <div class="site-header__cta">
+            @await Component.InvokeAsync("Cta", new { action = Model.Cta })
+        </div>
+    </div>
+</header>

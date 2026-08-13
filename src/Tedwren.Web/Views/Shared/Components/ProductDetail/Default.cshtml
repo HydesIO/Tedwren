@@ -1,0 +1,32 @@
+@model ProductProfile
+<article class="product-detail">
+    <header class="product-detail__hero">
+        <h1 class="product-detail__title">@Model.DisplayName</h1>
+        <p class="product-detail__tagline">@Model.Tagline</p>
+        <p class="product-detail__hero-copy">@Model.HeroCopy</p>
+        <div class="product-detail__actions">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.StartPilot, secondary = true })
+        </div>
+    </header>
+
+    @await Component.InvokeAsync("FeatureGrid", new { features = Model.Features })
+
+    @foreach (var part in Model.PageSections)
+    {
+        <section class="product-section @(part.Emphasis ? "product-section--emphasis" : null)">
+            <h2 class="product-section__heading">@part.Heading</h2>
+            <p class="product-section__body">@part.Body</p>
+        </section>
+    }
+
+    @await Component.InvokeAsync("TrustStrip")
+
+    <section class="closing">
+        <h2 class="closing__heading">Ready to see it on your sites?</h2>
+        <div class="closing__actions">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.StartPilot, secondary = true })
+        </div>
+    </section>
+</article>

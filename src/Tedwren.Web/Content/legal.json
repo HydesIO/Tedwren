@@ -1,0 +1,50 @@
+[
+  {
+    "Slug": "privacy",
+    "Title": "Privacy Policy",
+    "LastReviewed": "Draft — pending legal sign-off",
+    "MetaDescription": "How Tedwren collects, uses and protects your personal data.",
+    "Sections": [
+      { "Heading": "Who we are", "Body": "Tedwren Ltd operates this website and the Tedwren service. This policy explains what personal data we collect and how we use it." },
+      { "Heading": "What we collect", "Body": "Account and contact details you give us, compliance records you add, and basic technical data such as your device and pages viewed (subject to your cookie choices)." },
+      { "Heading": "How we use it", "Body": "To provide the service, keep it secure, respond to enquiries, and — only where you've agreed — to measure how the site is used. We don't sell your data." },
+      { "Heading": "Your rights", "Body": "You can ask to access, correct or delete your personal data, or object to certain uses. Contact us and we'll respond within the statutory timeframe." },
+      { "Heading": "Contact", "Body": "For any privacy question or request, contact us through the details on our contact page." }
+    ]
+  },
+  {
+    "Slug": "cookies",
+    "Title": "Cookie Policy",
+    "LastReviewed": "Draft — pending legal sign-off",
+    "MetaDescription": "How Tedwren uses cookies and how you control them.",
+    "Sections": [
+      { "Heading": "What cookies we use", "Body": "Essential cookies that make the site work, and — only with your consent — analytics cookies that help us understand usage." },
+      { "Heading": "Your choices", "Body": "No analytics or advertising cookies run before you consent. You can reject non-essential cookies in one click and change your mind at any time." },
+      { "Heading": "Managing cookies", "Body": "You can also control cookies through your browser settings. Blocking essential cookies may stop parts of the site working." }
+    ]
+  },
+  {
+    "Slug": "terms",
+    "Title": "Terms of Service",
+    "LastReviewed": "Draft — pending legal sign-off",
+    "MetaDescription": "The terms that govern your use of Tedwren.",
+    "Sections": [
+      { "Heading": "Using Tedwren", "Body": "By using the service you agree to these terms. Use it lawfully and don't attempt to disrupt it or access data that isn't yours." },
+      { "Heading": "Your account", "Body": "Keep your login secure and the information in your account accurate. You're responsible for activity under your account." },
+      { "Heading": "Subscriptions and billing", "Body": "Paid plans are billed as described at sign-up. Worker Passport is billed annually with a 14-day right to cancel under UK distance-selling rules." },
+      { "Heading": "Availability", "Body": "We work to keep the service available but don't promise uninterrupted access, and we may update features over time." }
+    ]
+  },
+  {
+    "Slug": "data-protection",
+    "Title": "Data Protection",
+    "LastReviewed": "Draft — pending legal sign-off",
+    "MetaDescription": "How Tedwren meets its data-protection obligations.",
+    "Sections": [
+      { "Heading": "Our commitment", "Body": "We handle personal data in line with UK data-protection law and only for the purposes set out in our privacy policy." },
+      { "Heading": "Data processing", "Body": "Where we process personal data on your behalf, we can provide a data-processing agreement setting out roles and responsibilities." },
+      { "Heading": "Security", "Body": "We apply appropriate technical and organisational measures to protect personal data, described further on our Security & Trust page." },
+      { "Heading": "Contact", "Body": "For data-protection queries or to request a DPA, contact us through our contact page." }
+    ]
+  }
+]

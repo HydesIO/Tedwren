@@ -1,0 +1,32 @@
+@using Microsoft.Extensions.Options
+@using Tedwren.Web.Analytics
+@using Tedwren.Web.Controllers
+@inject IOptions<AnalyticsOptions> Analytics
+@model DemoThanksModel
+@{
+    ViewData["Title"] = "Thanks — let's get you booked in";
+    var pilot = ViewData["Pilot"] as bool? ?? false;
+    var ga4Id = AnalyticsState.ActiveGa4Id(Context, Analytics.Value);
+}
+<section class="lead-thanks">
+    <h1 class="section-heading">Thanks — you're almost there</h1>
+    <p class="lead-thanks__body">Pick a time that suits you and we'll walk you through Tedwren on your own sites.@(pilot ? " We've noted you're interested in a pilot." : "")</p>
+
+    @if (!string.IsNullOrEmpty(Model.BookingUrl))
+    {
+        <a class="cta cta--primary" href="@Model.BookingUrl" rel="noopener">Choose a time</a>
+    }
+    else
+    {
+        <p class="lead-thanks__fallback">We'll be in touch shortly to arrange a time.</p>
+    }
+</section>
+
+@if (ga4Id is not null)
+{
+    @* Conversion event, fired only after analytics consent (Web Plan §8, §11). *@
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        dataLayer.push({ event: 'generate_lead', form: 'demo', pilot: @(pilot ? "true" : "false") });
+    </script>
+}

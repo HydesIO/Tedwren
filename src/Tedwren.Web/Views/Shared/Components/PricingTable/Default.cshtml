@@ -1,0 +1,16 @@
+@using Tedwren.Web.ViewComponents
+@model IReadOnlyList<PricingRow>
+<div class="pricing-table">
+    @foreach (var row in Model)
+    {
+        <div class="pricing-plan">
+            <h3 class="pricing-plan__name">@row.Name</h3>
+            <p class="pricing-plan__price">@row.AnnualDisplay</p>
+            @if (row.MonthlyDisplay is not null)
+            {
+                <p class="pricing-plan__monthly">@row.MonthlyDisplay / month</p>
+            }
+            <p class="pricing-plan__band">@row.Band</p>
+        </div>
+    }
+</div>

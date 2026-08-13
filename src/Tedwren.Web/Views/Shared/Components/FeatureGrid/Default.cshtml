@@ -1,0 +1,10 @@
+@model IReadOnlyList<FeatureCard>
+<div class="feature-grid">
+    @foreach (var feature in Model)
+    {
+        <div class="feature-grid__card">
+            <h3 class="feature-grid__heading">@feature.Heading</h3>
+            <p class="feature-grid__copy">@feature.Copy</p>
+        </div>
+    }
+</div>

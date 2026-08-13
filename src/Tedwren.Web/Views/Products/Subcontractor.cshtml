@@ -1,0 +1,6 @@
+@{
+    ViewData["Title"] = "For Subcontractors";
+}
+@* Primary launch landing page (Web Plan §6.2). Company documents + CSCS line come from the product
+   content entry, rendered long-form by ProductDetail — no forked copy vs the Home card. *@
+@await Component.InvokeAsync("ProductDetail", new { configKey = "Subcontractor" })

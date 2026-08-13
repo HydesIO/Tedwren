@@ -27,3 +27,6 @@ Thumbs.db
 
 # Package outputs
 *.nupkg
+
+# Generated: shared design tokens copied from Tedwren.Client at build (Tedwren.Web)
+src/Tedwren.Web/wwwroot/css/tokens.css

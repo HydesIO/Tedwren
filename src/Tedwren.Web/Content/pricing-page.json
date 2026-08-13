@@ -1,0 +1,15 @@
+{
+  "Heading": "Simple pricing that follows the work",
+  "Intro": "You pay for what's active, not for everyone you've ever added. Sites are free to record, and a dispersed scheme counts as a single site.",
+  "Clarifiers": [
+    "An active operative is someone assigned to live work in the billing period — not your whole history.",
+    "An active site is a site with live work in the billing period.",
+    "A 10% buffer absorbs short overages before anything changes — you won't be caught out by a busy week.",
+    "Recording a site costs nothing; you're only billed on active work."
+  ],
+  "TrustNotes": [
+    { "Claim": "Sites are free to record — you're never charged just for adding one.", "Logo": null },
+    { "Claim": "A dispersed or retrofit scheme counts as one site, not many.", "Logo": null }
+  ],
+  "MetaDescription": "Tedwren pricing: pay per active operative or active site, with sites free to record and a dispersed scheme counted as one site. Clear bands, no surprises."
+}

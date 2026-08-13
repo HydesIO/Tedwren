@@ -11,6 +11,141 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W6 Lead capture & consent (this change)
+- ✅ **Demo + Contact forms (Web Plan §6.9, §7).** `/demo` and `/contact` are server-validated
+  (DataAnnotations) with **antiforgery**, a **honeypot**, a **minimum fill-time** check (`AntiBot`) and
+  **rate limiting** (fixed-window policy on the POST endpoints). Genuine submissions route via the
+  `ILeadRouter` seam (`LoggingLeadRouter` at launch — no CRM/email wired yet, plugs in behind the
+  interface); post/redirect/get to a thank-you page. Demo thank-you shows the real **booking link** from
+  config (not "we'll be in touch"). Bots (honeypot/too-fast) get the same response but route nothing.
+- ✅ **Contact routing by reason.** `ContactRouting.ResolveInbox` maps General/Press/Partner/Support →
+  the configured inbox (falls back to sales, then a visible "unrouted"). Reason→inbox asserted by a test.
+- ✅ **UTM attribution (§4.1, §11).** `/demo` captures `utm_*` from the query into hidden fields → the
+  routed lead carries the source, so pack-driven bookings are attributable. `PackChrome` view component
+  supplies the compliance-pack viewer's light header/footer with a `utm_source=pack` "Book a demo" link.
+- ✅ **Consent before scripts (§5.5, §8).** `ConsentBanner` (form-based, works with JS off) offers a
+  **one-click "Reject non-essential"** with equal weight to Accept; `ConsentController` (`/consent`) stores
+  the choice in the `tedwren_consent` cookie. **No analytics tag is emitted before consent** — GA4 is
+  gated by `AnalyticsState` on *both* analytics consent and a configured measurement id (empty by
+  default, so nothing loads in this environment). Demo-submit fires a consent-gated `generate_lead`
+  conversion event.
+- ✅ **Error route hardening.** `/error` is now verb-agnostic so a failed POST (e.g. antiforgery) keeps
+  its 400 through status-code re-execution instead of 405-ing.
+- ✅ Tests: Web 57 → **73** (valid/invalid/honeypot/too-fast/antiforgery form flows, reason routing, UTM
+  capture, consent banner + one-click reject, no-script-pre-consent, GA gating; plus `AntiBot`,
+  `ContactRouting`, `ConsentState`, `Utm` unit tests). Whole solution builds; Web project 0 warnings.
+- ⏳ **Deferred within W6:** additional conversion events (pricing→demo click, Worker Passport checkout
+  start/complete) — the consent-gated dataLayer/GA mechanism is in place; wiring those specific events is
+  incremental (WP checkout is product-owned). Real CRM/email + calendar provider behind the seams.
+
+### Tedwren.Web — Phase W5 Trust, About, FAQ, Legal (this change)
+- ✅ **Security & Trust (`/security`, §6.6).** Own stable URL; only makeable claims (data ownership,
+  access control, encryption in transit, audit trail, DPA on request). No fabricated ISO/Cyber Essentials
+  badges and no absolute-compliance language — asserted by a test scanning for prohibited phrasing.
+- ✅ **About (`/about`, §6.7).** Founder-led credibility from content.
+- ✅ **FAQ (`/faq`, §6.8).** `FaqAccordion` (native `<details>`, JS-free) over content FAQs, plus valid
+  **FAQPage JSON-LD** (parsed + type-checked in a test).
+- ✅ **Legal ×4 (§4).** Privacy, Cookies, Terms, Data Protection served as **real content** (not
+  placeholders) via `LegalController` → `IContentProvider.FindLegal(slug)`; each shows a "Draft — pending
+  legal sign-off" label (Plan §11.4). Wording avoids the W8 compliance-lint tokens.
+- ✅ **Sitewide SEO.** Organization JSON-LD in the layout; `JsonLd` helper returns whole `<script>` blocks
+  emitted raw. Web encoder set to `UnicodeRanges.All` so £/em-dashes render as real characters.
+- ✅ Tests: +6 (security no-fabricated/absolute claims, about renders, FAQ questions + valid schema, four
+  legal pages serve real content, valid Organization schema). Whole solution builds; Web project 0 warnings.
+
+### Tedwren.Web — Phase W4 Worker Passport & Pricing (this change)
+- ✅ **Worker Passport (`/worker-passport`, §6.4).** Individual-buyer register/tone; the "never locked out
+  for non-payment" benefit (PRD Rule W2); price line from the single configured `PricingPlan` source;
+  consumer-contract facts (annual billing, UK 14-day cancellation, informed consent). **CSCS positioning
+  restriction** enforced in copy **and** title/meta — a test scans the `<head>` for prohibited CSCS
+  rivalry/replacement phrasing (§8.2).
+- ✅ **Pricing (`/pricing`, §6.5).** `PricingTable` renders every number from config; unpriced bands show
+  "Pricing on request" (not a fabricated number) pending the §11.2 sign-off; plain-language clarifiers
+  (active operative/site, 10% buffer) and trust notes ("sites are free to record", "a dispersed scheme =
+  one site"). SoftwareApplication JSON-LD emitted + validated.
+- ✅ **Single price source; £ in one place.** Prices are decimals in `PricingPlan`; `IContentProvider.FormatMoney`
+  applies the currency symbol (one map). Worker Passport £10 (PRD value) — **£10/£12 conflict still flagged
+  for sign-off (Plan §11.1)**; bands at 0 → "Pricing on request" (Plan §11.2). No `£` literal in views/content.
+- ✅ **Meta descriptions** added to the layout (`ViewData["MetaDescription"]`), set per page from content.
+- ✅ Content model extended (Abstractions): `WorkerPassportContent`, `PricingPageContent`, `SecurityContent`,
+  `AboutContent`, `LegalDocument`; provider exposes them + `FindLegal` + public `FormatMoney`.
+- ✅ Tests: +8 (WP benefit, WP price from config, CSCS meta restriction, pricing clarifiers + unpriced band,
+  valid SoftwareApplication schema, provider FindLegal + FormatMoney). Web tests 41 → 57.
+
+### Tedwren.Web — Phase W3 Core pages (this change)
+- ✅ **Home, Subcontractors, Main Contractors from content (Web Plan §6.1–6.3).** The three core pages
+  now render from the content layer, not stubs. Home: hero + audience split, problem section, the two
+  product cards (short-form), differentiators, five-step how-it-works, trust strip, closing CTA. Product
+  pages render long-form via `ProductDetail`.
+- ✅ **No forked product copy.** `ProductCard` (short) and `ProductDetail` (long) render the **same**
+  `ProductProfile` entry, so the home card and the dedicated page can't drift — asserted by a test.
+- ✅ **Required §6 content present.** Subcontractor page carries the "company documents" feature and an
+  understated CSCS line; Main Contractor page carries a **substantial, distinct** retrofit / dispersed-
+  site section ("Workforce management when there isn't a site gate") as an emphasised content section —
+  not a footnote. The strongest home differentiator ("Works beyond the site gate") gets a distinct
+  highlight treatment.
+- ✅ **New reusable components (Plan §5).** `ProductCard`, `ProductDetail`, `FeatureGrid`, `TrustStrip`,
+  `Differentiators`, `HowItWorks` view components — catalogued in `docs/web-component-catalogue.md`.
+- ✅ **Content model extended.** Added `HomeContent`, `Differentiator`, `HowItWorksStep`, `ContentSection`
+  (+ optional `Sections` on `ProductProfile`) in Abstractions; `home.json` added; provider exposes `Home`.
+- ✅ **Styles from tokens only.** New component CSS in `site.css` uses `tokens.css` variables for all
+  colour/spacing — no literals. (Razor note: a loop variable named `section` collides with the `@section`
+  directive; renamed to `part`.)
+- ✅ **Tests + build.** `Tedwren.Web.Tests` 36 → 41 (home sections render, differentiator highlight,
+  company-documents present, emphasised retrofit section, product copy single-sourced). Whole solution
+  builds (0 errors); Web project 0 warnings.
+
+### Tedwren.Web — Phase W2 Content layer (this change)
+- ✅ **`IContentProvider` seam + content types (Web Plan §3).** Added
+  `Tedwren.Abstractions.Services.IContentProvider` and the content model
+  (`Tedwren.Abstractions.Contracts.WebContent`: `SiteContent`, `ProductProfile`, `FeatureCard`,
+  `PricingPlan`, `TrustPoint`, `FaqItem`, `Testimonial`, `SocialAccount`). Types live in Abstractions so
+  the product-owned compliance-pack viewer (Plan §4.1) can reuse the same site/brand content.
+- ✅ **JSON-backed provider.** `Tedwren.Web.Content.JsonContentProvider` loads `Content/*.json`
+  (`site`, `products`, `pricing`, `trust`, `faqs`, `testimonials`) once at startup, registered as a
+  singleton via `AddJsonContent`. Fails fast on a missing file. A CMS can replace it behind the same
+  interface with no view changes. Content files copy to publish output; content root is the project dir
+  in dev/test.
+- ✅ **Naming/price key indirection (Plan §2, §8).** `ResolveToken` resolves dotted keys
+  (`Site:Brand`, `Products:{key}:Name|Slug|Tagline`, `Pricing:{key}:Annual|Monthly`) so names/prices are
+  referenced by key, never inline; unknown tokens throw. Prices are decimals in `PricingPlan` (the only
+  home for prices) formatted via a single currency-symbol map — no "£" literal in views/content.
+  Worker Passport price seeded at £10 (PRD value) with the £10/£12 conflict still flagged for sign-off
+  (Plan §11.1); band prices left at 0 pending the publish-vs-"from £x" decision (Plan §11.2).
+- ✅ **Chrome now consumes content.** `SiteHeader`/`SiteFooter`/`_Layout` read brand, legal entity and
+  social from `IContentProvider`; `SiteConfig` (appsettings) is trimmed to nav **structure** only
+  (which pages, in what order). Identity moved out of appsettings into `site.json`.
+- ✅ **Component catalogue.** Added `docs/web-component-catalogue.md` (content types + view components,
+  built and planned, plus conventions), per the W2 exit criteria.
+- ✅ **Tests + build.** `Tedwren.Web.Tests` now 36 (was 22): isolated provider unit tests (load, lookup,
+  token/price indirection, fail-fast on missing file) + DI/integration tests proving the shipped content
+  loads at the real content root and reaches the footer. Whole solution builds (0 errors); Web project 0
+  warnings.
+
+### Tedwren.Web — Phase W1 Skeleton (this change)
+- ✅ **New marketing-site project.** Added `src/Tedwren.Web` (ASP.NET Core MVC, `Microsoft.NET.Sdk.Web`,
+  `net10.0`) and `tests/Tedwren.Web.Tests`, both wired into `Tedwren.sln`. Server-rendered Razor, no auth
+  (public site) — deliberately no `FallbackPolicy` unlike the API. Per the Tedwren.Web Plan & Scope of Works
+  (`docs/Tedwren-Web-Plan-and-Scope-of-Works.md`) §10, phase W1.
+- ✅ **Routing for the full sitemap (Web Plan §4).** Attribute-routed controllers, one per content area:
+  Home (`/`), Products (`/subcontractors`, `/main-contractors`), WorkerPassport (`/worker-passport`), Pricing
+  (`/pricing`), Trust (`/security`), About (`/about`), Faq (`/faq`), Lead (`/demo`, `/contact`), Partners
+  (`/partners`), Legal (`/legal/{privacy|cookies|terms|data-protection}` — slug constrained). Unknown routes
+  re-execute a friendly 404 page (Return home / Book a demo).
+- ✅ **Config-driven chrome (Web Plan §3, §5).** `SiteHeader`/`SiteFooter`/`Cta` view components render brand,
+  legal entity (Tedwren Ltd + optional company no./office), nav and CTAs from the bound `Site` config section
+  (`SiteConfig`) — not hardcoded in views. The seam W2 swaps for `IContentProvider`. Header CTA is "Book a demo"
+  everywhere, swapping to "Get your Worker Passport" on the Worker Passport page only; footer social icons are
+  config-gated (none render at launch). Mobile: hamburger nav with the CTA kept outside the collapsed menu.
+- ✅ **Canonical CTAs as a mechanism (Web Plan §5.4).** `Cta` accepts a closed `CtaAction` enum (Book a demo /
+  Start a pilot / Get your Worker Passport) with fixed copy+href, so vague labels can't be introduced by a view.
+- ✅ **Shared design tokens, single source.** `tokens.css` stays owned by `Tedwren.Client`; a build target
+  copies it into `Tedwren.Web/wwwroot/css` (git-ignored) so the site serves it with no colour/spacing literal
+  duplicated. `site.css` layers layout using only tokens.
+- ✅ **Tests + build.** `Tedwren.Web.Tests` (22 tests) assert every route resolves, unknown routes 404 to the
+  error page, the config chrome renders, the CTA swap works, and both stylesheets (incl. client-sourced tokens)
+  are served. Whole solution builds (0 errors; pre-existing MUD0002 + one Api.Tests nullable warning unchanged).
+
 ### Onboarding wizard per-step validation (this change)
 - ✅ **Validate on Next, per step.** The onboarding wizard previously only validated required fields on the
   final "Finish setup". It now validates the step being left when the user presses Next: `TedwrenStepper`

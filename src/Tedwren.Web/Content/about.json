@@ -1,0 +1,10 @@
+{
+  "Heading": "Built by people who've chased the paperwork",
+  "Intro": "Tedwren started from a simple frustration: compliance falls apart the moment work leaves a gated site, and everyone ends up chasing cards and documents by email.",
+  "Sections": [
+    { "Heading": "Why we're building it", "Body": "Retrofit and dispersed work is growing, and the tools assume a single site with a gate. We wanted compliance that holds up when there isn't one." },
+    { "Heading": "How we work", "Body": "We build closely with subcontractors, main contractors and workers, and we ship in small, testable steps rather than big-bang releases." },
+    { "Heading": "What we won't do", "Body": "We won't fake credibility with badges we haven't earned or reviews we don't have, and we won't position ourselves as something we're not." }
+  ],
+  "MetaDescription": "The story behind Tedwren: compliance that works beyond the site gate, built with subcontractors, main contractors and workers."
+}

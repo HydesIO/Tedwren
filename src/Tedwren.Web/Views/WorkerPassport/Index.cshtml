@@ -1,0 +1,39 @@
+@inject Tedwren.Abstractions.Services.IContentProvider Content
+@{
+    var wp = Content.WorkerPassport;
+    var plan = Content.FindPricingPlan(wp.PricingPlanKey);
+    ViewData["Title"] = wp.MetaTitle;              // CSCS-safe title tag (Plan §8.2)
+    ViewData["MetaDescription"] = wp.MetaDescription;
+}
+
+<section class="wp-hero">
+    <h1 class="wp-hero__heading">@wp.Heading</h1>
+    <p class="wp-hero__subheading">@wp.Subheading</p>
+    <p class="wp-hero__copy">@wp.HeroCopy</p>
+    @if (plan is not null && plan.AnnualPrice > 0)
+    {
+        <p class="wp-hero__price">@Content.FormatMoney(plan.AnnualPrice) <span class="wp-hero__per">per year</span></p>
+    }
+    <div class="wp-hero__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.GetWorkerPassport })
+    </div>
+</section>
+
+@await Component.InvokeAsync("FeatureGrid", new { features = wp.Benefits })
+
+<section class="wp-terms" aria-label="What to expect at checkout">
+    <h2 class="section-heading">Before you buy</h2>
+    <ul class="wp-terms__list">
+        @foreach (var term in wp.ConsumerTerms)
+        {
+            <li class="wp-terms__item">@term</li>
+        }
+    </ul>
+</section>
+
+<section class="closing">
+    <h2 class="closing__heading">Get your Worker Passport</h2>
+    <div class="closing__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.GetWorkerPassport })
+    </div>
+</section>

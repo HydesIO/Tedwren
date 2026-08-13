@@ -1,0 +1,34 @@
+[
+  {
+    "Key": "Subcontractor",
+    "Name": "Subcontractor",
+    "BandDescription": "per active operative, per month",
+    "AnnualPrice": 0,
+    "MonthlyPrice": 0,
+    "ProductKey": "Subcontractor"
+  },
+  {
+    "Key": "MainContractor",
+    "Name": "Main Contractor",
+    "BandDescription": "per active site, per month",
+    "AnnualPrice": 0,
+    "MonthlyPrice": 0,
+    "ProductKey": "MainContractor"
+  },
+  {
+    "Key": "WorkerPassport",
+    "Name": "Worker Passport",
+    "BandDescription": "per worker, per year",
+    "AnnualPrice": 10,
+    "MonthlyPrice": null,
+    "ProductKey": null
+  },
+  {
+    "Key": "Pilot",
+    "Name": "Pilot",
+    "BandDescription": "fixed-term trial",
+    "AnnualPrice": 0,
+    "MonthlyPrice": null,
+    "ProductKey": null
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "Heading": "Security & Trust",
+  "Intro": "A stable page for procurement and data-protection teams. We only state what we can actually stand behind today — no badges we haven't earned, and we don't overpromise.",
+  "Claims": [
+    { "Heading": "Your data stays yours", "Body": "We don't sell your data or share it without your instruction. You control who sees a compliance pack." },
+    { "Heading": "Access is controlled", "Body": "Accounts are authenticated, and each organisation only ever sees its own data." },
+    { "Heading": "Encrypted in transit", "Body": "Traffic to and from Tedwren is encrypted using standard transport security." },
+    { "Heading": "A record you can review", "Body": "Key actions are logged so there's an audit trail your team can check." },
+    { "Heading": "Data-protection questions welcome", "Body": "Contact us for a DPA or to walk through how we handle personal data — we'd rather answer early." }
+  ],
+  "MetaDescription": "How Tedwren handles your data and access: the security practices we can stand behind today, written plainly for procurement and data-protection teams."
+}

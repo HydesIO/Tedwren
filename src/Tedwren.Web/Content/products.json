@@ -1,0 +1,35 @@
+[
+  {
+    "ConfigKey": "Subcontractor",
+    "DisplayName": "Tedwren for Subcontractors",
+    "Slug": "/subcontractors",
+    "Tagline": "Stay compliant on every site — and beyond the gate.",
+    "HeroCopy": "Keep your company documents and every operative's qualifications current, and prove it the moment a main contractor asks — on the site, or well away from any gate.",
+    "PricingPlanKey": "Subcontractor",
+    "Features": [
+      { "Heading": "Company documents", "Copy": "Insurances, policies and accreditations in one place, current and shareable." },
+      { "Heading": "Operative compliance", "Copy": "Every card and qualification tracked, with expiry warnings before they lapse." },
+      { "Heading": "Send a compliance pack", "Copy": "Share proof with a main contractor who opens it with no account." },
+      { "Heading": "Works beyond the site gate", "Copy": "Manage a dispersed or retrofit workforce with no fixed gate to check in at." }
+    ],
+    "Sections": [
+      { "Heading": "CSCS card check, when you need it", "Body": "Add card verification as an option alongside your compliance record — no fuss, no upsell.", "Emphasis": false }
+    ]
+  },
+  {
+    "ConfigKey": "MainContractor",
+    "DisplayName": "Tedwren for Main Contractors",
+    "Slug": "/main-contractors",
+    "Tagline": "Know who's compliant before they arrive.",
+    "HeroCopy": "See a subcontractor's compliance ahead of time, run pre-arrival inductions, and manage a workforce even when the scheme has no single site gate.",
+    "PricingPlanKey": "MainContractor",
+    "Features": [
+      { "Heading": "Pre-arrival induction", "Copy": "Workers complete induction before they reach site, not at the gate." },
+      { "Heading": "Workforce visibility", "Copy": "One view of who is compliant across every subcontractor on the job." },
+      { "Heading": "Dispersed & retrofit schemes", "Copy": "Workforce management when there isn't a site gate to control access." }
+    ],
+    "Sections": [
+      { "Heading": "Workforce management when there isn't a site gate", "Body": "Retrofit and dispersed schemes rarely have a single entrance to check anyone in at. Tedwren treats a whole scheme as one site: induct workers before they arrive, see who is compliant across every subcontractor, and keep that picture current wherever the work actually happens — street by street, home by home. It's the same control a gated site gives you, without the gate.", "Emphasis": true }
+    ]
+  }
+]
