@@ -17,8 +17,12 @@ product-owned compliance-pack viewer (Plan §4.1) can reuse the same site/brand 
 | Content type | Backing file | Rendered where | Notes |
 |---|---|---|---|
 | `SiteContent` | `site.json` | Header, footer, titles | Brand, legal entity, company no./office, currency, launch social accounts. |
-| `ProductProfile` | `products.json` | Home card (short) + product page (long) | One entry → both renderers; no copy fork (Plan §6.1). |
+| `HomeContent` | `home.json` | Home | Hero, problem, differentiators, how-it-works steps, closing block (Plan §6.1). |
+| `ProductProfile` | `products.json` | Home card (short) + product page (long) | One entry → both renderers; no copy fork (Plan §6.1). Carries optional `ContentSection[]`. |
 | `FeatureCard` | (within `products.json`) | Product pages, Home | Heading + copy. |
+| `ContentSection` | (within `products.json`) | Product pages | Titled narrative section; `Emphasis` for distinct treatment (CSCS line, retrofit section). |
+| `Differentiator` | (within `home.json`) | Home | Card with optional `Highlight` for the strongest differentiator. |
+| `HowItWorksStep` | (within `home.json`) | Home | Ordered "how it works" step. |
 | `PricingPlan` | `pricing.json` | `/pricing`, any "from £x" | Prices are decimals here — the **only** home for prices (Plan §8). |
 | `TrustPoint` | `trust.json` | Trust strip, `/security` | Only claims we can actually make (Plan §8.1). |
 | `FaqItem` | `faqs.json` | `/faq`, FAQPage schema | Question, answer, optional deflect link. |
@@ -40,9 +44,11 @@ from the content layer.
 | `SiteHeader` | Logo → home, primary nav, persistent top-right CTA (swaps to "Get your Worker Passport" on that page only). Mobile hamburger keeps the CTA outside the collapsed menu. | `IContentProvider` (brand), `SiteConfig` (nav) | ✅ W1/W2 |
 | `SiteFooter` | Legal entity + company no./office, site + legal link lists, config-gated social icons. | `IContentProvider` (identity/social), `SiteConfig` (links) | ✅ W1/W2 |
 | `Cta` | Renders one of exactly three canonical CTAs from a closed `CtaAction` enum (Book a demo / Start a pilot / Get your Worker Passport); primary or secondary style. Vague labels are unrepresentable. | `CtaAction action`, `bool secondary` | ✅ W1 |
-| `ProductCard` / `ProductDetail` | Short/long renderers over one `ProductProfile`. | `ProductProfile` | ⏳ W3 |
-| `TrustStrip` | Trust points, referenced on Home/product pages, expanded on `/security`. | `IReadOnlyList<TrustPoint>` | ⏳ W3 |
-| `FeatureGrid`, `Differentiators`, `HowItWorks` | Home/product building blocks. | content | ⏳ W3 |
+| `ProductCard` / `ProductDetail` | Short/long renderers over one `ProductProfile` (by key). | `string configKey` | ✅ W3 |
+| `TrustStrip` | Trust points, referenced on Home/product pages, expanded on `/security`. | `IContentProvider` | ✅ W3 |
+| `FeatureGrid` | Grid of feature cards, reused on product pages and Home. | `IReadOnlyList<FeatureCard>` | ✅ W3 |
+| `Differentiators` | Home differentiator cards; highlights the strongest one. | `IContentProvider` | ✅ W3 |
+| `HowItWorks` | Home five-step sequence. | `IContentProvider` | ✅ W3 |
 | `PricingTable` | Pricing bands from `PricingPlan`, all numbers from content. | `IReadOnlyList<PricingPlan>` | ⏳ W4 |
 | `FaqAccordion` | FAQ list + FAQPage schema. | `IReadOnlyList<FaqItem>` | ⏳ W5 |
 | `ConsentBanner` | CMP-backed consent; no script fires pre-consent. | — | ⏳ W6 |

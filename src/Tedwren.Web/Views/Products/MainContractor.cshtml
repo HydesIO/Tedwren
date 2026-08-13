@@ -1,8 +1,6 @@
 @{
     ViewData["Title"] = "For Main Contractors";
 }
-@await Html.PartialAsync("_Stub", new StubModel(
-    "Know who's compliant before they arrive",
-    "Pre-arrival induction, the workforce feature grid, and workforce management for dispersed / retrofit schemes without a site gate.",
-    "W3",
-    CtaAction.BookDemo))
+@* Main contractor page (Web Plan §6.3): pre-arrival induction, feature grid, and the substantial,
+   distinct retrofit / dispersed-site section — carried as an emphasised product content section. *@
+@await Component.InvokeAsync("ProductDetail", new { configKey = "MainContractor" })

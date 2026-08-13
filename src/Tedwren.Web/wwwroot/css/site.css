@@ -178,3 +178,110 @@ a:hover { text-decoration: underline; }
     .site-header__inner { flex-wrap: wrap; }
     .site-header__cta { margin-left: var(--spacing-12); order: 2; }
 }
+
+/* ===== W3 core-page components (Web Plan §6). Colour/spacing from tokens.css only. ===== */
+
+.site-main > section { margin-bottom: var(--spacing-32); }
+.section-heading { font-size: 1.5rem; line-height: 1.25; margin: 0 0 var(--spacing-20); }
+
+/* Hero */
+.hero { padding: var(--spacing-16) 0 var(--spacing-8); }
+.hero__heading { font-size: 2.25rem; line-height: 1.15; margin: 0 0 var(--spacing-12); max-width: 20ch; }
+.hero__subheading { font-size: 1.15rem; color: var(--color-text-secondary); margin: 0 0 var(--spacing-24); max-width: 60ch; }
+.hero__actions { display: flex; flex-wrap: wrap; gap: var(--spacing-12); }
+
+/* Problem section */
+.problem__body { font-size: 1.05rem; color: var(--color-text-secondary); max-width: 68ch; margin: 0; }
+
+/* Product cards (short form) */
+.products__cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: var(--spacing-20); }
+.product-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
+    padding: var(--spacing-24);
+    color: var(--color-text-primary);
+}
+.product-card:hover { text-decoration: none; border-color: var(--color-brand); }
+.product-card__title { font-size: 1.2rem; margin: 0 0 var(--spacing-8); }
+.product-card__tagline { color: var(--color-text-secondary); margin: 0 0 var(--spacing-16); }
+.product-card__features { list-style: none; margin: 0 0 var(--spacing-16); padding: 0; display: flex; flex-direction: column; gap: var(--spacing-8); }
+.product-card__feature { position: relative; padding-left: var(--spacing-20); color: var(--color-text-primary); }
+.product-card__feature::before { content: "✓"; position: absolute; left: 0; color: var(--color-success); font-weight: 700; }
+.product-card__more { margin-top: auto; color: var(--color-brand); font-weight: 600; }
+
+/* Differentiators */
+.differentiators { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-16); }
+.differentiator {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    padding: var(--spacing-20);
+}
+.differentiator--highlight {
+    background: var(--color-brand-pale);
+    border-color: var(--color-brand);
+    border-width: 2px;
+}
+.differentiator__heading { font-size: 1.05rem; margin: 0 0 var(--spacing-8); }
+.differentiator--highlight .differentiator__heading { color: var(--color-brand-dark); }
+.differentiator__body { color: var(--color-text-secondary); margin: 0; }
+
+/* How it works */
+.how-it-works { list-style: none; counter-reset: step; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--spacing-16); }
+.how-it-works__step { display: flex; gap: var(--spacing-16); align-items: flex-start; }
+.how-it-works__number {
+    flex: 0 0 auto;
+    width: 32px; height: 32px;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--color-brand); color: var(--color-surface);
+    border-radius: 50%; font-weight: 700; font-size: 0.9rem;
+}
+.how-it-works__heading { font-size: 1.05rem; margin: 0 0 var(--spacing-4); }
+.how-it-works__copy { color: var(--color-text-secondary); margin: 0; }
+
+/* Trust strip */
+.trust-strip { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: var(--spacing-20) var(--spacing-24); }
+.trust-strip__list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--spacing-16); }
+.trust-strip__item { position: relative; padding-left: var(--spacing-24); color: var(--color-text-primary); }
+.trust-strip__item::before { content: "●"; position: absolute; left: 0; color: var(--color-success); }
+
+/* Feature grid (long form) */
+.feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--spacing-16); margin-bottom: var(--spacing-32); }
+.feature-grid__card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: var(--spacing-20); }
+.feature-grid__heading { font-size: 1.05rem; margin: 0 0 var(--spacing-8); }
+.feature-grid__copy { color: var(--color-text-secondary); margin: 0; }
+
+/* Product detail (long form) */
+.product-detail__hero { margin-bottom: var(--spacing-32); }
+.product-detail__title { font-size: 2rem; line-height: 1.15; margin: 0 0 var(--spacing-12); }
+.product-detail__tagline { font-size: 1.2rem; color: var(--color-brand-dark); font-weight: 600; margin: 0 0 var(--spacing-12); }
+.product-detail__hero-copy { font-size: 1.05rem; color: var(--color-text-secondary); max-width: 66ch; margin: 0 0 var(--spacing-20); }
+.product-detail__actions { display: flex; flex-wrap: wrap; gap: var(--spacing-12); }
+
+/* Product narrative sections */
+.product-section { margin-bottom: var(--spacing-32); max-width: 72ch; }
+.product-section--emphasis {
+    background: var(--color-brand-pale);
+    border-left: 4px solid var(--color-brand);
+    border-radius: var(--radius-card);
+    padding: var(--spacing-24);
+    max-width: none;
+}
+.product-section__heading { font-size: 1.35rem; margin: 0 0 var(--spacing-12); }
+.product-section--emphasis .product-section__heading { color: var(--color-brand-dark); }
+.product-section__body { color: var(--color-text-secondary); margin: 0; }
+
+/* Closing */
+.closing { margin-top: var(--spacing-32); }
+.closing__heading { font-size: 1.5rem; margin: 0 0 var(--spacing-12); }
+.closing__body { color: var(--color-text-secondary); max-width: 60ch; margin: 0 0 var(--spacing-20); }
+.closing__actions { display: flex; flex-wrap: wrap; gap: var(--spacing-12); }
+
+@media (max-width: 768px) {
+    .hero__heading { font-size: 1.75rem; }
+    .product-detail__title { font-size: 1.6rem; }
+}

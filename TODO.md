@@ -11,6 +11,29 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W3 Core pages (this change)
+- ✅ **Home, Subcontractors, Main Contractors from content (Web Plan §6.1–6.3).** The three core pages
+  now render from the content layer, not stubs. Home: hero + audience split, problem section, the two
+  product cards (short-form), differentiators, five-step how-it-works, trust strip, closing CTA. Product
+  pages render long-form via `ProductDetail`.
+- ✅ **No forked product copy.** `ProductCard` (short) and `ProductDetail` (long) render the **same**
+  `ProductProfile` entry, so the home card and the dedicated page can't drift — asserted by a test.
+- ✅ **Required §6 content present.** Subcontractor page carries the "company documents" feature and an
+  understated CSCS line; Main Contractor page carries a **substantial, distinct** retrofit / dispersed-
+  site section ("Workforce management when there isn't a site gate") as an emphasised content section —
+  not a footnote. The strongest home differentiator ("Works beyond the site gate") gets a distinct
+  highlight treatment.
+- ✅ **New reusable components (Plan §5).** `ProductCard`, `ProductDetail`, `FeatureGrid`, `TrustStrip`,
+  `Differentiators`, `HowItWorks` view components — catalogued in `docs/web-component-catalogue.md`.
+- ✅ **Content model extended.** Added `HomeContent`, `Differentiator`, `HowItWorksStep`, `ContentSection`
+  (+ optional `Sections` on `ProductProfile`) in Abstractions; `home.json` added; provider exposes `Home`.
+- ✅ **Styles from tokens only.** New component CSS in `site.css` uses `tokens.css` variables for all
+  colour/spacing — no literals. (Razor note: a loop variable named `section` collides with the `@section`
+  directive; renamed to `part`.)
+- ✅ **Tests + build.** `Tedwren.Web.Tests` 36 → 41 (home sections render, differentiator highlight,
+  company-documents present, emphasised retrofit section, product copy single-sourced). Whole solution
+  builds (0 errors); Web project 0 warnings.
+
 ### Tedwren.Web — Phase W2 Content layer (this change)
 - ✅ **`IContentProvider` seam + content types (Web Plan §3).** Added
   `Tedwren.Abstractions.Services.IContentProvider` and the content model

@@ -36,6 +36,9 @@ public sealed class JsonContentProvider : IContentProvider
     public SiteContent Site { get; }
 
     /// <inheritdoc />
+    public HomeContent Home { get; }
+
+    /// <inheritdoc />
     public IReadOnlyList<ProductProfile> Products { get; }
 
     /// <inheritdoc />
@@ -55,6 +58,7 @@ public sealed class JsonContentProvider : IContentProvider
     public JsonContentProvider(string contentDirectory)
     {
         Site = LoadObject<SiteContent>(contentDirectory, "site.json");
+        Home = LoadObject<HomeContent>(contentDirectory, "home.json");
         Products = LoadArray<ProductProfile>(contentDirectory, "products.json");
         PricingPlans = LoadArray<PricingPlan>(contentDirectory, "pricing.json");
         TrustPoints = LoadArray<TrustPoint>(contentDirectory, "trust.json");

@@ -50,12 +50,66 @@ public sealed record ProductProfile(
     string Tagline,
     string HeroCopy,
     IReadOnlyList<FeatureCard> Features,
-    string? PricingPlanKey);
+    string? PricingPlanKey,
+    IReadOnlyList<ContentSection>? Sections = null)
+{
+    /// <summary>Page-specific narrative sections, or an empty list when none are configured.</summary>
+    public IReadOnlyList<ContentSection> PageSections => Sections ?? Array.Empty<ContentSection>();
+}
 
 /// <summary>A single feature: a heading and its supporting copy (Plan §3).</summary>
 /// <param name="Heading">Short feature heading.</param>
 /// <param name="Copy">Supporting sentence.</param>
 public sealed record FeatureCard(string Heading, string Copy);
+
+/// <summary>
+/// A titled narrative section on a product page (Plan §6.2, §6.3) — e.g. the understated CSCS add-on
+/// line or the substantial retrofit / dispersed-site section. <see cref="Emphasis"/> marks a section
+/// that gets a distinct visual treatment rather than a footnote.
+/// </summary>
+/// <param name="Heading">Section heading.</param>
+/// <param name="Body">Section copy.</param>
+/// <param name="Emphasis">When true, render with the distinct/emphasised treatment.</param>
+public sealed record ContentSection(string Heading, string Body, bool Emphasis = false);
+
+/// <summary>
+/// The home page's narrative content (Plan §6.1): hero, the problem framing, the differentiator cards
+/// and the "how it works" steps, plus the closing block. The two product cards on Home are rendered
+/// short-form from the same <see cref="ProductProfile"/> entries as the dedicated pages, so there is no
+/// separate home copy for them here.
+/// </summary>
+/// <param name="HeroHeading">Hero headline.</param>
+/// <param name="HeroSubheading">Hero supporting line.</param>
+/// <param name="ProblemHeading">Problem-section heading.</param>
+/// <param name="ProblemBody">Problem-section copy.</param>
+/// <param name="Differentiators">Differentiator cards (one is highlighted).</param>
+/// <param name="HowItWorks">Ordered "how it works" steps.</param>
+/// <param name="ClosingHeading">Closing-section heading.</param>
+/// <param name="ClosingBody">Closing-section copy.</param>
+public sealed record HomeContent(
+    string HeroHeading,
+    string HeroSubheading,
+    string ProblemHeading,
+    string ProblemBody,
+    IReadOnlyList<Differentiator> Differentiators,
+    IReadOnlyList<HowItWorksStep> HowItWorks,
+    string ClosingHeading,
+    string ClosingBody);
+
+/// <summary>
+/// A differentiator card on the home page (Plan §6.1). <see cref="Highlight"/> marks the strongest
+/// differentiator ("Works beyond the site gate"), which is given a distinct visual treatment.
+/// </summary>
+/// <param name="Heading">Card heading.</param>
+/// <param name="Body">Card copy.</param>
+/// <param name="Highlight">When true, render as the highlighted differentiator.</param>
+public sealed record Differentiator(string Heading, string Body, bool Highlight = false);
+
+/// <summary>One step in the home page's five-step "how it works" sequence (Plan §6.1).</summary>
+/// <param name="Order">1-based step number.</param>
+/// <param name="Heading">Step heading.</param>
+/// <param name="Body">Step copy.</param>
+public sealed record HowItWorksStep(int Order, string Heading, string Body);
 
 /// <summary>
 /// A pricing plan (Plan §3, §6.5). Prices are decimals here — the only place they live — so every

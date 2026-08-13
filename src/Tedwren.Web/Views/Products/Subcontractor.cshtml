@@ -1,8 +1,6 @@
 @{
     ViewData["Title"] = "For Subcontractors";
 }
-@await Html.PartialAsync("_Stub", new StubModel(
-    "Stay compliant on every site — and beyond the gate",
-    "The primary landing page for subcontractors: company documents, operative compliance and the CSCS add-on line.",
-    "W3",
-    CtaAction.BookDemo))
+@* Primary launch landing page (Web Plan §6.2). Company documents + CSCS line come from the product
+   content entry, rendered long-form by ProductDetail — no forked copy vs the Home card. *@
+@await Component.InvokeAsync("ProductDetail", new { configKey = "Subcontractor" })

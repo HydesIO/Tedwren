@@ -106,6 +106,12 @@ public sealed class JsonContentProviderTests : IDisposable
             { "BrandName": "Tedwren", "LegalEntity": "Tedwren Ltd", "CompanyNumber": null,
               "RegisteredOffice": null, "CurrencyCode": "GBP", "Social": [] }
             """);
+        Write("home.json", """
+            { "HeroHeading": "H", "HeroSubheading": "S", "ProblemHeading": "P", "ProblemBody": "B",
+              "Differentiators": [ { "Heading": "D", "Body": "b", "Highlight": true } ],
+              "HowItWorks": [ { "Order": 1, "Heading": "S1", "Body": "b" } ],
+              "ClosingHeading": "C", "ClosingBody": "cb" }
+            """);
         Write("products.json", """
             [
               { "ConfigKey": "Subcontractor", "DisplayName": "Tedwren for Subcontractors",

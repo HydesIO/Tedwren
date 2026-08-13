@@ -13,6 +13,9 @@ public interface IContentProvider
     /// <summary>Site-wide identity/brand content (brand, legal entity, currency, social).</summary>
     SiteContent Site { get; }
 
+    /// <summary>The home page's narrative content (hero, problem, differentiators, how-it-works).</summary>
+    HomeContent Home { get; }
+
     /// <summary>All product profiles, in declared order.</summary>
     IReadOnlyList<ProductProfile> Products { get; }
 

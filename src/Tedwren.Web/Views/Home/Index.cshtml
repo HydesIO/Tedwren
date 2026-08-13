@@ -1,16 +1,49 @@
+@inject Tedwren.Abstractions.Services.IContentProvider Content
 @{
     ViewData["Title"] = null; // Home renders the brand alone as the title.
+    var home = Content.Home;
 }
-<section class="page-stub">
-    <p class="page-stub__eyebrow">Compliance that works beyond the site gate</p>
-    <h1 class="page-stub__title">Which best describes you?</h1>
-    <p class="page-stub__lede">
-        Pick your route in. The full home experience — problem framing, product cards and the
-        "how it works" walkthrough — arrives in phase W3.
-    </p>
-    <div class="page-stub__actions">
+
+<section class="hero">
+    <h1 class="hero__heading">@home.HeroHeading</h1>
+    <p class="hero__subheading">@home.HeroSubheading</p>
+    @* Audience split within the first screen (Web Plan §3, §6.1). *@
+    <div class="hero__actions">
         <a class="cta cta--primary" href="/subcontractors">I'm a Subcontractor</a>
         <a class="cta cta--primary" href="/main-contractors">I'm a Main Contractor</a>
         <a class="cta cta--secondary" href="/worker-passport">I'm a Worker</a>
+    </div>
+</section>
+
+<section class="problem">
+    <h2 class="section-heading">@home.ProblemHeading</h2>
+    <p class="problem__body">@home.ProblemBody</p>
+</section>
+
+<section class="products">
+    <h2 class="section-heading">Two products, one record of who's compliant</h2>
+    <div class="products__cards">
+        @await Component.InvokeAsync("ProductCard", new { configKey = "Subcontractor" })
+        @await Component.InvokeAsync("ProductCard", new { configKey = "MainContractor" })
+    </div>
+</section>
+
+<section class="differentiators-section">
+    <h2 class="section-heading">Why Tedwren</h2>
+    @await Component.InvokeAsync("Differentiators")
+</section>
+
+<section class="how-it-works-section">
+    <h2 class="section-heading">How it works</h2>
+    @await Component.InvokeAsync("HowItWorks")
+</section>
+
+@await Component.InvokeAsync("TrustStrip")
+
+<section class="closing">
+    <h2 class="closing__heading">@home.ClosingHeading</h2>
+    <p class="closing__body">@home.ClosingBody</p>
+    <div class="closing__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
     </div>
 </section>

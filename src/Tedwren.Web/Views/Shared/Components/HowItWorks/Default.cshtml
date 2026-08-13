@@ -1,0 +1,13 @@
+@model IReadOnlyList<HowItWorksStep>
+<ol class="how-it-works">
+    @foreach (var step in Model)
+    {
+        <li class="how-it-works__step">
+            <span class="how-it-works__number" aria-hidden="true">@step.Order</span>
+            <div class="how-it-works__body">
+                <h3 class="how-it-works__heading">@step.Heading</h3>
+                <p class="how-it-works__copy">@step.Body</p>
+            </div>
+        </li>
+    }
+</ol>
