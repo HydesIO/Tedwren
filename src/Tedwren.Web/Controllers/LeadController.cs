@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Tedwren.Web.Leads;
 using Tedwren.Web.Attribution;
 using Tedwren.Web.Models;
+using Tedwren.Web.Partners;
 
 namespace Tedwren.Web.Controllers;
 
@@ -19,14 +20,24 @@ public sealed class LeadController : Controller
 
     private readonly ILeadRouter _router;
     private readonly LeadOptions _options;
+    private readonly ReferralService _referrals;
+    private readonly PartnerOptions _partnerOptions;
 
-    /// <summary>Injects the lead router and options.</summary>
+    /// <summary>Injects the lead router, options and the referral attribution service.</summary>
     /// <param name="router">Lead router seam.</param>
     /// <param name="options">Lead options.</param>
-    public LeadController(ILeadRouter router, IOptions<LeadOptions> options)
+    /// <param name="referrals">Referral attribution service.</param>
+    /// <param name="partnerOptions">Partner options (referral cookie name).</param>
+    public LeadController(
+        ILeadRouter router,
+        IOptions<LeadOptions> options,
+        ReferralService referrals,
+        IOptions<PartnerOptions> partnerOptions)
     {
         _router = router;
         _options = options.Value;
+        _referrals = referrals;
+        _partnerOptions = partnerOptions.Value;
     }
 
     /// <summary>Book a demo / pilot form at <c>/demo</c>, capturing any UTM attribution from the query.</summary>
@@ -65,6 +76,14 @@ public sealed class LeadController : Controller
                 model.UtmSource, model.UtmMedium, model.UtmCampaign,
                 _options.SalesInbox ?? "unrouted");
             await _router.RouteDemoAsync(lead, cancellationToken);
+
+            // Attribute the conversion to a partner if the visitor arrived via a referral link (Web Plan §7).
+            // The cookie persists across sessions, so credit lands even when this isn't the same session.
+            if (Request.Cookies.TryGetValue(_partnerOptions.ReferralCookieName, out var referralCode)
+                && !string.IsNullOrWhiteSpace(referralCode))
+            {
+                _referrals.Capture(referralCode, ReferralSource.Demo, model.Company);
+            }
         }
 
         // Redirect either way — a dropped bot submission gets the same response, revealing nothing.

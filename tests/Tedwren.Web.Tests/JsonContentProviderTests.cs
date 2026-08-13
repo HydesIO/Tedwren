@@ -165,6 +165,11 @@ public sealed class JsonContentProviderTests : IDisposable
         Write("about.json", """
             { "Heading": "H", "Intro": "I", "Sections": [ { "Heading": "s", "Body": "b" } ], "MetaDescription": "MD" }
             """);
+        Write("partners.json", """
+            { "Heading": "H", "Intro": "I", "ExclusionStatement": "E",
+              "HowItWorks": [ { "Heading": "s", "Body": "b" } ],
+              "CommissionTerms": [ "t" ], "MetaDescription": "MD" }
+            """);
         Write("legal.json", """
             [ { "Slug": "privacy", "Title": "Privacy", "LastReviewed": "draft",
                 "Sections": [ { "Heading": "s", "Body": "b" } ], "MetaDescription": "MD" } ]

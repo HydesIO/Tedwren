@@ -28,6 +28,7 @@ product-owned compliance-pack viewer (Plan §4.1) can reuse the same site/brand 
 | `SecurityContent` | `security.json` | `/security` | Makeable claims only — no fabricated badges (Plan §6.6, §8.1). |
 | `AboutContent` | `about.json` | `/about` | Founder-led credibility. |
 | `LegalDocument` | `legal.json` | `/legal/{slug}` | Real legal content (draft pending sign-off, Plan §11.4). |
+| `PartnerProgrammeContent` | `partners.json` | `/partners` | How-it-works, commission terms, and the §7.3 exclusion statement. |
 | `PricingPlan` | `pricing.json` | `/pricing`, any "from £x" | Prices are decimals here — the **only** home for prices (Plan §8). |
 | `TrustPoint` | `trust.json` | Trust strip, `/security` | Only claims we can actually make (Plan §8.1). |
 | `FaqItem` | `faqs.json` | `/faq`, FAQPage schema | Question, answer, optional deflect link. |
@@ -67,6 +68,13 @@ and processed by `LeadController`: DataAnnotations validation, antiforgery, a ho
 thank-you page with the booking link. Consent is recorded by `ConsentController` (`/consent`) into the
 `tedwren_consent` cookie; `AnalyticsState` gates GA4 so nothing fires without both consent and a
 configured measurement id.
+
+The **partner programme** (`/partners`, `/partners/dashboard/{code}`, `/r/{code}`) lives under
+`Tedwren.Web.Partners`: an `IPartnerStore` seam (in-memory at launch), `PartnerService`
+(applications → pending; human approval mints a `Partner` with a unique referral code; refuses §7.3
+site-access controllers) and `ReferralService` (attribution + 20% commission tied to a specific
+referral with a 90-day, reversible clawback). Applications never self-activate. Referral links set the
+`tedwren_ref` cookie so a later demo conversion is attributed across sessions.
 
 ## Conventions
 
