@@ -1,6 +1,7 @@
 using Bunit;
 using Tedwren.UiComponents.DataDisplay;
 using Tedwren.UiComponents.Feedback;
+using Tedwren.UiComponents.Forms;
 using Tedwren.UiComponents.Models;
 
 namespace Tedwren.Client.Tests;
@@ -58,5 +59,34 @@ public sealed class ComponentRenderTests : TestContext
 
         Assert.Contains("Sending is restricted", cut.Markup);
         Assert.Contains("role=\"alert\"", cut.Markup);   // danger is announced assertively
+    }
+
+    [Fact]
+    public void RagInput_RendersThreeOptionsAndMarksTheSelected()
+    {
+        var cut = RenderComponent<TedwrenRagInput>(parameters => parameters
+            .Add(p => p.Label, "Housekeeping")
+            .Add(p => p.Value, "Green"));
+
+        Assert.Contains("Housekeeping", cut.Markup);
+        Assert.Contains("rag-input__option--red", cut.Markup);
+        Assert.Contains("rag-input__option--amber", cut.Markup);
+        Assert.Contains("rag-input__option--green", cut.Markup);
+        // The chosen value is marked selected and announced.
+        Assert.Contains("rag-input__option--selected", cut.Markup);
+        Assert.Contains("aria-checked=\"true\"", cut.Markup);
+    }
+
+    [Fact]
+    public void RagInput_ClickingAnOption_RaisesValueChanged()
+    {
+        string? chosen = null;
+        var cut = RenderComponent<TedwrenRagInput>(parameters => parameters
+            .Add(p => p.Label, "Housekeeping")
+            .Add(p => p.ValueChanged, v => chosen = v));
+
+        cut.Find(".rag-input__option--amber").Click();
+
+        Assert.Equal("Amber", chosen);
     }
 }

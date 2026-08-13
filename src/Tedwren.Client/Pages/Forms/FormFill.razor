@@ -1,0 +1,111 @@
+@page "/forms/{TemplateId:guid}/fill"
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Abstractions.Contracts.Sites
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IFormTemplateService Forms
+@inject IFormSubmissionService Submissions
+@inject ISiteService Sites
+@inject ITenantState Tenant
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_template?.Name ?? "Complete form") · Tedwren</PageTitle>
+
+<PageHeader Title="@(_template?.Name ?? "Complete form")"
+            Subtitle="Complete and submit this form (PRD-Phase 2)" />
+
+<div class="form-page">
+    @if (_loading)
+    {
+        <DashboardCard><Body><MudText>Loading…</MudText></Body></DashboardCard>
+    }
+    else if (_template is null)
+    {
+        <BannerAlert Severity="StatusKind.Warning" Title="Form unavailable"
+                     Message="This form could not be found or is not published." />
+    }
+    else
+    {
+        <FormSection Title="Where is this being completed?" Description="Choose the level this form applies to (requirement 7).">
+            <TedwrenSelect T="string" Label="Level" @bind-Value="_scope" Options="_scopeOptions" />
+            @if (_scope == "Site")
+            {
+                <TedwrenSelect T="string" Label="Site" @bind-Value="_siteName" Options="_siteNames" Placeholder="Select a site" />
+            }
+        </FormSection>
+
+        <DynamicFormRenderer @ref="_renderer" Sections="_template.Sections" />
+
+        <FormActions>
+            <Secondary>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => Nav.NavigateTo("/forms"))">Cancel</MudButton>
+            </Secondary>
+            <Primary>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                           StartIcon="@Icons.Material.Outlined.Send" OnClick="SubmitAsync">Submit form</MudButton>
+            </Primary>
+        </FormActions>
+    }
+</div>
+
+@code {
+    /// <summary>The published template being completed.</summary>
+    [Parameter] public Guid TemplateId { get; set; }
+
+    private FormTemplateDto? _template;
+    private DynamicFormRenderer? _renderer;
+    private bool _loading = true;
+    private bool _busy;
+
+    private readonly IReadOnlyList<string> _scopeOptions = new[] { "Organisation", "Site" };
+    private string _scope = "Organisation";
+    private string? _siteName;
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private IReadOnlyList<string> _siteNames = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        _template = await Forms.GetTemplateForFillAsync(TemplateId);
+        _sites = await Sites.GetSitesAsync();
+        _siteNames = _sites.Select(s => s.Name).ToList();
+        _loading = false;
+    }
+
+    private async Task SubmitAsync()
+    {
+        if (_template is null || _renderer is null) return;
+
+        Guid? siteId = null;
+        if (_scope == "Site")
+        {
+            var site = _sites.FirstOrDefault(s => s.Name == _siteName);
+            if (site is null)
+            {
+                Snackbar.Add("Choose a site for a site-level form.", Severity.Warning);
+                return;
+            }
+            siteId = site.Id;
+        }
+
+        _busy = true;
+        try
+        {
+            var request = new CreateFormSubmissionRequest(
+                _template.Id, _scope, siteId, null,
+                _renderer.GetAnswers(), _renderer.GetFiles());
+            await Submissions.SubmitAsync(request);
+            Snackbar.Add("Form submitted.", Severity.Success);
+            Nav.NavigateTo("/form-submissions");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

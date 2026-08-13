@@ -1,0 +1,38 @@
+@* Wrapped MudNumericField with consistent label-above / helper / validation styling.
+   The default numeric input across the library (pages should stop using raw MudNumericField). *@
+
+<FormField Label="@Label" For="@_id" Required="Required"
+           HelperText="@HelperText" Error="Error" ErrorText="@ErrorText">
+    <MudNumericField T="decimal?"
+                     id="@_id"
+                     Value="@Value"
+                     ValueChanged="@ValueChanged"
+                     Placeholder="@Placeholder"
+                     Min="@Min"
+                     Max="@Max"
+                     Disabled="@Disabled"
+                     ReadOnly="@ReadOnly"
+                     Error="@Error"
+                     Variant="Variant.Outlined"
+                     Margin="Margin.Dense"
+                     FullWidth="true"
+                     HideSpinButtons="@HideSpinButtons" />
+</FormField>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public decimal? Value { get; set; }
+    [Parameter] public EventCallback<decimal?> ValueChanged { get; set; }
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public decimal? Min { get; set; }
+    [Parameter] public decimal? Max { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool ReadOnly { get; set; }
+    [Parameter] public bool HideSpinButtons { get; set; } = true;
+
+    private readonly string _id = "nf-" + Guid.NewGuid().ToString("N")[..8];
+}

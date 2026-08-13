@@ -754,6 +754,45 @@ Phase M1 delivers the shared foundations and the first page migrations:
   cover & muster). *Product saleable.*
 - ⏳ Phase 18 — Hardening + PostgreSQL launch gate.
 - ⏳ Phases 19+ — PRD commercial modules (CSCS, HSE, QA, Pay, Identity, Sharing, Integrations).
+- 📋 **Forms Library (Phases 19–25).** Customer-built, per-tenant form engine. Detailed plan of works
+  in [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Clones the `InductionTemplate`
+  pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**
+  - ✅ **Phase 19 — Domain & persistence.** `FormFieldKind` (full field spectrum), `FormTemplateStatus`,
+    `FormField`/`FormSectionDef`/`FormTemplate` (per-tenant, R15; versioned & append-only via `FamilyId`,
+    R4/R10/R16). `IFormTemplateRepository` + Dapper `FormTemplateRepository` (sections as `SectionsJson`),
+    `InMemoryFormStore` + in-memory repo. Schema: `FormTemplateRecord` + `DbContext` mapping, EF migration
+    `AddFormsLibrary`, and idempotent `018_forms_library.sql` for SQL Server + Postgres. Domain (4) +
+    skip-guarded repository tests.
+  - ✅ **Phase 20 — Template service & API.** `Contracts/Forms` DTOs, `IFormTemplateService` +
+    `FormTemplateService` (tenant-scoped like `SiteService`; create→Draft v1, publish freezes, edit-published
+    creates new draft v2, archive; latest-per-family listing). `FormEndpoints` (`/api/forms/templates`,
+    reads authed, writes `RequireWrite`, `/fill` serves Published only; no anonymous route). DI wired in
+    `Program.cs`. Application (8) + API (3) tests. `dotnet build`/`dotnet test` green.
+  - ✅ **Phase 21 — Builder UI & field wrappers.** New `Tedwren*` field wrappers (`TedwrenNumericField`,
+    `TedwrenDatePicker`, `TedwrenRadioGroup`, `TedwrenRagInput`, canvas `TedwrenSignaturePad` with JS interop),
+    catalogued. `FormBuilder` component + `FormEditModel`; `FormsLibrary.razor` (list/edit/publish/archive) and
+    `FormBuilderPage.razor` (new/edit) over a client `ApiFormTemplateService`; nav in `ShellChrome`. bUnit
+    render + interaction tests for the RAG input.
+  - ✅ **Phase 22 — Fill & submissions.** `FormSubmission`/`FormSubmissionFile` domain, repos (Dapper +
+    in-memory), `019_form_submissions.sql` (both engines) + EF migration; `IFormSubmissionService` +
+    `FormSubmissionService` (required-by-default validation, published-only, append-only R4/R10, review flow,
+    DB-stored files). Submission endpoints (`/api/forms/submissions`, writes/review `RequireWrite`, file
+    download). `DynamicFormRenderer` (renders per `FormFieldKind`, collects answers + base64 files),
+    `FormFill.razor` (org/site level, requirement 7), `FormSubmissions.razor` + `FormSubmissionDialog`
+    (view/approve/reject) over a client `ApiFormSubmissionService`. Application (6) + API (2) + skip-guarded
+    DataAccess tests. Whole solution builds warning-clean; all suites green.
+  - ✅ **Phase 23 — PDF & email.** Added **QuestPDF** (Community licence) with an embedded Tedwren logo;
+    `FormPdfRenderer` builds a branded A4 PDF — logo top-left, form/submitter/UTC-stored-UK-displayed header
+    (R11), answers per section with embedded photos and signature images, status badge, page footer. Verified
+    it renders valid PDF headless. `IEmailSender` gained an attachment overload (`SendHtmlWithAttachmentsAsync`,
+    Outbox + Resend base64 attachments); `FormSubmissionEmail` template. Service `GeneratePdfAsync` +
+    `EmailAsync` (site name resolved for the PDF); endpoints `GET /submissions/{id}/pdf` and
+    `POST /submissions/{id}/email` (`RequireWrite`). Client download-PDF + email actions in the submission
+    dialog. Application (PDF render, service PDF + email-with-attachment) + API (pdf/email endpoint) tests.
+    Note: the framework-only `PdfWriter` is retained for the tabular compliance-pack exports; QuestPDF is used
+    only for branded form output.
+  - ⏳ Phases 24–25 — assignment/scheduling/induction · hardening (entitlement gate, PG parity,
+    default templates).
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

@@ -378,3 +378,49 @@ public sealed class InductionSessionRecord
     public string? ResetReason { get; set; }
     public Guid? SupersededBySessionId { get; set; }
 }
+
+/// <summary>Schema row for the <c>FormTemplates</c> table (PRD-Phase 2 Forms Library); sections/fields stored as JSON.</summary>
+public sealed class FormTemplateRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FamilyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int Version { get; set; }
+    public int Status { get; set; }
+    public string SectionsJson { get; set; } = string.Empty;
+    public DateTimeOffset CreatedUtc { get; set; }
+    public DateTimeOffset UpdatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>FormSubmissions</c> table (PRD-Phase 2 Forms Library); answers stored as JSON, append-only (R4/R10).</summary>
+public sealed class FormSubmissionRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FormTemplateId { get; set; }
+    public int FormTemplateVersion { get; set; }
+    public string FormName { get; set; } = string.Empty;
+    public int Scope { get; set; }
+    public Guid? SiteId { get; set; }
+    public Guid? PersonId { get; set; }
+    public string AnswersJson { get; set; } = string.Empty;
+    public int Status { get; set; }
+    public DateTimeOffset SubmittedUtc { get; set; }
+    public string SubmittedBy { get; set; } = string.Empty;
+    public string? ReviewNote { get; set; }
+}
+
+/// <summary>Schema row for the <c>FormSubmissionFiles</c> table (PRD-Phase 2 Forms Library); captured photos/attachments as blobs.</summary>
+public sealed class FormSubmissionFileRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid SubmissionId { get; set; }
+    public string FieldId { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public string ContentType { get; set; } = string.Empty;
+    public byte[] Content { get; set; } = Array.Empty<byte>();
+    public DateTimeOffset UploadedUtc { get; set; }
+}

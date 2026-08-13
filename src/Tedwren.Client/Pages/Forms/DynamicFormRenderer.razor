@@ -1,0 +1,251 @@
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Rendering
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Client.Pages.Forms
+@* Renders a published form's sections/fields as the matching Tedwren* input per field kind, and collects the
+   captured answers and files for submission (PRD-Phase 2). Required fields flagged in the builder are marked. *@
+
+<div class="dynamic-form">
+    @foreach (var sec in Sections.OrderBy(s => s.Order))
+    {
+        <FormSection Title="@sec.Title">
+            @foreach (var field in sec.Fields.OrderBy(f => f.Order))
+            {
+                <div class="dynamic-form__field">
+                    @RenderField(field)
+                </div>
+            }
+        </FormSection>
+    }
+</div>
+
+@code {
+    /// <summary>The published form's sections and fields.</summary>
+    [Parameter, EditorRequired] public IReadOnlyList<FormSectionDto> Sections { get; set; } = Array.Empty<FormSectionDto>();
+
+    private readonly Dictionary<string, string?> _values = new();
+    private readonly Dictionary<string, HashSet<string>> _multi = new();
+    private readonly Dictionary<string, List<PendingFile>> _files = new();
+
+    /// <summary>The captured single- and multi-valued answers, ready to submit.</summary>
+    public IReadOnlyList<FormAnswerDto> GetAnswers()
+    {
+        var answers = new List<FormAnswerDto>();
+        foreach (var (fieldId, value) in _values)
+        {
+            answers.Add(new FormAnswerDto(fieldId, value, Array.Empty<string>()));
+        }
+        foreach (var (fieldId, set) in _multi)
+        {
+            answers.Add(new FormAnswerDto(fieldId, null, set.ToList()));
+        }
+        return answers;
+    }
+
+    /// <summary>The captured files (photos/attachments), base64-encoded, ready to submit.</summary>
+    public IReadOnlyList<FormSubmissionFileInput> GetFiles() =>
+        _files.SelectMany(kvp => kvp.Value.Select(f =>
+            new FormSubmissionFileInput(kvp.Key, f.FileName, f.ContentType, f.Base64))).ToList();
+
+    private RenderFragment RenderField(FormFieldDto field) => builder =>
+    {
+        switch (field.Kind)
+        {
+            case "Heading":
+                builder.OpenElement(0, "h4");
+                builder.AddAttribute(1, "class", "dynamic-form__heading");
+                builder.AddContent(2, field.Label);
+                builder.CloseElement();
+                break;
+            case "Instruction":
+                builder.OpenElement(0, "p");
+                builder.AddAttribute(1, "class", "dynamic-form__instruction");
+                builder.AddContent(2, field.Label);
+                builder.CloseElement();
+                break;
+            case "LongText":
+                BuildText(builder, field, lines: 3);
+                break;
+            case "Number":
+                BuildNumber(builder, field);
+                break;
+            case "Date":
+                BuildDate(builder, field);
+                break;
+            case "Time":
+                BuildText(builder, field, lines: 1, inputType: InputType.Time);
+                break;
+            case "Dropdown":
+                BuildDropdown(builder, field);
+                break;
+            case "MultiSelect":
+                BuildMultiSelect(builder, field);
+                break;
+            case "YesNo":
+                BuildYesNo(builder, field);
+                break;
+            case "RagStatus":
+                BuildRag(builder, field);
+                break;
+            case "Photo":
+            case "FileUpload":
+                BuildFile(builder, field);
+                break;
+            case "Signature":
+                BuildSignature(builder, field);
+                break;
+            default:
+                BuildText(builder, field, lines: 1);
+                break;
+        }
+    };
+
+    private void BuildText(RenderTreeBuilder builder, FormFieldDto field, int lines, InputType inputType = InputType.Text)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenTextField>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Lines", lines);
+        builder.AddComponentParameter(5, "InputType", inputType);
+        builder.AddComponentParameter(6, "Value", _values.GetValueOrDefault(field.Id));
+        builder.AddComponentParameter(7, "ValueChanged",
+            EventCallback.Factory.Create<string>(this, v => _values[field.Id] = v));
+        builder.CloseComponent();
+    }
+
+    private void BuildNumber(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenNumericField>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Value", ParseDecimal(_values.GetValueOrDefault(field.Id)));
+        builder.AddComponentParameter(5, "ValueChanged",
+            EventCallback.Factory.Create<decimal?>(this, v => _values[field.Id] = v?.ToString(CultureInfo.InvariantCulture)));
+        builder.CloseComponent();
+    }
+
+    private void BuildDate(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenDatePicker>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Date", ParseDate(_values.GetValueOrDefault(field.Id)));
+        builder.AddComponentParameter(5, "DateChanged",
+            EventCallback.Factory.Create<DateTime?>(this, v => _values[field.Id] = v?.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
+        builder.CloseComponent();
+    }
+
+    private void BuildDropdown(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenSelect<string>>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Options", (IEnumerable<string>)FormEditModel.ReadOptions(field.OptionsJson));
+        builder.AddComponentParameter(5, "Clearable", true);
+        builder.AddComponentParameter(6, "Value", _values.GetValueOrDefault(field.Id));
+        builder.AddComponentParameter(7, "ValueChanged",
+            EventCallback.Factory.Create<string>(this, v => _values[field.Id] = v));
+        builder.CloseComponent();
+    }
+
+    private void BuildMultiSelect(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        var set = _multi.TryGetValue(field.Id, out var existing) ? existing : _multi[field.Id] = new HashSet<string>();
+        var seq = 0;
+        builder.OpenComponent<FormField>(seq++);
+        builder.AddComponentParameter(seq++, "Label", field.Label);
+        builder.AddComponentParameter(seq++, "Required", field.Required);
+        builder.AddComponentParameter(seq++, "HelperText", field.HelpText);
+        builder.AddComponentParameter(seq++, "ChildContent", (RenderFragment)(inner =>
+        {
+            var i = 0;
+            foreach (var option in FormEditModel.ReadOptions(field.OptionsJson))
+            {
+                var opt = option;
+                inner.OpenComponent<Tedwren.UiComponents.Forms.TedwrenToggle>(i++);
+                inner.AddComponentParameter(i++, "Label", opt);
+                inner.AddComponentParameter(i++, "Value", set.Contains(opt));
+                inner.AddComponentParameter(i++, "ValueChanged", EventCallback.Factory.Create<bool>(this, on =>
+                {
+                    if (on) set.Add(opt); else set.Remove(opt);
+                }));
+                inner.CloseComponent();
+            }
+        }));
+        builder.CloseComponent();
+    }
+
+    private void BuildYesNo(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenToggle>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "Description", field.HelpText);
+        builder.AddComponentParameter(3, "Value", string.Equals(_values.GetValueOrDefault(field.Id), "true", StringComparison.OrdinalIgnoreCase));
+        builder.AddComponentParameter(4, "ValueChanged",
+            EventCallback.Factory.Create<bool>(this, v => _values[field.Id] = v ? "true" : "false"));
+        builder.CloseComponent();
+    }
+
+    private void BuildRag(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenRagInput>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Value", _values.GetValueOrDefault(field.Id));
+        builder.AddComponentParameter(5, "ValueChanged",
+            EventCallback.Factory.Create<string>(this, v => _values[field.Id] = v));
+        builder.CloseComponent();
+    }
+
+    private void BuildFile(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenFileUpload>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Accept", field.Kind == "Photo" ? ".png,.jpg,.jpeg" : null);
+        builder.AddComponentParameter(5, "FilesChanged",
+            EventCallback.Factory.Create<IReadOnlyList<IBrowserFile>>(this, files => OnFilesChanged(field.Id, files)));
+        builder.CloseComponent();
+    }
+
+    private void BuildSignature(RenderTreeBuilder builder, FormFieldDto field)
+    {
+        builder.OpenComponent<Tedwren.UiComponents.Forms.TedwrenSignaturePad>(0);
+        builder.AddComponentParameter(1, "Label", field.Label);
+        builder.AddComponentParameter(2, "HelperText", field.HelpText);
+        builder.AddComponentParameter(3, "Required", field.Required);
+        builder.AddComponentParameter(4, "Value", _values.GetValueOrDefault(field.Id));
+        builder.AddComponentParameter(5, "ValueChanged",
+            EventCallback.Factory.Create<string>(this, v => _values[field.Id] = string.IsNullOrEmpty(v) ? null : v));
+        builder.CloseComponent();
+    }
+
+    private async Task OnFilesChanged(string fieldId, IReadOnlyList<IBrowserFile> files)
+    {
+        var captured = new List<PendingFile>();
+        foreach (var file in files)
+        {
+            using var stream = file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024);
+            using var ms = new MemoryStream();
+            await stream.CopyToAsync(ms);
+            captured.Add(new PendingFile(file.Name, string.IsNullOrEmpty(file.ContentType) ? "application/octet-stream" : file.ContentType, Convert.ToBase64String(ms.ToArray())));
+        }
+
+        _files[fieldId] = captured;
+    }
+
+    private static decimal? ParseDecimal(string? value) =>
+        decimal.TryParse(value, NumberStyles.Any, CultureInfo.InvariantCulture, out var d) ? d : null;
+
+    private static DateTime? ParseDate(string? value) =>
+        DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var dt) ? dt : null;
+
+    private sealed record PendingFile(string FileName, string ContentType, string Base64);
+}

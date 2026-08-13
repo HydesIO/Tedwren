@@ -26,4 +26,13 @@ public sealed class OutboxEmailSender : IEmailSender
         _outbox.Record(new OutboxMessage("Email", toEmail, subject, contentHtml, DateTimeOffset.UtcNow));
         return Task.CompletedTask;
     }
+
+    /// <summary>Records the HTML email plus a note of its attachments to the outbox (test double).</summary>
+    public Task SendHtmlWithAttachmentsAsync(string toEmail, string subject, string contentHtml,
+        IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default)
+    {
+        var names = attachments.Count == 0 ? string.Empty : " [attachments: " + string.Join(", ", attachments.Select(a => a.FileName)) + "]";
+        _outbox.Record(new OutboxMessage("Email", toEmail, subject, contentHtml + names, DateTimeOffset.UtcNow));
+        return Task.CompletedTask;
+    }
 }

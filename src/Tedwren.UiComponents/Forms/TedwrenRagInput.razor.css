@@ -1,0 +1,46 @@
+.rag-input {
+    display: flex;
+    gap: var(--spacing-8, 8px);
+    flex-wrap: wrap;
+}
+
+.rag-input__option {
+    flex: 1 1 0;
+    min-width: 88px;
+    padding: var(--spacing-8, 8px) var(--spacing-12, 12px);
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-control, 8px);
+    background: var(--color-surface, #FFFFFF);
+    color: var(--color-text-secondary, #667085);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.rag-input__option:hover:not(:disabled) {
+    border-color: var(--color-text-muted, #98A2B3);
+}
+
+.rag-input__option:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.rag-input__option--selected.rag-input__option--red {
+    background: var(--color-danger-pale, #FEF3F2);
+    border-color: var(--color-danger, #F04438);
+    color: var(--color-danger, #F04438);
+}
+
+.rag-input__option--selected.rag-input__option--amber {
+    background: var(--color-warning-pale, #FFFAEB);
+    border-color: var(--color-warning, #F79009);
+    color: var(--color-warning, #F79009);
+}
+
+.rag-input__option--selected.rag-input__option--green {
+    background: var(--color-success-pale, #ECFDF3);
+    border-color: var(--color-success, #17B26A);
+    color: var(--color-success, #17B26A);
+}

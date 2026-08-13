@@ -182,6 +182,23 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic Forms Library template + submission services (PRD-Phase 2 checklist/inspection engine).</summary>
+    public static IServiceCollection AddFormCore(this IServiceCollection services)
+    {
+        services.AddScoped<IFormTemplateService, Forms.FormTemplateService>();
+        services.AddScoped<IFormSubmissionService, Forms.FormSubmissionService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory form repositories and their shared seeded store (test-only mock mode).</summary>
+    public static IServiceCollection AddInMemoryFormStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryFormStore>();
+        services.AddScoped<IFormTemplateRepository, InMemoryFormTemplateRepository>();
+        services.AddScoped<IFormSubmissionRepository, InMemoryFormSubmissionRepository>();
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic compliance-pack service (SUB-13–SUB-26, R7–R9) and the recipient-access throttle.</summary>
     public static IServiceCollection AddCompliancePackCore(this IServiceCollection services)
     {
