@@ -439,4 +439,5 @@ public sealed class FormAssignmentRecord
     public int Schedule { get; set; }
     public string? FailureAlertEmail { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
+    public DateTimeOffset? LastReminderUtc { get; set; }
 }

@@ -91,9 +91,27 @@ public sealed class FormSubmissionService : IFormSubmissionService
     }
 
     /// <summary>Submits a completed form, validating required fields against the published template (R2/R16).</summary>
-    public async Task<Guid> SubmitAsync(CreateFormSubmissionRequest request, CancellationToken cancellationToken = default)
+    public Task<Guid> SubmitAsync(CreateFormSubmissionRequest request, CancellationToken cancellationToken = default) =>
+        SubmitCoreAsync(ResolveUserAsync, personIdOverride: null, request, cancellationToken);
+
+    /// <summary>
+    /// Submits a completed form on behalf of an anonymous take-flow (the induction-embedded form, requirement 5,
+    /// R5) where the company, the person and the submitter's name are supplied by the caller rather than resolved
+    /// from a signed-in user. The template must still belong to <paramref name="companyId"/> (R15).
+    /// </summary>
+    public Task<Guid> SubmitForContextAsync(Guid companyId, Guid? personId, string submittedBy, CreateFormSubmissionRequest request, CancellationToken cancellationToken = default) =>
+        SubmitCoreAsync(
+            _ => Task.FromResult<(Guid?, string)>((companyId, string.IsNullOrWhiteSpace(submittedBy) ? "Operative" : submittedBy.Trim())),
+            personIdOverride: personId, request, cancellationToken);
+
+    /// <summary>Shared submission pipeline: resolves the owning company + submitter, validates required fields, then stores the submission, its files and any failure alert.</summary>
+    private async Task<Guid> SubmitCoreAsync(
+        Func<CancellationToken, Task<(Guid? Company, string Name)>> resolve,
+        Guid? personIdOverride,
+        CreateFormSubmissionRequest request,
+        CancellationToken cancellationToken)
     {
-        var (company, name) = await ResolveUserAsync(cancellationToken);
+        var (company, name) = await resolve(cancellationToken);
 
         var template = await _templates.GetByIdAsync(request.FormTemplateId, cancellationToken);
         if (template is null || (company is not null && template.CompanyId != company))
@@ -144,7 +162,7 @@ public sealed class FormSubmissionService : IFormSubmissionService
             FormName = template.Name,
             Scope = Enum.TryParse<FormScope>(request.Scope, ignoreCase: true, out var scope) ? scope : FormScope.Organisation,
             SiteId = request.SiteId,
-            PersonId = request.PersonId,
+            PersonId = personIdOverride ?? request.PersonId,
             Answers = answers.Values
                 .Select(a => new FormAnswer(a.FieldId, a.Value, a.Values ?? new List<string>()))
                 .ToList(),

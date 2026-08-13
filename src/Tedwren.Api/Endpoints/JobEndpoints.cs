@@ -3,6 +3,7 @@ using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Expiry;
+using Tedwren.Application.Forms;
 using Tedwren.Application.Jobs;
 
 namespace Tedwren.Api.Endpoints;
@@ -61,6 +62,19 @@ public static class JobEndpoints
                 return Results.Ok(new { flagged, notifications });
             })
             .WithName("RunOvernightCheck");
+
+        // Reminds admins of recurring forms not completed this period (PRD-Phase 2, R12), recorded as a job run.
+        jobs.MapPost("/form-reminders", async (JobRunner runner, RecurringFormReminderJob job, CancellationToken cancellationToken) =>
+            {
+                FormReminderScanResult result = new(0, 0);
+                await runner.RunAsync(JobNames.FormReminder, async token =>
+                {
+                    result = await job.RunAsync(DateTimeOffset.UtcNow, token);
+                    return (result.AssignmentsEvaluated, result.RemindersSent);
+                }, cancellationToken);
+                return Results.Ok(result);
+            })
+            .WithName("RunFormReminders");
 
         // Checks each job's heartbeat and alerts ops on a silent stop (R12).
         jobs.MapPost("/heartbeat-check", async (JobHeartbeatMonitor monitor, CancellationToken cancellationToken) =>

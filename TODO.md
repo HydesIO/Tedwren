@@ -813,13 +813,30 @@ Phase M1 delivers the shared foundations and the first page migrations:
     parity**: the `018`/`019`/`020` scripts exist for both engines with verified column parity (the full PG
     parity run remains the pre-launch gate, deferred with the other PG work). Application (starter seed) + API
     (module gate 200→403→200, starter seed) tests. Whole solution builds warning-clean; all suites green.
-    - ⏳ **Still deferred** (larger features, not hardening): the recurring **scheduler job** for
-      Daily/Weekly/Monthly cadences (schedule stored/surfaced; the R12-reporting due-date/reminder job is its own
-      change), and **rendering induction-embedded forms in the worker take-flow** (`InductionTake`), which needs
-      an anonymous form-fill path touching the secure-by-default/R5 boundary.
+    - ✅ **Recurring form reminder job (was deferred) — Daily/Weekly/Monthly cadences (R12).** `RecurringFormReminderJob`
+      (`Application/Forms`) scans every recurring assignment: for each cadence it computes the current period (day /
+      ISO week from Monday / calendar month) and, when no submission of that form family exists in the period, emails a
+      "form due" reminder to the assignment's alert address and the company administrator. Idempotent per period via a
+      new `FormAssignment.LastReminderUtc` marker (mirrors SF-9's notification log) — running the scan twice in a period
+      never reminds twice. Added `IFormAssignmentRepository.GetRecurringAsync` + `UpdateLastReminderAsync` (Dapper +
+      in-memory), migration `021_form_assignment_reminders.sql` (both engines) + EF migration `AddFormAssignmentReminder`
+      + `LastReminderUtc` schema record. Wired into `ExpirySchedulerHostedService` (runs each tick under `JobRunner`,
+      `JobNames.FormReminder`) with a manual `POST /api/jobs/form-reminders` trigger. Application (3) + API (1) +
+      skip-guarded DataAccess coverage; all suites green.
+    - ✅ **Induction-embedded form fill (was deferred) — anonymous take-flow (requirement 5, R5).** The worker's
+      `InductionTake` flow now renders a `Form`-kind step's published form and submits it. New anonymous, session-scoped
+      routes `GET/POST /api/inductions/sessions/{sessionId}/forms/{stepId}` — the anonymous surface only ever exposes
+      forms actually attached to the induction being taken, resolved through the session (never arbitrary forms), so the
+      secure-by-default/R5 boundary stays tight. `IInductionService.GetSessionFormAsync` + `SubmitSessionFormAsync`
+      (resolve the family's latest published version scoped to the session's company, R15; submit server-side with the
+      scope/person fixed by the session so the caller cannot retarget). `IFormSubmissionService.SubmitForContextAsync`
+      submits on behalf of the anonymous flow with company/person/submitter supplied explicitly (reuses the same
+      required-by-default validation, file capture and failure-alert pipeline). Client `ApiInductionService` +
+      `InductionTake.razor` reuse `DynamicFormRenderer`. Application (4) + API (3, incl. an anonymity assertion) tests;
+      all suites green.
 
-  The Forms Library (Phases 19–25) is now feature-complete against requirements 1–11 bar the two deferred items
-  above; the remaining work is the pre-launch PostgreSQL parity run and those two follow-ups.
+  The Forms Library (Phases 19–25) is now feature-complete against requirements 1–11 with both former follow-ups
+  delivered; the remaining Forms work is the pre-launch PostgreSQL parity run (shared with the wider PG launch gate).
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

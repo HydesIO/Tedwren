@@ -1,7 +1,9 @@
 @page "/induct"
 @layout RecipientLayout
+@using Tedwren.Abstractions.Contracts.Forms
 @using Tedwren.Abstractions.Contracts.Inductions
 @using Tedwren.Abstractions.Services
+@using Tedwren.Client.Pages.Forms
 @using Tedwren.Client.Services
 @inject IInductionService Inductions
 @inject ITenantState Tenant
@@ -33,6 +35,18 @@
             </DashboardCard>
             break;
 
+        case Phase.Steps when _activeForm is not null:
+            <DashboardCard Title="@_activeForm.Name" Subtitle="Complete this form, then submit to mark the step done.">
+                <Body>
+                    <DynamicFormRenderer @ref="_renderer" Sections="_activeForm.Sections" />
+                    <div class="induct__nav">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="CancelForm" Disabled="_busy">Back</MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitFormAsync" Disabled="_busy">Submit form</MudButton>
+                    </div>
+                </Body>
+            </DashboardCard>
+            break;
+
         case Phase.Steps:
             <DashboardCard Title="@_session!.TemplateName" Subtitle="Work through each step. Required steps must be completed.">
                 <Body>
@@ -48,6 +62,11 @@
                                 @if (done)
                                 {
                                     <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" />
+                                }
+                                else if (step.Kind == "Form")
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                               OnClick="@(() => OpenFormAsync(step.Id))" Disabled="_busy">Complete form</MudButton>
                                 }
                                 else
                                 {
@@ -147,6 +166,11 @@
     private string? _signature;
     private bool _consent;
 
+    // The form step currently being completed (requirement 5): the fetched published form and the step it belongs to.
+    private FormTemplateDto? _activeForm;
+    private string? _activeFormStepId;
+    private DynamicFormRenderer? _renderer;
+
     private bool RequiredStepsDone =>
         _session is not null && _session.Steps.Where(s => s.Required).All(s => _session.CompletedStepIds.Contains(s.Id));
 
@@ -186,6 +210,67 @@
         {
             _session = updated;
         }
+    }
+
+    // Loads the published form attached to a Form step and shows it for completion (requirement 5).
+    private async Task OpenFormAsync(string stepId)
+    {
+        _busy = true;
+        try
+        {
+            var form = await Inductions.GetSessionFormAsync(_session!.Id, stepId);
+            if (form is null)
+            {
+                Snackbar.Add("This form is not available yet.", Severity.Warning);
+                return;
+            }
+
+            _activeForm = form;
+            _activeFormStepId = stepId;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Submits the completed form; on success the step is marked done and the session refreshed.
+    private async Task SubmitFormAsync()
+    {
+        if (_activeForm is null || _activeFormStepId is null || _renderer is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var request = new CreateFormSubmissionRequest(
+                _activeForm.Id, "Induction", null, null, _renderer.GetAnswers(), _renderer.GetFiles());
+            var updated = await Inductions.SubmitSessionFormAsync(_session!.Id, _activeFormStepId, request);
+            if (updated is not null)
+            {
+                _session = updated;
+                Snackbar.Add("Form submitted.", Severity.Success);
+                CancelForm();
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Closes the active form without submitting, returning to the step list.
+    private void CancelForm()
+    {
+        _activeForm = null;
+        _activeFormStepId = null;
+        _renderer = null;
     }
 
     // Moves past the steps: to the quiz if there are questions, otherwise straight to signing.

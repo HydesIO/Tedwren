@@ -46,6 +46,10 @@ public sealed class ApiFormSubmissionService : IFormSubmissionService
         return created?.Id ?? Guid.Empty;
     }
 
+    /// <summary>Not used from the client: the induction-embedded (anonymous) submit path runs on the server via the induction session route.</summary>
+    public Task<Guid> SubmitForContextAsync(Guid companyId, Guid? personId, string submittedBy, CreateFormSubmissionRequest request, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Induction-embedded submissions are made through the induction session route, not the client submission service.");
+
     /// <summary>Approves a submission. Null when not found.</summary>
     public Task<FormSubmissionDetailDto?> ApproveAsync(Guid id, ReviewFormSubmissionRequest request, CancellationToken cancellationToken = default) =>
         ReviewAsync($"api/forms/submissions/{id}/approve", request, cancellationToken);

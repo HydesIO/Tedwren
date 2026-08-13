@@ -14,8 +14,14 @@ public interface IFormAssignmentRepository
     /// <summary>Returns the assignments of a given form family within a company (used to resolve failed-check alerts).</summary>
     Task<IReadOnlyList<FormAssignment>> GetByFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns every assignment with a recurring schedule (Daily/Weekly/Monthly) across all companies, for the reminder job (R12).</summary>
+    Task<IReadOnlyList<FormAssignment>> GetRecurringAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Persists a new assignment.</summary>
     Task AddAsync(FormAssignment assignment, CancellationToken cancellationToken = default);
+
+    /// <summary>Records when a recurring reminder was last sent for an assignment (the per-period idempotency marker).</summary>
+    Task UpdateLastReminderAsync(Guid id, DateTimeOffset sentUtc, CancellationToken cancellationToken = default);
 
     /// <summary>Removes an assignment.</summary>
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);

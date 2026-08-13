@@ -33,10 +33,31 @@ public sealed class InMemoryFormAssignmentRepository : IFormAssignmentRepository
         return Task.FromResult(assignments);
     }
 
+    /// <summary>Returns every assignment on a recurring schedule (not AdHoc), across all companies (R12).</summary>
+    public Task<IReadOnlyList<FormAssignment>> GetRecurringAsync(CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<FormAssignment> assignments = _store.Assignments.Values
+            .Where(a => a.Schedule != Domain.Enums.FormSchedule.AdHoc)
+            .OrderBy(a => a.CompanyId).ThenBy(a => a.CreatedUtc)
+            .ToList();
+        return Task.FromResult(assignments);
+    }
+
     /// <summary>Adds an assignment to the store.</summary>
     public Task AddAsync(FormAssignment assignment, CancellationToken cancellationToken = default)
     {
         _store.Assignments[assignment.Id] = assignment;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Records the last recurring-reminder time on the stored assignment (per-period idempotency).</summary>
+    public Task UpdateLastReminderAsync(Guid id, DateTimeOffset sentUtc, CancellationToken cancellationToken = default)
+    {
+        if (_store.Assignments.TryGetValue(id, out var assignment))
+        {
+            assignment.LastReminderUtc = sentUtc;
+        }
+
         return Task.CompletedTask;
     }
 

@@ -2,7 +2,7 @@ namespace Tedwren.Domain.Enums;
 
 /// <summary>
 /// How often an assigned form is expected to be completed (the PRD-Phase 2 checklist scheduling). Ad-hoc means
-/// "on demand, no cadence"; the recurring cadences drive reminders/due dates once the scheduler job lands.
+/// "on demand, no cadence"; the recurring cadences drive the reminder job's due-date reminders (R12).
 /// </summary>
 public enum FormSchedule
 {
