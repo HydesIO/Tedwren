@@ -87,5 +87,18 @@ public sealed class FormTemplateApiTests : IClassFixture<WebApplicationFactory<P
         Assert.Equal(HttpStatusCode.NotFound, get.StatusCode);
     }
 
+    [Fact]
+    public async Task SeedStarter_AddsPublishedStarterForms()
+    {
+        var client = _factory.CreateClient();
+
+        var seed = await client.PostAsync("/api/forms/templates/seed-starter", null);
+        Assert.Equal(HttpStatusCode.OK, seed.StatusCode);
+
+        var list = await client.GetFromJsonAsync<List<FormTemplateSummaryDto>>("/api/forms/templates");
+        Assert.Contains(list!, t => t.Name == "Daily Site Diary" && t.Status == "Published");
+        Assert.Contains(list!, t => t.Name == "Welfare Check");
+    }
+
     private sealed record CreatedTemplate(Guid Id);
 }

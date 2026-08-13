@@ -219,6 +219,39 @@ public sealed class FormTemplateService : IFormTemplateService
         return ToDto(template);
     }
 
+    /// <summary>
+    /// Seeds the shipped starter forms for the caller's company (PRD §6 "ship a template library, not an empty
+    /// builder"), publishing each so it is immediately usable. Skips any starter whose name already exists, so
+    /// it is safe to run more than once. Returns how many were created.
+    /// </summary>
+    public async Task<int> SeedStarterTemplatesAsync(CancellationToken cancellationToken = default)
+    {
+        var tenant = await ResolveTenantAsync(cancellationToken);
+        if (tenant is null)
+        {
+            return 0;
+        }
+
+        var existing = (await _templates.GetByCompanyAsync(tenant.Value, cancellationToken))
+            .Select(t => t.Name)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        var created = 0;
+        foreach (var starter in DefaultFormTemplates.Starters)
+        {
+            if (existing.Contains(starter.Name))
+            {
+                continue;
+            }
+
+            var id = await CreateAsync(new CreateFormTemplateRequest(tenant.Value, starter.Name, starter.Description, starter.Sections), cancellationToken);
+            await PublishAsync(id, cancellationToken);
+            created++;
+        }
+
+        return created;
+    }
+
     /// <summary>Computes the next version ordinal for a family (highest existing + 1).</summary>
     private async Task<int> NextVersionAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken)
     {

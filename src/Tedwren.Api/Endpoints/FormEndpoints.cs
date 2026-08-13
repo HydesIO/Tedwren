@@ -14,7 +14,8 @@ public static class FormEndpoints
     /// <summary>Registers the <c>/api/forms</c> endpoint group.</summary>
     public static IEndpointRouteBuilder MapFormEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/forms").WithTags("Forms");
+        // Forms is a paid module: every request is entitlement-gated server-side and fails closed (SF-22, Q2).
+        var group = app.MapGroup("/api/forms").WithTags("Forms").AddEndpointFilter(ModuleGate.Require("forms"));
 
         group.MapGet("/templates", async (IFormTemplateService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.GetTemplatesAsync(cancellationToken)))
@@ -65,6 +66,11 @@ public static class FormEndpoints
         group.MapPost("/templates/{id:guid}/archive", async (Guid id, IFormTemplateService service, CancellationToken cancellationToken) =>
                 await service.ArchiveAsync(id, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
             .WithName("ArchiveFormTemplate")
+            .RequireAuthorization("RequireWrite");
+
+        group.MapPost("/templates/seed-starter", async (IFormTemplateService service, CancellationToken cancellationToken) =>
+                Results.Ok(new { created = await service.SeedStarterTemplatesAsync(cancellationToken) }))
+            .WithName("SeedStarterFormTemplates")
             .RequireAuthorization("RequireWrite");
 
         // Submissions — completing a form at organisation/site level (requirement 7), append-only evidence (R4/R10).

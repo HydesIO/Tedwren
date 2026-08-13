@@ -13,6 +13,8 @@
 
 <PageHeader Title="Forms Library" Subtitle="Build and manage your organisation's custom forms (PRD-Phase 2)">
     <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.LibraryAdd"
+                   Disabled="_seeding" OnClick="SeedStartersAsync">Add starter forms</MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
                    Href="/forms/new">New form</MudButton>
     </Actions>
@@ -55,6 +57,20 @@
     private List<DataColumn<FormTemplateSummaryDto>> _columns = new();
     private List<DataColumn<FormAssignmentDto>> _assignmentColumns = new();
     private bool _loading = true;
+    private bool _seeding;
+
+    private async Task SeedStartersAsync()
+    {
+        _seeding = true;
+        try
+        {
+            var created = await Forms.SeedStarterTemplatesAsync();
+            Snackbar.Add(created > 0 ? $"Added {created} starter form(s)." : "Starter forms are already in your library.",
+                created > 0 ? Severity.Success : Severity.Info);
+            await LoadAsync();
+        }
+        finally { _seeding = false; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
