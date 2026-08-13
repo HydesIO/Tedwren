@@ -62,6 +62,14 @@ public sealed class FormAssignmentRepositoryTests
 
             Assert.Single(await repository.GetByCompanyAsync(companyId));
 
+            // R12 — recurring assignments are picked up by the reminder query and the last-reminder marker round-trips.
+            Assert.Contains(await repository.GetRecurringAsync(), a => a.Id == assignment.Id);
+            Assert.Null(reloaded.LastReminderUtc);
+            var remindedAt = DateTimeOffset.UtcNow;
+            await repository.UpdateLastReminderAsync(assignment.Id, remindedAt);
+            var afterReminder = await repository.GetByIdAsync(assignment.Id);
+            Assert.NotNull(afterReminder!.LastReminderUtc);
+
             await repository.DeleteAsync(assignment.Id);
             Assert.Null(await repository.GetByIdAsync(assignment.Id));
         }

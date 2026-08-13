@@ -42,4 +42,11 @@ public sealed class FormAssignment
 
     /// <summary>When the assignment was created (UTC; displayed in UK local time per R11).</summary>
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;
+
+    /// <summary>
+    /// When the recurring-reminder job last emailed a "form due" reminder for this assignment (UTC); null = never.
+    /// The idempotency marker (mirrors SF-9's notification log) so a recurring cadence is reminded at most once per
+    /// period even if the scan runs more than once (R12 reporting/reminders).
+    /// </summary>
+    public DateTimeOffset? LastReminderUtc { get; set; }
 }

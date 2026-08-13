@@ -188,6 +188,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IFormTemplateService, Forms.FormTemplateService>();
         services.AddScoped<IFormSubmissionService, Forms.FormSubmissionService>();
         services.AddScoped<IFormAssignmentService, Forms.FormAssignmentService>();
+        services.AddScoped<Forms.RecurringFormReminderJob>();
         return services;
     }
 

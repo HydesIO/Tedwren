@@ -11,4 +11,7 @@ public static class JobNames
 
     /// <summary>The overnight still-signed-in check (SF-19).</summary>
     public const string OvernightCheck = "overnight-check";
+
+    /// <summary>The recurring-form due/reminder scan (PRD-Phase 2 checklist scheduling, R12).</summary>
+    public const string FormReminder = "form-reminder";
 }

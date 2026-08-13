@@ -2,6 +2,7 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Tedwren.Abstractions.Contracts.Expiry;
+using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Abstractions.Contracts.Qualifications;
 using Tedwren.Abstractions.Notifications;
@@ -61,6 +62,41 @@ public sealed class JobApiTests : IClassFixture<WebApplicationFactory<Program>>
         var runs = await client.GetFromJsonAsync<List<JobRunDto>>("/api/jobs/runs");
         Assert.Contains(runs!, r => r.JobName == "expiry-scan" && r.Status == "Succeeded");
     }
+
+    [Fact] // PRD-Phase 2 / R12 — a recurring form not completed this period reminds, and the scan is idempotent per period.
+    public async Task FormReminders_RecurringFormNotCompleted_RemindsOnce()
+    {
+        var client = CreateClient();
+
+        // A published form assigned on a Daily cadence with a reminder address (the tenant is the test-bypass company).
+        var create = await client.PostAsJsonAsync("/api/forms/templates", new CreateFormTemplateRequest(
+            Guid.NewGuid(), "Reminder Diary", null,
+            new List<FormSectionDto> { new("s1", "Diary", new List<FormFieldDto>
+            {
+                new("f1", "LongText", "Notes", null, true, null, null, 0),
+            }, 0) }));
+        var templateId = (await create.Content.ReadFromJsonAsync<Created>())!.Id;
+        await client.PostAsync($"/api/forms/templates/{templateId}/publish", null);
+        var familyId = (await client.GetFromJsonAsync<FormTemplateDto>($"/api/forms/templates/{templateId}"))!.FamilyId;
+        await client.PostAsJsonAsync("/api/forms/assignments", new CreateFormAssignmentRequest(
+            familyId, "Organisation", null, null, null, "Daily", "reminders@test.example"));
+
+        // First scan reminds the alert address; the run is recorded (SF-21).
+        var first = await (await client.PostAsync("/api/jobs/form-reminders", content: null)).Content.ReadFromJsonAsync<ReminderResult>();
+        Assert.True(first!.RemindersSent >= 1);
+        var outbox = await client.GetFromJsonAsync<List<OutboxMessage>>("/api/jobs/outbox");
+        Assert.Contains(outbox!, m => m.Recipient == "reminders@test.example" && m.Subject.Contains("Reminder Diary"));
+
+        // Second scan the same period sends nothing (per-period idempotency).
+        var second = await (await client.PostAsync("/api/jobs/form-reminders", content: null)).Content.ReadFromJsonAsync<ReminderResult>();
+        Assert.Equal(0, second!.RemindersSent);
+
+        var runs = await client.GetFromJsonAsync<List<JobRunDto>>("/api/jobs/runs");
+        Assert.Contains(runs!, r => r.JobName == "form-reminder" && r.Status == "Succeeded");
+    }
+
+    private sealed record Created(Guid Id);
+    private sealed record ReminderResult(int AssignmentsEvaluated, int RemindersSent);
 
     [Fact] // R12
     public async Task HeartbeatCheck_WithNoRuns_AlertsOps()

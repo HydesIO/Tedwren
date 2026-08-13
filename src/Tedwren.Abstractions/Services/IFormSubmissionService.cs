@@ -19,6 +19,13 @@ public interface IFormSubmissionService
     /// <summary>Submits a completed form and returns its id. Throws <see cref="System.ArgumentException"/> when required fields are unanswered or the template is not published.</summary>
     Task<Guid> SubmitAsync(CreateFormSubmissionRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Submits a completed form on behalf of an anonymous take-flow (the induction-embedded form, requirement 5, R5),
+    /// with the owning company, the person and the submitter's name supplied explicitly rather than from a signed-in
+    /// user. The template must belong to <paramref name="companyId"/> (R15). Returns the new submission id.
+    /// </summary>
+    Task<Guid> SubmitForContextAsync(Guid companyId, Guid? personId, string submittedBy, CreateFormSubmissionRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Approves a submission. Returns the updated submission, or null when not found / not the caller's.</summary>
     Task<FormSubmissionDetailDto?> ApproveAsync(Guid id, ReviewFormSubmissionRequest request, CancellationToken cancellationToken = default);
 

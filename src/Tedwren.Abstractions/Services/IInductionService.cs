@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Inductions;
 
 namespace Tedwren.Abstractions.Services;
@@ -31,6 +32,22 @@ public interface IInductionService
 
     /// <summary>Marks a step completed (MC-4). Returns the updated session, or null if not found.</summary>
     Task<InductionSessionDto?> CompleteStepAsync(Guid sessionId, string stepId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns the published form attached to a <c>Form</c> step of the session, ready to fill (Forms Library
+    /// integration, requirement 5). Only forms reached through the worker's own session are exposed on this
+    /// anonymous path (R5). Null when the session/step is not found, the step is not a form, or no published
+    /// version exists.
+    /// </summary>
+    Task<FormTemplateDto?> GetSessionFormAsync(Guid sessionId, string stepId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Submits the completed form for a session's <c>Form</c> step (the anonymous take-flow) and marks the step
+    /// done (MC-4, requirement 5). The submission is recorded against the session's company and operative. Returns
+    /// the updated session, or null when the session/step is not found or the step is not a form. Throws
+    /// <see cref="System.ArgumentException"/> when required fields are unanswered.
+    /// </summary>
+    Task<InductionSessionDto?> SubmitSessionFormAsync(Guid sessionId, string stepId, CreateFormSubmissionRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>Scores a quiz submission on the server and records the attempt (R5, MC-6). Null if not found.</summary>
     Task<QuizResultDto?> SubmitQuizAsync(Guid sessionId, SubmitQuizRequest request, CancellationToken cancellationToken = default);
