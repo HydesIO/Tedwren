@@ -1,0 +1,229 @@
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Abstractions.Services
+@inject IFormSubmissionService Submissions
+@inject IFormTemplateService Forms
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+@* Views a completed submission — its answers (labelled from the template version it was completed against),
+   captured files, and the review actions (approve / reject with a reason). *@
+
+<MudDialog>
+    <DialogContent>
+        @if (_detail is null)
+        {
+            <MudText>Loading…</MudText>
+        }
+        else
+        {
+            <div class="submission-detail">
+                <div class="submission-detail__meta">
+                    <StatusPill Label="@_detail.Status" Status="@ToStatusKind(_detail.Status)" />
+                    <span>Version @_detail.FormTemplateVersion · @_detail.Scope</span>
+                    <span>Submitted by @_detail.SubmittedBy · @_detail.SubmittedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+                </div>
+
+                @if (!string.IsNullOrWhiteSpace(_detail.ReviewNote))
+                {
+                    <BannerAlert Severity="@(_detail.Status == "Rejected" ? StatusKind.Danger : StatusKind.Info)"
+                                 Title="Review note" Message="@_detail.ReviewNote" />
+                }
+
+                <MudSimpleTable Dense="true" Hover="true" Class="submission-detail__answers">
+                    <tbody>
+                        @foreach (var answer in _detail.Answers)
+                        {
+                            <tr>
+                                <td class="submission-detail__label">@Label(answer.FieldId)</td>
+                                <td>@RenderAnswer(answer)</td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+
+                @if (_detail.Files.Count > 0)
+                {
+                    <div class="submission-detail__files">
+                        <h4>Attachments</h4>
+                        @foreach (var file in _detail.Files)
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
+                                       OnClick="@(() => DownloadAsync(file))">@file.FileName</MudButton>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Close</MudButton>
+        @if (_detail is not null)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.PictureAsPdf" Disabled="_busy" OnClick="DownloadPdfAsync">Download PDF</MudButton>
+            <MudButton StartIcon="@Icons.Material.Outlined.Email" Disabled="_busy" OnClick="EmailAsync">Email</MudButton>
+        }
+        @if (_detail is not null && _detail.Status is "Submitted")
+        {
+            <MudTextField @bind-Value="_reason" Placeholder="Reason (required to reject)" Variant="Variant.Outlined" Margin="Margin.Dense" Class="submission-detail__reason" />
+            <MudButton Color="Color.Error" Variant="Variant.Outlined" Disabled="_busy" OnClick="RejectAsync">Reject</MudButton>
+            <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_busy" OnClick="ApproveAsync">Approve</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The submission to display.</summary>
+    [Parameter] public Guid SubmissionId { get; set; }
+
+    private FormSubmissionDetailDto? _detail;
+    private Dictionary<string, string> _labels = new();
+    private string? _reason;
+    private bool _busy;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _detail = await Submissions.GetSubmissionAsync(SubmissionId);
+        if (_detail is not null)
+        {
+            var template = await Forms.GetTemplateAsync(_detail.FormTemplateId);
+            if (template is not null)
+            {
+                _labels = template.Sections
+                    .SelectMany(s => s.Fields)
+                    .ToDictionary(f => f.Id, f => f.Label, StringComparer.Ordinal);
+            }
+        }
+    }
+
+    private string Label(string fieldId) => _labels.GetValueOrDefault(fieldId, fieldId);
+
+    private RenderFragment RenderAnswer(FormAnswerDto answer) => builder =>
+    {
+        if (answer.Values is { Count: > 0 })
+        {
+            builder.AddContent(0, string.Join(", ", answer.Values));
+            return;
+        }
+
+        var value = answer.Value;
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            builder.AddContent(0, "—");
+        }
+        else if (value.StartsWith("data:image", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.OpenElement(1, "img");
+            builder.AddAttribute(2, "src", value);
+            builder.AddAttribute(3, "class", "submission-detail__signature");
+            builder.AddAttribute(4, "alt", "Signature");
+            builder.CloseElement();
+        }
+        else if (string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.AddContent(5, "Yes");
+        }
+        else if (string.Equals(value, "false", StringComparison.OrdinalIgnoreCase))
+        {
+            builder.AddContent(6, "No");
+        }
+        else
+        {
+            builder.AddContent(7, value);
+        }
+    };
+
+    private async Task DownloadAsync(FormSubmissionFileDto file)
+    {
+        var content = await Submissions.GetFileAsync(file.Id);
+        if (content is null)
+        {
+            Snackbar.Add("The file could not be downloaded.", Severity.Error);
+            return;
+        }
+
+        await JS.InvokeVoidAsync("tedwren.download", content.FileName, Convert.ToBase64String(content.Content), content.ContentType);
+    }
+
+    private async Task DownloadPdfAsync()
+    {
+        _busy = true;
+        try
+        {
+            var pdf = await Submissions.GeneratePdfAsync(SubmissionId);
+            if (pdf is null)
+            {
+                Snackbar.Add("The PDF could not be generated.", Severity.Error);
+                return;
+            }
+
+            await JS.InvokeVoidAsync("tedwren.download", pdf.FileName, Convert.ToBase64String(pdf.Content), pdf.ContentType);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task EmailAsync()
+    {
+        var recipient = await JS.InvokeAsync<string?>("prompt", "Email this form (PDF) to:", "");
+        if (string.IsNullOrWhiteSpace(recipient))
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var sent = await Submissions.EmailAsync(SubmissionId, recipient.Trim());
+            Snackbar.Add(sent ? $"Emailed to {recipient.Trim()}." : "The submission could not be found.", sent ? Severity.Success : Severity.Error);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task ApproveAsync()
+    {
+        _busy = true;
+        try
+        {
+            _detail = await Submissions.ApproveAsync(SubmissionId, new ReviewFormSubmissionRequest(string.IsNullOrWhiteSpace(_reason) ? null : _reason));
+            Snackbar.Add("Submission approved.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task RejectAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_reason))
+        {
+            Snackbar.Add("A reason is required to reject.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _detail = await Submissions.RejectAsync(SubmissionId, new ReviewFormSubmissionRequest(_reason));
+            Snackbar.Add("Submission rejected.", Severity.Info);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally { _busy = false; }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private static StatusKind ToStatusKind(string status) => status switch
+    {
+        "Approved" => StatusKind.Success,
+        "Submitted" => StatusKind.Warning,
+        "Rejected" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

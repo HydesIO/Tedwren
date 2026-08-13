@@ -1,0 +1,15 @@
+@using Tedwren.Web.Models
+@model StubModel
+@* Shared placeholder body for W1 stub pages. Each page sets its own heading, lede and the phase in
+   which its real content lands, plus an optional canonical CTA. Replaced page-by-page in W3–W7. *@
+<section class="page-stub">
+    <h1 class="page-stub__title">@Model.Heading</h1>
+    <p class="page-stub__lede">@Model.Lede</p>
+    <p class="page-stub__phase">Full content lands in phase @Model.Phase.</p>
+    @if (Model.Cta is not null)
+    {
+        <div class="page-stub__actions">
+            @await Component.InvokeAsync("Cta", new { action = Model.Cta.Value })
+        </div>
+    }
+</section>

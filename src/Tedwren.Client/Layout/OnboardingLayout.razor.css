@@ -1,28 +1,8 @@
 .onboarding-shell {
     min-height: 100vh;
-    background: var(--color-surface-sunken, #f2f4f7);
+    background: var(--color-bg, #f7f8fa);
     display: flex;
     flex-direction: column;
-}
-
-.onboarding-shell__bar {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-8, 8px);
-    padding: var(--spacing-16, 16px) var(--spacing-24, 24px);
-    background: var(--color-surface, #ffffff);
-    border-bottom: 1px solid var(--color-border, #e4e7ec);
-}
-
-.onboarding-shell__logo {
-    width: 28px;
-    height: 28px;
-}
-
-.onboarding-shell__brand {
-    font-weight: 600;
-    font-size: var(--font-size-16, 16px);
-    color: var(--color-text-primary, #101828);
 }
 
 .onboarding-shell__content {
@@ -30,5 +10,11 @@
     display: flex;
     justify-content: center;
     align-items: flex-start;
-    padding: var(--spacing-24, 24px);
+    padding: var(--spacing-32, 32px) var(--spacing-24, 24px);
+}
+
+@media (max-width: 640px) {
+    .onboarding-shell__content {
+        padding: var(--spacing-16, 16px);
+    }
 }

@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Inductions;
 using Tedwren.Abstractions.Services;
 
@@ -76,6 +77,40 @@ public sealed class ApiInductionService : IInductionService
     /// <summary>Marks a step completed (MC-4).</summary>
     public Task<InductionSessionDto?> CompleteStepAsync(Guid sessionId, string stepId, CancellationToken cancellationToken = default) =>
         PostSessionAsync($"api/inductions/sessions/{sessionId}/steps/{Uri.EscapeDataString(stepId)}/complete", (object?)null, cancellationToken);
+
+    /// <summary>Returns the published form attached to a session's Form step, ready to fill (requirement 5); null when not found.</summary>
+    public async Task<FormTemplateDto?> GetSessionFormAsync(Guid sessionId, string stepId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/inductions/sessions/{sessionId}/forms/{Uri.EscapeDataString(stepId)}", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<FormTemplateDto>(cancellationToken);
+    }
+
+    /// <summary>Submits a session's Form step and marks it done (requirement 5); surfaces required-field validation as an exception.</summary>
+    public async Task<InductionSessionDto?> SubmitSessionFormAsync(Guid sessionId, string stepId, CreateFormSubmissionRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync($"api/inductions/sessions/{sessionId}/forms/{Uri.EscapeDataString(stepId)}", request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<FormStepError>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? "The form could not be submitted.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<InductionSessionDto>(cancellationToken);
+    }
+
+    private sealed record FormStepError(string Error);
 
     /// <summary>Submits quiz answers for server-side scoring (R5).</summary>
     public async Task<QuizResultDto?> SubmitQuizAsync(Guid sessionId, SubmitQuizRequest request, CancellationToken cancellationToken = default)

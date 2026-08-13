@@ -1,0 +1,44 @@
+@* A red/amber/green status selector for inspection items (the RAG field kind).
+   Three mutually-exclusive buttons coloured from the status tokens; the selected
+   value is one of "Red", "Amber", "Green". *@
+
+<FormField Label="@Label" Required="Required"
+           HelperText="@HelperText" Error="Error" ErrorText="@ErrorText">
+    <div class="rag-input" role="radiogroup" aria-label="@Label">
+        @foreach (var option in _options)
+        {
+            <button type="button"
+                    class="rag-input__option rag-input__option--@option.Key.ToLowerInvariant() @(string.Equals(Value, option.Key, StringComparison.OrdinalIgnoreCase) ? "rag-input__option--selected" : null)"
+                    role="radio"
+                    aria-checked="@(string.Equals(Value, option.Key, StringComparison.OrdinalIgnoreCase) ? "true" : "false")"
+                    disabled="@Disabled"
+                    @onclick="@(() => Select(option.Key))">
+                @option.Value
+            </button>
+        }
+    </div>
+</FormField>
+
+@code {
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    private readonly IReadOnlyList<KeyValuePair<string, string>> _options = new[]
+    {
+        new KeyValuePair<string, string>("Red", "Red"),
+        new KeyValuePair<string, string>("Amber", "Amber"),
+        new KeyValuePair<string, string>("Green", "Green"),
+    };
+
+    private async Task Select(string key)
+    {
+        if (Disabled) return;
+        await ValueChanged.InvokeAsync(key);
+    }
+}

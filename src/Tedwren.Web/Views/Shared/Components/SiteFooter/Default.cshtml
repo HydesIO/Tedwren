@@ -1,0 +1,45 @@
+@model SiteFooterModel
+<footer class="site-footer">
+    <div class="site-footer__inner">
+        <div class="site-footer__col site-footer__company">
+            <p class="site-footer__entity">@Model.LegalEntity</p>
+            @if (!string.IsNullOrWhiteSpace(Model.CompanyNumber))
+            {
+                <p class="site-footer__meta">Company no. @Model.CompanyNumber</p>
+            }
+            @if (!string.IsNullOrWhiteSpace(Model.RegisteredOffice))
+            {
+                <p class="site-footer__meta">@Model.RegisteredOffice</p>
+            }
+        </div>
+
+        <nav class="site-footer__col" aria-label="Site">
+            <h2 class="site-footer__heading">Site</h2>
+            @foreach (var link in Model.FooterLinks)
+            {
+                <a class="site-footer__link" href="@link.Href">@link.Label</a>
+            }
+        </nav>
+
+        <nav class="site-footer__col" aria-label="Legal">
+            <h2 class="site-footer__heading">Legal</h2>
+            @foreach (var link in Model.LegalLinks)
+            {
+                <a class="site-footer__link" href="@link.Href">@link.Label</a>
+            }
+        </nav>
+    </div>
+
+    @* Social icons render only for accounts that exist at launch (config-gated, Web Plan §5). *@
+    @if (Model.SocialLinks.Count > 0)
+    {
+        <div class="site-footer__social">
+            @foreach (var social in Model.SocialLinks)
+            {
+                <a class="site-footer__social-link" href="@social.Url" rel="noopener" target="_blank">@social.Platform</a>
+            }
+        </div>
+    }
+
+    <p class="site-footer__copyright">© @Model.Year @Model.LegalEntity. All rights reserved.</p>
+</footer>

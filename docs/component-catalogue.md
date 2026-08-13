@@ -426,6 +426,57 @@ returns `DialogResult.Ok(true)` on confirm. See the usage snippet in the compone
 
 ---
 
+## Forms Library field wrappers (Phase 21)
+
+Added for the customer-built Forms Library (PRD-Phase 2). Each builds on `FormField`
+chrome, reads colour/spacing from `tokens.css`, and follows the live-binding rule
+(`@bind-Value` / `Value`+`ValueChanged`). They fill the input kinds the Phase 4 suite
+lacked, so pages stop reaching for raw MudBlazor.
+
+### `TedwrenNumericField`
+Wrapped `MudNumericField<decimal?>` — the default numeric input. `Label`, `@bind-Value`,
+`Min`, `Max`, `HelperText`, `Required`, `Error`/`ErrorText`, `HideSpinButtons`.
+
+### `TedwrenDatePicker`
+Wrapped `MudDatePicker` — a single editable date (`dd MMM yyyy`). `Label`, `@bind-Date`,
+`Placeholder`, `Required`, `Error`/`ErrorText`.
+
+### `TedwrenRadioGroup`
+Wrapped `MudRadioGroup<string>` — one choice from an always-visible option list.
+`Label`, `@bind-Value`, `Options`, `Required`.
+
+### `TedwrenRagInput`
+A red/amber/green status selector for inspection items — three mutually-exclusive buttons
+coloured from the status tokens; value is `"Red"` / `"Amber"` / `"Green"`. `Label`,
+`@bind-Value`, `Required`. `role="radiogroup"` with `aria-checked` per option.
+
+### `TedwrenSignaturePad`
+A canvas signature pad; strokes are captured as a PNG data URL surfaced through `Value`
+(pushed from JS on stroke-end via a `[JSInvokable]` callback), with a "Clear" action.
+Interop lives in `wwwroot/js/tedwren.js` (`tedwren.signature.*`). `Label`, `@bind-Value`,
+`Required`. `IAsyncDisposable` — disposes the canvas handlers and the DotNet reference.
+
+## Forms Library components (client, Phase 21–22)
+
+Client-side components (in `Tedwren.Client/Pages/Forms`) that compose the field wrappers
+into the builder and fill experiences.
+
+### `FormBuilder`
+The authoring surface: add/remove sections and fields, choose each field's kind, toggle
+`Required`, and supply options for choice fields. Edits a `List<FormEditModel.SectionEdit>`
+in place (`Sections` parameter). `FormEditModel` maps to/from the `FormSectionDto` contracts.
+
+### `DynamicFormRenderer`
+Renders a published form's sections/fields as the matching `Tedwren*` input per
+`FormFieldKind`, and exposes `GetAnswers()` / `GetFiles()` (base64) for submission. Files
+are read from `IBrowserFile`; multi-select renders one `TedwrenToggle` per option.
+
+### `FormSubmissionDialog`
+Views a completed submission — answers labelled from the template version it was completed
+against, captured-file downloads, and the review actions (approve / reject with a reason).
+
+---
+
 ## Models
 
 ### `NavItem`

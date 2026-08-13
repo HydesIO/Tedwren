@@ -1,0 +1,37 @@
+{
+  "HeroHeading": "Compliance that works beyond the site gate",
+  "HeroSubheading": "Prove who's compliant — on site or off it — without chasing paperwork. Pick the route that fits how you work.",
+  "ProblemHeading": "Compliance breaks down the moment work leaves the gate",
+  "ProblemBody": "Cards expire, documents go stale, and the proof lives in inboxes and spreadsheets. On dispersed and retrofit work there's no gate to check anyone in at — so the gaps only show up when something goes wrong.",
+  "Differentiators": [
+    {
+      "Heading": "Works beyond the site gate",
+      "Body": "Manage a dispersed or retrofit workforce with no fixed gate — the strongest thing Tedwren does that others don't.",
+      "Highlight": true
+    },
+    {
+      "Heading": "Proof in one tap",
+      "Body": "Share a compliance pack a main contractor opens with no account and no sign-up wall.",
+      "Highlight": false
+    },
+    {
+      "Heading": "Warnings before things lapse",
+      "Body": "Expiry alerts land before a card or document goes out of date, not after.",
+      "Highlight": false
+    },
+    {
+      "Heading": "One record, reused everywhere",
+      "Body": "A worker's passport follows them from site to site instead of being rebuilt each time.",
+      "Highlight": false
+    }
+  ],
+  "HowItWorks": [
+    { "Order": 1, "Heading": "Add your people and documents", "Body": "Bring operatives, cards and company documents into one place." },
+    { "Order": 2, "Heading": "Tedwren tracks expiry", "Body": "Every qualification is watched, with warnings before anything lapses." },
+    { "Order": 3, "Heading": "Share a compliance pack", "Body": "Send proof to a main contractor who opens it without an account." },
+    { "Order": 4, "Heading": "Induct before arrival", "Body": "Workers complete induction ahead of time, not at the gate." },
+    { "Order": 5, "Heading": "Stay covered off-site", "Body": "Keep dispersed and retrofit work compliant with no fixed gate to rely on." }
+  ],
+  "ClosingHeading": "See it on your own sites",
+  "ClosingBody": "Book a short demo and we'll show you how Tedwren fits the way you already work."
+}

@@ -17,200 +17,256 @@
 <PageTitle>Set up your organisation · Tedwren</PageTitle>
 
 <div class="onboarding">
-    <DashboardCard Title="Set up your organisation"
-                   Subtitle="A few steps to get your account ready to use.">
-        <Body>
-            <TedwrenStepper @bind-ActiveIndex="_activeStep">
-                @* 1. Org type *@
-                <MudStep Title="Type" Icon="@Icons.Material.Outlined.Business">
-                    <div class="onboarding__step">
-                        <p class="onboarding__lead">What kind of organisation is this?</p>
-                        <MudRadioGroup T="OnboardingOrgType" Value="_model.OrgType" ValueChanged="OnOrgTypeChanged">
-                            <div class="onboarding__choice">
-                                <MudRadio T="OnboardingOrgType" Value="OnboardingOrgType.Subcontractor" Color="Color.Primary">
-                                    <span class="onboarding__choice-title">Subcontractor</span>
-                                    <span class="onboarding__choice-desc">Time &amp; attendance, operatives, insurances and the sites your people attend.</span>
-                                </MudRadio>
-                            </div>
-                            <div class="onboarding__choice">
-                                <MudRadio T="OnboardingOrgType" Value="OnboardingOrgType.MainContractor" Color="Color.Primary">
-                                    <span class="onboarding__choice-title">Main contractor</span>
-                                    <span class="onboarding__choice-desc">Workforce management: the sites you run, digital inductions and site entry.</span>
-                                </MudRadio>
-                            </div>
-                        </MudRadioGroup>
-                    </div>
-                </MudStep>
+    <header class="onboarding__masthead">
+        <div class="onboarding__brand">
+            <img class="onboarding__logo" src="images/logo-icon.svg" alt="" />
+            <span class="onboarding__brand-name">Tedwren</span>
+        </div>
+        <h1 class="onboarding__title">Set up your organisation</h1>
+        <p class="onboarding__subtitle">A few quick steps to get your account ready to use.</p>
+    </header>
 
-                @* 2. Company details *@
-                <MudStep Title="Company" Icon="@Icons.Material.Outlined.Apartment">
-                    <div class="onboarding__step">
-                        <FormSection Title="Company details" Description="@($"Basic identifying information for this {_model.TypeLabel.ToLower()}.")">
-                            <TedwrenTextField Label="Company name" @bind-Value="_model.CompanyName" Required="true"
-                                              Placeholder="e.g. Meridian Construction Ltd"
-                                              Error="_submitted && string.IsNullOrWhiteSpace(_model.CompanyName)"
-                                              ErrorText="Company name is required." />
-                            <TedwrenTextField Label="Company type" Value="_model.TypeLabel" ReadOnly="true"
-                                              HelperText="Set from your choice on the previous step." />
-                            <TedwrenSelect T="string" Label="Primary trade" @bind-Value="_model.Trade"
-                                           Options="_trades" Placeholder="Select a trade" />
-                            <TedwrenTextField Label="Registration number" @bind-Value="_model.RegistrationNumber"
-                                              Placeholder="e.g. 09876543"
-                                              HelperText="Companies House number, if applicable." />
-                        </FormSection>
-                        <FormSection Title="Primary contact" Description="Who we contact about this company.">
-                            <TedwrenTextField Label="Contact name" @bind-Value="_model.ContactName" Placeholder="Full name" />
-                            <TedwrenTextField Label="Contact email" @bind-Value="_model.ContactEmail"
-                                              InputType="InputType.Email" Placeholder="name@company.com" />
-                            <TedwrenTextField Label="Contact phone" @bind-Value="_model.ContactPhone"
-                                              InputType="InputType.Telephone" Placeholder="+44 …" />
-                        </FormSection>
+    <TedwrenStepper @bind-ActiveIndex="_activeStep" OnPreviewInteraction="OnStepPreview">
+        @* 1. Org type *@
+        <MudStep Title="Type" Icon="@Icons.Material.Outlined.Business">
+            <div class="onboarding__step">
+                <div class="onboarding__step-head">
+                    <h2 class="onboarding__step-title">What kind of organisation is this?</h2>
+                    <p class="onboarding__step-hint">This tailors the rest of the setup to how you work.</p>
+                </div>
+                <MudRadioGroup T="OnboardingOrgType" Value="_model.OrgType" ValueChanged="OnOrgTypeChanged" Class="onboarding__choices">
+                    <div class="onboarding__choice @(_model.OrgType == OnboardingOrgType.Subcontractor ? "onboarding__choice--selected" : null)">
+                        <MudRadio T="OnboardingOrgType" Value="OnboardingOrgType.Subcontractor" Color="Color.Primary">
+                            <span class="onboarding__choice-title">Subcontractor</span>
+                            <span class="onboarding__choice-desc">Time &amp; attendance, operatives, insurances and the sites your people attend.</span>
+                        </MudRadio>
                     </div>
-                </MudStep>
-
-                @* 3. First admin *@
-                <MudStep Title="Administrator" Icon="@Icons.Material.Outlined.AdminPanelSettings">
-                    <div class="onboarding__step">
-                        <FormSection Title="First administrator" Description="The first account, with full access. You can invite more users later.">
-                            <TedwrenTextField Label="Full name" @bind-Value="_model.AdminName" Required="true" Placeholder="Full name"
-                                              Error="_submitted && string.IsNullOrWhiteSpace(_model.AdminName)"
-                                              ErrorText="Administrator name is required." />
-                            <TedwrenTextField Label="Email address" @bind-Value="_model.AdminEmail" Required="true"
-                                              InputType="InputType.Email" Placeholder="name@company.com"
-                                              Error="_submitted && !IsValidEmail(_model.AdminEmail)"
-                                              ErrorText="Enter a valid email address." />
-                        </FormSection>
+                    <div class="onboarding__choice @(_model.OrgType == OnboardingOrgType.MainContractor ? "onboarding__choice--selected" : null)">
+                        <MudRadio T="OnboardingOrgType" Value="OnboardingOrgType.MainContractor" Color="Color.Primary">
+                            <span class="onboarding__choice-title">Main contractor</span>
+                            <span class="onboarding__choice-desc">Workforce management: the sites you run, digital inductions and site entry.</span>
+                        </MudRadio>
                     </div>
-                </MudStep>
+                </MudRadioGroup>
+            </div>
+        </MudStep>
 
-                @* 4. Sites *@
-                <MudStep Title="Sites" Icon="@Icons.Material.Outlined.Place">
-                    <div class="onboarding__step">
-                        <p class="onboarding__lead">
-                            @(_model.OrgType == OnboardingOrgType.MainContractor
-                                ? "Add the sites you run. A boundary is optional but enables geofenced attendance."
-                                : "Add the sites your people attend. These can belong to other companies.")
-                        </p>
-                        @foreach (var site in _model.Sites)
+        @* 2. Company details *@
+        <MudStep Title="Company" Icon="@Icons.Material.Outlined.Apartment">
+            <div class="onboarding__step">
+                <FormSection Title="Company details" Description="@($"Basic identifying information for this {_model.TypeLabel.ToLower()}.")">
+                    @* Read-only, derived from the type chosen on the previous step. Rendered as plain markup
+                       (not a one-way–bound input) so it always reflects the current selection. *@
+                    <div class="onboarding__readonly">
+                        <span class="onboarding__readonly-label">Company type</span>
+                        <span class="onboarding__readonly-value">@_model.TypeLabel</span>
+                        <span class="onboarding__readonly-hint">Set from your choice on the previous step.</span>
+                    </div>
+                    <TedwrenTextField Label="Company name" @bind-Value="_model.CompanyName" Required="true"
+                                      Placeholder="e.g. Meridian Construction Ltd"
+                                      Error="ShowErrors(StepCompany) && string.IsNullOrWhiteSpace(_model.CompanyName)"
+                                      ErrorText="Company name is required." />
+                    <TedwrenSelect T="string" Label="Primary trade" @bind-Value="_model.Trade"
+                                   Options="_trades" Placeholder="Select a trade" />
+                    <TedwrenTextField Label="Registration number" @bind-Value="_model.RegistrationNumber"
+                                      Placeholder="e.g. 09876543"
+                                      HelperText="Companies House number, if applicable." />
+                </FormSection>
+                <FormSection Title="Primary contact" Description="Who we contact about this company.">
+                    <TedwrenTextField Label="Contact name" @bind-Value="_model.ContactName" Placeholder="Full name" />
+                    <TedwrenTextField Label="Contact email" @bind-Value="_model.ContactEmail"
+                                      InputType="InputType.Email" Placeholder="name@company.com" />
+                    <TedwrenTextField Label="Contact phone" @bind-Value="_model.ContactPhone"
+                                      InputType="InputType.Telephone" Placeholder="+44 …" />
+                </FormSection>
+            </div>
+        </MudStep>
+
+        @* 3. First admin *@
+        <MudStep Title="Administrator" Icon="@Icons.Material.Outlined.AdminPanelSettings">
+            <div class="onboarding__step">
+                <FormSection Title="First administrator" Description="The first account, with full access. You can invite more users later.">
+                    <TedwrenTextField Label="Full name" @bind-Value="_model.AdminName" Required="true" Placeholder="Full name"
+                                      Error="ShowErrors(StepAdministrator) && string.IsNullOrWhiteSpace(_model.AdminName)"
+                                      ErrorText="Administrator name is required." />
+                    <TedwrenTextField Label="Email address" @bind-Value="_model.AdminEmail" Required="true"
+                                      InputType="InputType.Email" Placeholder="name@company.com"
+                                      Error="ShowErrors(StepAdministrator) && !IsValidEmail(_model.AdminEmail)"
+                                      ErrorText="Enter a valid email address." />
+                </FormSection>
+            </div>
+        </MudStep>
+
+        @* 4. Sites *@
+        <MudStep Title="Sites" Icon="@Icons.Material.Outlined.Place">
+            <div class="onboarding__step">
+                <div class="onboarding__step-head">
+                    <h2 class="onboarding__step-title">Sites</h2>
+                    <p class="onboarding__step-hint">
+                        @(_model.OrgType == OnboardingOrgType.MainContractor
+                            ? "Add the sites you run. A boundary is optional but enables geofenced attendance."
+                            : "Add the sites your people attend. These can belong to other companies.")
+                    </p>
+                </div>
+                @{ var siteIndex = 0; }
+                @foreach (var site in _model.Sites)
+                {
+                    var thisSite = site;
+                    siteIndex++;
+                    <div class="onboarding__item">
+                        <div class="onboarding__item-head">
+                            <span class="onboarding__item-title">Site @siteIndex</span>
+                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                       StartIcon="@Icons.Material.Outlined.Delete"
+                                       OnClick="@(() => _model.Sites.Remove(thisSite))">Remove</MudButton>
+                        </div>
+                        <div class="onboarding__grid onboarding__grid--2">
+                            <TedwrenTextField Label="Site name" @bind-Value="site.Name" Placeholder="e.g. Northgate Phase 2" />
+                            <TedwrenTextField Label="Client" @bind-Value="site.Client" Placeholder="Who the site is for" />
+                            <TedwrenTextField Label="Region" @bind-Value="site.Region" Placeholder="Area" />
+                            <TedwrenTextField Label="Address" @bind-Value="site.Address" Placeholder="Site address" />
+                        </div>
+                        @if (_model.OrgType == OnboardingOrgType.MainContractor)
                         {
-                            <div class="onboarding__row">
-                                <TedwrenTextField Label="Site name" @bind-Value="site.Name" Placeholder="e.g. Northgate Phase 2" />
-                                <TedwrenTextField Label="Client" @bind-Value="site.Client" Placeholder="Who the site is for" />
-                                <TedwrenTextField Label="Region" @bind-Value="site.Region" Placeholder="Area" />
-                                <TedwrenTextField Label="Address" @bind-Value="site.Address" Placeholder="Site address" />
-                                @if (_model.OrgType == OnboardingOrgType.MainContractor)
-                                {
-                                    <div class="onboarding__geofence">
-                                        <MudNumericField T="double?" Label="Latitude" @bind-Value="site.Latitude" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                        <MudNumericField T="double?" Label="Longitude" @bind-Value="site.Longitude" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                        <MudNumericField T="double?" Label="Radius (m)" @bind-Value="site.RadiusMetres" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                    </div>
-                                }
-                                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
-                                           OnClick="@(() => _model.Sites.Remove(site))">Remove</MudButton>
+                            <div class="onboarding__grid onboarding__grid--3">
+                                <MudNumericField T="double?" Label="Latitude" @bind-Value="site.Latitude" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudNumericField T="double?" Label="Longitude" @bind-Value="site.Longitude" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                <MudNumericField T="double?" Label="Radius (m)" @bind-Value="site.RadiusMetres" Variant="Variant.Outlined" Margin="Margin.Dense" />
                             </div>
                         }
+                    </div>
+                }
+                <div class="onboarding__add">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                               OnClick="@(() => _model.Sites.Add(new OnboardingSite()))">Add a site</MudButton>
+                </div>
+            </div>
+        </MudStep>
+
+        @* 5a. Operatives (subcontractor) *@
+        @if (_model.OrgType == OnboardingOrgType.Subcontractor)
+        {
+            <MudStep Title="Operatives" Icon="@Icons.Material.Outlined.Engineering">
+                <div class="onboarding__step">
+                    <div class="onboarding__step-head">
+                        <h2 class="onboarding__step-title">Operatives</h2>
+                        <p class="onboarding__step-hint">Add operatives by direct entry. You can also invite them to self-serve later.</p>
+                    </div>
+                    @{ var opIndex = 0; }
+                    @foreach (var op in _model.Operatives)
+                    {
+                        var thisOp = op;
+                        opIndex++;
+                        <div class="onboarding__item">
+                            <div class="onboarding__item-head">
+                                <span class="onboarding__item-title">Operative @opIndex</span>
+                                <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                           StartIcon="@Icons.Material.Outlined.Delete"
+                                           OnClick="@(() => _model.Operatives.Remove(thisOp))">Remove</MudButton>
+                            </div>
+                            <div class="onboarding__grid onboarding__grid--3">
+                                <TedwrenTextField Label="Full name" @bind-Value="op.Name" Placeholder="Operative name" />
+                                <TedwrenTextField Label="Mobile" @bind-Value="op.MobileNumber" InputType="InputType.Telephone" Placeholder="+44 …" />
+                                <TedwrenSelect T="string" Label="Trade" @bind-Value="op.Trade" Options="_trades" Placeholder="Select a trade" />
+                            </div>
+                        </div>
+                    }
+                    <div class="onboarding__add">
                         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
-                                   OnClick="@(() => _model.Sites.Add(new OnboardingSite()))">Add a site</MudButton>
+                                   OnClick="@(() => _model.Operatives.Add(new OnboardingOperative()))">Add an operative</MudButton>
                     </div>
-                </MudStep>
+                </div>
+            </MudStep>
 
-                @* 5a. Operatives (subcontractor) *@
-                @if (_model.OrgType == OnboardingOrgType.Subcontractor)
-                {
-                    <MudStep Title="Operatives" Icon="@Icons.Material.Outlined.Engineering">
-                        <div class="onboarding__step">
-                            <p class="onboarding__lead">Add operatives by direct entry. You can also invite them to self-serve later.</p>
-                            @foreach (var op in _model.Operatives)
-                            {
-                                <div class="onboarding__row">
-                                    <TedwrenTextField Label="Full name" @bind-Value="op.Name" Placeholder="Operative name" />
-                                    <TedwrenTextField Label="Mobile" @bind-Value="op.MobileNumber" InputType="InputType.Telephone" Placeholder="+44 …" />
-                                    <TedwrenSelect T="string" Label="Trade" @bind-Value="op.Trade" Options="_trades" Placeholder="Select a trade" />
-                                    <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
-                                               OnClick="@(() => _model.Operatives.Remove(op))">Remove</MudButton>
-                                </div>
-                            }
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
-                                       OnClick="@(() => _model.Operatives.Add(new OnboardingOperative()))">Add an operative</MudButton>
-                        </div>
-                    </MudStep>
-
-                    @* 6a. Insurances / accreditations (SUB-4) *@
-                    <MudStep Title="Insurances" Icon="@Icons.Material.Outlined.VerifiedUser">
-                        <div class="onboarding__step">
-                            <p class="onboarding__lead">Record the insurances and accreditations you hold. Each can carry an expiry date.</p>
-                            @foreach (var doc in _model.Documents)
-                            {
-                                <div class="onboarding__doc">
-                                    <MudCheckBox T="bool" Value="doc.Selected" ValueChanged="@(v => doc.Selected = v)"
-                                                 Color="Color.Primary" Label="@doc.Name" />
-                                    @if (doc.Selected)
-                                    {
-                                        <div class="onboarding__doc-detail">
-                                            <MudDatePicker Label="Expires on" @bind-Date="doc.ExpiresOn" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                                            <TedwrenTextField Label="Reference" @bind-Value="doc.Reference" Placeholder="Policy / certificate no." />
-                                        </div>
-                                    }
-                                </div>
-                            }
-                        </div>
-                    </MudStep>
-                }
-                else
-                {
-                    @* 5b. Induction template (main contractor) *@
-                    <MudStep Title="Induction" Icon="@Icons.Material.Outlined.Assignment">
-                        <div class="onboarding__step">
-                            <FormSection Title="Site induction" Description="We seed a default induction (steps + quiz) you can refine later.">
-                                <TedwrenTextField Label="Induction name" @bind-Value="_model.InductionName" Placeholder="e.g. General Site Induction" />
-                                <div class="onboarding__geofence">
-                                    <MudNumericField T="int" Label="Valid for (days)" @bind-Value="_model.InductionValidityDays"
-                                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
-                                    <MudNumericField T="int" Label="Pass mark (correct answers)" @bind-Value="_model.InductionPassMark"
-                                                     Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
-                                </div>
-                            </FormSection>
-                        </div>
-                    </MudStep>
-                }
-
-                @* Review *@
-                <MudStep Title="Review" Icon="@Icons.Material.Outlined.CheckCircle">
-                    <div class="onboarding__step">
-                        <p class="onboarding__lead">Review and finish</p>
-                        <dl class="onboarding__review">
-                            <div><dt>Type</dt><dd>@_model.TypeLabel</dd></div>
-                            <div><dt>Company</dt><dd>@(string.IsNullOrWhiteSpace(_model.CompanyName) ? "—" : _model.CompanyName)</dd></div>
-                            <div><dt>Administrator</dt><dd>@(string.IsNullOrWhiteSpace(_model.AdminName) ? "—" : $"{_model.AdminName} · {_model.AdminEmail}")</dd></div>
-                            <div><dt>Sites</dt><dd>@_model.Sites.Count(s => !string.IsNullOrWhiteSpace(s.Name))</dd></div>
-                            @if (_model.OrgType == OnboardingOrgType.Subcontractor)
-                            {
-                                <div><dt>Operatives</dt><dd>@_model.Operatives.Count(o => !string.IsNullOrWhiteSpace(o.Name))</dd></div>
-                                <div><dt>Insurances</dt><dd>@_model.Documents.Count(d => d.Selected)</dd></div>
-                            }
-                            else
-                            {
-                                <div><dt>Induction</dt><dd>@(_model.InductionName ?? "—")</dd></div>
-                            }
-                        </dl>
-                        <div class="onboarding__finish">
-                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
-                                       StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
-                                @(_busy ? "Setting up…" : "Finish setup")
-                            </MudButton>
-                        </div>
+            @* 6a. Insurances / accreditations (SUB-4) *@
+            <MudStep Title="Insurances" Icon="@Icons.Material.Outlined.VerifiedUser">
+                <div class="onboarding__step">
+                    <div class="onboarding__step-head">
+                        <h2 class="onboarding__step-title">Insurances &amp; accreditations</h2>
+                        <p class="onboarding__step-hint">Record what you hold. Tick an item to add its expiry date and reference.</p>
                     </div>
-                </MudStep>
-            </TedwrenStepper>
-        </Body>
-    </DashboardCard>
+                    <div class="onboarding__docs">
+                        @foreach (var doc in _model.Documents)
+                        {
+                            <div class="onboarding__doc @(doc.Selected ? "onboarding__doc--selected" : null)">
+                                <MudCheckBox T="bool" Value="doc.Selected" ValueChanged="@(v => doc.Selected = v)"
+                                             Color="Color.Primary" Label="@doc.Name" />
+                                @if (doc.Selected)
+                                {
+                                    <div class="onboarding__grid onboarding__grid--2 onboarding__doc-detail">
+                                        <MudDatePicker Label="Expires on" @bind-Date="doc.ExpiresOn" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                                        <TedwrenTextField Label="Reference" @bind-Value="doc.Reference" Placeholder="Policy / certificate no." />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </MudStep>
+        }
+        else
+        {
+            @* 5b. Induction template (main contractor) *@
+            <MudStep Title="Induction" Icon="@Icons.Material.Outlined.Assignment">
+                <div class="onboarding__step">
+                    <FormSection Title="Site induction" Description="We seed a default induction (steps + quiz) you can refine later.">
+                        <TedwrenTextField Label="Induction name" @bind-Value="_model.InductionName" Placeholder="e.g. General Site Induction" />
+                        <div class="onboarding__grid onboarding__grid--2">
+                            <MudNumericField T="int" Label="Valid for (days)" @bind-Value="_model.InductionValidityDays"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
+                            <MudNumericField T="int" Label="Pass mark (correct answers)" @bind-Value="_model.InductionPassMark"
+                                             Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
+                        </div>
+                    </FormSection>
+                </div>
+            </MudStep>
+        }
+
+        @* Review *@
+        <MudStep Title="Review" Icon="@Icons.Material.Outlined.CheckCircle">
+            <div class="onboarding__step">
+                <div class="onboarding__step-head">
+                    <h2 class="onboarding__step-title">Review &amp; finish</h2>
+                    <p class="onboarding__step-hint">Check the details below, then complete setup.</p>
+                </div>
+                <dl class="onboarding__review">
+                    <div><dt>Type</dt><dd>@_model.TypeLabel</dd></div>
+                    <div><dt>Company</dt><dd>@(string.IsNullOrWhiteSpace(_model.CompanyName) ? "—" : _model.CompanyName)</dd></div>
+                    <div><dt>Administrator</dt><dd>@(string.IsNullOrWhiteSpace(_model.AdminName) ? "—" : $"{_model.AdminName} · {_model.AdminEmail}")</dd></div>
+                    <div><dt>Sites</dt><dd>@_model.Sites.Count(s => !string.IsNullOrWhiteSpace(s.Name))</dd></div>
+                    @if (_model.OrgType == OnboardingOrgType.Subcontractor)
+                    {
+                        <div><dt>Operatives</dt><dd>@_model.Operatives.Count(o => !string.IsNullOrWhiteSpace(o.Name))</dd></div>
+                        <div><dt>Insurances</dt><dd>@_model.Documents.Count(d => d.Selected)</dd></div>
+                    }
+                    else
+                    {
+                        <div><dt>Induction</dt><dd>@(string.IsNullOrWhiteSpace(_model.InductionName) ? "—" : _model.InductionName)</dd></div>
+                    }
+                </dl>
+                <div class="onboarding__finish">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Disabled="_busy"
+                               StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
+                        @(_busy ? "Setting up…" : "Finish setup")
+                    </MudButton>
+                </div>
+            </div>
+        </MudStep>
+    </TedwrenStepper>
 </div>
 
 @code {
+    // Step indices with per-step validation. Type(0), Company(1) and Administrator(2) are always the
+    // first three steps regardless of the org-type branch, so these indices are stable.
+    private const int StepCompany = 1;
+    private const int StepAdministrator = 2;
+
     private int _activeStep;
     private bool _submitted;
     private bool _busy;
+    // Steps the user has attempted to leave (by pressing Next); errors surface only once a step is here,
+    // so validation shows on the step in question rather than all steps at once.
+    private readonly HashSet<int> _validatedSteps = new();
     private readonly OnboardingModel _model = new();
     private IReadOnlyList<string> _trades = Array.Empty<string>();
 
@@ -230,7 +286,17 @@
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
-        _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        // The trades list is a convenience lookup; if it can't be loaded (e.g. reached via the dev
+        // "Create Account" shortcut before authentication), fall back to an empty list rather than
+        // failing the whole wizard.
+        try
+        {
+            _trades = await Reference.GetListAsync(ReferenceListKeys.Trades);
+        }
+        catch
+        {
+            _trades = Array.Empty<string>();
+        }
         _model.Sites.Add(new OnboardingSite());
         _model.Operatives.Add(new OnboardingOperative());
         foreach (var (name, type) in DefaultDocuments)
@@ -238,6 +304,41 @@
             _model.Documents.Add(new OnboardingDocument(name, type));
         }
     }
+
+    // Intercepts stepper navigation so a step is validated before the user can advance past it (SF-20).
+    // Backward moves are always allowed; a forward move off an invalid step is cancelled and its errors shown.
+    private Task OnStepPreview(StepperInteractionEventArgs args)
+    {
+        // Pressing Next completes the current step; activating a later step header also moves forward.
+        var movingForward = args.Action == StepAction.Complete
+            || (args.Action == StepAction.Activate && args.StepIndex > _activeStep);
+        if (!movingForward)
+        {
+            return Task.CompletedTask;
+        }
+
+        // Complete reports the step being left; a forward Activate reports the target, so the step
+        // actually being validated is the one currently active.
+        var stepToValidate = args.Action == StepAction.Complete ? args.StepIndex : _activeStep;
+        _validatedSteps.Add(stepToValidate);
+        if (!IsStepValid(stepToValidate))
+        {
+            args.Cancel = true;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // Per-step required-field checks. Steps without required input are always valid.
+    private bool IsStepValid(int stepIndex) => stepIndex switch
+    {
+        StepCompany => !string.IsNullOrWhiteSpace(_model.CompanyName),
+        StepAdministrator => !string.IsNullOrWhiteSpace(_model.AdminName) && IsValidEmail(_model.AdminEmail),
+        _ => true,
+    };
+
+    // Whether validation errors for a step should be visible: once the step has been attempted, or on final submit.
+    private bool ShowErrors(int stepIndex) => _submitted || _validatedSteps.Contains(stepIndex);
 
     private void OnOrgTypeChanged(OnboardingOrgType value)
     {

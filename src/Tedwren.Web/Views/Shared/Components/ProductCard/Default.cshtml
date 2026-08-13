@@ -1,0 +1,12 @@
+@model ProductProfile
+<a class="product-card" href="@Model.Slug">
+    <h3 class="product-card__title">@Model.DisplayName</h3>
+    <p class="product-card__tagline">@Model.Tagline</p>
+    <ul class="product-card__features">
+        @foreach (var feature in Model.Features.Take(3))
+        {
+            <li class="product-card__feature">@feature.Heading</li>
+        }
+    </ul>
+    <span class="product-card__more" aria-hidden="true">See how it works &rarr;</span>
+</a>

@@ -11,6 +11,217 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
+- ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
+  content JSON + Razor views and fails on three commercial/legal breaches: a hardcoded price symbol
+  outside the single `PricingPlan` source (`hardcoded-price` — `£` always, `$`/`€` only next to a digit
+  so `$"…"` interpolation isn't a false hit), absolute-compliance claims (`absolute-compliance` —
+  guarantee/ensure/100% compliant/fully compliant, §8.1, with a reviewed allowlist seam), and CSCS
+  rivalry/replacement/on-demand-verification or Digital-Skills-Passport positioning (`cscs-positioning`,
+  §8.2 — scanned in titles/meta too, while the understated CSCS add-on line is left untouched).
+- ✅ **SEO/crawler infrastructure (Web Plan §9/§10).** `SitemapBuilder` + `SeoController` generate
+  `/sitemap.xml` and `/robots.txt` from the live `SiteConfig` route list (never hand-maintained),
+  excluding and disallowing the capability URLs (`/partners/dashboard`, `/r/`); `_Layout` now emits a
+  `rel="canonical"` per page (query/UTM stripped). Worker Passport meta-title shortened so the rendered
+  `<title>` fits the ~60-char SERP budget (still CSCS-safe, keeps the "you own" benefit).
+- ✅ **§14 checklist enforced where automatable.** `docs/web-launch-qa-checklist.md` maps every Spec §14
+  item to its enforcing test or its manual/sign-off owner. New tests: `ContentLintTests` (gate + each
+  rule proven on a seeded breach + allowlist), `SeoInfrastructureTests` (sitemap/robots/canonical, one
+  `<h1>`/page, title<60/meta<155 across all indexable pages), `LaunchGuardrailTests` (pack chrome has a
+  UTM-tagged demo CTA and **no** sign-up wall, §4.1).
+- ✅ Tests: Web 84 → **164**. Whole solution builds (0 errors); Web + Web.Tests 0 warnings.
+- ❗ **Manual/sign-off, not codeable here (tracked in the checklist doc):** mobile Core Web Vitals
+  (Lighthouse) and the full axe + manual-mobile WCAG pass need a live browser; legal review of the legal
+  pages, the Companies House footer number/address, and the Plan §11 / Spec §13 open items remain
+  founder/legal sign-off before go-live.
+
+### Tedwren.Web — Phase W7 Partners programme (this change)
+- ✅ **Approval-gated applications — no self-serve activation (Web Plan §7.2).** `/partners` shows the
+  programme content + an application form; submitting only ever creates a **pending** record.
+  `PartnerService.Approve` is a separate human step that mints a `Partner` with a **unique referral
+  code** and activates the dashboard; nothing activates on submit.
+- ✅ **§7.3 exclusion enforced.** The form asks the relationship + "I control/influence site access"
+  questions; an applicant who controls site access **cannot be approved** (`Approve` throws), and the
+  page states the exclusion plainly. The programme is never a route to site access.
+- ✅ **Referral attribution + clawback modelled from the start (§7.2).** `ReferralService` attributes a
+  conversion to a partner's code (`/r/{code}` sets the `tedwren_ref` cookie so credit lands across
+  sessions — the demo POST captures it). Commission is **20%** of first-year revenue, **tied to the
+  specific referral**, with a **90-day clawback** that is reversible against that referral (and refused
+  once the window passes). Idempotent reversal.
+- ✅ **Simple partner dashboard — private, not public.** `/partners/dashboard/{code}` renders a partner's
+  referrals + commission totals (pending/paid/clawed back); an unknown/inactive code 404s.
+- ✅ **Seams + persistence.** `IPartnerStore` (in-memory singleton at launch; DB-backed store slots in
+  later) under `Tedwren.Web.Partners`; `PartnerProgrammeContent` (+ `partners.json`) added to the content
+  layer for all page copy; `AddPartnerProgramme` DI registration; `TimeProvider` for testable clawback timing.
+- ✅ Tests: Web 73 → **84** (unit: pending-only submit, approve activates, §7.3 refusal, referral capture,
+  20%/clawback/deadline, dashboard totals; integration: page states exclusion + form, application →
+  pending record with no activation, dashboard 404 on unknown code, referral link attributes a later demo
+  conversion end-to-end). Whole solution builds; Web project 0 warnings.
+- ⏳ **Deferred / open:** the dashboard is reached by a capability URL (the referral code); real partner
+  auth is a follow-up. Whether the programme goes public at launch vs. an unlinked application page, and
+  the vetting owner, remain sign-off items (Plan §11.7–8).
+
+### Tedwren.Web — Phase W6 Lead capture & consent (this change)
+- ✅ **Demo + Contact forms (Web Plan §6.9, §7).** `/demo` and `/contact` are server-validated
+  (DataAnnotations) with **antiforgery**, a **honeypot**, a **minimum fill-time** check (`AntiBot`) and
+  **rate limiting** (fixed-window policy on the POST endpoints). Genuine submissions route via the
+  `ILeadRouter` seam (`LoggingLeadRouter` at launch — no CRM/email wired yet, plugs in behind the
+  interface); post/redirect/get to a thank-you page. Demo thank-you shows the real **booking link** from
+  config (not "we'll be in touch"). Bots (honeypot/too-fast) get the same response but route nothing.
+- ✅ **Contact routing by reason.** `ContactRouting.ResolveInbox` maps General/Press/Partner/Support →
+  the configured inbox (falls back to sales, then a visible "unrouted"). Reason→inbox asserted by a test.
+- ✅ **UTM attribution (§4.1, §11).** `/demo` captures `utm_*` from the query into hidden fields → the
+  routed lead carries the source, so pack-driven bookings are attributable. `PackChrome` view component
+  supplies the compliance-pack viewer's light header/footer with a `utm_source=pack` "Book a demo" link.
+- ✅ **Consent before scripts (§5.5, §8).** `ConsentBanner` (form-based, works with JS off) offers a
+  **one-click "Reject non-essential"** with equal weight to Accept; `ConsentController` (`/consent`) stores
+  the choice in the `tedwren_consent` cookie. **No analytics tag is emitted before consent** — GA4 is
+  gated by `AnalyticsState` on *both* analytics consent and a configured measurement id (empty by
+  default, so nothing loads in this environment). Demo-submit fires a consent-gated `generate_lead`
+  conversion event.
+- ✅ **Error route hardening.** `/error` is now verb-agnostic so a failed POST (e.g. antiforgery) keeps
+  its 400 through status-code re-execution instead of 405-ing.
+- ✅ Tests: Web 57 → **73** (valid/invalid/honeypot/too-fast/antiforgery form flows, reason routing, UTM
+  capture, consent banner + one-click reject, no-script-pre-consent, GA gating; plus `AntiBot`,
+  `ContactRouting`, `ConsentState`, `Utm` unit tests). Whole solution builds; Web project 0 warnings.
+- ⏳ **Deferred within W6:** additional conversion events (pricing→demo click, Worker Passport checkout
+  start/complete) — the consent-gated dataLayer/GA mechanism is in place; wiring those specific events is
+  incremental (WP checkout is product-owned). Real CRM/email + calendar provider behind the seams.
+
+### Tedwren.Web — Phase W5 Trust, About, FAQ, Legal (this change)
+- ✅ **Security & Trust (`/security`, §6.6).** Own stable URL; only makeable claims (data ownership,
+  access control, encryption in transit, audit trail, DPA on request). No fabricated ISO/Cyber Essentials
+  badges and no absolute-compliance language — asserted by a test scanning for prohibited phrasing.
+- ✅ **About (`/about`, §6.7).** Founder-led credibility from content.
+- ✅ **FAQ (`/faq`, §6.8).** `FaqAccordion` (native `<details>`, JS-free) over content FAQs, plus valid
+  **FAQPage JSON-LD** (parsed + type-checked in a test).
+- ✅ **Legal ×4 (§4).** Privacy, Cookies, Terms, Data Protection served as **real content** (not
+  placeholders) via `LegalController` → `IContentProvider.FindLegal(slug)`; each shows a "Draft — pending
+  legal sign-off" label (Plan §11.4). Wording avoids the W8 compliance-lint tokens.
+- ✅ **Sitewide SEO.** Organization JSON-LD in the layout; `JsonLd` helper returns whole `<script>` blocks
+  emitted raw. Web encoder set to `UnicodeRanges.All` so £/em-dashes render as real characters.
+- ✅ Tests: +6 (security no-fabricated/absolute claims, about renders, FAQ questions + valid schema, four
+  legal pages serve real content, valid Organization schema). Whole solution builds; Web project 0 warnings.
+
+### Tedwren.Web — Phase W4 Worker Passport & Pricing (this change)
+- ✅ **Worker Passport (`/worker-passport`, §6.4).** Individual-buyer register/tone; the "never locked out
+  for non-payment" benefit (PRD Rule W2); price line from the single configured `PricingPlan` source;
+  consumer-contract facts (annual billing, UK 14-day cancellation, informed consent). **CSCS positioning
+  restriction** enforced in copy **and** title/meta — a test scans the `<head>` for prohibited CSCS
+  rivalry/replacement phrasing (§8.2).
+- ✅ **Pricing (`/pricing`, §6.5).** `PricingTable` renders every number from config; unpriced bands show
+  "Pricing on request" (not a fabricated number) pending the §11.2 sign-off; plain-language clarifiers
+  (active operative/site, 10% buffer) and trust notes ("sites are free to record", "a dispersed scheme =
+  one site"). SoftwareApplication JSON-LD emitted + validated.
+- ✅ **Single price source; £ in one place.** Prices are decimals in `PricingPlan`; `IContentProvider.FormatMoney`
+  applies the currency symbol (one map). Worker Passport £10 (PRD value) — **£10/£12 conflict still flagged
+  for sign-off (Plan §11.1)**; bands at 0 → "Pricing on request" (Plan §11.2). No `£` literal in views/content.
+- ✅ **Meta descriptions** added to the layout (`ViewData["MetaDescription"]`), set per page from content.
+- ✅ Content model extended (Abstractions): `WorkerPassportContent`, `PricingPageContent`, `SecurityContent`,
+  `AboutContent`, `LegalDocument`; provider exposes them + `FindLegal` + public `FormatMoney`.
+- ✅ Tests: +8 (WP benefit, WP price from config, CSCS meta restriction, pricing clarifiers + unpriced band,
+  valid SoftwareApplication schema, provider FindLegal + FormatMoney). Web tests 41 → 57.
+
+### Tedwren.Web — Phase W3 Core pages (this change)
+- ✅ **Home, Subcontractors, Main Contractors from content (Web Plan §6.1–6.3).** The three core pages
+  now render from the content layer, not stubs. Home: hero + audience split, problem section, the two
+  product cards (short-form), differentiators, five-step how-it-works, trust strip, closing CTA. Product
+  pages render long-form via `ProductDetail`.
+- ✅ **No forked product copy.** `ProductCard` (short) and `ProductDetail` (long) render the **same**
+  `ProductProfile` entry, so the home card and the dedicated page can't drift — asserted by a test.
+- ✅ **Required §6 content present.** Subcontractor page carries the "company documents" feature and an
+  understated CSCS line; Main Contractor page carries a **substantial, distinct** retrofit / dispersed-
+  site section ("Workforce management when there isn't a site gate") as an emphasised content section —
+  not a footnote. The strongest home differentiator ("Works beyond the site gate") gets a distinct
+  highlight treatment.
+- ✅ **New reusable components (Plan §5).** `ProductCard`, `ProductDetail`, `FeatureGrid`, `TrustStrip`,
+  `Differentiators`, `HowItWorks` view components — catalogued in `docs/web-component-catalogue.md`.
+- ✅ **Content model extended.** Added `HomeContent`, `Differentiator`, `HowItWorksStep`, `ContentSection`
+  (+ optional `Sections` on `ProductProfile`) in Abstractions; `home.json` added; provider exposes `Home`.
+- ✅ **Styles from tokens only.** New component CSS in `site.css` uses `tokens.css` variables for all
+  colour/spacing — no literals. (Razor note: a loop variable named `section` collides with the `@section`
+  directive; renamed to `part`.)
+- ✅ **Tests + build.** `Tedwren.Web.Tests` 36 → 41 (home sections render, differentiator highlight,
+  company-documents present, emphasised retrofit section, product copy single-sourced). Whole solution
+  builds (0 errors); Web project 0 warnings.
+
+### Tedwren.Web — Phase W2 Content layer (this change)
+- ✅ **`IContentProvider` seam + content types (Web Plan §3).** Added
+  `Tedwren.Abstractions.Services.IContentProvider` and the content model
+  (`Tedwren.Abstractions.Contracts.WebContent`: `SiteContent`, `ProductProfile`, `FeatureCard`,
+  `PricingPlan`, `TrustPoint`, `FaqItem`, `Testimonial`, `SocialAccount`). Types live in Abstractions so
+  the product-owned compliance-pack viewer (Plan §4.1) can reuse the same site/brand content.
+- ✅ **JSON-backed provider.** `Tedwren.Web.Content.JsonContentProvider` loads `Content/*.json`
+  (`site`, `products`, `pricing`, `trust`, `faqs`, `testimonials`) once at startup, registered as a
+  singleton via `AddJsonContent`. Fails fast on a missing file. A CMS can replace it behind the same
+  interface with no view changes. Content files copy to publish output; content root is the project dir
+  in dev/test.
+- ✅ **Naming/price key indirection (Plan §2, §8).** `ResolveToken` resolves dotted keys
+  (`Site:Brand`, `Products:{key}:Name|Slug|Tagline`, `Pricing:{key}:Annual|Monthly`) so names/prices are
+  referenced by key, never inline; unknown tokens throw. Prices are decimals in `PricingPlan` (the only
+  home for prices) formatted via a single currency-symbol map — no "£" literal in views/content.
+  Worker Passport price seeded at £10 (PRD value) with the £10/£12 conflict still flagged for sign-off
+  (Plan §11.1); band prices left at 0 pending the publish-vs-"from £x" decision (Plan §11.2).
+- ✅ **Chrome now consumes content.** `SiteHeader`/`SiteFooter`/`_Layout` read brand, legal entity and
+  social from `IContentProvider`; `SiteConfig` (appsettings) is trimmed to nav **structure** only
+  (which pages, in what order). Identity moved out of appsettings into `site.json`.
+- ✅ **Component catalogue.** Added `docs/web-component-catalogue.md` (content types + view components,
+  built and planned, plus conventions), per the W2 exit criteria.
+- ✅ **Tests + build.** `Tedwren.Web.Tests` now 36 (was 22): isolated provider unit tests (load, lookup,
+  token/price indirection, fail-fast on missing file) + DI/integration tests proving the shipped content
+  loads at the real content root and reaches the footer. Whole solution builds (0 errors); Web project 0
+  warnings.
+
+### Tedwren.Web — Phase W1 Skeleton (this change)
+- ✅ **New marketing-site project.** Added `src/Tedwren.Web` (ASP.NET Core MVC, `Microsoft.NET.Sdk.Web`,
+  `net10.0`) and `tests/Tedwren.Web.Tests`, both wired into `Tedwren.sln`. Server-rendered Razor, no auth
+  (public site) — deliberately no `FallbackPolicy` unlike the API. Per the Tedwren.Web Plan & Scope of Works
+  (`docs/Tedwren-Web-Plan-and-Scope-of-Works.md`) §10, phase W1.
+- ✅ **Routing for the full sitemap (Web Plan §4).** Attribute-routed controllers, one per content area:
+  Home (`/`), Products (`/subcontractors`, `/main-contractors`), WorkerPassport (`/worker-passport`), Pricing
+  (`/pricing`), Trust (`/security`), About (`/about`), Faq (`/faq`), Lead (`/demo`, `/contact`), Partners
+  (`/partners`), Legal (`/legal/{privacy|cookies|terms|data-protection}` — slug constrained). Unknown routes
+  re-execute a friendly 404 page (Return home / Book a demo).
+- ✅ **Config-driven chrome (Web Plan §3, §5).** `SiteHeader`/`SiteFooter`/`Cta` view components render brand,
+  legal entity (Tedwren Ltd + optional company no./office), nav and CTAs from the bound `Site` config section
+  (`SiteConfig`) — not hardcoded in views. The seam W2 swaps for `IContentProvider`. Header CTA is "Book a demo"
+  everywhere, swapping to "Get your Worker Passport" on the Worker Passport page only; footer social icons are
+  config-gated (none render at launch). Mobile: hamburger nav with the CTA kept outside the collapsed menu.
+- ✅ **Canonical CTAs as a mechanism (Web Plan §5.4).** `Cta` accepts a closed `CtaAction` enum (Book a demo /
+  Start a pilot / Get your Worker Passport) with fixed copy+href, so vague labels can't be introduced by a view.
+- ✅ **Shared design tokens, single source.** `tokens.css` stays owned by `Tedwren.Client`; a build target
+  copies it into `Tedwren.Web/wwwroot/css` (git-ignored) so the site serves it with no colour/spacing literal
+  duplicated. `site.css` layers layout using only tokens.
+- ✅ **Tests + build.** `Tedwren.Web.Tests` (22 tests) assert every route resolves, unknown routes 404 to the
+  error page, the config chrome renders, the CTA swap works, and both stylesheets (incl. client-sourced tokens)
+  are served. Whole solution builds (0 errors; pre-existing MUD0002 + one Api.Tests nullable warning unchanged).
+
+### Onboarding wizard per-step validation (this change)
+- ✅ **Validate on Next, per step.** The onboarding wizard previously only validated required fields on the
+  final "Finish setup". It now validates the step being left when the user presses Next: `TedwrenStepper`
+  forwards MudStepper's `OnPreviewInteraction` (`Func<StepperInteractionEventArgs, Task>`), and
+  `Onboarding.razor` cancels a forward move off an invalid step (company name required on the Company step;
+  administrator name + valid email on the Administrator step, SF-20). Errors surface only once a step has been
+  attempted (`_validatedSteps` gate via `ShowErrors`), so they appear on the step in question rather than all
+  at once; `Finish` remains a backstop.
+- ✅ Client builds clean (0 errors); pre-existing MUD0002 analyzer casing warnings unchanged.
+
+### Onboarding wizard polish + binding/auth guardrails (this change)
+- ✅ **Chrome-free layout.** `OnboardingLayout` app bar removed; the wizard now carries the Tedwren brand
+  mark top-left in its own masthead, on a plain sunken (`--color-bg`) centered shell.
+- ✅ **Wizard tidy-up.** Professional step scaffolding: heading/hint per step, selectable choice cards for the
+  org-type step (brand-pale selected state), sites/operatives as titled sub-cards ("Site 1"…) with a header
+  remove action, insurances as a checklist with a selected state, and a bordered review summary. All colour
+  from `tokens.css`.
+- ✅ **`_model.TypeLabel` bug fix.** The company-step "Company type" was a read-only `MudTextField` fed a
+  derived value one-way (`Value=` with no `ValueChanged`) — MudBlazor inputs cache their text, so it stuck on
+  the first-render default. Now rendered as plain markup so it always reflects the chosen type. Audited every
+  other `Value=` binding: all others correctly pair with `ValueChanged`.
+- ✅ **Guardrails in `CLAUDE.md`.** Added engineering standards for (a) Blazor bindings reflecting live state
+  (two-way or plain markup; never one-way `Value=` for mutable/derived values) and (b) the secure-by-default
+  API (`FallbackPolicy` requires auth; pre-auth flows must `.AllowAnonymous()`, sensitive ones must not).
+- ✅ Whole solution builds; `dotnet test` green (API 63, Application 117, others unchanged).
+
 ### Login redesign + forgot-password (D1, this change)
 - ✅ **401 crash fix (root cause).** `MainLayout` redirected unauthenticated users to `/login` but still
   rendered the routed `@Body`, so a console page (e.g. Dashboard) called the API tokenless, threw on the 401
@@ -728,6 +939,89 @@ Phase M1 delivers the shared foundations and the first page migrations:
   cover & muster). *Product saleable.*
 - ⏳ Phase 18 — Hardening + PostgreSQL launch gate.
 - ⏳ Phases 19+ — PRD commercial modules (CSCS, HSE, QA, Pay, Identity, Sharing, Integrations).
+- 📋 **Forms Library (Phases 19–25).** Customer-built, per-tenant form engine. Detailed plan of works
+  in [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Clones the `InductionTemplate`
+  pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**
+  - ✅ **Phase 19 — Domain & persistence.** `FormFieldKind` (full field spectrum), `FormTemplateStatus`,
+    `FormField`/`FormSectionDef`/`FormTemplate` (per-tenant, R15; versioned & append-only via `FamilyId`,
+    R4/R10/R16). `IFormTemplateRepository` + Dapper `FormTemplateRepository` (sections as `SectionsJson`),
+    `InMemoryFormStore` + in-memory repo. Schema: `FormTemplateRecord` + `DbContext` mapping, EF migration
+    `AddFormsLibrary`, and idempotent `018_forms_library.sql` for SQL Server + Postgres. Domain (4) +
+    skip-guarded repository tests.
+  - ✅ **Phase 20 — Template service & API.** `Contracts/Forms` DTOs, `IFormTemplateService` +
+    `FormTemplateService` (tenant-scoped like `SiteService`; create→Draft v1, publish freezes, edit-published
+    creates new draft v2, archive; latest-per-family listing). `FormEndpoints` (`/api/forms/templates`,
+    reads authed, writes `RequireWrite`, `/fill` serves Published only; no anonymous route). DI wired in
+    `Program.cs`. Application (8) + API (3) tests. `dotnet build`/`dotnet test` green.
+  - ✅ **Phase 21 — Builder UI & field wrappers.** New `Tedwren*` field wrappers (`TedwrenNumericField`,
+    `TedwrenDatePicker`, `TedwrenRadioGroup`, `TedwrenRagInput`, canvas `TedwrenSignaturePad` with JS interop),
+    catalogued. `FormBuilder` component + `FormEditModel`; `FormsLibrary.razor` (list/edit/publish/archive) and
+    `FormBuilderPage.razor` (new/edit) over a client `ApiFormTemplateService`; nav in `ShellChrome`. bUnit
+    render + interaction tests for the RAG input.
+  - ✅ **Phase 22 — Fill & submissions.** `FormSubmission`/`FormSubmissionFile` domain, repos (Dapper +
+    in-memory), `019_form_submissions.sql` (both engines) + EF migration; `IFormSubmissionService` +
+    `FormSubmissionService` (required-by-default validation, published-only, append-only R4/R10, review flow,
+    DB-stored files). Submission endpoints (`/api/forms/submissions`, writes/review `RequireWrite`, file
+    download). `DynamicFormRenderer` (renders per `FormFieldKind`, collects answers + base64 files),
+    `FormFill.razor` (org/site level, requirement 7), `FormSubmissions.razor` + `FormSubmissionDialog`
+    (view/approve/reject) over a client `ApiFormSubmissionService`. Application (6) + API (2) + skip-guarded
+    DataAccess tests. Whole solution builds warning-clean; all suites green.
+  - ✅ **Phase 23 — PDF & email.** Added **QuestPDF** (Community licence) with an embedded Tedwren logo;
+    `FormPdfRenderer` builds a branded A4 PDF — logo top-left, form/submitter/UTC-stored-UK-displayed header
+    (R11), answers per section with embedded photos and signature images, status badge, page footer. Verified
+    it renders valid PDF headless. `IEmailSender` gained an attachment overload (`SendHtmlWithAttachmentsAsync`,
+    Outbox + Resend base64 attachments); `FormSubmissionEmail` template. Service `GeneratePdfAsync` +
+    `EmailAsync` (site name resolved for the PDF); endpoints `GET /submissions/{id}/pdf` and
+    `POST /submissions/{id}/email` (`RequireWrite`). Client download-PDF + email actions in the submission
+    dialog. Application (PDF render, service PDF + email-with-attachment) + API (pdf/email endpoint) tests.
+    Note: the framework-only `PdfWriter` is retained for the tabular compliance-pack exports; QuestPDF is used
+    only for branded form output.
+  - ✅ **Phase 24 — Assignment & induction integration.** `FormAssignment` domain (+ `FormSchedule`),
+    repos (Dapper + in-memory), `020_form_assignments.sql` (both engines) + EF migration.
+    `IFormAssignmentService` + `FormAssignmentService` (tenant-scoped assign to organisation/site/operator/
+    induction, snapshots form name, validates target; delete). Endpoints `/api/forms/assignments`
+    (GET/POST/DELETE, writes `RequireWrite`). **Failed-check alert**: a red RAG answer emails the assignment's
+    alert address with the branded PDF attached (PRD §8), wired into the submission flow. **Induction
+    integration (authoring)**: `InductionStepKind.Form` + optional `InductionStep.Reference` (form family id,
+    backward-compatible); the induction builder attaches published forms as steps. Assign dialog + assignments
+    table in the Forms Library; client `ApiFormAssignmentService`. Application (assignment CRUD + failure-alert)
+    + API (assignment round-trip) + skip-guarded DataAccess tests. Whole solution builds warning-clean; all
+    suites green.
+  - ✅ **Phase 25 — Hardening.** **Entitlement gate**: added the paid `forms` module to `ModuleCatalog`
+    (default off); **server-side, fail-closed** enforcement via a reusable `ModuleGate.Require("forms")` endpoint
+    filter on the whole `/api/forms` group (the first server-side entitlement enforcement in the app — client
+    nav is only cosmetic); client nav gating for `/forms` + `/form-submissions`; the demo/test company is seeded
+    with `forms` enabled so the mock and API tests exercise the module. **Default template library**:
+    `DefaultFormTemplates` ships three ready-made forms (Daily Site Diary, Plant & Equipment Checklist, Welfare
+    Check); `SeedStarterTemplatesAsync` creates+publishes them idempotently; endpoint
+    `POST /api/forms/templates/seed-starter` + an "Add starter forms" action in the library. **PostgreSQL
+    parity**: the `018`/`019`/`020` scripts exist for both engines with verified column parity (the full PG
+    parity run remains the pre-launch gate, deferred with the other PG work). Application (starter seed) + API
+    (module gate 200→403→200, starter seed) tests. Whole solution builds warning-clean; all suites green.
+    - ✅ **Recurring form reminder job (was deferred) — Daily/Weekly/Monthly cadences (R12).** `RecurringFormReminderJob`
+      (`Application/Forms`) scans every recurring assignment: for each cadence it computes the current period (day /
+      ISO week from Monday / calendar month) and, when no submission of that form family exists in the period, emails a
+      "form due" reminder to the assignment's alert address and the company administrator. Idempotent per period via a
+      new `FormAssignment.LastReminderUtc` marker (mirrors SF-9's notification log) — running the scan twice in a period
+      never reminds twice. Added `IFormAssignmentRepository.GetRecurringAsync` + `UpdateLastReminderAsync` (Dapper +
+      in-memory), migration `021_form_assignment_reminders.sql` (both engines) + EF migration `AddFormAssignmentReminder`
+      + `LastReminderUtc` schema record. Wired into `ExpirySchedulerHostedService` (runs each tick under `JobRunner`,
+      `JobNames.FormReminder`) with a manual `POST /api/jobs/form-reminders` trigger. Application (3) + API (1) +
+      skip-guarded DataAccess coverage; all suites green.
+    - ✅ **Induction-embedded form fill (was deferred) — anonymous take-flow (requirement 5, R5).** The worker's
+      `InductionTake` flow now renders a `Form`-kind step's published form and submits it. New anonymous, session-scoped
+      routes `GET/POST /api/inductions/sessions/{sessionId}/forms/{stepId}` — the anonymous surface only ever exposes
+      forms actually attached to the induction being taken, resolved through the session (never arbitrary forms), so the
+      secure-by-default/R5 boundary stays tight. `IInductionService.GetSessionFormAsync` + `SubmitSessionFormAsync`
+      (resolve the family's latest published version scoped to the session's company, R15; submit server-side with the
+      scope/person fixed by the session so the caller cannot retarget). `IFormSubmissionService.SubmitForContextAsync`
+      submits on behalf of the anonymous flow with company/person/submitter supplied explicitly (reuses the same
+      required-by-default validation, file capture and failure-alert pipeline). Client `ApiInductionService` +
+      `InductionTake.razor` reuse `DynamicFormRenderer`. Application (4) + API (3, incl. an anonymity assertion) tests;
+      all suites green.
+
+  The Forms Library (Phases 19–25) is now feature-complete against requirements 1–11 with both former follow-ups
+  delivered; the remaining Forms work is the pre-launch PostgreSQL parity run (shared with the wider PG launch gate).
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

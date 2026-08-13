@@ -40,6 +40,9 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<ICompliancePackRepository, CompliancePackRepository>();
         services.AddScoped<IInductionTemplateRepository, InductionTemplateRepository>();
         services.AddScoped<IInductionSessionRepository, InductionSessionRepository>();
+        services.AddScoped<IFormTemplateRepository, FormTemplateRepository>();
+        services.AddScoped<IFormSubmissionRepository, FormSubmissionRepository>();
+        services.AddScoped<IFormAssignmentRepository, FormAssignmentRepository>();
         services.AddScoped<Inductions.InductionTemplateSeeder>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();

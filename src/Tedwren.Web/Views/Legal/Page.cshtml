@@ -1,0 +1,14 @@
+@model LegalDocument
+<article class="legal">
+    <header class="legal__header">
+        <h1 class="legal__title">@Model.Title</h1>
+        <p class="legal__reviewed">@Model.LastReviewed</p>
+    </header>
+    @foreach (var part in Model.Sections)
+    {
+        <section class="legal__section">
+            <h2 class="legal__heading">@part.Heading</h2>
+            <p class="legal__body">@part.Body</p>
+        </section>
+    }
+</article>

@@ -34,21 +34,29 @@ public sealed class ResendEmailSender : IEmailSender
 
     /// <summary>Renders <paramref name="body"/> into the branded template and POSTs it to Resend for delivery.</summary>
     public Task SendAsync(string toEmail, string subject, string body, CancellationToken cancellationToken = default) =>
-        DeliverAsync(toEmail, subject, _renderer.RenderPlainText(subject, body), cancellationToken);
+        DeliverAsync(toEmail, subject, _renderer.RenderPlainText(subject, body), attachments: null, cancellationToken);
 
     /// <summary>Wraps the composed <paramref name="contentHtml"/> in the branded shell and POSTs it to Resend.</summary>
     public Task SendHtmlAsync(string toEmail, string subject, string contentHtml, CancellationToken cancellationToken = default) =>
-        DeliverAsync(toEmail, subject, _renderer.Render(subject, contentHtml), cancellationToken);
+        DeliverAsync(toEmail, subject, _renderer.Render(subject, contentHtml), attachments: null, cancellationToken);
 
-    /// <summary>POSTs a fully-rendered HTML email to Resend, throwing on a non-success response.</summary>
-    private async Task DeliverAsync(string toEmail, string subject, string html, CancellationToken cancellationToken)
+    /// <summary>Wraps the content in the branded shell and POSTs it to Resend with base64 file attachments.</summary>
+    public Task SendHtmlWithAttachmentsAsync(string toEmail, string subject, string contentHtml,
+        IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default) =>
+        DeliverAsync(toEmail, subject, _renderer.Render(subject, contentHtml),
+            attachments.Select(a => new ResendAttachment(a.FileName, Convert.ToBase64String(a.Content), a.ContentType)).ToArray(),
+            cancellationToken);
+
+    /// <summary>POSTs a fully-rendered HTML email (with optional attachments) to Resend, throwing on a non-success response.</summary>
+    private async Task DeliverAsync(string toEmail, string subject, string html, IReadOnlyList<ResendAttachment>? attachments, CancellationToken cancellationToken)
     {
         var request = new ResendEmailRequest(
             From: FormatFrom(),
             To: new[] { toEmail },
             Subject: subject,
             Html: html,
-            ReplyTo: string.IsNullOrWhiteSpace(_options.ReplyToEmail) ? null : _options.ReplyToEmail);
+            ReplyTo: string.IsNullOrWhiteSpace(_options.ReplyToEmail) ? null : _options.ReplyToEmail,
+            Attachments: attachments is { Count: > 0 } ? attachments : null);
 
         using var response = await _http.PostAsJsonAsync("emails", request, JsonOptions, cancellationToken);
         response.EnsureSuccessStatusCode();
@@ -66,5 +74,12 @@ public sealed class ResendEmailSender : IEmailSender
         [property: JsonPropertyName("to")] string[] To,
         [property: JsonPropertyName("subject")] string Subject,
         [property: JsonPropertyName("html")] string Html,
-        [property: JsonPropertyName("reply_to")] string? ReplyTo);
+        [property: JsonPropertyName("reply_to")] string? ReplyTo,
+        [property: JsonPropertyName("attachments")] IReadOnlyList<ResendAttachment>? Attachments);
+
+    /// <summary>A Resend attachment: base64 <c>content</c>, <c>filename</c> and <c>content_type</c>.</summary>
+    private sealed record ResendAttachment(
+        [property: JsonPropertyName("filename")] string FileName,
+        [property: JsonPropertyName("content")] string Content,
+        [property: JsonPropertyName("content_type")] string ContentType);
 }

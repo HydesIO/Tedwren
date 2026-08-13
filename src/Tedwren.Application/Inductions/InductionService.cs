@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Inductions;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
@@ -17,12 +18,24 @@ public sealed class InductionService : IInductionService
 {
     private readonly IInductionTemplateRepository _templates;
     private readonly IInductionSessionRepository _sessions;
+    private readonly IFormTemplateRepository? _formTemplates;
+    private readonly IFormSubmissionService? _formSubmissions;
 
-    /// <summary>Creates the service over its repositories.</summary>
-    public InductionService(IInductionTemplateRepository templates, IInductionSessionRepository sessions)
+    /// <summary>
+    /// Creates the service over its repositories. The form-template repository and submission service are optional
+    /// so unit tests that only exercise the induction flow can omit them; the composition root supplies them for the
+    /// induction-embedded form feature (requirement 5).
+    /// </summary>
+    public InductionService(
+        IInductionTemplateRepository templates,
+        IInductionSessionRepository sessions,
+        IFormTemplateRepository? formTemplates = null,
+        IFormSubmissionService? formSubmissions = null)
     {
         _templates = templates;
         _sessions = sessions;
+        _formTemplates = formTemplates;
+        _formSubmissions = formSubmissions;
     }
 
     /// <summary>Lists a company's induction templates (MC-3).</summary>
@@ -99,7 +112,7 @@ public sealed class InductionService : IInductionService
             MediaUrl = string.IsNullOrWhiteSpace(request.MediaUrl) ? null : request.MediaUrl.Trim(),
             SiteId = request.SiteId,
             Steps = request.Steps
-                .Select(s => new InductionStep(s.Id, Enum.TryParse<InductionStepKind>(s.Kind, out var k) ? k : InductionStepKind.Declaration, s.Label, s.Required))
+                .Select(s => new InductionStep(s.Id, Enum.TryParse<InductionStepKind>(s.Kind, out var k) ? k : InductionStepKind.Declaration, s.Label, s.Required, s.Reference))
                 .ToList(),
             Questions = request.Questions
                 .Select(q => new InductionQuizQuestion(
@@ -181,6 +194,92 @@ public sealed class InductionService : IInductionService
 
         return ToSessionDto(session, template);
     }
+
+    /// <summary>Returns the published form attached to a session's <c>Form</c> step, ready to fill (requirement 5, R5).</summary>
+    public async Task<FormTemplateDto?> GetSessionFormAsync(Guid sessionId, string stepId, CancellationToken cancellationToken = default)
+    {
+        var resolved = await ResolveSessionFormAsync(sessionId, stepId, cancellationToken);
+        return resolved is null ? null : ToFormDto(resolved.Value.Form);
+    }
+
+    /// <summary>Submits a session's <c>Form</c> step and marks it done (requirement 5, R5); records the submission against the session's company/operative.</summary>
+    public async Task<InductionSessionDto?> SubmitSessionFormAsync(Guid sessionId, string stepId, CreateFormSubmissionRequest request, CancellationToken cancellationToken = default)
+    {
+        var resolved = await ResolveSessionFormAsync(sessionId, stepId, cancellationToken);
+        if (resolved is null || _formSubmissions is null)
+        {
+            return null;
+        }
+
+        var (session, template, form) = resolved.Value;
+
+        // Build the submission server-side from the worker's answers/files only: the form, its scope and the person
+        // are fixed by the session, so the anonymous caller cannot target another form or company (R5/R15).
+        var submitRequest = new CreateFormSubmissionRequest(
+            form.Id, FormScope.Induction.ToString(), null, session.PersonId,
+            request.Answers ?? new List<FormAnswerDto>(),
+            request.Files ?? new List<FormSubmissionFileInput>());
+
+        await _formSubmissions.SubmitForContextAsync(session.CompanyId, session.PersonId, session.PersonName, submitRequest, cancellationToken);
+
+        if (!session.CompletedStepIds.Contains(stepId))
+        {
+            session.CompletedStepIds.Add(stepId);
+            await _sessions.UpdateAsync(session, cancellationToken);
+        }
+
+        return ToSessionDto(session, template);
+    }
+
+    /// <summary>
+    /// Resolves a session's <c>Form</c> step to its latest published form version, validating that the session and
+    /// step exist, the step is a form, and the reference is a form-family id owned by the session's company (R5/R15).
+    /// Null when any check fails or the form services are not wired.
+    /// </summary>
+    private async Task<(InductionSession Session, InductionTemplate Template, FormTemplate Form)?> ResolveSessionFormAsync(
+        Guid sessionId, string stepId, CancellationToken cancellationToken)
+    {
+        if (_formTemplates is null)
+        {
+            return null;
+        }
+
+        var session = await _sessions.GetAsync(sessionId, cancellationToken);
+        if (session is null)
+        {
+            return null;
+        }
+
+        var template = await _templates.GetByIdAsync(session.TemplateId, cancellationToken);
+        var step = template?.Steps.FirstOrDefault(s => s.Id == stepId);
+        if (template is null || step is null || step.Kind != InductionStepKind.Form || !Guid.TryParse(step.Reference, out var familyId))
+        {
+            return null;
+        }
+
+        // Latest published version of the family, scoped to the session's company (R15).
+        var versions = await _formTemplates.GetByFamilyAsync(session.CompanyId, familyId, cancellationToken);
+        var form = versions
+            .Where(v => v.Status == FormTemplateStatus.Published)
+            .OrderByDescending(v => v.Version)
+            .FirstOrDefault();
+
+        return form is null ? null : (session, template, form);
+    }
+
+    /// <summary>Maps a form template to the fill DTO (sections/fields in order). Mirrors the Forms Library template mapping.</summary>
+    private static FormTemplateDto ToFormDto(FormTemplate t) => new(
+        t.Id, t.FamilyId, t.Name, t.Description, t.Version, t.Status.ToString(),
+        t.Sections
+            .OrderBy(s => s.Order)
+            .Select(s => new FormSectionDto(
+                s.Id, s.Title,
+                s.Fields.OrderBy(f => f.Order)
+                    .Select(f => new FormFieldDto(f.Id, f.Kind.ToString(), f.Label, f.HelpText, f.Required, f.ValidationJson, f.OptionsJson, f.Order))
+                    .ToList(),
+                s.Order))
+            .ToList(),
+        t.CreatedUtc, t.UpdatedUtc);
 
     /// <summary>Scores a quiz submission on the server and records the attempt (R5, MC-6).</summary>
     public async Task<QuizResultDto?> SubmitQuizAsync(Guid sessionId, SubmitQuizRequest request, CancellationToken cancellationToken = default)
@@ -286,5 +385,5 @@ public sealed class InductionService : IInductionService
         t.PassMark, s.CompletionReference, s.ExpiresUtc, s.AttemptCount);
 
     /// <summary>Maps a step to its DTO.</summary>
-    private static InductionStepDto ToStepDto(InductionStep s) => new(s.Id, s.Kind.ToString(), s.Label, s.Required);
+    private static InductionStepDto ToStepDto(InductionStep s) => new(s.Id, s.Kind.ToString(), s.Label, s.Required, s.Reference);
 }

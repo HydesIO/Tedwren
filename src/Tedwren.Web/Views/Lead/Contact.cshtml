@@ -1,0 +1,40 @@
+@using Tedwren.Web.Leads
+@model ContactRequest
+@{
+    ViewData["Title"] = "Contact";
+    ViewData["MetaDescription"] = "Get in touch with Tedwren — general, press, partner or support enquiries, routed to the right team.";
+}
+<section class="lead">
+    <h1 class="section-heading">Get in touch</h1>
+    <p class="lead__intro">Pick a reason so your message reaches the right team. For a product walkthrough, <a href="/demo">book a demo</a> instead.</p>
+
+    <form class="lead-form" method="post" asp-controller="Lead" asp-action="Contact">
+        <input type="hidden" asp-for="RenderedAtUnixMs" />
+        <div class="hp" aria-hidden="true">
+            <label>Website<input asp-for="Website" tabindex="-1" autocomplete="off" /></label>
+        </div>
+
+        <div class="lead-form__field">
+            <label asp-for="Name"></label>
+            <input asp-for="Name" autocomplete="name" />
+            <span asp-validation-for="Name" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" type="email" autocomplete="email" />
+            <span asp-validation-for="Email" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="Reason"></label>
+            <select asp-for="Reason" asp-items="Html.GetEnumSelectList<ContactReason>()"></select>
+            <span asp-validation-for="Reason" class="lead-form__error"></span>
+        </div>
+        <div class="lead-form__field">
+            <label asp-for="Message"></label>
+            <textarea asp-for="Message" rows="6"></textarea>
+            <span asp-validation-for="Message" class="lead-form__error"></span>
+        </div>
+
+        <button class="cta cta--primary" type="submit">Send message</button>
+    </form>
+</section>

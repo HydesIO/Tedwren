@@ -1,0 +1,28 @@
+@inject Tedwren.Abstractions.Services.IContentProvider Content
+@{
+    var security = Content.Security;
+    ViewData["Title"] = security.Heading;
+    ViewData["MetaDescription"] = security.MetaDescription;
+}
+
+<section class="security-intro">
+    <h1 class="section-heading">@security.Heading</h1>
+    <p class="security-intro__body">@security.Intro</p>
+</section>
+
+<section class="security-claims">
+    @foreach (var claim in security.Claims)
+    {
+        <div class="security-claim">
+            <h2 class="security-claim__heading">@claim.Heading</h2>
+            <p class="security-claim__body">@claim.Body</p>
+        </div>
+    }
+</section>
+
+<section class="closing">
+    <h2 class="closing__heading">Questions from your procurement or DPO team?</h2>
+    <div class="closing__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+    </div>
+</section>

@@ -17,4 +17,16 @@ public interface IEmailSender
     /// just paragraphs.
     /// </summary>
     Task SendHtmlAsync(string toEmail, string subject, string contentHtml, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Sends a branded HTML email with one or more file attachments (e.g. a completed form's PDF, requirement 6).
+    /// The default implementation ignores the attachments and falls back to <see cref="SendHtmlAsync"/>, so
+    /// existing senders keep working; providers that support attachments override this.
+    /// </summary>
+    Task SendHtmlWithAttachmentsAsync(string toEmail, string subject, string contentHtml,
+        IReadOnlyList<EmailAttachment> attachments, CancellationToken cancellationToken = default) =>
+        SendHtmlAsync(toEmail, subject, contentHtml, cancellationToken);
 }
+
+/// <summary>A file attached to an email — its name, MIME type and bytes.</summary>
+public sealed record EmailAttachment(string FileName, string ContentType, byte[] Content);

@@ -27,8 +27,11 @@
 
     <div class="auth-form__actions">
         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                   FullWidth="true" Size="Size.Large" Disabled="_busy">Console Login</MudButton>
+        @* Dev convenience: jump straight into the company onboarding wizard without an account. *@
+        <MudButton ButtonType="ButtonType.Button" Variant="Variant.Outlined" Color="Color.Primary"
                    FullWidth="true" Size="Size.Large" Disabled="_busy"
-                   StartIcon="@Icons.Material.Outlined.Login">Login</MudButton>
+                   StartIcon="@Icons.Material.Outlined.PersonAdd" OnClick="CreateAccount">Create Account</MudButton>
     </div>
 </EditForm>
 
@@ -41,6 +44,9 @@
     private string? _password;
     private string? _error;
     private bool _busy;
+
+    // Dev-only shortcut: skip authentication and open the company onboarding wizard directly.
+    private void CreateAccount() => Nav.NavigateTo("/onboarding");
 
     private async Task Submit()
     {

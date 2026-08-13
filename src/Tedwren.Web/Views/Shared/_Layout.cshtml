@@ -1,0 +1,57 @@
+@using Microsoft.Extensions.Options
+@using Tedwren.Abstractions.Services
+@using Tedwren.Web.Analytics
+@using Tedwren.Web.Seo
+@inject IContentProvider Content
+@inject IOptions<AnalyticsOptions> Analytics
+@{
+    var brand = Content.Site.BrandName;
+    var pageTitle = ViewData["Title"] as string;
+    var fullTitle = string.IsNullOrEmpty(pageTitle) ? brand : $"{pageTitle} — {brand}";
+    var metaDescription = ViewData["MetaDescription"] as string;
+    var baseUrl = $"{Context.Request.Scheme}://{Context.Request.Host}";
+    // Canonical URL (Web Plan §9): the origin plus the request path, without query/UTM noise, so a page
+    // reached via a tagged link still declares one canonical address to crawlers.
+    var canonicalUrl = baseUrl + Context.Request.Path;
+    // No analytics tag is emitted unless analytics is both consented to and configured (Web Plan §8).
+    var ga4Id = AnalyticsState.ActiveGa4Id(Context, Analytics.Value);
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@fullTitle</title>
+    @if (!string.IsNullOrEmpty(metaDescription))
+    {
+        <meta name="description" content="@metaDescription" />
+    }
+    <link rel="canonical" href="@canonicalUrl" />
+    @* tokens.css is the single source of colour/spacing, linked from Tedwren.Client; site.css layers layout on top. *@
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @* Organization schema sitewide (Web Plan §10). The helper returns the whole <script> block, emitted
+       raw so neither the tag nor the JSON-LD is routed through the encoder. *@
+    @Html.Raw(JsonLd.Organization(Content.Site, baseUrl))
+    @if (ga4Id is not null)
+    {
+        @* Emitted only after analytics consent (Web Plan §8) and only when a measurement id is configured. *@
+        <script async src="https://www.googletagmanager.com/gtag/js?id=@ga4Id"></script>
+        <script>
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '@ga4Id');
+        </script>
+    }
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    @await Component.InvokeAsync("SiteHeader")
+    <main id="main" class="site-main">
+        @RenderBody()
+    </main>
+    @await Component.InvokeAsync("SiteFooter")
+    @await Component.InvokeAsync("ConsentBanner")
+</body>
+</html>

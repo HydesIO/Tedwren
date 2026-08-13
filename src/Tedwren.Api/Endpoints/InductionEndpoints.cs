@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Inductions;
 using Tedwren.Abstractions.Services;
 
@@ -57,6 +58,26 @@ public static class InductionEndpoints
         group.MapPost("/sessions/{sessionId:guid}/steps/{stepId}/complete", async (Guid sessionId, string stepId, IInductionService service, CancellationToken cancellationToken) =>
                 await service.CompleteStepAsync(sessionId, stepId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
             .WithName("CompleteInductionStep").AllowAnonymous();
+
+        // The induction-embedded form (requirement 5, R5): served and submitted through the worker's own session, so
+        // the anonymous surface only ever exposes forms attached to the induction being taken — never arbitrary forms.
+        group.MapGet("/sessions/{sessionId:guid}/forms/{stepId}", async (Guid sessionId, string stepId, IInductionService service, CancellationToken cancellationToken) =>
+                await service.GetSessionFormAsync(sessionId, stepId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
+            .WithName("GetInductionSessionForm").AllowAnonymous();
+
+        group.MapPost("/sessions/{sessionId:guid}/forms/{stepId}", async (Guid sessionId, string stepId, CreateFormSubmissionRequest request, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.SubmitSessionFormAsync(sessionId, stepId, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    // Required-by-default validation failed (R2).
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("SubmitInductionSessionForm").AllowAnonymous();
 
         group.MapPost("/sessions/{sessionId:guid}/quiz", async (Guid sessionId, SubmitQuizRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 await service.SubmitQuizAsync(sessionId, request, cancellationToken) is { } result ? Results.Ok(result) : Results.NotFound())

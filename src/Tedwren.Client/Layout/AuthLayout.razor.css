@@ -63,6 +63,8 @@
     line-height: 1.2;
     font-weight: 700;
     letter-spacing: -0.02em;
+    /* Override the global dark heading colour so the headline reads on the dark brand panel. */
+    color: #ffffff;
 }
 
 .auth-brand__lede {
@@ -154,6 +156,9 @@
 
 .auth-shell__form-inner ::deep .auth-form__actions {
     margin-top: var(--spacing-8, 8px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
 }
 
 .auth-shell__form-inner ::deep .auth-form__links {

@@ -1,5 +1,6 @@
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Expiry;
+using Tedwren.Application.Forms;
 using Tedwren.Application.Jobs;
 
 namespace Tedwren.Api.Hosting;
@@ -81,6 +82,14 @@ public sealed class ExpirySchedulerHostedService : BackgroundService
                     return (result.CompaniesProcessed, result.EmailsSent);
                 }, cancellationToken);
             }
+
+            // R12: remind admins of recurring forms (Daily/Weekly/Monthly) not yet completed this period.
+            var reminders = provider.GetRequiredService<RecurringFormReminderJob>();
+            await runner.RunAsync(JobNames.FormReminder, async token =>
+            {
+                var result = await reminders.RunAsync(DateTimeOffset.UtcNow, token);
+                return (result.AssignmentsEvaluated, result.RemindersSent);
+            }, cancellationToken);
 
             // SF-19: flag anyone left signed in before today started.
             var overnight = provider.GetRequiredService<OvernightSignInJob>();
