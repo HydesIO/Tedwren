@@ -1,7 +1,12 @@
 @model SiteHeaderModel
 <header class="site-header">
     <div class="site-header__inner">
-        <a class="site-header__brand" href="/" aria-label="@Model.BrandName home">@Model.BrandName</a>
+        <a class="site-header__brand" href="/" aria-label="@Model.BrandName home">
+            @* Shared brand mark, copied from Tedwren.Client at build (single source). Decorative:
+               the wordmark beside it carries the name, so alt is empty to avoid a double announcement. *@
+            <img class="site-header__logo" src="~/images/logo-icon.svg" alt="" width="28" height="28" />
+            <span class="site-header__wordmark">@Model.BrandName</span>
+        </a>
 
         <input type="checkbox" id="nav-toggle" class="site-header__nav-toggle" hidden />
         <label for="nav-toggle" class="site-header__hamburger" aria-label="Toggle navigation">

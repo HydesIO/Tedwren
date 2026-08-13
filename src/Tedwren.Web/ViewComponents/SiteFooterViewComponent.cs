@@ -31,6 +31,7 @@ public sealed class SiteFooterViewComponent : ViewComponent
     {
         var identity = _content.Site;
         var model = new SiteFooterModel(
+            identity.BrandName,
             identity.LegalEntity,
             identity.CompanyNumber,
             identity.RegisteredOffice,
@@ -43,6 +44,7 @@ public sealed class SiteFooterViewComponent : ViewComponent
 }
 
 /// <summary>View model for the site footer.</summary>
+/// <param name="BrandName">Trading name shown beside the footer logo mark.</param>
 /// <param name="LegalEntity">Registered legal entity name.</param>
 /// <param name="CompanyNumber">Companies House number, if configured.</param>
 /// <param name="RegisteredOffice">Registered office address, if configured.</param>
@@ -51,6 +53,7 @@ public sealed class SiteFooterViewComponent : ViewComponent
 /// <param name="SocialLinks">Social accounts that exist at launch (may be empty).</param>
 /// <param name="Year">Current year for the copyright line.</param>
 public sealed record SiteFooterModel(
+    string BrandName,
     string LegalEntity,
     string? CompanyNumber,
     string? RegisteredOffice,
