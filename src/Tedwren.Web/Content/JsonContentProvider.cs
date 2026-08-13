@@ -52,6 +52,9 @@ public sealed class JsonContentProvider : IContentProvider
     public AboutContent About { get; }
 
     /// <inheritdoc />
+    public PartnerProgrammeContent Partners { get; }
+
+    /// <inheritdoc />
     public IReadOnlyList<LegalDocument> LegalDocuments { get; }
 
     /// <inheritdoc />
@@ -79,6 +82,7 @@ public sealed class JsonContentProvider : IContentProvider
         PricingPage = LoadObject<PricingPageContent>(contentDirectory, "pricing-page.json");
         Security = LoadObject<SecurityContent>(contentDirectory, "security.json");
         About = LoadObject<AboutContent>(contentDirectory, "about.json");
+        Partners = LoadObject<PartnerProgrammeContent>(contentDirectory, "partners.json");
         Products = LoadArray<ProductProfile>(contentDirectory, "products.json");
         PricingPlans = LoadArray<PricingPlan>(contentDirectory, "pricing.json");
         TrustPoints = LoadArray<TrustPoint>(contentDirectory, "trust.json");

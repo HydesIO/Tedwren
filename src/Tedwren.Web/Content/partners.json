@@ -1,0 +1,17 @@
+{
+  "Heading": "Partner with Tedwren",
+  "Intro": "If you already help subcontractors run a tighter operation, you can refer them to Tedwren and earn on the work you send our way. Every partner is reviewed and approved by us first — there's no instant sign-up.",
+  "ExclusionStatement": "This programme is for advisers and suppliers to subcontractors — not for anyone who controls or influences access to a site. If you manage a gate, run inductions, or decide who gets on site, you're not eligible, and we'll decline the application. The partner programme is never a route to site access.",
+  "HowItWorks": [
+    { "Heading": "Apply", "Body": "Tell us who you are, how you work with subcontractors, and your relationship to any site or contractor.", "Emphasis": false },
+    { "Heading": "We review", "Body": "A person reviews every application. Nothing activates until we've approved you — no referral links, no dashboard.", "Emphasis": false },
+    { "Heading": "Refer and earn", "Body": "Once approved, you get a unique referral code and a dashboard. Refer subcontractors and track what you've earned.", "Emphasis": false }
+  ],
+  "CommissionTerms": [
+    "20% of a referred subcontractor's first-year revenue.",
+    "Paid after the customer's funds have cleared.",
+    "Subject to a 90-day clawback if the customer cancels or reverses.",
+    "Referrals are attributed to your code even if the sign-up isn't in the same browsing session."
+  ],
+  "MetaDescription": "Refer subcontractors to Tedwren and earn 20% of first-year revenue. Approval-gated — reviewed by a person, and never a route to site access."
+}

@@ -28,6 +28,9 @@ public interface IContentProvider
     /// <summary>The About page content.</summary>
     AboutContent About { get; }
 
+    /// <summary>The partner-programme page content (how it works, terms, §7.3 exclusion).</summary>
+    PartnerProgrammeContent Partners { get; }
+
     /// <summary>All legal documents.</summary>
     IReadOnlyList<LegalDocument> LegalDocuments { get; }
 

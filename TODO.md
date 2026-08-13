@@ -11,6 +11,32 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W7 Partners programme (this change)
+- ✅ **Approval-gated applications — no self-serve activation (Web Plan §7.2).** `/partners` shows the
+  programme content + an application form; submitting only ever creates a **pending** record.
+  `PartnerService.Approve` is a separate human step that mints a `Partner` with a **unique referral
+  code** and activates the dashboard; nothing activates on submit.
+- ✅ **§7.3 exclusion enforced.** The form asks the relationship + "I control/influence site access"
+  questions; an applicant who controls site access **cannot be approved** (`Approve` throws), and the
+  page states the exclusion plainly. The programme is never a route to site access.
+- ✅ **Referral attribution + clawback modelled from the start (§7.2).** `ReferralService` attributes a
+  conversion to a partner's code (`/r/{code}` sets the `tedwren_ref` cookie so credit lands across
+  sessions — the demo POST captures it). Commission is **20%** of first-year revenue, **tied to the
+  specific referral**, with a **90-day clawback** that is reversible against that referral (and refused
+  once the window passes). Idempotent reversal.
+- ✅ **Simple partner dashboard — private, not public.** `/partners/dashboard/{code}` renders a partner's
+  referrals + commission totals (pending/paid/clawed back); an unknown/inactive code 404s.
+- ✅ **Seams + persistence.** `IPartnerStore` (in-memory singleton at launch; DB-backed store slots in
+  later) under `Tedwren.Web.Partners`; `PartnerProgrammeContent` (+ `partners.json`) added to the content
+  layer for all page copy; `AddPartnerProgramme` DI registration; `TimeProvider` for testable clawback timing.
+- ✅ Tests: Web 73 → **84** (unit: pending-only submit, approve activates, §7.3 refusal, referral capture,
+  20%/clawback/deadline, dashboard totals; integration: page states exclusion + form, application →
+  pending record with no activation, dashboard 404 on unknown code, referral link attributes a later demo
+  conversion end-to-end). Whole solution builds; Web project 0 warnings.
+- ⏳ **Deferred / open:** the dashboard is reached by a capability URL (the referral code); real partner
+  auth is a follow-up. Whether the programme goes public at launch vs. an unlinked application page, and
+  the vetting owner, remain sign-off items (Plan §11.7–8).
+
 ### Tedwren.Web — Phase W6 Lead capture & consent (this change)
 - ✅ **Demo + Contact forms (Web Plan §6.9, §7).** `/demo` and `/contact` are server-validated
   (DataAnnotations) with **antiforgery**, a **honeypot**, a **minimum fill-time** check (`AntiBot`) and

@@ -1,0 +1,59 @@
+@using Tedwren.Web.Partners
+@inject Tedwren.Abstractions.Services.IContentProvider Content
+@model PartnerDashboard
+@{
+    ViewData["Title"] = "Partner dashboard";
+    ViewData["MetaDescription"] = "Your Tedwren partner dashboard.";
+}
+<section class="dashboard-head">
+    <h1 class="section-heading">@Model.Partner.Company</h1>
+    <p class="dashboard-head__meta">Referral code <code class="dashboard-head__code">@Model.Partner.ReferralCode</code></p>
+</section>
+
+<section class="dashboard-stats">
+    <div class="dashboard-stat">
+        <span class="dashboard-stat__value">@Model.Referrals.Count</span>
+        <span class="dashboard-stat__label">Referrals</span>
+    </div>
+    <div class="dashboard-stat">
+        <span class="dashboard-stat__value">@Content.FormatMoney(Model.PendingTotal)</span>
+        <span class="dashboard-stat__label">Commission pending</span>
+    </div>
+    <div class="dashboard-stat">
+        <span class="dashboard-stat__value">@Content.FormatMoney(Model.PaidTotal)</span>
+        <span class="dashboard-stat__label">Commission paid</span>
+    </div>
+    <div class="dashboard-stat">
+        <span class="dashboard-stat__value">@Content.FormatMoney(Model.ReversedTotal)</span>
+        <span class="dashboard-stat__label">Clawed back</span>
+    </div>
+</section>
+
+<section class="dashboard-table-wrap">
+    <h2 class="section-heading">Commissions</h2>
+    @if (Model.Commissions.Count == 0)
+    {
+        <p class="dashboard-empty">No commissions yet. Share your referral link to get started.</p>
+    }
+    else
+    {
+        <div class="dashboard-scroll">
+            <table class="dashboard-table">
+                <thead>
+                    <tr><th>Raised</th><th>Amount</th><th>Status</th><th>Clawback until</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var commission in Model.Commissions)
+                    {
+                        <tr>
+                            <td>@commission.RaisedUtc.ToString("d MMM yyyy")</td>
+                            <td>@Content.FormatMoney(commission.Amount)</td>
+                            <td>@commission.Status</td>
+                            <td>@commission.ClawbackDeadlineUtc.ToString("d MMM yyyy")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</section>

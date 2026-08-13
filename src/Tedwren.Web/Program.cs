@@ -7,11 +7,12 @@ using Tedwren.Web.Configuration;
 using Tedwren.Web.Content;
 using Tedwren.Web.Controllers;
 using Tedwren.Web.Leads;
+using Tedwren.Web.Partners;
 
 // Composition root for Tedwren.Web — the public, server-rendered marketing site (Web Plan §2).
-// It is an ASP.NET Core MVC deployable, separate from the product API and Blazor client. Through W6 it
+// It is an ASP.NET Core MVC deployable, separate from the product API and Blazor client. Through W7 it
 // carries the shared chrome, the content layer, the core/product/legal pages, lead capture (with
-// anti-bot + routing), cookie consent and analytics gating. The partner programme arrives in W7.
+// anti-bot + routing), cookie consent + analytics gating, and the approval-gated partner programme.
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +37,10 @@ builder.Services.AddScoped<ILeadRouter, LoggingLeadRouter>();
 
 // Analytics (Web Plan §8): GA4 is off unless configured AND consented to. Empty id by default.
 builder.Services.Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName));
+
+// Partner programme (Web Plan §7): approval-gated applications, referral attribution and clawback,
+// backed by an in-memory store seam (a database-backed store replaces it behind IPartnerStore later).
+builder.Services.AddPartnerProgramme(builder.Configuration);
 
 // Rate limiting on the public form POST endpoints (Web Plan §7), alongside antiforgery + honeypot.
 builder.Services.AddRateLimiter(options =>

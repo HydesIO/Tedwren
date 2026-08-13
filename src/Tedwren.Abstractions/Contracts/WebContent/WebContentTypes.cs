@@ -196,6 +196,25 @@ public sealed record LegalDocument(
     string MetaDescription);
 
 /// <summary>
+/// The partner-programme page content (Plan §6.10, §7). Carries the how-it-works sections, the
+/// commission terms (20%, paid after funds clear, 90-day clawback) and — prominently — the §7.3
+/// exclusion statement that the programme is never a route to site access.
+/// </summary>
+/// <param name="Heading">Page H1.</param>
+/// <param name="Intro">Intro paragraph.</param>
+/// <param name="ExclusionStatement">The plain §7.3 statement that site-access controllers are excluded.</param>
+/// <param name="HowItWorks">How the programme works, as titled sections.</param>
+/// <param name="CommissionTerms">The commission terms as plain lines.</param>
+/// <param name="MetaDescription">Meta description.</param>
+public sealed record PartnerProgrammeContent(
+    string Heading,
+    string Intro,
+    string ExclusionStatement,
+    IReadOnlyList<ContentSection> HowItWorks,
+    IReadOnlyList<string> CommissionTerms,
+    string MetaDescription);
+
+/// <summary>
 /// A pricing plan (Plan §3, §6.5). Prices are decimals here — the only place they live — so every
 /// "from £x" on the site is formatted from this record, never typed inline (Plan §8).
 /// </summary>
