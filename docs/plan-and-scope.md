@@ -250,6 +250,11 @@ PRD-Phase 5 Verified identity (biometrics under R17 + DPIA) · PRD-Phase 6 Cross
 (consumes MC-20 consent) · PRD-Phase 7 Integrations & report library. *The asset register entity
 (PRD-Phase 2) is stubbed in the Phase 8 data model so it is an addition, not a rewrite.*
 
+The **Forms Library** (the customer-built checklist/inspection engine at the heart of PRD-Phase 2,
+reused by PRD-Phase 3) has its own detailed plan of works — **Phases 19–25** — in
+[`forms-library-plan.md`](forms-library-plan.md): per-tenant form builder, versioned templates,
+DB-stored submissions, branded PDF (QuestPDF) + email, and assignment to sites/operators/inductions.
+
 ---
 
 ## Cross-cutting engineering standards (apply every phase)

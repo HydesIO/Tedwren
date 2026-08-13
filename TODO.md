@@ -754,6 +754,14 @@ Phase M1 delivers the shared foundations and the first page migrations:
   cover & muster). *Product saleable.*
 - ⏳ Phase 18 — Hardening + PostgreSQL launch gate.
 - ⏳ Phases 19+ — PRD commercial modules (CSCS, HSE, QA, Pay, Identity, Sharing, Integrations).
+- 📋 **Forms Library (Phases 19–25, planned — not started).** Customer-built, per-tenant form builder
+  (full field spectrum, validators required-by-default), versioned templates stored in the DB,
+  DB-stored submissions, branded PDF via **QuestPDF** (logo top-left) + email, and assignment to
+  sites/operators/the induction wizard. Detailed plan of works in
+  [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Phased: 19 domain/persistence · 20
+  template service & API · 21 builder UI & field wrappers · 22 fill & submissions · 23 PDF & email ·
+  24 assignment/scheduling/induction · 25 hardening (entitlement gate, PG parity, default templates).
+  Clones the `InductionTemplate` pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because
