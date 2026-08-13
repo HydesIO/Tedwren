@@ -82,11 +82,15 @@ a:hover { text-decoration: underline; }
     gap: var(--spacing-16);
 }
 .site-header__brand {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-8);
     font-weight: 700;
     font-size: 1.25rem;
     color: var(--color-text-primary);
 }
 .site-header__brand:hover { text-decoration: none; }
+.site-header__logo { width: 28px; height: 28px; border-radius: var(--radius-control, 6px); }
 .site-header__nav {
     display: flex;
     gap: var(--spacing-20);
@@ -136,6 +140,9 @@ a:hover { text-decoration: underline; }
     color: var(--color-text-muted);
     margin: 0 0 var(--spacing-4);
 }
+.site-footer__brand { display: flex; align-items: center; gap: var(--spacing-8); margin-bottom: var(--spacing-4); }
+.site-footer__logo { width: 24px; height: 24px; border-radius: var(--radius-control, 6px); }
+.site-footer__wordmark { font-weight: 700; font-size: 1.1rem; color: var(--color-text-primary); }
 .site-footer__entity { font-weight: 600; color: var(--color-text-primary); margin: 0; }
 .site-footer__meta { font-size: 0.85rem; margin: 0; }
 .site-footer__link { color: var(--color-text-secondary); font-size: 0.9rem; }
