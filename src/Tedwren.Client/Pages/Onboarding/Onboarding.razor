@@ -26,7 +26,7 @@
         <p class="onboarding__subtitle">A few quick steps to get your account ready to use.</p>
     </header>
 
-    <TedwrenStepper @bind-ActiveIndex="_activeStep">
+    <TedwrenStepper @bind-ActiveIndex="_activeStep" OnPreviewInteraction="OnStepPreview">
         @* 1. Org type *@
         <MudStep Title="Type" Icon="@Icons.Material.Outlined.Business">
             <div class="onboarding__step">
@@ -64,7 +64,7 @@
                     </div>
                     <TedwrenTextField Label="Company name" @bind-Value="_model.CompanyName" Required="true"
                                       Placeholder="e.g. Meridian Construction Ltd"
-                                      Error="_submitted && string.IsNullOrWhiteSpace(_model.CompanyName)"
+                                      Error="ShowErrors(StepCompany) && string.IsNullOrWhiteSpace(_model.CompanyName)"
                                       ErrorText="Company name is required." />
                     <TedwrenSelect T="string" Label="Primary trade" @bind-Value="_model.Trade"
                                    Options="_trades" Placeholder="Select a trade" />
@@ -87,11 +87,11 @@
             <div class="onboarding__step">
                 <FormSection Title="First administrator" Description="The first account, with full access. You can invite more users later.">
                     <TedwrenTextField Label="Full name" @bind-Value="_model.AdminName" Required="true" Placeholder="Full name"
-                                      Error="_submitted && string.IsNullOrWhiteSpace(_model.AdminName)"
+                                      Error="ShowErrors(StepAdministrator) && string.IsNullOrWhiteSpace(_model.AdminName)"
                                       ErrorText="Administrator name is required." />
                     <TedwrenTextField Label="Email address" @bind-Value="_model.AdminEmail" Required="true"
                                       InputType="InputType.Email" Placeholder="name@company.com"
-                                      Error="_submitted && !IsValidEmail(_model.AdminEmail)"
+                                      Error="ShowErrors(StepAdministrator) && !IsValidEmail(_model.AdminEmail)"
                                       ErrorText="Enter a valid email address." />
                 </FormSection>
             </div>
@@ -256,9 +256,17 @@
 </div>
 
 @code {
+    // Step indices with per-step validation. Type(0), Company(1) and Administrator(2) are always the
+    // first three steps regardless of the org-type branch, so these indices are stable.
+    private const int StepCompany = 1;
+    private const int StepAdministrator = 2;
+
     private int _activeStep;
     private bool _submitted;
     private bool _busy;
+    // Steps the user has attempted to leave (by pressing Next); errors surface only once a step is here,
+    // so validation shows on the step in question rather than all steps at once.
+    private readonly HashSet<int> _validatedSteps = new();
     private readonly OnboardingModel _model = new();
     private IReadOnlyList<string> _trades = Array.Empty<string>();
 
@@ -296,6 +304,41 @@
             _model.Documents.Add(new OnboardingDocument(name, type));
         }
     }
+
+    // Intercepts stepper navigation so a step is validated before the user can advance past it (SF-20).
+    // Backward moves are always allowed; a forward move off an invalid step is cancelled and its errors shown.
+    private Task OnStepPreview(StepperInteractionEventArgs args)
+    {
+        // Pressing Next completes the current step; activating a later step header also moves forward.
+        var movingForward = args.Action == StepAction.Complete
+            || (args.Action == StepAction.Activate && args.StepIndex > _activeStep);
+        if (!movingForward)
+        {
+            return Task.CompletedTask;
+        }
+
+        // Complete reports the step being left; a forward Activate reports the target, so the step
+        // actually being validated is the one currently active.
+        var stepToValidate = args.Action == StepAction.Complete ? args.StepIndex : _activeStep;
+        _validatedSteps.Add(stepToValidate);
+        if (!IsStepValid(stepToValidate))
+        {
+            args.Cancel = true;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    // Per-step required-field checks. Steps without required input are always valid.
+    private bool IsStepValid(int stepIndex) => stepIndex switch
+    {
+        StepCompany => !string.IsNullOrWhiteSpace(_model.CompanyName),
+        StepAdministrator => !string.IsNullOrWhiteSpace(_model.AdminName) && IsValidEmail(_model.AdminEmail),
+        _ => true,
+    };
+
+    // Whether validation errors for a step should be visible: once the step has been attempted, or on final submit.
+    private bool ShowErrors(int stepIndex) => _submitted || _validatedSteps.Contains(stepIndex);
 
     private void OnOrgTypeChanged(OnboardingOrgType value)
     {
