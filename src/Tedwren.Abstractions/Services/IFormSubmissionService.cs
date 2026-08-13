@@ -27,6 +27,12 @@ public interface IFormSubmissionService
 
     /// <summary>Returns a captured file (name, type, bytes), or null when not found / not the caller's.</summary>
     Task<FormFileContent?> GetFileAsync(Guid fileId, CancellationToken cancellationToken = default);
+
+    /// <summary>Renders a submission to a branded PDF (requirement 4), or null when not found / not the caller's.</summary>
+    Task<FormFileContent?> GeneratePdfAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Emails a submission's PDF to a recipient (requirement 6). Returns false when the submission is not found / not the caller's.</summary>
+    Task<bool> EmailAsync(Guid id, string recipientEmail, CancellationToken cancellationToken = default);
 }
 
 /// <summary>A captured file's bytes and metadata, for download/streaming.</summary>

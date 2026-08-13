@@ -1,7 +1,9 @@
+using System.Text;
 using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Forms;
+using Tedwren.Application.Notifications;
 using Tedwren.Application.Persistence.InMemory;
 using Xunit;
 
@@ -141,6 +143,48 @@ public sealed class FormSubmissionServiceTests
         var rejected = await submissions.RejectAsync(id, new ReviewFormSubmissionRequest("Redo housekeeping"));
         Assert.Equal("Rejected", rejected!.Status);
         Assert.Equal("Redo housekeeping", rejected.ReviewNote);
+    }
+
+    [Fact] // Requirement 4 — a submission renders to a valid branded PDF.
+    public async Task GeneratePdf_ProducesValidPdf()
+    {
+        var (templates, submissions) = CreateServices(Company, out _);
+        var templateId = await PublishedTemplateAsync(templates);
+        var id = await submissions.SubmitAsync(new CreateFormSubmissionRequest(
+            templateId, "Organisation", null, null,
+            new List<FormAnswerDto> { new("f1", "Green", new List<string>()) },
+            new List<FormSubmissionFileInput>()));
+
+        var pdf = await submissions.GeneratePdfAsync(id);
+
+        Assert.NotNull(pdf);
+        Assert.Equal("application/pdf", pdf!.ContentType);
+        Assert.Equal("%PDF", Encoding.ASCII.GetString(pdf.Content, 0, 4));
+    }
+
+    [Fact] // Requirement 6 — a submission is emailed with its PDF attached.
+    public async Task Email_SendsWithPdfAttachment()
+    {
+        var store = new InMemoryFormStore(seed: false);
+        var templateRepo = new InMemoryFormTemplateRepository(store);
+        var submissionRepo = new InMemoryFormSubmissionRepository(store);
+        var user = new StubCurrentUser(Company);
+        var templates = new FormTemplateService(templateRepo, user);
+        var outbox = new NotificationOutbox();
+        var submissions = new FormSubmissionService(submissionRepo, templateRepo, user, new OutboxEmailSender(outbox));
+
+        var templateId = await PublishedTemplateAsync(templates);
+        var id = await submissions.SubmitAsync(new CreateFormSubmissionRequest(
+            templateId, "Organisation", null, null,
+            new List<FormAnswerDto> { new("f1", "Green", new List<string>()) },
+            new List<FormSubmissionFileInput>()));
+
+        var sent = await submissions.EmailAsync(id, "manager@example.com");
+
+        Assert.True(sent);
+        var message = Assert.Single(outbox.Messages);
+        Assert.Equal("manager@example.com", message.Recipient);
+        Assert.Contains(".pdf", message.Body);   // the outbox stub notes the attachment name
     }
 
     [Fact] // R15 — another company cannot see a submission.

@@ -67,6 +67,30 @@ public sealed class FormSubmissionApiTests : IClassFixture<WebApplicationFactory
     }
 
     [Fact]
+    public async Task Pdf_And_Email_Endpoints_Work()
+    {
+        var client = _factory.CreateClient();
+        var templateId = await PublishTemplateAsync(client);
+
+        var submit = await client.PostAsJsonAsync("/api/forms/submissions", new CreateFormSubmissionRequest(
+            templateId, "Organisation", null, null,
+            new List<FormAnswerDto> { new("f1", "true", new List<string>()), new("f2", "A. Inspector", new List<string>()) },
+            new List<FormSubmissionFileInput>()));
+        var id = (await submit.Content.ReadFromJsonAsync<Created>())!.Id;
+
+        // The PDF endpoint returns a PDF file.
+        var pdf = await client.GetAsync($"/api/forms/submissions/{id}/pdf");
+        Assert.Equal(HttpStatusCode.OK, pdf.StatusCode);
+        Assert.Equal("application/pdf", pdf.Content.Headers.ContentType?.MediaType);
+        var bytes = await pdf.Content.ReadAsByteArrayAsync();
+        Assert.Equal("%PDF", System.Text.Encoding.ASCII.GetString(bytes, 0, 4));
+
+        // The email endpoint accepts a recipient and returns 204.
+        var email = await client.PostAsJsonAsync($"/api/forms/submissions/{id}/email", new EmailFormSubmissionRequest("manager@example.com"));
+        Assert.Equal(HttpStatusCode.NoContent, email.StatusCode);
+    }
+
+    [Fact]
     public async Task Submit_MissingRequired_ReturnsBadRequest()
     {
         var client = _factory.CreateClient();

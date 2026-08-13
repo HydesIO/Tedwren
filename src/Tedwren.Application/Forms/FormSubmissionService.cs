@@ -1,5 +1,8 @@
 using Tedwren.Abstractions.Contracts.Forms;
+using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Export;
+using Tedwren.Application.Notifications.Email;
 using Tedwren.Application.Persistence;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
@@ -18,6 +21,8 @@ public sealed class FormSubmissionService : IFormSubmissionService
     private readonly IFormSubmissionRepository _submissions;
     private readonly IFormTemplateRepository _templates;
     private readonly ICurrentUserService? _currentUser;
+    private readonly IEmailSender? _email;
+    private readonly ISiteRepository? _sites;
 
     /// <summary>Field kinds that capture no value, so they are never required-validated.</summary>
     private static readonly HashSet<FormFieldKind> DisplayOnly = new() { FormFieldKind.Heading, FormFieldKind.Instruction };
@@ -25,15 +30,23 @@ public sealed class FormSubmissionService : IFormSubmissionService
     /// <summary>Field kinds whose answer is a captured file rather than an inline value.</summary>
     private static readonly HashSet<FormFieldKind> FileKinds = new() { FormFieldKind.Photo, FormFieldKind.FileUpload };
 
-    /// <summary>Creates the service over its repositories and the optional current-user (tenant + submitter).</summary>
+    /// <summary>
+    /// Creates the service over its repositories and the optional current-user (tenant + submitter). The email
+    /// sender and site repository are optional so unit tests that only exercise submission rules can omit them;
+    /// they are supplied by the composition root for the PDF/email features.
+    /// </summary>
     public FormSubmissionService(
         IFormSubmissionRepository submissions,
         IFormTemplateRepository templates,
-        ICurrentUserService? currentUser = null)
+        ICurrentUserService? currentUser = null,
+        IEmailSender? email = null,
+        ISiteRepository? sites = null)
     {
         _submissions = submissions;
         _templates = templates;
         _currentUser = currentUser;
+        _email = email;
+        _sites = sites;
     }
 
     /// <summary>Resolves the signed-in caller (tenant company + display name). Company null when unauthenticated / in unit tests.</summary>
@@ -178,6 +191,186 @@ public sealed class FormSubmissionService : IFormSubmissionService
         }
 
         return new FormFileContent(file.FileName, file.ContentType, file.Content);
+    }
+
+    /// <summary>Renders a submission to a branded PDF (requirement 4), scoped to the caller (R15).</summary>
+    public async Task<FormFileContent?> GeneratePdfAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var model = await BuildPdfModelAsync(id, cancellationToken);
+        if (model is null)
+        {
+            return null;
+        }
+
+        var bytes = FormPdfRenderer.Render(model);
+        var fileName = $"{Slugify(model.FormName)}-{model.SubmittedUtc:yyyyMMdd}.pdf";
+        return new FormFileContent(fileName, "application/pdf", bytes);
+    }
+
+    /// <summary>Emails a submission's PDF to a recipient (requirement 6). False when the submission is not the caller's / not found.</summary>
+    public async Task<bool> EmailAsync(Guid id, string recipientEmail, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            throw new ArgumentException("A recipient email address is required.", nameof(recipientEmail));
+        }
+
+        if (_email is null)
+        {
+            throw new InvalidOperationException("Email delivery is not configured.");
+        }
+
+        var pdf = await GeneratePdfAsync(id, cancellationToken);
+        var submission = await LoadOwnedAsync(id, cancellationToken);
+        if (pdf is null || submission is null)
+        {
+            return false;
+        }
+
+        var content = FormSubmissionEmail.BuildContent(
+            submission.FormName, submission.SubmittedBy, submission.SubmittedUtc, submission.Status.ToString(), submission.Scope.ToString());
+        await _email.SendHtmlWithAttachmentsAsync(
+            recipientEmail.Trim(),
+            FormSubmissionEmail.SubjectFor(submission.FormName),
+            content,
+            new[] { new EmailAttachment(pdf.FileName, pdf.ContentType, pdf.Content) },
+            cancellationToken);
+        return true;
+    }
+
+    /// <summary>Assembles the PDF model from the submission, its template version (for labels) and its files.</summary>
+    private async Task<FormPdfModel?> BuildPdfModelAsync(Guid id, CancellationToken cancellationToken)
+    {
+        var submission = await LoadOwnedAsync(id, cancellationToken);
+        if (submission is null)
+        {
+            return null;
+        }
+
+        var template = await _templates.GetByIdAsync(submission.FormTemplateId, cancellationToken);
+        var answers = submission.Answers.ToDictionary(a => a.FieldId, a => a, StringComparer.Ordinal);
+
+        // File bytes grouped by the field they answer (photos/attachments).
+        var fileMeta = await _submissions.GetFilesBySubmissionAsync(id, cancellationToken);
+        var filesByField = new Dictionary<string, List<FormSubmissionFile>>(StringComparer.Ordinal);
+        foreach (var meta in fileMeta)
+        {
+            var full = await _submissions.GetFileAsync(meta.Id, cancellationToken);
+            if (full is null) continue;
+            (filesByField.TryGetValue(meta.FieldId, out var list) ? list : filesByField[meta.FieldId] = new()).Add(full);
+        }
+
+        var sections = new List<FormPdfSection>();
+        if (template is not null)
+        {
+            foreach (var sec in template.Sections.OrderBy(s => s.Order))
+            {
+                var items = new List<FormPdfItem>();
+                foreach (var field in sec.Fields.OrderBy(f => f.Order))
+                {
+                    if (field.Kind is FormFieldKind.Heading or FormFieldKind.Instruction)
+                    {
+                        continue;
+                    }
+
+                    if (field.Kind is FormFieldKind.Photo or FormFieldKind.FileUpload)
+                    {
+                        if (filesByField.TryGetValue(field.Id, out var files))
+                        {
+                            foreach (var file in files)
+                            {
+                                items.Add(file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)
+                                    ? new FormPdfItem(field.Label, null, file.Content)
+                                    : new FormPdfItem(field.Label, file.FileName, null));
+                            }
+                        }
+                        else
+                        {
+                            items.Add(new FormPdfItem(field.Label, "—", null));
+                        }
+
+                        continue;
+                    }
+
+                    items.Add(new FormPdfItem(field.Label, RenderValue(field.Kind, answers.GetValueOrDefault(field.Id)), SignatureImage(field.Kind, answers.GetValueOrDefault(field.Id))));
+                }
+
+                sections.Add(new FormPdfSection(sec.Title, items));
+            }
+        }
+
+        var siteName = submission.SiteId is { } siteId && _sites is not null
+            ? (await _sites.GetByIdAsync(siteId, cancellationToken))?.Name
+            : null;
+
+        return new FormPdfModel(
+            submission.FormName, submission.FormTemplateVersion, submission.Scope.ToString(), siteName,
+            submission.SubmittedBy, submission.SubmittedUtc, submission.Status.ToString(), submission.ReviewNote, sections);
+    }
+
+    /// <summary>Formats an answer for display in the PDF (Yes/No for switches, joined multi-select, blank for a signature image).</summary>
+    private static string RenderValue(FormFieldKind kind, FormAnswer? answer)
+    {
+        if (answer is null)
+        {
+            return "—";
+        }
+
+        if (kind == FormFieldKind.Signature)
+        {
+            return answer.Value is { Length: > 0 } ? string.Empty : "—";
+        }
+
+        if (answer.Values.Count > 0)
+        {
+            return string.Join(", ", answer.Values);
+        }
+
+        if (string.IsNullOrWhiteSpace(answer.Value))
+        {
+            return "—";
+        }
+
+        if (kind == FormFieldKind.YesNo)
+        {
+            return string.Equals(answer.Value, "true", StringComparison.OrdinalIgnoreCase) ? "Yes" : "No";
+        }
+
+        return answer.Value;
+    }
+
+    /// <summary>Decodes a signature's data-URL answer to image bytes for embedding, or null.</summary>
+    private static byte[]? SignatureImage(FormFieldKind kind, FormAnswer? answer)
+    {
+        if (kind != FormFieldKind.Signature || answer?.Value is not { Length: > 0 } value || !value.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        try
+        {
+            var comma = value.IndexOf(',');
+            return comma >= 0 ? Convert.FromBase64String(value[(comma + 1)..]) : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>Makes a filesystem-friendly slug from the form name for the PDF file name.</summary>
+    private static string Slugify(string value)
+    {
+        var chars = value.Trim().ToLowerInvariant()
+            .Select(c => char.IsLetterOrDigit(c) ? c : '-')
+            .ToArray();
+        var slug = new string(chars).Trim('-');
+        while (slug.Contains("--", StringComparison.Ordinal))
+        {
+            slug = slug.Replace("--", "-", StringComparison.Ordinal);
+        }
+
+        return string.IsNullOrEmpty(slug) ? "form" : slug;
     }
 
     /// <summary>Applies a review status transition, recording the note (a rejection reason is mandatory).</summary>

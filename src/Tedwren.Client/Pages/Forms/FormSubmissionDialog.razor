@@ -56,6 +56,11 @@
     </DialogContent>
     <DialogActions>
         <MudButton OnClick="Cancel">Close</MudButton>
+        @if (_detail is not null)
+        {
+            <MudButton StartIcon="@Icons.Material.Outlined.PictureAsPdf" Disabled="_busy" OnClick="DownloadPdfAsync">Download PDF</MudButton>
+            <MudButton StartIcon="@Icons.Material.Outlined.Email" Disabled="_busy" OnClick="EmailAsync">Email</MudButton>
+        }
         @if (_detail is not null && _detail.Status is "Submitted")
         {
             <MudTextField @bind-Value="_reason" Placeholder="Reason (required to reject)" Variant="Variant.Outlined" Margin="Margin.Dense" Class="submission-detail__reason" />
@@ -138,6 +143,44 @@
         }
 
         await JS.InvokeVoidAsync("tedwren.download", content.FileName, Convert.ToBase64String(content.Content), content.ContentType);
+    }
+
+    private async Task DownloadPdfAsync()
+    {
+        _busy = true;
+        try
+        {
+            var pdf = await Submissions.GeneratePdfAsync(SubmissionId);
+            if (pdf is null)
+            {
+                Snackbar.Add("The PDF could not be generated.", Severity.Error);
+                return;
+            }
+
+            await JS.InvokeVoidAsync("tedwren.download", pdf.FileName, Convert.ToBase64String(pdf.Content), pdf.ContentType);
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task EmailAsync()
+    {
+        var recipient = await JS.InvokeAsync<string?>("prompt", "Email this form (PDF) to:", "");
+        if (string.IsNullOrWhiteSpace(recipient))
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var sent = await Submissions.EmailAsync(SubmissionId, recipient.Trim());
+            Snackbar.Add(sent ? $"Emailed to {recipient.Trim()}." : "The submission could not be found.", sent ? Severity.Success : Severity.Error);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally { _busy = false; }
     }
 
     private async Task ApproveAsync()

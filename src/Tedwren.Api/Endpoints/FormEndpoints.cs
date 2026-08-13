@@ -115,6 +115,29 @@ public static class FormEndpoints
                     : Results.NotFound())
             .WithName("GetFormSubmissionFile");
 
+        // PDF & email of a completed form (requirements 4 & 6).
+        group.MapGet("/submissions/{id:guid}/pdf", async (Guid id, IFormSubmissionService service, CancellationToken cancellationToken) =>
+                await service.GeneratePdfAsync(id, cancellationToken) is { } pdf
+                    ? Results.File(pdf.Content, pdf.ContentType, pdf.FileName)
+                    : Results.NotFound())
+            .WithName("GetFormSubmissionPdf");
+
+        group.MapPost("/submissions/{id:guid}/email", async (Guid id, EmailFormSubmissionRequest request, IFormSubmissionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.EmailAsync(id, request.RecipientEmail, cancellationToken)
+                        ? Results.NoContent()
+                        : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("EmailFormSubmission")
+            .RequireAuthorization("RequireWrite");
+
         return app;
     }
 }

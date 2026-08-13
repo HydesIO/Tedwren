@@ -781,8 +781,18 @@ Phase M1 delivers the shared foundations and the first page migrations:
     `FormFill.razor` (org/site level, requirement 7), `FormSubmissions.razor` + `FormSubmissionDialog`
     (view/approve/reject) over a client `ApiFormSubmissionService`. Application (6) + API (2) + skip-guarded
     DataAccess tests. Whole solution builds warning-clean; all suites green.
-  - ⏳ Phases 23–25 — PDF (QuestPDF) & email · assignment/scheduling/induction · hardening
-    (entitlement gate, PG parity, default templates).
+  - ✅ **Phase 23 — PDF & email.** Added **QuestPDF** (Community licence) with an embedded Tedwren logo;
+    `FormPdfRenderer` builds a branded A4 PDF — logo top-left, form/submitter/UTC-stored-UK-displayed header
+    (R11), answers per section with embedded photos and signature images, status badge, page footer. Verified
+    it renders valid PDF headless. `IEmailSender` gained an attachment overload (`SendHtmlWithAttachmentsAsync`,
+    Outbox + Resend base64 attachments); `FormSubmissionEmail` template. Service `GeneratePdfAsync` +
+    `EmailAsync` (site name resolved for the PDF); endpoints `GET /submissions/{id}/pdf` and
+    `POST /submissions/{id}/email` (`RequireWrite`). Client download-PDF + email actions in the submission
+    dialog. Application (PDF render, service PDF + email-with-attachment) + API (pdf/email endpoint) tests.
+    Note: the framework-only `PdfWriter` is retained for the tabular compliance-pack exports; QuestPDF is used
+    only for branded form output.
+  - ⏳ Phases 24–25 — assignment/scheduling/induction · hardening (entitlement gate, PG parity,
+    default templates).
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

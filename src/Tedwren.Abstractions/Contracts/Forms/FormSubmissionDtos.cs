@@ -47,3 +47,6 @@ public sealed record FormSubmissionDetailDto(
 
 /// <summary>Request to review a submission — an optional note (a rejection should carry a reason).</summary>
 public sealed record ReviewFormSubmissionRequest(string? Note);
+
+/// <summary>Request to email a submission's PDF to a recipient (requirement 6).</summary>
+public sealed record EmailFormSubmissionRequest(string RecipientEmail);

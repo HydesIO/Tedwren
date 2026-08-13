@@ -55,15 +55,38 @@ public sealed class ApiFormSubmissionService : IFormSubmissionService
         ReviewAsync($"api/forms/submissions/{id}/reject", request, cancellationToken);
 
     /// <summary>Downloads a captured file's bytes, or null.</summary>
-    public async Task<FormFileContent?> GetFileAsync(Guid fileId, CancellationToken cancellationToken = default)
+    public Task<FormFileContent?> GetFileAsync(Guid fileId, CancellationToken cancellationToken = default) =>
+        DownloadAsync($"api/forms/submissions/files/{fileId}", "file", cancellationToken);
+
+    /// <summary>Downloads a submission's rendered PDF, or null.</summary>
+    public Task<FormFileContent?> GeneratePdfAsync(Guid id, CancellationToken cancellationToken = default) =>
+        DownloadAsync($"api/forms/submissions/{id}/pdf", "form.pdf", cancellationToken);
+
+    /// <summary>Emails a submission's PDF to a recipient. False when the submission is not found.</summary>
+    public async Task<bool> EmailAsync(Guid id, string recipientEmail, CancellationToken cancellationToken = default)
     {
-        using var response = await _http.GetAsync($"api/forms/submissions/files/{fileId}", cancellationToken);
+        using var response = await _http.PostAsJsonAsync($"api/forms/submissions/{id}/email",
+            new EmailFormSubmissionRequest(recipientEmail), cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound) return false;
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<FormError>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? "The email could not be sent.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return true;
+    }
+
+    private async Task<FormFileContent?> DownloadAsync(string url, string fallbackName, CancellationToken cancellationToken)
+    {
+        using var response = await _http.GetAsync(url, cancellationToken);
         if (!response.IsSuccessStatusCode) return null;
         var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken);
         var contentType = response.Content.Headers.ContentType?.MediaType ?? "application/octet-stream";
         var fileName = response.Content.Headers.ContentDisposition?.FileNameStar
             ?? response.Content.Headers.ContentDisposition?.FileName?.Trim('"')
-            ?? "file";
+            ?? fallbackName;
         return new FormFileContent(fileName, contentType, bytes);
     }
 
