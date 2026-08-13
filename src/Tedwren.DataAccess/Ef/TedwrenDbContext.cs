@@ -44,6 +44,8 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<InductionTemplateRecord> InductionTemplates => Set<InductionTemplateRecord>();
     public DbSet<InductionSessionRecord> InductionSessions => Set<InductionSessionRecord>();
     public DbSet<FormTemplateRecord> FormTemplates => Set<FormTemplateRecord>();
+    public DbSet<FormSubmissionRecord> FormSubmissions => Set<FormSubmissionRecord>();
+    public DbSet<FormSubmissionFileRecord> FormSubmissionFiles => Set<FormSubmissionFileRecord>();
 
     /// <summary>Maps every schema record to its table, keys and indexes, mirroring the hand-written scripts.</summary>
     protected override void OnModelCreating(ModelBuilder model)
@@ -241,6 +243,24 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.Description).HasMaxLength(1024);
             e.HasIndex(x => x.CompanyId);
             e.HasIndex(x => new { x.CompanyId, x.FamilyId });
+        });
+
+        model.Entity<FormSubmissionRecord>(e =>
+        {
+            e.ToTable("FormSubmissions");
+            e.Property(x => x.FormName).HasMaxLength(256);
+            e.Property(x => x.SubmittedBy).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.SubmittedUtc });
+            e.HasIndex(x => x.FormTemplateId);
+        });
+
+        model.Entity<FormSubmissionFileRecord>(e =>
+        {
+            e.ToTable("FormSubmissionFiles");
+            e.Property(x => x.FieldId).HasMaxLength(64);
+            e.Property(x => x.FileName).HasMaxLength(512);
+            e.Property(x => x.ContentType).HasMaxLength(128);
+            e.HasIndex(x => x.SubmissionId);
         });
 
         // PostgreSQL: the Dapper repositories issue unquoted SQL, which PostgreSQL folds to lower case, so the

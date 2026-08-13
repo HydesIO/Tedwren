@@ -24,6 +24,8 @@ public static class ShellChrome
         new("Compliance Packs",    Icons.Material.Outlined.FolderShared,   "/compliance-packs"),
         new("Inductions",          Icons.Material.Outlined.PlayCircle,     "/inductions"),
         new("Induction Records",   Icons.Material.Outlined.FactCheck,      "/induction-records"),
+        new("Forms Library",       Icons.Material.Outlined.Dashboard,      "/forms"),
+        new("Form Submissions",    Icons.Material.Outlined.AssignmentTurnedIn, "/form-submissions"),
         new("Time & Attendance",   Icons.Material.Outlined.Schedule,       "/time-attendance"),
         new("Permits",             Icons.Material.Outlined.Assignment,     "/permits"),
         new("Reports & Analytics", Icons.Material.Outlined.BarChart,       "/reports"),

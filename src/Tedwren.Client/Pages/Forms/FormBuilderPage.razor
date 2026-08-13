@@ -1,0 +1,127 @@
+@page "/forms/new"
+@page "/forms/{TemplateId:guid}/edit"
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IFormTemplateService Forms
+@inject ITenantState Tenant
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_isNew ? "New form" : "Edit form") · Tedwren</PageTitle>
+
+<PageHeader Title="@(_isNew ? "New form" : "Edit form")"
+            Subtitle="Design the form — sections, fields, types and which are required (PRD-Phase 2)" />
+
+<div class="form-page">
+    @if (_loading)
+    {
+        <DashboardCard><Body><MudText>Loading…</MudText></Body></DashboardCard>
+    }
+    else
+    {
+        <FormSection Title="Form details" Description="A name and an optional description for your library.">
+            <TedwrenTextField Label="Form name" @bind-Value="_name" Placeholder="e.g. Daily site diary" Required="true" />
+            <TedwrenTextField Label="Description" @bind-Value="_description" Lines="2" Placeholder="What is this form for?" />
+        </FormSection>
+
+        <FormSection Title="Build the form" Description="Add sections and fields. Choose each field's type and whether it is required.">
+            <div class="form-page__full">
+                <FormBuilder Sections="_sections" />
+            </div>
+        </FormSection>
+
+        <FormActions>
+            <Secondary>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="@(() => Nav.NavigateTo("/forms"))">Cancel</MudButton>
+            </Secondary>
+            <Primary>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="_busy"
+                           StartIcon="@Icons.Material.Outlined.Save" OnClick="@(() => SaveAsync(publish: false))">Save draft</MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
+                           StartIcon="@Icons.Material.Outlined.Publish" OnClick="@(() => SaveAsync(publish: true))">Save &amp; publish</MudButton>
+            </Primary>
+        </FormActions>
+    }
+</div>
+
+@code {
+    /// <summary>The template version being edited; null for a new form.</summary>
+    [Parameter] public Guid? TemplateId { get; set; }
+
+    private bool _isNew => TemplateId is null;
+    private bool _loading = true;
+    private bool _busy;
+
+    private string _name = string.Empty;
+    private string? _description;
+    private List<FormEditModel.SectionEdit> _sections = FormEditModel.FromDto(null);
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await Tenant.InitializeAsync();
+        if (TemplateId is { } id)
+        {
+            var template = await Forms.GetTemplateAsync(id);
+            if (template is not null)
+            {
+                _name = template.Name;
+                _description = template.Description;
+                _sections = FormEditModel.FromDto(template.Sections);
+            }
+        }
+        else
+        {
+            _name = string.Empty;
+            _description = null;
+            _sections = FormEditModel.FromDto(null);
+        }
+
+        _loading = false;
+    }
+
+    private async Task SaveAsync(bool publish)
+    {
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("Give the form a name first.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var sections = FormEditModel.ToDto(_sections);
+            Guid id;
+            if (_isNew)
+            {
+                id = await Forms.CreateAsync(new CreateFormTemplateRequest(Tenant.CurrentCompanyId, _name, _description, sections));
+            }
+            else
+            {
+                var updated = await Forms.UpdateAsync(TemplateId!.Value, new UpdateFormTemplateRequest(_name, _description, sections));
+                id = updated?.Id ?? TemplateId!.Value;
+            }
+
+            if (publish)
+            {
+                await Forms.PublishAsync(id);
+                Snackbar.Add("Form published.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Draft saved.", Severity.Success);
+            }
+
+            Nav.NavigateTo("/forms");
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -1,0 +1,39 @@
+.submission-detail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16, 16px);
+    min-width: 320px;
+}
+
+.submission-detail__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-12, 12px);
+    color: var(--color-text-secondary, #667085);
+    font-size: 0.875rem;
+}
+
+.submission-detail__label {
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+    width: 40%;
+}
+
+.submission-detail__files {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4, 4px);
+}
+
+.submission-detail__signature {
+    max-width: 240px;
+    max-height: 96px;
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-control, 8px);
+}
+
+.submission-detail__reason {
+    min-width: 220px;
+}

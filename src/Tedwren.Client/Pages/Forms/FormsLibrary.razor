@@ -1,0 +1,114 @@
+@page "/forms"
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IFormTemplateService Forms
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Forms Library · Tedwren</PageTitle>
+
+<PageHeader Title="Forms Library" Subtitle="Build and manage your organisation's custom forms (PRD-Phase 2)">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   Href="/forms/new">New form</MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="FormTemplateSummaryDto"
+                   Items="_templates"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search forms…"
+                   EmptyTitle="No forms yet"
+                   EmptyDescription="Create your first custom form to start building your library."
+                   EmptyIcon="@Icons.Material.Outlined.Dashboard" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<FormTemplateSummaryDto> _templates = Array.Empty<FormTemplateSummaryDto>();
+    private List<DataColumn<FormTemplateSummaryDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _templates = await Forms.GetTemplatesAsync();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Form", Value = t => t.Name, Filterable = true },
+            new() { Title = "Description", Value = t => t.Description ?? "—", Searchable = false },
+            new() { Title = "Fields", Value = t => t.FieldCount, Searchable = false, AlignRight = true },
+            new() { Title = "Version", Value = t => t.Version, Searchable = false, AlignRight = true },
+            new()
+            {
+                Title = "Status", Value = t => t.Status, Searchable = false, Filterable = true,
+                CellTemplate = t => @<StatusPill Label="@t.Status" Status="@ToStatusKind(t.Status)" />
+            },
+            new()
+            {
+                Title = "Updated", Value = t => t.UpdatedUtc, Searchable = false,
+                CellTemplate = t => @<span>@t.UpdatedUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = t => @<div class="forms-library__row-actions">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Edit"
+                               OnClick="@(() => Nav.NavigateTo($"/forms/{t.Id}/edit"))">Edit</MudButton>
+                    @if (t.Status == "Published")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
+                                   StartIcon="@Icons.Material.Outlined.EditNote"
+                                   OnClick="@(() => Nav.NavigateTo($"/forms/{t.Id}/fill"))">Fill in</MudButton>
+                    }
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                               StartIcon="@Icons.Material.Outlined.Archive"
+                               OnClick="@(() => ArchiveAsync(t))">Archive</MudButton>
+                </div>
+            },
+        };
+    }
+
+    private async Task ArchiveAsync(FormTemplateSummaryDto template)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Archive \"{template.Name}\"? It will be removed from the library (history is kept)." },
+            { x => x.ConfirmText, "Archive" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Archive form", parameters);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await Forms.ArchiveAsync(template.Id);
+            Snackbar.Add($"Archived \"{template.Name}\".", Severity.Info);
+            await LoadAsync();
+        }
+    }
+
+    private static StatusKind ToStatusKind(string status) => status switch
+    {
+        "Published" => StatusKind.Success,
+        "Draft" => StatusKind.Warning,
+        "Archived" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+}

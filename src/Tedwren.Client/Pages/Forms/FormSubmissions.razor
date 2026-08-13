@@ -1,0 +1,95 @@
+@page "/form-submissions"
+@using Tedwren.Abstractions.Contracts.Forms
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IFormSubmissionService Submissions
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+
+<PageTitle>Form Submissions · Tedwren</PageTitle>
+
+<PageHeader Title="Form Submissions" Subtitle="Completed forms, their status and review (PRD-Phase 2)">
+    <Actions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Dashboard"
+                   Href="/forms">Forms Library</MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="FormSubmissionSummaryDto"
+                   Items="_submissions"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search submissions…"
+                   EmptyTitle="No submissions yet"
+                   EmptyDescription="Completed forms will appear here."
+                   EmptyIcon="@Icons.Material.Outlined.AssignmentTurnedIn" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<FormSubmissionSummaryDto> _submissions = Array.Empty<FormSubmissionSummaryDto>();
+    private List<DataColumn<FormSubmissionSummaryDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _submissions = await Submissions.GetSubmissionsAsync();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Form", Value = s => s.FormName, Filterable = true },
+            new() { Title = "Level", Value = s => s.Scope, Searchable = false, Filterable = true },
+            new() { Title = "Submitted by", Value = s => s.SubmittedBy, Filterable = true },
+            new()
+            {
+                Title = "Submitted", Value = s => s.SubmittedUtc, Searchable = false,
+                CellTemplate = s => @<span>@s.SubmittedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</span>
+            },
+            new()
+            {
+                Title = "Status", Value = s => s.Status, Searchable = false, Filterable = true,
+                CellTemplate = s => @<StatusPill Label="@s.Status" Status="@ToStatusKind(s.Status)" />
+            },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = s => @<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                StartIcon="@Icons.Material.Outlined.Visibility"
+                                                OnClick="@(() => OpenAsync(s))">View</MudButton>
+            },
+        };
+    }
+
+    private async Task OpenAsync(FormSubmissionSummaryDto submission)
+    {
+        var parameters = new DialogParameters<FormSubmissionDialog> { { x => x.SubmissionId, submission.Id } };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await Dialogs.ShowAsync<FormSubmissionDialog>(submission.FormName, parameters, options);
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private static StatusKind ToStatusKind(string status) => status switch
+    {
+        "Approved" => StatusKind.Success,
+        "Submitted" => StatusKind.Warning,
+        "Rejected" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

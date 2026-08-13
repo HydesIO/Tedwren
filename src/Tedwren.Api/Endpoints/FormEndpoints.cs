@@ -67,6 +67,54 @@ public static class FormEndpoints
             .WithName("ArchiveFormTemplate")
             .RequireAuthorization("RequireWrite");
 
+        // Submissions — completing a form at organisation/site level (requirement 7), append-only evidence (R4/R10).
+        group.MapGet("/submissions", async (IFormSubmissionService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetSubmissionsAsync(cancellationToken)))
+            .WithName("GetFormSubmissions");
+
+        group.MapGet("/submissions/{id:guid}", async (Guid id, IFormSubmissionService service, CancellationToken cancellationToken) =>
+                await service.GetSubmissionAsync(id, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
+            .WithName("GetFormSubmission");
+
+        group.MapPost("/submissions", async (CreateFormSubmissionRequest request, IFormSubmissionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var id = await service.SubmitAsync(request, cancellationToken);
+                    return Results.Created($"/api/forms/submissions/{id}", new { id });
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("SubmitForm");
+
+        group.MapPost("/submissions/{id:guid}/approve", async (Guid id, ReviewFormSubmissionRequest request, IFormSubmissionService service, CancellationToken cancellationToken) =>
+                await service.ApproveAsync(id, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
+            .WithName("ApproveFormSubmission")
+            .RequireAuthorization("RequireWrite");
+
+        group.MapPost("/submissions/{id:guid}/reject", async (Guid id, ReviewFormSubmissionRequest request, IFormSubmissionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.RejectAsync(id, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("RejectFormSubmission")
+            .RequireAuthorization("RequireWrite");
+
+        group.MapGet("/submissions/files/{fileId:guid}", async (Guid fileId, IFormSubmissionService service, CancellationToken cancellationToken) =>
+                await service.GetFileAsync(fileId, cancellationToken) is { } file
+                    ? Results.File(file.Content, file.ContentType, file.FileName)
+                    : Results.NotFound())
+            .WithName("GetFormSubmissionFile");
+
         return app;
     }
 }

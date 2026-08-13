@@ -1,0 +1,62 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+@* A canvas signature pad (MC-5 style). Strokes are captured as a PNG data URL and
+   surfaced through Value; "Clear" resets the pad. Interop lives in wwwroot/js/tedwren.js. *@
+
+<FormField Label="@Label" Required="Required"
+           HelperText="@HelperText" Error="Error" ErrorText="@ErrorText">
+    <div class="signature-pad">
+        <canvas @ref="_canvas" class="signature-pad__canvas"></canvas>
+        <div class="signature-pad__actions">
+            <MudButton Variant="Variant.Text" Size="Size.Small" Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.Refresh" OnClick="ClearAsync" Disabled="@Disabled">Clear</MudButton>
+        </div>
+    </div>
+</FormField>
+
+@code {
+    [Parameter] public string? Label { get; set; } = "Signature";
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string> ValueChanged { get; set; }
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+
+    private ElementReference _canvas;
+    private bool _initialised;
+    private DotNetObjectReference<TedwrenSignaturePad>? _selfRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _selfRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("tedwren.signature.init", _canvas, _selfRef);
+            _initialised = true;
+        }
+    }
+
+    /// <summary>Called from JS when a stroke ends, so the bound <see cref="Value"/> stays current.</summary>
+    [JSInvokable]
+    public Task OnStrokeEnd(string dataUrl) => ValueChanged.InvokeAsync(dataUrl);
+
+    private async Task ClearAsync()
+    {
+        if (!_initialised) return;
+        await JS.InvokeVoidAsync("tedwren.signature.clear", _canvas);
+        await ValueChanged.InvokeAsync(string.Empty);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_initialised)
+        {
+            try { await JS.InvokeVoidAsync("tedwren.signature.dispose", _canvas); }
+            catch (JSDisconnectedException) { /* circuit already gone */ }
+        }
+
+        _selfRef?.Dispose();
+    }
+}

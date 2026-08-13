@@ -14,6 +14,12 @@ public sealed class InMemoryFormStore
     /// <summary>Form template versions by id.</summary>
     public ConcurrentDictionary<Guid, FormTemplate> Templates { get; } = new();
 
+    /// <summary>Form submissions by id.</summary>
+    public ConcurrentDictionary<Guid, FormSubmission> Submissions { get; } = new();
+
+    /// <summary>Captured submission files by id.</summary>
+    public ConcurrentDictionary<Guid, FormSubmissionFile> Files { get; } = new();
+
     /// <summary>Creates the store and loads the demo seed.</summary>
     public InMemoryFormStore() : this(seed: true)
     {

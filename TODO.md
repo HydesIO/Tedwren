@@ -768,8 +768,21 @@ Phase M1 delivers the shared foundations and the first page migrations:
     creates new draft v2, archive; latest-per-family listing). `FormEndpoints` (`/api/forms/templates`,
     reads authed, writes `RequireWrite`, `/fill` serves Published only; no anonymous route). DI wired in
     `Program.cs`. Application (8) + API (3) tests. `dotnet build`/`dotnet test` green.
-  - ⏳ Phases 21–25 — builder UI & field wrappers · fill & submissions · PDF (QuestPDF) & email ·
-    assignment/scheduling/induction · hardening (entitlement gate, PG parity, default templates).
+  - ✅ **Phase 21 — Builder UI & field wrappers.** New `Tedwren*` field wrappers (`TedwrenNumericField`,
+    `TedwrenDatePicker`, `TedwrenRadioGroup`, `TedwrenRagInput`, canvas `TedwrenSignaturePad` with JS interop),
+    catalogued. `FormBuilder` component + `FormEditModel`; `FormsLibrary.razor` (list/edit/publish/archive) and
+    `FormBuilderPage.razor` (new/edit) over a client `ApiFormTemplateService`; nav in `ShellChrome`. bUnit
+    render + interaction tests for the RAG input.
+  - ✅ **Phase 22 — Fill & submissions.** `FormSubmission`/`FormSubmissionFile` domain, repos (Dapper +
+    in-memory), `019_form_submissions.sql` (both engines) + EF migration; `IFormSubmissionService` +
+    `FormSubmissionService` (required-by-default validation, published-only, append-only R4/R10, review flow,
+    DB-stored files). Submission endpoints (`/api/forms/submissions`, writes/review `RequireWrite`, file
+    download). `DynamicFormRenderer` (renders per `FormFieldKind`, collects answers + base64 files),
+    `FormFill.razor` (org/site level, requirement 7), `FormSubmissions.razor` + `FormSubmissionDialog`
+    (view/approve/reject) over a client `ApiFormSubmissionService`. Application (6) + API (2) + skip-guarded
+    DataAccess tests. Whole solution builds warning-clean; all suites green.
+  - ⏳ Phases 23–25 — PDF (QuestPDF) & email · assignment/scheduling/induction · hardening
+    (entitlement gate, PG parity, default templates).
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because
