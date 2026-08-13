@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <!-- Single source of truth for design tokens: the file lives in Tedwren.Client. It is copied into
+       this project's wwwroot at build so the site can serve it and no colour/spacing literal is ever
+       duplicated. The copy is git-ignored (see .gitignore) — the client file remains the only source. -->
+  <Target Name="ShareTokensCss" BeforeTargets="BeforeBuild;BeforeRebuild">
+    <Copy SourceFiles="..\Tedwren.Client\wwwroot\css\tokens.css"
+          DestinationFiles="wwwroot\css\tokens.css"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

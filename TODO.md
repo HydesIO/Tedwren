@@ -11,6 +11,30 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Phase W1 Skeleton (this change)
+- ✅ **New marketing-site project.** Added `src/Tedwren.Web` (ASP.NET Core MVC, `Microsoft.NET.Sdk.Web`,
+  `net10.0`) and `tests/Tedwren.Web.Tests`, both wired into `Tedwren.sln`. Server-rendered Razor, no auth
+  (public site) — deliberately no `FallbackPolicy` unlike the API. Per the Tedwren.Web Plan & Scope of Works
+  (`docs/Tedwren-Web-Plan-and-Scope-of-Works.md`) §10, phase W1.
+- ✅ **Routing for the full sitemap (Web Plan §4).** Attribute-routed controllers, one per content area:
+  Home (`/`), Products (`/subcontractors`, `/main-contractors`), WorkerPassport (`/worker-passport`), Pricing
+  (`/pricing`), Trust (`/security`), About (`/about`), Faq (`/faq`), Lead (`/demo`, `/contact`), Partners
+  (`/partners`), Legal (`/legal/{privacy|cookies|terms|data-protection}` — slug constrained). Unknown routes
+  re-execute a friendly 404 page (Return home / Book a demo).
+- ✅ **Config-driven chrome (Web Plan §3, §5).** `SiteHeader`/`SiteFooter`/`Cta` view components render brand,
+  legal entity (Tedwren Ltd + optional company no./office), nav and CTAs from the bound `Site` config section
+  (`SiteConfig`) — not hardcoded in views. The seam W2 swaps for `IContentProvider`. Header CTA is "Book a demo"
+  everywhere, swapping to "Get your Worker Passport" on the Worker Passport page only; footer social icons are
+  config-gated (none render at launch). Mobile: hamburger nav with the CTA kept outside the collapsed menu.
+- ✅ **Canonical CTAs as a mechanism (Web Plan §5.4).** `Cta` accepts a closed `CtaAction` enum (Book a demo /
+  Start a pilot / Get your Worker Passport) with fixed copy+href, so vague labels can't be introduced by a view.
+- ✅ **Shared design tokens, single source.** `tokens.css` stays owned by `Tedwren.Client`; a build target
+  copies it into `Tedwren.Web/wwwroot/css` (git-ignored) so the site serves it with no colour/spacing literal
+  duplicated. `site.css` layers layout using only tokens.
+- ✅ **Tests + build.** `Tedwren.Web.Tests` (22 tests) assert every route resolves, unknown routes 404 to the
+  error page, the config chrome renders, the CTA swap works, and both stylesheets (incl. client-sourced tokens)
+  are served. Whole solution builds (0 errors; pre-existing MUD0002 + one Api.Tests nullable warning unchanged).
+
 ### Onboarding wizard per-step validation (this change)
 - ✅ **Validate on Next, per step.** The onboarding wizard previously only validated required fields on the
   final "Finish setup". It now validates the step being left when the user presses Next: `TedwrenStepper`

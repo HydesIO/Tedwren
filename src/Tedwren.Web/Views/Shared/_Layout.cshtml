@@ -1,0 +1,26 @@
+@using Microsoft.Extensions.Options
+@inject IOptions<SiteConfig> Site
+@{
+    var brand = Site.Value.BrandName;
+    var pageTitle = ViewData["Title"] as string;
+    var fullTitle = string.IsNullOrEmpty(pageTitle) ? brand : $"{pageTitle} — {brand}";
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@fullTitle</title>
+    @* tokens.css is the single source of colour/spacing, linked from Tedwren.Client; site.css layers layout on top. *@
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    @await Component.InvokeAsync("SiteHeader")
+    <main id="main" class="site-main">
+        @RenderBody()
+    </main>
+    @await Component.InvokeAsync("SiteFooter")
+</body>
+</html>

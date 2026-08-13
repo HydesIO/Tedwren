@@ -1,0 +1,8 @@
+@{
+    ViewData["Title"] = "Worker Passport";
+}
+@await Html.PartialAsync("_Stub", new StubModel(
+    "Your compliance, in your pocket",
+    "One passport a worker owns and reuses across sites — never locked out for non-payment. Price and consumer-contract facts land from config in W4.",
+    "W4",
+    CtaAction.GetWorkerPassport))

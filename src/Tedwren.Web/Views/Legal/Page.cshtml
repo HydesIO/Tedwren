@@ -1,0 +1,7 @@
+@{
+    var title = ViewData["Title"] as string ?? "Legal";
+}
+@await Html.PartialAsync("_Stub", new StubModel(
+    title,
+    "The full legal text is authored as content in W5. This page exists now so its URL is stable and linkable from the footer.",
+    "W5"))
