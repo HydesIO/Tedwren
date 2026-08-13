@@ -754,14 +754,22 @@ Phase M1 delivers the shared foundations and the first page migrations:
   cover & muster). *Product saleable.*
 - ⏳ Phase 18 — Hardening + PostgreSQL launch gate.
 - ⏳ Phases 19+ — PRD commercial modules (CSCS, HSE, QA, Pay, Identity, Sharing, Integrations).
-- 📋 **Forms Library (Phases 19–25, planned — not started).** Customer-built, per-tenant form builder
-  (full field spectrum, validators required-by-default), versioned templates stored in the DB,
-  DB-stored submissions, branded PDF via **QuestPDF** (logo top-left) + email, and assignment to
-  sites/operators/the induction wizard. Detailed plan of works in
-  [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Phased: 19 domain/persistence · 20
-  template service & API · 21 builder UI & field wrappers · 22 fill & submissions · 23 PDF & email ·
-  24 assignment/scheduling/induction · 25 hardening (entitlement gate, PG parity, default templates).
-  Clones the `InductionTemplate` pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**
+- 📋 **Forms Library (Phases 19–25).** Customer-built, per-tenant form engine. Detailed plan of works
+  in [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Clones the `InductionTemplate`
+  pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**
+  - ✅ **Phase 19 — Domain & persistence.** `FormFieldKind` (full field spectrum), `FormTemplateStatus`,
+    `FormField`/`FormSectionDef`/`FormTemplate` (per-tenant, R15; versioned & append-only via `FamilyId`,
+    R4/R10/R16). `IFormTemplateRepository` + Dapper `FormTemplateRepository` (sections as `SectionsJson`),
+    `InMemoryFormStore` + in-memory repo. Schema: `FormTemplateRecord` + `DbContext` mapping, EF migration
+    `AddFormsLibrary`, and idempotent `018_forms_library.sql` for SQL Server + Postgres. Domain (4) +
+    skip-guarded repository tests.
+  - ✅ **Phase 20 — Template service & API.** `Contracts/Forms` DTOs, `IFormTemplateService` +
+    `FormTemplateService` (tenant-scoped like `SiteService`; create→Draft v1, publish freezes, edit-published
+    creates new draft v2, archive; latest-per-family listing). `FormEndpoints` (`/api/forms/templates`,
+    reads authed, writes `RequireWrite`, `/fill` serves Published only; no anonymous route). DI wired in
+    `Program.cs`. Application (8) + API (3) tests. `dotnet build`/`dotnet test` green.
+  - ⏳ Phases 21–25 — builder UI & field wrappers · fill & submissions · PDF (QuestPDF) & email ·
+    assignment/scheduling/induction · hardening (entitlement gate, PG parity, default templates).
 
 ## Deferred (PRD-directed)
 - ⏸️ Cross-company sharing surface (PRD-Phase 6) — consent capture (MC-20) is in the MC MVP because

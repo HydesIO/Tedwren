@@ -378,3 +378,18 @@ public sealed class InductionSessionRecord
     public string? ResetReason { get; set; }
     public Guid? SupersededBySessionId { get; set; }
 }
+
+/// <summary>Schema row for the <c>FormTemplates</c> table (PRD-Phase 2 Forms Library); sections/fields stored as JSON.</summary>
+public sealed class FormTemplateRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FamilyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public int Version { get; set; }
+    public int Status { get; set; }
+    public string SectionsJson { get; set; } = string.Empty;
+    public DateTimeOffset CreatedUtc { get; set; }
+    public DateTimeOffset UpdatedUtc { get; set; }
+}

@@ -43,6 +43,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<PackAccessEventRecord> PackAccessEvents => Set<PackAccessEventRecord>();
     public DbSet<InductionTemplateRecord> InductionTemplates => Set<InductionTemplateRecord>();
     public DbSet<InductionSessionRecord> InductionSessions => Set<InductionSessionRecord>();
+    public DbSet<FormTemplateRecord> FormTemplates => Set<FormTemplateRecord>();
 
     /// <summary>Maps every schema record to its table, keys and indexes, mirroring the hand-written scripts.</summary>
     protected override void OnModelCreating(ModelBuilder model)
@@ -231,6 +232,15 @@ public sealed class TedwrenDbContext : DbContext
             e.ToTable("InductionSessions");
             e.HasIndex(x => new { x.CompanyId, x.StartedUtc });
             e.HasIndex(x => new { x.CompanyId, x.TemplateId, x.PersonId, x.Status });
+        });
+
+        model.Entity<FormTemplateRecord>(e =>
+        {
+            e.ToTable("FormTemplates");
+            e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.Description).HasMaxLength(1024);
+            e.HasIndex(x => x.CompanyId);
+            e.HasIndex(x => new { x.CompanyId, x.FamilyId });
         });
 
         // PostgreSQL: the Dapper repositories issue unquoted SQL, which PostgreSQL folds to lower case, so the
