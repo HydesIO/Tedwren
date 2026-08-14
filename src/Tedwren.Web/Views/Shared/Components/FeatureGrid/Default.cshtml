@@ -3,6 +3,8 @@
     @foreach (var feature in Model)
     {
         <div class="feature-grid__card">
+            @* Decorative monogram from the feature initial — purely visual, hidden from AT. *@
+            <span class="feature-grid__icon" aria-hidden="true">@(string.IsNullOrEmpty(feature.Heading) ? "•" : feature.Heading.Substring(0, 1))</span>
             <h3 class="feature-grid__heading">@feature.Heading</h3>
             <p class="feature-grid__copy">@feature.Copy</p>
         </div>

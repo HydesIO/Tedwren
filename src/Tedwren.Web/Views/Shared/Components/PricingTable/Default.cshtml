@@ -3,7 +3,11 @@
 <div class="pricing-table">
     @foreach (var row in Model)
     {
-        <div class="pricing-plan">
+        <div class="pricing-plan @(row.Featured ? "pricing-plan--featured" : null)">
+            @if (row.Featured)
+            {
+                <span class="pricing-plan__badge">Most teams start here</span>
+            }
             <h3 class="pricing-plan__name">@row.Name</h3>
             <p class="pricing-plan__price">@row.AnnualDisplay</p>
             @if (row.MonthlyDisplay is not null)
@@ -11,6 +15,9 @@
                 <p class="pricing-plan__monthly">@row.MonthlyDisplay / month</p>
             }
             <p class="pricing-plan__band">@row.Band</p>
+            <div class="pricing-plan__cta">
+                @await Component.InvokeAsync("Cta", new { action = row.Cta, secondary = !row.Featured })
+            </div>
         </div>
     }
 </div>
