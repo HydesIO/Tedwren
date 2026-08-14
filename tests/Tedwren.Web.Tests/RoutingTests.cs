@@ -118,4 +118,47 @@ public sealed class RoutingTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Contains("Book a demo", home);
         Assert.Contains("Get your Worker Passport", passport);
     }
+
+    /// <summary>
+    /// Exactly one nav item is marked current on every route: the matching item on pages that have one,
+    /// and Home as the fallback on the home page and any off-nav page.
+    /// </summary>
+    /// <param name="route">Path requested.</param>
+    /// <param name="expectedLabel">The nav label expected to carry aria-current="page".</param>
+    [Theory]
+    [InlineData("/", "Home")]
+    [InlineData("/pricing", "Pricing")]
+    [InlineData("/subcontractors", "For Subcontractors")]
+    [InlineData("/worker-passport", "Worker Passport")]
+    [InlineData("/faq", "Home")]           // off-nav page falls back to Home
+    [InlineData("/legal/privacy", "Home")] // off-nav page falls back to Home
+    public async Task Nav_MarksExactlyOneCurrent(string route, string expectedLabel)
+    {
+        var client = _factory.CreateClient();
+
+        var body = await client.GetStringAsync(route);
+
+        // Exactly one aria-current="page" is emitted, and it wraps the expected label.
+        var occurrences = body.Split("aria-current=\"page\"").Length - 1;
+        Assert.Equal(1, occurrences);
+        var currentIndex = body.IndexOf("aria-current=\"page\"", StringComparison.Ordinal);
+        var linkClose = body.IndexOf("</a>", currentIndex, StringComparison.Ordinal);
+        Assert.Contains(expectedLabel, body.Substring(currentIndex, linkClose - currentIndex));
+    }
+
+    /// <summary>The legal pages render the expanded, comprehensive drafts (many sections, key clauses).</summary>
+    [Fact]
+    public async Task LegalPages_RenderComprehensiveDrafts()
+    {
+        var client = _factory.CreateClient();
+
+        var privacy = await client.GetStringAsync("/legal/privacy");
+        var terms = await client.GetStringAsync("/legal/terms");
+
+        Assert.Contains("Your rights", privacy);                 // a data-subject-rights section
+        Assert.Contains("Information Commissioner", privacy);     // ICO complaint route
+        Assert.Contains("5 Rectory Park Close", privacy);         // registered address wired through
+        Assert.Contains("Limitation of liability", terms);        // a substantive terms clause
+        Assert.Contains("England and Wales", terms);              // governing law
+    }
 }

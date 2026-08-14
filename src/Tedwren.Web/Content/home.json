@@ -7,30 +7,34 @@
     {
       "Heading": "Works beyond the site gate",
       "Body": "Manage a dispersed or retrofit workforce with no fixed gate — the strongest thing Tedwren does that others don't.",
-      "Highlight": true
+      "Highlight": true,
+      "Icon": "gate"
     },
     {
       "Heading": "Proof in one tap",
       "Body": "Share a compliance pack a main contractor opens with no account and no sign-up wall.",
-      "Highlight": false
+      "Highlight": false,
+      "Icon": "tap"
     },
     {
       "Heading": "Warnings before things lapse",
       "Body": "Expiry alerts land before a card or document goes out of date, not after.",
-      "Highlight": false
+      "Highlight": false,
+      "Icon": "bell"
     },
     {
       "Heading": "One record, reused everywhere",
       "Body": "A worker's passport follows them from site to site instead of being rebuilt each time.",
-      "Highlight": false
+      "Highlight": false,
+      "Icon": "passport"
     }
   ],
   "HowItWorks": [
-    { "Order": 1, "Heading": "Add your people and documents", "Body": "Bring operatives, cards and company documents into one place." },
-    { "Order": 2, "Heading": "Tedwren tracks expiry", "Body": "Every qualification is watched, with warnings before anything lapses." },
-    { "Order": 3, "Heading": "Share a compliance pack", "Body": "Send proof to a main contractor who opens it without an account." },
-    { "Order": 4, "Heading": "Induct before arrival", "Body": "Workers complete induction ahead of time, not at the gate." },
-    { "Order": 5, "Heading": "Stay covered off-site", "Body": "Keep dispersed and retrofit work compliant with no fixed gate to rely on." }
+    { "Order": 1, "Heading": "Add your people and documents", "Body": "Bring operatives, cards and company documents into one place.", "Icon": "user-plus" },
+    { "Order": 2, "Heading": "Tedwren tracks expiry", "Body": "Every qualification is watched, with warnings before anything lapses.", "Icon": "bell" },
+    { "Order": 3, "Heading": "Share a compliance pack", "Body": "Send proof to a main contractor who opens it without an account.", "Icon": "paper-plane" },
+    { "Order": 4, "Heading": "Induct before arrival", "Body": "Workers complete induction ahead of time, not at the gate.", "Icon": "calendar-check" },
+    { "Order": 5, "Heading": "Stay covered off-site", "Body": "Keep dispersed and retrofit work compliant with no fixed gate to rely on.", "Icon": "map-pin" }
   ],
   "ClosingHeading": "See it on your own sites",
   "ClosingBody": "Book a short demo and we'll show you how Tedwren fits the way you already work."
