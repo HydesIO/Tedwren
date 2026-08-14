@@ -143,10 +143,8 @@
                 @Html.Raw(node(72, 46, house))@Html.Raw(node(40, 120, flats))@Html.Raw(node(80, 194, van))
                 @Html.Raw(node(288, 46, hat))@Html.Raw(node(320, 120, wrench))@Html.Raw(node(280, 194, clip))
             </g>
-            @* Central Tedwren mark: brand disc + white "T" monogram, matching the header logo tile. *@
-            <circle cx="180" cy="120" r="34" fill="var(--color-brand)"/>
-            <path d="M167 110h26M180 110v22" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/>
-            <text x="180" y="176" text-anchor="middle" class="diagram__wordmark">Tedwren</text>
+            @* Central mark: the real Tedwren logo (orange tile + white T), no wordmark beneath. *@
+            <image href="@Url.Content("~/images/logo-icon.svg")" x="148" y="88" width="64" height="64" />
         </svg>
     </div>
 </section>

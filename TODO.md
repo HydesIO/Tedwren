@@ -11,6 +11,20 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Landing gate, pricing ticks, diagram logo (this change)
+- ✅ **Pre-launch landing gate.** New `Site:IsLanding` flag (`SiteConfig`, default false). When on,
+  `LandingGateMiddleware` (registered after static files, before routing in `Program.cs`) funnels the whole
+  site to a single inviting landing page — `LandingController` (`/landing`) + `Views/Landing/Index.cshtml`
+  on a minimal `_LandingLayout`, with an email-capture "notify me" form routed through the existing
+  `ILeadRouter` pipeline (antiforgery + honeypot + fill-time + rate-limit reused via `LandingNotifyRequest`).
+  Static assets, the form POST and consent/health/robots stay reachable. Landing CSS block in `site.css`.
+- ✅ **Pricing ticks unified.** The "Pricing you can trust" ticks now use the circular green-badge tick
+  (matching `.ticklist` on the product/home feature lists) — CSS-only in `site.css`.
+- ✅ **Diagram centre = real logo.** The retrofit hub now embeds `logo-icon.svg` (orange tile + white T)
+  at its centre with no wordmark beneath; removed the drawn "T"/`.diagram__wordmark`.
+- ✅ **Tests + build.** Whole solution builds clean; `Tedwren.Web.Tests` 174 → 178 (new `LandingGateTests`:
+  home + deep route funnel to landing, static assets still served, notify form routes a sign-up).
+
 ### Tedwren.Web — Marketing polish: bespoke icons, legal, nav, address (this change)
 - ✅ **Bespoke SVG icon set.** New reusable `Views/Shared/_Icon.cshtml` renders a hand-drawn 24×24
   `currentColor` icon by key (theme-aware, decorative). Optional `Icon` key added to `FeatureCard`,
