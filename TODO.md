@@ -11,6 +11,28 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Marketing polish: bespoke icons, legal, nav, address (this change)
+- ✅ **Bespoke SVG icon set.** New reusable `Views/Shared/_Icon.cshtml` renders a hand-drawn 24×24
+  `currentColor` icon by key (theme-aware, decorative). Optional `Icon` key added to `FeatureCard`,
+  `Differentiator`, `HowItWorksStep` (`WebContentTypes.cs`) and populated in `home.json`,
+  `products.json`, `worker-passport.json`; consumed by the FeatureGrid, Differentiators and HowItWorks
+  components (replacing the letter-monogram placeholder).
+- ✅ **Retrofit diagram redrawn.** The home hub-and-spoke SVG now centres a Tedwren mark (brand disc +
+  white "T" + wordmark) with bespoke property/worker icon nodes (house, flats, van, hard-hat, wrench,
+  clipboard) on the ink band — professional and legible, still `aria-hidden`.
+- ✅ **Persistent active nav (always exactly one).** Added a "Home" primary-nav item; `SiteHeaderViewComponent`
+  computes the active href by longest-prefix match with a Home fallback for off-nav pages; the header marks
+  it `is-active` + `aria-current="page"` with a clear brand treatment in `site.css`.
+- ✅ **Centred frame stamps.** "Evidence Logged" / "Fixed at Send" now sit as a centred, translucent
+  "stamped" watermark over the frame detail (never clipped) — CSS-only in `site.css`.
+- ✅ **Registered address.** `site.json` `RegisteredOffice` set to 5 Rectory Park Close, Sutton Coldfield,
+  B75 7BW, England (rendered by the existing footer).
+- ✅ **Comprehensive legal drafts.** `legal.json` expanded — Privacy, Cookies, Terms and Data Protection
+  are now full generic UK drafts (clearly "pending legal sign-off"), ContentLint-safe (no hardcoded price,
+  absolute-compliance or CSCS-rivalry wording).
+- ✅ **Tests + build.** Whole solution builds clean; `Tedwren.Web.Tests` 167 → 174 (nav-active per route,
+  comprehensive-legal render); `ContentLint` gate still green.
+
 ### Tedwren.Web — Marketing site SaaS redesign (this change)
 - ✅ **Refined design language (tokens-only).** Rebuilt `wwwroot/css/site.css` as a full SaaS design
   system: full-bleed alternating bands (`.band`, `--surface`/`--tint`/`--ink` derived via `color-mix`

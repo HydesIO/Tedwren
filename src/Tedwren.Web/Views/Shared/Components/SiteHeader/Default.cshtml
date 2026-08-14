@@ -16,7 +16,9 @@
         <nav class="site-header__nav" aria-label="Primary">
             @foreach (var link in Model.PrimaryNav)
             {
-                <a class="site-header__nav-link" href="@link.Href">@link.Label</a>
+                var isActive = string.Equals(link.Href, Model.ActiveHref, StringComparison.OrdinalIgnoreCase);
+                <a class="site-header__nav-link @(isActive ? "is-active" : null)"
+                   href="@link.Href" aria-current="@(isActive ? "page" : null)">@link.Label</a>
             }
         </nav>
 
