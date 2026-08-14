@@ -3,6 +3,10 @@
     @foreach (var item in Model)
     {
         <div class="differentiator @(item.Highlight ? "differentiator--highlight" : null)">
+            @if (item.Highlight)
+            {
+                <span class="differentiator__tag">Strongest</span>
+            }
             <h3 class="differentiator__heading">@item.Heading</h3>
             <p class="differentiator__body">@item.Body</p>
         </div>

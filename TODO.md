@@ -11,6 +11,27 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Tedwren.Web — Marketing site SaaS redesign (this change)
+- ✅ **Refined design language (tokens-only).** Rebuilt `wwwroot/css/site.css` as a full SaaS design
+  system: full-bleed alternating bands (`.band`, `--surface`/`--tint`/`--ink` derived via `color-mix`
+  from existing tokens — no new colour/spacing literals), section-header primitives (`.kicker`,
+  `.section-title`), refined buttons (`--lg`, ink-band variants), sticky translucent header, dark
+  multi-column footer, and a CSS-only load entrance (`.js .reveal`; content stays visible with JS off).
+- ✅ **Product "screenshots" as token-driven frames.** New `ProductFrame` ViewComponent + templates
+  (`SiteRegister`, `Dashboard`, `CompliancePack`, `Induction`) render browser/phone-chromed product
+  snapshots — theme-aware, no raster assets, each exposed to AT as a single labelled image. Live clock +
+  pulse dot on the register. Used across home, product pages and Worker Passport.
+- ✅ **Rebuilt pages.** Home (hero + audience toggle + tabbed two-product section mirrored by the toggle,
+  differentiators, ink retrofit band, numbered how-it-works, trust strip, ink CTA), both product pages
+  (`ProductDetail`: split hero + feature monograms + alternating copy/frame split + emphasis sections),
+  Pricing (elevated cards, featured Main Contractor band with per-plan CTAs), Worker Passport, Trust,
+  About — all still content-driven via `IContentProvider`; no copy or price typed into a view.
+- ✅ **Progressive enhancement.** `wwwroot/js/site.js` (deferred, dependency-free) drives the audience
+  toggle/product tabs and the live clock; every page is fully usable with JS disabled.
+- ✅ **Tests + build.** Whole solution builds clean (no new warnings); all tests green
+  (`Tedwren.Web.Tests` 167). Updated one home assertion to the new tabbed panels; `ContentLint`
+  gate still passes over the new views (no hardcoded price / absolute-compliance / CSCS-rivalry copy).
+
 ### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
 - ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
   content JSON + Razor views and fails on three commercial/legal breaches: a hardcoded price symbol
