@@ -11,6 +11,35 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Affiliates, payouts & e-sign agreements (Phase 3, this change)
+- ✅ **Affiliate slice (commercial DB).** `Affiliate` (embedded commission plan), `AffiliatePayout`,
+  `AffiliateAgreement` entities + enums, DTOs, `IAffiliateService`/`AffiliateService`, `IAffiliateRepository`
+  (Dapper dual-engine + in-memory), scripts **`028_affiliates.sql`**, **`029_affiliate_payouts.sql`**,
+  **`030_affiliate_agreements.sql`**. No raw bank details — only a payee reference.
+- ✅ **Profit-after-margin commission.** `Affiliate.CommissionOn(revenue) = revenue × ProfitMarginPct ×
+  AffiliateRatePct` (e.g. £15,000 × 33% × 20% = £990). Associated accounts are the affiliate's attributed
+  converted leads, each showing its computed commission. Payouts recorded as amount + status (raise → mark paid).
+- ✅ **Agreement e-sign + PDF.** `AffiliateAgreementTemplate` builds the clauses once → HTML (web) + PDF
+  (`AffiliateAgreementPdfRenderer`, QuestPDF, both-party signature block; render falls back to the typed name
+  if the signature image is invalid). Public token-gated Blazor page `/affiliate-agreement/{token}`
+  (`RecipientLayout` + `TedwrenSignaturePad`) → sign → download countersigned PDF. Countersignatory James
+  Darby, Director.
+- ✅ **Endpoints.** `PlatformAdmin` affiliate CRUD + payouts; anonymous `GET/POST/GET .../affiliate-agreements/{token}[/sign|/pdf]`.
+  Client `ApiAffiliateService`. Lead↔affiliate link: `POST /api/leads/{id}/affiliate` + assignment menu on the
+  lead detail page.
+- ✅ **Emails.** On create, a branded setup email with the terms + signing link; on signing, a confirmation
+  email with the countersigned PDF attached (`SendHtmlWithAttachmentsAsync`).
+- ✅ **Admin UI.** `/admin/affiliates` list + Add dialog (commission plan with a live worked example);
+  `/admin/affiliates/{id}` detail with **Associated accounts / Payouts / Agreement** tabs. Nav item added.
+- ✅ Tests: `AffiliateServiceTests` (commission math, create→agreement+email, sign→PDF+activate+attachment,
+  associated-account commission, payouts) + `AffiliateApiTests` (admin flow, anonymous view/sign/pdf, 404).
+  Whole solution builds (0 code warnings); all tests pass (LocalDB skipped).
+- ❗ **Raised discrepancy (commission model).** This profit-after-margin model **supersedes** the earlier
+  website-spec rule (`Tedwren-Website-Content-Build-Spec-v2.md` §7: "20% of first-year subcontractor
+  *revenue*", 90-day clawback), confirmed with the product owner. The `Tedwren.Web.Partners`
+  `ReferralService` still implements the old revenue-based rule for the marketing site; reconcile the two
+  models (and whether the 90-day clawback applies here) in a future revision.
+
 ### Admin — Lead management (Phase 2, this change)
 - ✅ **Lead pipeline slice (commercial DB).** `Lead` + `LeadNote` entities, `LeadModel`/`LeadStatus` enums,
   DTOs, `ILeadService`/`LeadService`, `ILeadRepository` (Dapper dual-engine + in-memory), scripts

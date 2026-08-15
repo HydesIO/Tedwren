@@ -42,6 +42,15 @@ public sealed class LeadRepository : AdminRepositoryBase, ILeadRepository
         return rows.Select(ToEntity).ToList();
     }
 
+    /// <summary>Returns the leads attributed to an affiliate, newest-updated first.</summary>
+    public async Task<IReadOnlyList<Lead>> ListByAffiliateAsync(Guid affiliateId, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            $"SELECT {Columns} FROM Leads WHERE AffiliateId = @AffiliateId ORDER BY UpdatedUtc DESC",
+            new { AffiliateId = affiliateId }, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
     /// <summary>Returns the most recent open lead matching a company + email, or null.</summary>
     public async Task<Lead?> FindOpenByCompanyAndEmailAsync(string companyName, string? email, CancellationToken cancellationToken = default)
     {

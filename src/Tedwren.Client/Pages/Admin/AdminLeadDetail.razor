@@ -1,7 +1,9 @@
 @page "/admin/leads/{Id:guid}"
 @using Tedwren.Abstractions.Contracts.Leads
+@using Tedwren.Abstractions.Contracts.Affiliates
 @using Tedwren.Abstractions.Services
 @inject ILeadService Leads
+@inject IAffiliateService Affiliates
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 
@@ -29,6 +31,13 @@
                     @foreach (var status in _statuses)
                     {
                         <MudMenuItem OnClick="@(() => ChangeStatus(status))">@status</MudMenuItem>
+                    }
+                </MudMenu>
+                <MudMenu Label="Assign affiliate" Variant="Variant.Outlined" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowDropDown" Disabled="_busy">
+                    <MudMenuItem OnClick="@(() => AssignAffiliate(null))">None</MudMenuItem>
+                    @foreach (var affiliate in _affiliates)
+                    {
+                        <MudMenuItem OnClick="@(() => AssignAffiliate(affiliate.Id))">@affiliate.Name</MudMenuItem>
                     }
                 </MudMenu>
                 @if (lead.Status != "Converted")
@@ -82,6 +91,7 @@
     private string? _newNote;
 
     private readonly string[] _statuses = { "New", "Contacted", "Qualified", "Proposal", "Converted", "Lost" };
+    private IReadOnlyList<AffiliateDto> _affiliates = Array.Empty<AffiliateDto>();
     private List<KeyValueList.Pair> _overview = new();
     private List<ActivityItem> _activity = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
@@ -95,7 +105,31 @@
         _loading = false;
         if (_detail is not null)
         {
+            if (_affiliates.Count == 0)
+            {
+                _affiliates = await Affiliates.ListAsync();
+            }
+
             BuildView(_detail);
+        }
+    }
+
+    private async Task AssignAffiliate(Guid? affiliateId)
+    {
+        _busy = true;
+        try
+        {
+            await Leads.AssignAffiliateAsync(Id, new AssignLeadAffiliateRequest(affiliateId), actor: null);
+            Snackbar.Add(affiliateId is null ? "Affiliate cleared." : "Affiliate assigned.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 
@@ -117,6 +151,7 @@
             new("Number of sites", lead.NumberOfSites?.ToString() ?? "—"),
             new("Estimated revenue", lead.EstimatedRevenue is { } r ? $"£{r:N0}/yr" : "—"),
             new("Account manager", string.IsNullOrWhiteSpace(lead.AccountManager) ? "Unassigned" : lead.AccountManager),
+            new("Affiliate", AffiliateName(lead.AffiliateId)),
             new("Company number", string.IsNullOrWhiteSpace(lead.CompanyNumber) ? "—" : lead.CompanyNumber),
             new("Source", string.IsNullOrWhiteSpace(lead.Source) ? "—" : lead.Source),
             new("Created", lead.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy")),
@@ -221,6 +256,9 @@
 
         return string.Join(" · ", parts);
     }
+
+    private string AffiliateName(Guid? affiliateId) =>
+        affiliateId is { } id && _affiliates.FirstOrDefault(a => a.Id == id) is { } a ? a.Name : "None";
 
     private static string ModelLabel(string model) => model switch
     {

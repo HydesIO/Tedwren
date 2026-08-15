@@ -1,0 +1,114 @@
+@page "/affiliate-agreement/{Token}"
+@layout RecipientLayout
+@using Tedwren.Abstractions.Contracts.Affiliates
+@using Tedwren.Abstractions.Services
+@inject IAffiliateService Affiliates
+@inject ISnackbar Snackbar
+
+<PageTitle>Affiliate agreement · Tedwren</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-6" MaxWidth="760px" Elevation="0" Outlined="true">
+    @if (_loading)
+    {
+        <LoadingSkeleton />
+    }
+    else if (_view is null)
+    {
+        <EmptyState Title="Agreement not found" Description="This link is invalid or has expired." Icon="@Icons.Material.Outlined.SearchOff" />
+    }
+    else
+    {
+        <div class="agreement-doc">
+            @((MarkupString)_view.TermsHtml)
+        </div>
+
+        <div class="agreement-parties">
+            <div>
+                <span class="agreement-parties__label">For Tedwren Ltd</span>
+                <span class="agreement-parties__name">@_view.CountersignatoryName</span>
+                @if (!string.IsNullOrWhiteSpace(_view.CountersignatoryTitle))
+                {
+                    <span class="agreement-parties__title">@_view.CountersignatoryTitle</span>
+                }
+            </div>
+        </div>
+
+        @if (_view.Status == "Signed")
+        {
+            <MudAlert Severity="Severity.Success" Class="mt-4">
+                Signed@(_view.SignedUtc is { } s ? $" on {s.ToLocalTime():dd MMM yyyy HH:mm}" : "")@(string.IsNullOrWhiteSpace(_view.SignedByName) ? "" : $" by {_view.SignedByName}").
+            </MudAlert>
+            <div class="agreement-download">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
+                           Href="@PdfUrl" Target="_blank">Download signed PDF</MudButton>
+            </div>
+        }
+        else
+        {
+            <div class="agreement-sign">
+                <h2>Sign the agreement</h2>
+                <TedwrenTextField Label="Your full name" @bind-Value="_signedByName" Required="true"
+                                  Error="_submitted && string.IsNullOrWhiteSpace(_signedByName)" ErrorText="Please enter your name." />
+                <TedwrenSignaturePad Label="Draw your signature" @bind-Value="_signature"
+                                     Error="_submitted && string.IsNullOrWhiteSpace(_signature)" ErrorText="Please sign in the box above." />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="Sign" Disabled="_busy">
+                    Agree &amp; sign
+                </MudButton>
+            </div>
+        }
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public string Token { get; set; } = string.Empty;
+
+    private AffiliateAgreementViewDto? _view;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _submitted;
+    private string? _signedByName;
+    private string? _signature;
+
+    private string PdfUrl => $"/api/affiliate-agreements/{Token}/pdf";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _loading = true;
+        _view = await Affiliates.GetAgreementAsync(Token);
+        _signedByName ??= _view?.AffiliateName;
+        _loading = false;
+    }
+
+    private async Task Sign()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_signedByName) || string.IsNullOrWhiteSpace(_signature))
+        {
+            Snackbar.Add("Please enter your name and sign.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var signed = await Affiliates.SignAgreementAsync(Token, new SignAffiliateAgreementRequest(_signature!, _signedByName!));
+            if (signed is null)
+            {
+                Snackbar.Add("This agreement could not be signed.", Severity.Error);
+            }
+            else
+            {
+                _view = signed;
+                Snackbar.Add("Thank you — your agreement is signed.", Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

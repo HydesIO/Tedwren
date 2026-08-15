@@ -62,6 +62,9 @@ public sealed record AddLeadNoteRequest(string Body);
 /// </summary>
 public sealed record ConvertLeadRequest(Guid? AccountId = null);
 
+/// <summary>Admin request to attribute a lead to an affiliate (or clear it when the id is null).</summary>
+public sealed record AssignLeadAffiliateRequest(Guid? AffiliateId);
+
 /// <summary>
 /// Anonymous inbound lead from the marketing site (a demo request or contact message, Web Plan §7). Limited to
 /// what a public form can safely provide; the lead is created as New with the source recorded.

@@ -31,6 +31,9 @@ public interface ILeadService
     /// <summary>Converts a lead into an account (sets Converted, links the account, logs it). Null when the lead doesn't exist.</summary>
     Task<LeadDto?> ConvertAsync(Guid id, ConvertLeadRequest request, string? actor, CancellationToken cancellationToken = default);
 
+    /// <summary>Attributes a lead to an affiliate (or clears it when null) and logs it. Null when the lead doesn't exist.</summary>
+    Task<LeadDto?> AssignAffiliateAsync(Guid id, AssignLeadAffiliateRequest request, string? actor, CancellationToken cancellationToken = default);
+
     /// <summary>Creates a lead from an anonymous marketing-site capture (demo/contact). Deduplicated per open lead by company + email.</summary>
     Task<LeadDto> CaptureAsync(CaptureLeadRequest request, CancellationToken cancellationToken = default);
 }

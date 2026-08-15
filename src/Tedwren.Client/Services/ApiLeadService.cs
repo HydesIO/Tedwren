@@ -69,6 +69,10 @@ public sealed class ApiLeadService : ILeadService
     public async Task<LeadDto?> ConvertAsync(Guid id, ConvertLeadRequest request, string? actor, CancellationToken cancellationToken = default) =>
         await SendForLead(HttpMethod.Post, $"api/leads/{id}/convert", request, cancellationToken);
 
+    /// <summary>Attributes a lead to an affiliate (or clears it). Null when it doesn't exist.</summary>
+    public async Task<LeadDto?> AssignAffiliateAsync(Guid id, AssignLeadAffiliateRequest request, string? actor, CancellationToken cancellationToken = default) =>
+        await SendForLead(HttpMethod.Post, $"api/leads/{id}/affiliate", request, cancellationToken);
+
     /// <summary>Creates a lead from an anonymous marketing-site capture.</summary>
     public async Task<LeadDto> CaptureAsync(CaptureLeadRequest request, CancellationToken cancellationToken = default)
     {

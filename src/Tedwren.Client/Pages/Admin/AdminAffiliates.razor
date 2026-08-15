@@ -1,0 +1,90 @@
+@page "/admin/affiliates"
+@using Tedwren.Abstractions.Contracts.Affiliates
+@using Tedwren.Abstractions.Services
+@inject IAffiliateService Affiliates
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>Affiliates · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Affiliates" Subtitle="Partners who introduce customers and earn profit-share commission">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAddAlt" OnClick="AddAffiliate">
+                Add affiliate
+            </MudButton>
+        </Actions>
+    </PageHeader>
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="AffiliateDto"
+                       Items="_affiliates"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search affiliates…"
+                       EmptyTitle="No affiliates yet"
+                       EmptyDescription="Add an affiliate to set them up on a commission plan and send their agreement."
+                       EmptyIcon="@Icons.Material.Outlined.Handshake"
+                       OnRowClick="row => Open(row.Id)" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<AffiliateDto> _affiliates = Array.Empty<AffiliateDto>();
+    private List<DataColumn<AffiliateDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _affiliates = await Affiliates.ListAsync();
+        _loading = false;
+    }
+
+    private void Open(Guid id) => Nav.NavigateTo($"/admin/affiliates/{id}");
+
+    private async Task AddAffiliate()
+    {
+        var dialog = await DialogService.ShowAsync<AddAffiliateDialog>("Add affiliate");
+        var result = await dialog.Result;
+        if (result?.Canceled == false && result.Data is Guid id)
+        {
+            Nav.NavigateTo($"/admin/affiliates/{id}");
+        }
+    }
+
+    private static string Percent(decimal fraction) => $"{decimal.Round(fraction * 100, 2):0.##}%";
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Name", Value = a => a.Name },
+            new() { Title = "Company", Text = a => a.Company ?? "—", CellTemplate = a => @<span>@(a.Company ?? "—")</span> },
+            new()
+            {
+                Title = "Status", Text = a => a.Status, Filterable = true, Sortable = false,
+                CellTemplate = a => @<StatusPill Label="@a.Status" Status="StatusPillKind(a.Status)" />
+            },
+            new() { Title = "Rate", Value = a => a.AffiliateRatePct, AlignRight = true,
+                    CellTemplate = a => @<span>@Percent(a.AffiliateRatePct)</span> },
+            new() { Title = "Margin", Value = a => a.ProfitMarginPct, AlignRight = true,
+                    CellTemplate = a => @<span>@Percent(a.ProfitMarginPct)</span> },
+        };
+    }
+
+    private static StatusKind StatusPillKind(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "Pending" => StatusKind.Warning,
+        _ => StatusKind.Neutral,
+    };
+}

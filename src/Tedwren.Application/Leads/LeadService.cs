@@ -150,6 +150,24 @@ public sealed class LeadService : ILeadService
         return ToDto(lead);
     }
 
+    /// <summary>Attributes a lead to an affiliate (or clears it) and logs it.</summary>
+    public async Task<LeadDto?> AssignAffiliateAsync(Guid id, AssignLeadAffiliateRequest request, string? actor, CancellationToken cancellationToken = default)
+    {
+        var lead = await _repository.GetAsync(id, cancellationToken);
+        if (lead is null)
+        {
+            return null;
+        }
+
+        lead.AffiliateId = request.AffiliateId;
+        lead.UpdatedUtc = DateTimeOffset.UtcNow;
+        await _repository.UpdateAsync(lead, cancellationToken);
+
+        var body = request.AffiliateId is { } aff ? $"Attributed to affiliate {aff}." : "Affiliate attribution cleared.";
+        await _repository.AddNoteAsync(SystemNote(lead.Id, actor, body), cancellationToken);
+        return ToDto(lead);
+    }
+
     /// <summary>Creates a lead from an anonymous marketing-site capture, deduplicating against an open lead.</summary>
     public async Task<LeadDto> CaptureAsync(CaptureLeadRequest request, CancellationToken cancellationToken = default)
     {

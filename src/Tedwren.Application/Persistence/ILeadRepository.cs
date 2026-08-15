@@ -14,6 +14,9 @@ public interface ILeadRepository
     /// <summary>Returns every lead, newest-updated first.</summary>
     Task<IReadOnlyList<Lead>> ListAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the leads attributed to an affiliate, newest-updated first.</summary>
+    Task<IReadOnlyList<Lead>> ListByAffiliateAsync(Guid affiliateId, CancellationToken cancellationToken = default);
+
     /// <summary>Returns the most recent open (non-terminal) lead matching a company + email, or null (dedupe for capture).</summary>
     Task<Lead?> FindOpenByCompanyAndEmailAsync(string companyName, string? email, CancellationToken cancellationToken = default);
 

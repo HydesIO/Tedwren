@@ -25,6 +25,11 @@ public sealed class InMemoryLeadRepository : ILeadRepository
     public Task<IReadOnlyList<Lead>> ListAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<Lead>>(_leads.Values.OrderByDescending(l => l.UpdatedUtc).ToList());
 
+    /// <summary>Returns the leads attributed to an affiliate, newest-updated first.</summary>
+    public Task<IReadOnlyList<Lead>> ListByAffiliateAsync(Guid affiliateId, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Lead>>(
+            _leads.Values.Where(l => l.AffiliateId == affiliateId).OrderByDescending(l => l.UpdatedUtc).ToList());
+
     /// <summary>Returns the most recent open lead matching a company + email, or null.</summary>
     public Task<Lead?> FindOpenByCompanyAndEmailAsync(string companyName, string? email, CancellationToken cancellationToken = default)
     {

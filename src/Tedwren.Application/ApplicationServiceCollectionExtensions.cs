@@ -310,6 +310,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic affiliate programme service (Web Plan §7). Uses the ambient email sender.</summary>
+    public static IServiceCollection AddAffiliatesCore(this IServiceCollection services)
+    {
+        services.AddScoped<IAffiliateService, Affiliates.AffiliateService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory affiliate store (singleton so affiliates/payouts/agreements persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryAffiliatesStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryAffiliateRepository>();
+        services.AddScoped<IAffiliateRepository>(sp => sp.GetRequiredService<InMemoryAffiliateRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic permits-to-work service.</summary>
     public static IServiceCollection AddPermitCore(this IServiceCollection services)
     {

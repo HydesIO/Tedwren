@@ -63,6 +63,7 @@ builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
 builder.Services.AddScoped<IPlatformAdminService, ApiPlatformAdminService>();
 builder.Services.AddScoped<ILaunchListService, ApiLaunchListService>();
 builder.Services.AddScoped<ILeadService, ApiLeadService>();
+builder.Services.AddScoped<IAffiliateService, ApiAffiliateService>();
 builder.Services.AddScoped<IBillingService, ApiBillingService>();
 
 await builder.Build().RunAsync();

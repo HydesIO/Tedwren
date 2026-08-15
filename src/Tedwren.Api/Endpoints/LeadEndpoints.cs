@@ -96,6 +96,10 @@ public static class LeadEndpoints
                 await service.ConvertAsync(id, request, Actor(user), cancellationToken) is { } lead ? Results.Ok(lead) : Results.NotFound())
             .WithName("ConvertLead");
 
+        admin.MapPost("/{id:guid}/affiliate", async (Guid id, AssignLeadAffiliateRequest request, ClaimsPrincipal user, ILeadService service, CancellationToken cancellationToken) =>
+                await service.AssignAffiliateAsync(id, request, Actor(user), cancellationToken) is { } lead ? Results.Ok(lead) : Results.NotFound())
+            .WithName("AssignLeadAffiliate");
+
         return app;
     }
 
