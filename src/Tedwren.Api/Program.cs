@@ -36,6 +36,7 @@ builder.Services.AddReferenceDataCore();
 builder.Services.AddSettingsCore();
 builder.Services.AddPermitCore();
 builder.Services.AddOnboardingCore();
+builder.Services.AddLaunchListCore();
 builder.Services.AddAuthCore();
 
 // Email delivery (PRD-Phase 7): bind the "Email" section and register the branded HTML template renderer.
@@ -157,12 +158,23 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemorySettingsStore();
     builder.Services.AddInMemoryPermitStore();
     builder.Services.AddInMemoryOnboardingStore();
+    builder.Services.AddInMemoryLaunchListStore();
 }
 else
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
     var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
     builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
+
+    // The commercial/admin plane persists to a separate database (its own connection string, "*Commercial").
+    // Falls back to the product connection string when unset, so a single-database dev setup still runs.
+    var commercialConnectionString = builder.Configuration.GetConnectionString(connectionStringName + "Commercial");
+    if (string.IsNullOrWhiteSpace(commercialConnectionString))
+    {
+        commercialConnectionString = connectionString;
+    }
+
+    builder.Services.AddCommercialSqlDataAccess(backend.Provider, commercialConnectionString);
 }
 
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
@@ -221,7 +233,13 @@ if (backend.Mode != DataSourceMode.InMemory)
 {
     using var scope = app.Services.CreateScope();
     var migrationRunner = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Migrations.MigrationRunner>();
-    await migrationRunner.RunAsync();
+
+    // Apply each script set to its own database: product scripts to the product catalogue, commercial scripts
+    // (billing, launch list, leads, affiliates) to the separate commercial catalogue.
+    var productConnectionFactory = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Connections.IDbConnectionFactory>();
+    var commercialConnectionFactory = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Connections.IAdminDbConnectionFactory>();
+    await migrationRunner.RunAsync(productConnectionFactory, Tedwren.DataAccess.Migrations.MigrationArea.Product);
+    await migrationRunner.RunAsync(commercialConnectionFactory, Tedwren.DataAccess.Migrations.MigrationArea.Commercial);
 
     // Seed the default qualification library (SF-12) and trade requirements (SF-11) — idempotent.
     var librarySeeder = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Qualifications.QualificationLibrarySeeder>();
@@ -260,6 +278,7 @@ app.MapDashboardEndpoints();
 app.MapSettingsEndpoints();
 app.MapPermitEndpoints();
 app.MapOnboardingEndpoints();
+app.MapLaunchListEndpoints();
 app.MapImageEndpoints();
 app.MapEmailTemplateEndpoints();
 app.MapAdminEndpoints();

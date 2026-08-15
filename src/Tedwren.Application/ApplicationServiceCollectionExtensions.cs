@@ -280,6 +280,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic launch-list service (Web Content Spec §6.9). Uses the ambient email sender.</summary>
+    public static IServiceCollection AddLaunchListCore(this IServiceCollection services)
+    {
+        services.AddScoped<ILaunchListService, LaunchList.LaunchListService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory launch-signup store (singleton so signups persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryLaunchListStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryLaunchSignupRepository>();
+        services.AddScoped<ILaunchSignupRepository>(sp => sp.GetRequiredService<InMemoryLaunchSignupRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic permits-to-work service.</summary>
     public static IServiceCollection AddPermitCore(this IServiceCollection services)
     {

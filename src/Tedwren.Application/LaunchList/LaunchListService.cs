@@ -1,0 +1,103 @@
+using Tedwren.Abstractions.Configuration;
+using Tedwren.Abstractions.Contracts.LaunchList;
+using Tedwren.Abstractions.Notifications;
+using Tedwren.Abstractions.Services;
+using Tedwren.Application.Notifications.Email;
+using Tedwren.Application.Persistence;
+using Tedwren.Domain.Entities;
+
+namespace Tedwren.Application.LaunchList;
+
+/// <summary>
+/// The launch-list service (Web Content Spec §6.9): captures pre-launch interest and later sends the branded
+/// launch announcement. Signup is deduplicated on the email; the announcement is sent to each subscriber
+/// individually so no address is exposed to another. Holds the rules; the repository only holds records.
+/// </summary>
+public sealed class LaunchListService : ILaunchListService
+{
+    private readonly ILaunchSignupRepository _repository;
+    private readonly IEmailSender _emailSender;
+    private readonly EmailOptions _emailOptions;
+
+    /// <summary>Injects the repository, email sender and email options.</summary>
+    public LaunchListService(
+        ILaunchSignupRepository repository,
+        IEmailSender emailSender,
+        EmailOptions emailOptions)
+    {
+        _repository = repository;
+        _emailSender = emailSender;
+        _emailOptions = emailOptions;
+    }
+
+    /// <summary>Adds an email to the launch list, ignoring a duplicate (case-insensitive on the address).</summary>
+    public async Task<LaunchSignupResultDto> SignUpAsync(CreateLaunchSignupRequest request, CancellationToken cancellationToken = default)
+    {
+        var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        if (email.Length == 0)
+        {
+            throw new ArgumentException("An email address is required.", nameof(request));
+        }
+
+        var existing = await _repository.GetByEmailAsync(email, cancellationToken);
+        if (existing is not null)
+        {
+            return new LaunchSignupResultDto(Accepted: true, AlreadyOnList: true);
+        }
+
+        var signup = new LaunchSignup
+        {
+            Email = email,
+            Source = request.Source,
+            UtmSource = request.UtmSource,
+            UtmMedium = request.UtmMedium,
+            UtmCampaign = request.UtmCampaign,
+        };
+        await _repository.AddAsync(signup, cancellationToken);
+        return new LaunchSignupResultDto(Accepted: true, AlreadyOnList: false);
+    }
+
+    /// <summary>Returns every launch-list subscriber, newest first.</summary>
+    public async Task<IReadOnlyList<LaunchSignupDto>> ListAsync(CancellationToken cancellationToken = default)
+    {
+        var signups = await _repository.ListAsync(cancellationToken);
+        return signups.Select(ToDto).ToList();
+    }
+
+    /// <summary>Sends the launch announcement to each subscriber individually, marking each notified.</summary>
+    public async Task<NotifyLaunchResultDto> NotifyAsync(NotifyLaunchRequest request, CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.ListAsync(cancellationToken);
+        var targets = (request.OnlyUnnotified ? all.Where(s => !s.Notified) : all).ToList();
+
+        var startUrl = string.IsNullOrWhiteSpace(_emailOptions.PublicBaseUrl)
+            ? "https://tedwren.co.uk"
+            : _emailOptions.PublicBaseUrl.TrimEnd('/');
+        var content = LaunchAnnouncementEmail.BuildContent(startUrl);
+
+        var sent = 0;
+        var failed = 0;
+        foreach (var signup in targets)
+        {
+            try
+            {
+                await _emailSender.SendHtmlAsync(signup.Email, LaunchAnnouncementEmail.Subject, content, cancellationToken);
+                signup.Notified = true;
+                signup.NotifiedUtc = DateTimeOffset.UtcNow;
+                await _repository.UpdateAsync(signup, cancellationToken);
+                sent++;
+            }
+            catch (Exception)
+            {
+                // A single bad address must not abort the whole send — count it and carry on.
+                failed++;
+            }
+        }
+
+        return new NotifyLaunchResultDto(Targeted: targets.Count, Sent: sent, Failed: failed);
+    }
+
+    /// <summary>Maps a signup entity to its list DTO.</summary>
+    private static LaunchSignupDto ToDto(LaunchSignup s) =>
+        new(s.Id, s.Email, s.Source, s.UtmSource, s.CreatedUtc, s.Notified, s.NotifiedUtc);
+}

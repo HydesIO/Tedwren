@@ -6,13 +6,13 @@ using Tedwren.Domain.Enums;
 namespace Tedwren.DataAccess.Repositories;
 
 /// <summary>Dapper <see cref="IWebhookEventRepository"/> for stored GoCardless webhook events. ANSI-portable.</summary>
-public sealed class WebhookEventRepository : RepositoryBase, IWebhookEventRepository
+public sealed class WebhookEventRepository : AdminRepositoryBase, IWebhookEventRepository
 {
     private const string Columns =
         "Id, GoCardlessEventId, ResourceType, Action, ResourceId, Outcome, Detail, RawJson, ReceivedUtc, ProcessedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
-    public WebhookEventRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+    public WebhookEventRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
     {
     }
 

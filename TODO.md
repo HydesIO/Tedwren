@@ -11,6 +11,36 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Launch List + separate Commercial database (this change)
+- ✅ **Separate Commercial database (architecture).** All commercial/admin-plane data now targets a second
+  database via its own connection string (`ConnectionStrings:SqlServerCommercial` / `PostgreSqlCommercial`,
+  empty ⇒ falls back to the product connection string). New `AdminSqlDataAccessOptions`,
+  `IAdminDbConnectionFactory`/`AdminDbConnectionFactory` and `AdminRepositoryBase` (reuses every
+  `RepositoryBase` helper); `MigrationRunner` is area-aware (`MigrationArea.Product`/`Commercial`) and run
+  once per database from `Program.cs`. Registered via `AddCommercialSqlDataAccess(...)`. Cross-DB links are
+  soft `Guid` references (no cross-database FK); R15 tenant scoping stays in query predicates.
+- ✅ **Billing plane relocated.** Mandates/payments/subscriptions/webhook-events/payouts repositories now use
+  `AdminRepositoryBase` and register in `AddCommercialSqlDataAccess`; scripts `022`–`024` moved to
+  `Migrations/Scripts/{SqlServer,Postgres}/Commercial/`. Existing populated product DBs need a one-off data
+  copy of those tables into the commercial DB (see `docs/ef-migrations.md`).
+- ✅ **Launch List (Web Content Spec §6.9).** Vertical slice in the commercial DB: `LaunchSignup` entity,
+  DTOs, `ILaunchListService`/`LaunchListService`, `ILaunchSignupRepository` (Dapper dual-engine + in-memory),
+  script **`025_launch_signups.sql`** (dedupe on lower-cased email). Endpoints: anonymous
+  `POST /api/launch-signups`; `PlatformAdmin` `GET /api/launch-signups` + `POST .../notify`. Admin page
+  `/admin/launch-list` (KPI row + `DataTable` + confirm-gated bulk send); branded `LaunchAnnouncementEmail`
+  sent per address individually via `IEmailSender`. Nav item added to `AdminNavItems`.
+- ✅ **Landing-page capture (Tedwren.Web).** Email form on the home page + standalone `/launch` (antiforgery +
+  honeypot + min-fill via existing `AntiBot`, rate-limited) → `ILaunchSignupSink`/`ApiLaunchSignupSink`
+  forwards to the API (`LaunchSignup:ApiBaseUrl`; logs/no-ops when unset).
+- ✅ Tests: `LaunchListServiceTests` (dedupe, per-address notify, failure counting) + `LaunchListApiTests`
+  (anonymous signup/dedupe, list, notify). Whole solution builds (0 new warnings); all tests pass (LocalDB
+  integration tests skipped). Existing DataAccess integration tests updated to the new `MigrationRunner`
+  signature (Product area).
+- ⏳ Next: Phase 2 Lead management (card-grid admin UI + notes + convert), Phase 3 Affiliates (profit-after-
+  margin commission plans, payouts, e-sign agreement + PDF). A commercial-DB EF `DbContext` mirror is
+  deferred — the idempotent SQL scripts are authoritative for the commercial DB for now (as with the deferred
+  Postgres EF path, `docs/ef-migrations.md §7`).
+
 ### Admin area — Phase D: GoCardless BACS payouts (this change)
 - ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /
   `PayoutStatus` enum (Pending/Paid), `IPayoutRepository` (Dapper dual-engine + in-memory), migration

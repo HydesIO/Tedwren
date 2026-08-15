@@ -276,6 +276,25 @@ a:hover { text-decoration: underline; }
 .product-section__body { color: var(--color-text-secondary); margin: 0; }
 
 /* Closing */
+/* Pre-launch interest capture (Web Content Spec §6.9). */
+.launch-signup {
+    margin-top: var(--spacing-32);
+    padding: var(--spacing-24);
+    background: var(--color-brand-pale);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+}
+.launch-signup__body { color: var(--color-text-secondary); max-width: 60ch; margin: 0 0 var(--spacing-16); }
+.launch-signup__label { display: block; font-weight: 600; margin-bottom: var(--spacing-8); }
+.launch-signup__row { display: flex; flex-wrap: wrap; gap: var(--spacing-12); align-items: stretch; }
+.launch-signup__row input {
+    flex: 1 1 260px;
+    padding: var(--spacing-12);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-control);
+    font: inherit;
+}
+
 .closing { margin-top: var(--spacing-32); }
 .closing__heading { font-size: 1.5rem; margin: 0 0 var(--spacing-12); }
 .closing__body { color: var(--color-text-secondary); max-width: 60ch; margin: 0 0 var(--spacing-20); }
