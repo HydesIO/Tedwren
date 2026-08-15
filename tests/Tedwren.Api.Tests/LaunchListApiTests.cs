@@ -55,10 +55,21 @@ public sealed class LaunchListApiTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
-    public async Task Signup_RejectsInvalidEmpty_WithBadRequest()
+    public async Task Signup_RejectsInvalidEmail_WithBadRequest()
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest("   "));
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest("   "))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest("not-an-email"))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Unsubscribe_IsAnonymous_AndReturnsHtml()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/launch-signups/unsubscribe?token={Guid.NewGuid():N}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
     }
 }

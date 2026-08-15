@@ -8,7 +8,7 @@ namespace Tedwren.DataAccess.Repositories;
 public sealed class LaunchSignupRepository : AdminRepositoryBase, ILaunchSignupRepository
 {
     private const string Columns =
-        "Id, Email, Source, UtmSource, UtmMedium, UtmCampaign, CreatedUtc, Notified, NotifiedUtc";
+        "Id, Email, Source, UtmSource, UtmMedium, UtmCampaign, CreatedUtc, Notified, NotifiedUtc, Unsubscribed, UnsubscribeToken";
 
     /// <summary>Creates the repository over the commercial connection factory.</summary>
     public LaunchSignupRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -18,8 +18,8 @@ public sealed class LaunchSignupRepository : AdminRepositoryBase, ILaunchSignupR
     /// <summary>Inserts a new signup.</summary>
     public Task AddAsync(LaunchSignup signup, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "INSERT INTO LaunchSignups (Id, Email, Source, UtmSource, UtmMedium, UtmCampaign, CreatedUtc, Notified, NotifiedUtc) " +
-            "VALUES (@Id, @Email, @Source, @UtmSource, @UtmMedium, @UtmCampaign, @CreatedUtc, @Notified, @NotifiedUtc)",
+            "INSERT INTO LaunchSignups (Id, Email, Source, UtmSource, UtmMedium, UtmCampaign, CreatedUtc, Notified, NotifiedUtc, Unsubscribed, UnsubscribeToken) " +
+            "VALUES (@Id, @Email, @Source, @UtmSource, @UtmMedium, @UtmCampaign, @CreatedUtc, @Notified, @NotifiedUtc, @Unsubscribed, @UnsubscribeToken)",
             ToParameters(signup), cancellationToken);
 
     /// <summary>Returns the signup for an email (case-insensitive), or null.</summary>
@@ -30,6 +30,18 @@ public sealed class LaunchSignupRepository : AdminRepositoryBase, ILaunchSignupR
             new { Email = (email ?? string.Empty).ToLowerInvariant() }, cancellationToken);
         return row is null ? null : ToEntity(row);
     }
+
+    /// <summary>Returns the signup for an unsubscribe token, or null.</summary>
+    public async Task<LaunchSignup?> GetByUnsubscribeTokenAsync(string token, CancellationToken cancellationToken = default)
+    {
+        var row = await QuerySingleOrDefaultAsync<Row>(
+            $"SELECT {Columns} FROM LaunchSignups WHERE UnsubscribeToken = @Token", new { Token = token }, cancellationToken);
+        return row is null ? null : ToEntity(row);
+    }
+
+    /// <summary>Removes a signup.</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM LaunchSignups WHERE Id = @Id", new { Id = id }, cancellationToken);
 
     /// <summary>Returns every signup, newest first.</summary>
     public async Task<IReadOnlyList<LaunchSignup>> ListAsync(CancellationToken cancellationToken = default)
@@ -42,7 +54,8 @@ public sealed class LaunchSignupRepository : AdminRepositoryBase, ILaunchSignupR
     /// <summary>Updates a signup's mutable fields (notified flag/timestamp).</summary>
     public Task UpdateAsync(LaunchSignup signup, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "UPDATE LaunchSignups SET Notified = @Notified, NotifiedUtc = @NotifiedUtc WHERE Id = @Id",
+            "UPDATE LaunchSignups SET Notified = @Notified, NotifiedUtc = @NotifiedUtc, " +
+            "Unsubscribed = @Unsubscribed, UnsubscribeToken = @UnsubscribeToken WHERE Id = @Id",
             ToParameters(signup), cancellationToken);
 
     /// <summary>Flattens a signup to Dapper parameters.</summary>
@@ -57,6 +70,8 @@ public sealed class LaunchSignupRepository : AdminRepositoryBase, ILaunchSignupR
         s.CreatedUtc,
         s.Notified,
         s.NotifiedUtc,
+        s.Unsubscribed,
+        s.UnsubscribeToken,
     };
 
     /// <summary>Maps a queried row to the domain entity.</summary>
@@ -71,10 +86,12 @@ public sealed class LaunchSignupRepository : AdminRepositoryBase, ILaunchSignupR
         CreatedUtc = r.CreatedUtc,
         Notified = r.Notified,
         NotifiedUtc = r.NotifiedUtc,
+        Unsubscribed = r.Unsubscribed,
+        UnsubscribeToken = r.UnsubscribeToken,
     };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
     private sealed record Row(
         Guid Id, string Email, string? Source, string? UtmSource, string? UtmMedium, string? UtmCampaign,
-        DateTimeOffset CreatedUtc, bool Notified, DateTimeOffset? NotifiedUtc);
+        DateTimeOffset CreatedUtc, bool Notified, DateTimeOffset? NotifiedUtc, bool Unsubscribed, string? UnsubscribeToken);
 }

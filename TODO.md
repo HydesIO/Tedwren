@@ -11,6 +11,24 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Compliance & security hardening (Phase 4, this change)
+- ✅ **Marketing-email unsubscribe (PECR/GDPR).** `LaunchSignup` gains `Unsubscribed`/`UnsubscribeToken`
+  (ALTER script `031_launch_unsubscribe.sql`, both engines); `LaunchListService.NotifyAsync` skips opted-out
+  addresses and includes a per-recipient one-click unsubscribe link; anonymous
+  `GET /api/launch-signups/unsubscribe?token=…` opts out and returns a friendly HTML page. The email shell
+  already carries the legal-name/address footer.
+- ✅ **API-side rate limiting.** Fixed-window (60/min per IP) `"public"` policy applied to every anonymous
+  group — launch signup, `/api/leads/capture`, `/api/affiliate-agreements` — via `AddRateLimiter` +
+  `UseRateLimiter` in `Program.cs`. Signature payload capped (~1 MB) in `AffiliateService.SignAgreementAsync`.
+- ✅ **Server-side email validation.** Shared `EmailValidation.IsValid` (`Application/Common`) enforced in
+  launch signup, lead create/update/capture, and affiliate create/update → `ArgumentException` (400).
+- ✅ **Agreement-link expiry.** `AffiliateAgreement` gains `ExpiresUtc` (default +30 days, ALTER
+  `032_agreement_expiry.sql`); `GetAgreementAsync`/`SignAgreementAsync` reject an expired link (view shows
+  "Expired", not signable). Already-signed agreements ignore expiry.
+- ✅ Tests: unsubscribe skips a subscriber + unknown-token no-op; malformed email → reject; expired agreement
+  can't be signed; oversized signature rejected; unsubscribe endpoint anonymous+HTML. Whole solution builds
+  (no new code warnings); all tests pass (LocalDB skipped).
+
 ### Admin — Affiliates, payouts & e-sign agreements (Phase 3, this change)
 - ✅ **Affiliate slice (commercial DB).** `Affiliate` (embedded commission plan), `AffiliatePayout`,
   `AffiliateAgreement` entities + enums, DTOs, `IAffiliateService`/`AffiliateService`, `IAffiliateRepository`

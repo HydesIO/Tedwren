@@ -57,8 +57,8 @@ public static class AffiliateEndpoints
                 await service.MarkPayoutPaidAsync(payoutId, cancellationToken) is { } payout ? Results.Ok(payout) : Results.NotFound())
             .WithName("MarkAffiliatePayoutPaid");
 
-        // Anonymous, token-gated agreement flow (the affiliate signs without an account, R9).
-        var agreement = app.MapGroup("/api/affiliate-agreements").WithTags("Affiliates").AllowAnonymous();
+        // Anonymous, token-gated agreement flow (the affiliate signs without an account, R9), rate-limited.
+        var agreement = app.MapGroup("/api/affiliate-agreements").WithTags("Affiliates").AllowAnonymous().RequireRateLimiting("public");
 
         agreement.MapGet("/{token}", async (string token, IAffiliateService service, CancellationToken cancellationToken) =>
                 await service.GetAgreementAsync(token, cancellationToken) is { } view ? Results.Ok(view) : Results.NotFound())

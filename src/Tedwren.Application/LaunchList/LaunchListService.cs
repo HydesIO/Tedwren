@@ -1,5 +1,6 @@
 using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.LaunchList;
+using Tedwren.Application.Common;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Notifications.Email;
@@ -34,9 +35,9 @@ public sealed class LaunchListService : ILaunchListService
     public async Task<LaunchSignupResultDto> SignUpAsync(CreateLaunchSignupRequest request, CancellationToken cancellationToken = default)
     {
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
-        if (email.Length == 0)
+        if (!EmailValidation.IsValid(email))
         {
-            throw new ArgumentException("An email address is required.", nameof(request));
+            throw new ArgumentException("A valid email address is required.", nameof(request));
         }
 
         var existing = await _repository.GetByEmailAsync(email, cancellationToken);
@@ -52,6 +53,7 @@ public sealed class LaunchListService : ILaunchListService
             UtmSource = request.UtmSource,
             UtmMedium = request.UtmMedium,
             UtmCampaign = request.UtmCampaign,
+            UnsubscribeToken = Guid.NewGuid().ToString("N"),
         };
         await _repository.AddAsync(signup, cancellationToken);
         return new LaunchSignupResultDto(Accepted: true, AlreadyOnList: false);
@@ -68,12 +70,16 @@ public sealed class LaunchListService : ILaunchListService
     public async Task<NotifyLaunchResultDto> NotifyAsync(NotifyLaunchRequest request, CancellationToken cancellationToken = default)
     {
         var all = await _repository.ListAsync(cancellationToken);
-        var targets = (request.OnlyUnnotified ? all.Where(s => !s.Notified) : all).ToList();
+        // Opted-out addresses are never emailed (PECR/GDPR).
+        var targets = all
+            .Where(s => !s.Unsubscribed)
+            .Where(s => !request.OnlyUnnotified || !s.Notified)
+            .ToList();
 
-        var startUrl = string.IsNullOrWhiteSpace(_emailOptions.PublicBaseUrl)
+        var apiBase = string.IsNullOrWhiteSpace(_emailOptions.PublicBaseUrl)
             ? "https://tedwren.co.uk"
             : _emailOptions.PublicBaseUrl.TrimEnd('/');
-        var content = LaunchAnnouncementEmail.BuildContent(startUrl);
+        var startUrl = apiBase;
 
         var sent = 0;
         var failed = 0;
@@ -81,6 +87,15 @@ public sealed class LaunchListService : ILaunchListService
         {
             try
             {
+                // Ensure the subscriber has an unsubscribe token, then build a per-recipient one-click opt-out link.
+                if (string.IsNullOrWhiteSpace(signup.UnsubscribeToken))
+                {
+                    signup.UnsubscribeToken = Guid.NewGuid().ToString("N");
+                }
+
+                var unsubscribeUrl = $"{apiBase}/api/launch-signups/unsubscribe?token={signup.UnsubscribeToken}";
+                var content = LaunchAnnouncementEmail.BuildContent(startUrl, unsubscribeUrl);
+
                 await _emailSender.SendHtmlAsync(signup.Email, LaunchAnnouncementEmail.Subject, content, cancellationToken);
                 signup.Notified = true;
                 signup.NotifiedUtc = DateTimeOffset.UtcNow;
@@ -95,6 +110,29 @@ public sealed class LaunchListService : ILaunchListService
         }
 
         return new NotifyLaunchResultDto(Targeted: targets.Count, Sent: sent, Failed: failed);
+    }
+
+    /// <summary>Opts a subscriber out via their unsubscribe token. Idempotent; returns false when the token is unknown.</summary>
+    public async Task<bool> UnsubscribeAsync(string token, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var signup = await _repository.GetByUnsubscribeTokenAsync(token, cancellationToken);
+        if (signup is null)
+        {
+            return false;
+        }
+
+        if (!signup.Unsubscribed)
+        {
+            signup.Unsubscribed = true;
+            await _repository.UpdateAsync(signup, cancellationToken);
+        }
+
+        return true;
     }
 
     /// <summary>Maps a signup entity to its list DTO.</summary>

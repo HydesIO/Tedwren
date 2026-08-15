@@ -36,4 +36,11 @@ public sealed class ApiLaunchListService : ILaunchListService
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<NotifyLaunchResultDto>(cancellationToken))!;
     }
+
+    /// <summary>Opts a subscriber out via their unsubscribe token.</summary>
+    public async Task<bool> UnsubscribeAsync(string token, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/launch-signups/unsubscribe?token={Uri.EscapeDataString(token)}", cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
 }

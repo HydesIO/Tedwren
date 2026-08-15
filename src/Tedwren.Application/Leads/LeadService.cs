@@ -1,5 +1,6 @@
 using Tedwren.Abstractions.Contracts.Leads;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Common;
 using Tedwren.Application.Persistence;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
@@ -46,7 +47,7 @@ public sealed class LeadService : ILeadService
         {
             CompanyName = RequireCompany(request.CompanyName),
             ContactName = Trim(request.ContactName),
-            ContactEmail = Trim(request.ContactEmail),
+            ContactEmail = ValidatedEmail(request.ContactEmail),
             Location = Trim(request.Location),
             Model = ParseModel(request.Model),
             NumberOfSites = request.NumberOfSites,
@@ -72,7 +73,7 @@ public sealed class LeadService : ILeadService
 
         lead.CompanyName = RequireCompany(request.CompanyName);
         lead.ContactName = Trim(request.ContactName);
-        lead.ContactEmail = Trim(request.ContactEmail);
+        lead.ContactEmail = ValidatedEmail(request.ContactEmail);
         lead.Location = Trim(request.Location);
         lead.Model = ParseModel(request.Model);
         lead.NumberOfSites = request.NumberOfSites;
@@ -172,7 +173,7 @@ public sealed class LeadService : ILeadService
     public async Task<LeadDto> CaptureAsync(CaptureLeadRequest request, CancellationToken cancellationToken = default)
     {
         var company = RequireCompany(request.CompanyName);
-        var email = Trim(request.ContactEmail);
+        var email = ValidatedEmail(request.ContactEmail);
 
         var existing = await _repository.FindOpenByCompanyAndEmailAsync(company, email, cancellationToken);
         if (existing is not null)
@@ -222,6 +223,18 @@ public sealed class LeadService : ILeadService
     }
 
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>Trims an optional email and rejects it when present but not a valid address.</summary>
+    private static string? ValidatedEmail(string? value)
+    {
+        var email = Trim(value);
+        if (email is not null && !EmailValidation.IsValid(email))
+        {
+            throw new ArgumentException("A valid email address is required.");
+        }
+
+        return email;
+    }
 
     private static LeadModel ParseModel(string? value) =>
         Enum.TryParse<LeadModel>(value, ignoreCase: true, out var model) ? model : LeadModel.Unknown;

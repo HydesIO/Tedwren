@@ -189,6 +189,25 @@ builder.Services.AddHostedService<BillingReconciliationHostedService>();
 
 builder.Services.AddOpenApi();
 
+// Rate limiting for the public (anonymous) endpoints — launch signup, lead capture, agreement view/sign/pdf.
+// A fixed window per client IP, so a bot can't spam signups/leads or hammer the sign endpoint. Authenticated
+// admin surfaces are unaffected. 429 on rejection.
+const string publicRateLimitPolicy = "public";
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(publicRateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                // Generous enough for a shared/NAT'd origin, tight enough to stop a bot hammering the endpoint.
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
+
 // CORS: permit the Blazor WASM client origin(s) declared in configuration to call the API.
 const string clientCorsPolicy = "TedwrenClient";
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
@@ -211,6 +230,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(clientCorsPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

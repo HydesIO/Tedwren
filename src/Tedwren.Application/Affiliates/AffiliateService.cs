@@ -2,6 +2,7 @@ using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Affiliates;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Common;
 using Tedwren.Application.Export;
 using Tedwren.Application.Notifications.Email;
 using Tedwren.Application.Persistence;
@@ -21,6 +22,12 @@ public sealed class AffiliateService : IAffiliateService
 {
     private const string CountersignatoryName = "James Darby";
     private const string CountersignatoryTitle = "Director";
+
+    /// <summary>Max accepted length of a drawn-signature data URL (~1 MB of base64) — an anti-abuse cap.</summary>
+    private const int MaxSignatureDataUrlLength = 1_500_000;
+
+    /// <summary>Default lifetime of an agreement's signing link before it expires.</summary>
+    private static readonly TimeSpan AgreementLifetime = TimeSpan.FromDays(30);
 
     private readonly IAffiliateRepository _repository;
     private readonly ILeadRepository _leads;
@@ -75,7 +82,7 @@ public sealed class AffiliateService : IAffiliateService
     public async Task<AffiliateDto> CreateAsync(CreateAffiliateRequest request, CancellationToken cancellationToken = default)
     {
         var name = Require(request.Name, "A name is required.");
-        var email = Require(request.ContactEmail, "A contact email is required.");
+        var email = RequireEmail(request.ContactEmail);
 
         var affiliate = new Affiliate
         {
@@ -99,6 +106,7 @@ public sealed class AffiliateService : IAffiliateService
             CountersignatoryName = CountersignatoryName,
             CountersignatoryTitle = CountersignatoryTitle,
             Status = AffiliateAgreementStatus.Sent,
+            ExpiresUtc = DateTimeOffset.UtcNow.Add(AgreementLifetime),
         };
         await _repository.AddAgreementAsync(agreement, cancellationToken);
 
@@ -120,7 +128,7 @@ public sealed class AffiliateService : IAffiliateService
         }
 
         affiliate.Name = Require(request.Name, "A name is required.");
-        affiliate.ContactEmail = Require(request.ContactEmail, "A contact email is required.");
+        affiliate.ContactEmail = RequireEmail(request.ContactEmail);
         affiliate.Company = Trim(request.Company);
         affiliate.AccountManager = Trim(request.AccountManager);
         affiliate.PayeeReference = Trim(request.PayeeReference);
@@ -190,9 +198,15 @@ public sealed class AffiliateService : IAffiliateService
     public async Task<AffiliateAgreementViewDto?> SignAgreementAsync(string token, SignAffiliateAgreementRequest request, CancellationToken cancellationToken = default)
     {
         var agreement = await _repository.GetAgreementByTokenAsync(token, cancellationToken);
-        if (agreement is null || !agreement.IsSignable)
+        if (agreement is null || !agreement.IsSignable || agreement.IsExpired(DateTimeOffset.UtcNow))
         {
             return null;
+        }
+
+        // Cap the signature payload so an oversized data URL can't be used to exhaust memory/storage.
+        if ((request.SignatureDataUrl?.Length ?? 0) > MaxSignatureDataUrlLength)
+        {
+            throw new ArgumentException("The signature is too large.");
         }
 
         var signedName = Require(request.SignedByName, "A name is required to sign.");
@@ -304,6 +318,18 @@ public sealed class AffiliateService : IAffiliateService
         return trimmed;
     }
 
+    /// <summary>Requires a contact email and rejects it when not a valid address.</summary>
+    private static string RequireEmail(string? value)
+    {
+        var email = Require(value, "A contact email is required.");
+        if (!EmailValidation.IsValid(email))
+        {
+            throw new ArgumentException("A valid contact email is required.");
+        }
+
+        return email;
+    }
+
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static AffiliateDto ToDto(Affiliate a) => new(
@@ -322,8 +348,8 @@ public sealed class AffiliateService : IAffiliateService
         a.TermsHtml,
         a.CountersignatoryName,
         a.CountersignatoryTitle,
-        a.Status.ToString(),
-        a.IsSignable,
+        a.IsExpired(DateTimeOffset.UtcNow) ? "Expired" : a.Status.ToString(),
+        a.IsSignable && !a.IsExpired(DateTimeOffset.UtcNow),
         a.SignedUtc,
         a.SignedByName);
 }

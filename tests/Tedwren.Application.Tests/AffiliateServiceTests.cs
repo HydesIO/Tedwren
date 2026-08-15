@@ -96,6 +96,48 @@ public sealed class AffiliateServiceTests
     }
 
     [Fact]
+    public async Task Sign_IsRejected_WhenExpired()
+    {
+        var repo = new InMemoryAffiliateRepository();
+        var service = new AffiliateService(repo, new InMemoryLeadRepository(), new FakeEmailSender(),
+            new EmailOptions { ConsoleBaseUrl = "https://console.tedwren.example" });
+        var affiliate = await service.CreateAsync(new CreateAffiliateRequest("Pat", "pat@partner.com"));
+        var token = (await service.GetAsync(affiliate.Id))!.Agreement!.Token;
+
+        // Force the signing link into the past.
+        var agreement = await repo.GetAgreementByTokenAsync(token);
+        agreement!.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(-1);
+        await repo.UpdateAgreementAsync(agreement);
+
+        var view = await service.GetAgreementAsync(token);
+        Assert.False(view!.Signable);
+        Assert.Equal("Expired", view.Status);
+
+        var signed = await service.SignAgreementAsync(token, new SignAffiliateAgreementRequest("data:image/png;base64,iVBORw0KGgo=", "Pat"));
+        Assert.Null(signed);
+    }
+
+    [Fact]
+    public async Task Sign_RejectsOversizedSignature()
+    {
+        var (service, _, _) = Create();
+        var affiliate = await service.CreateAsync(new CreateAffiliateRequest("Pat", "pat@partner.com"));
+        var token = (await service.GetAsync(affiliate.Id))!.Agreement!.Token;
+
+        var huge = "data:image/png;base64," + new string('A', 1_500_001);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.SignAgreementAsync(token, new SignAffiliateAgreementRequest(huge, "Pat")));
+    }
+
+    [Fact]
+    public async Task Create_RejectsInvalidEmail()
+    {
+        var (service, _, _) = Create();
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            service.CreateAsync(new CreateAffiliateRequest("Pat", "not-an-email")));
+    }
+
+    [Fact]
     public async Task Sign_IsRejected_WhenAlreadySigned()
     {
         var (service, _, _) = Create();

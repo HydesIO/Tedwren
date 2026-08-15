@@ -13,7 +13,7 @@ public sealed class AffiliateRepository : AdminRepositoryBase, IAffiliateReposit
     private const string PayoutColumns =
         "Id, AffiliateId, LeadId, Amount, Currency, Status, Reference, CreatedUtc, PaidUtc";
     private const string AgreementColumns =
-        "Id, AffiliateId, Token, Status, TermsHtml, CountersignatoryName, CountersignatoryTitle, SignatureDataUrl, SignedByName, SignedUtc, PdfBytes, CreatedUtc";
+        "Id, AffiliateId, Token, Status, TermsHtml, CountersignatoryName, CountersignatoryTitle, SignatureDataUrl, SignedByName, SignedUtc, PdfBytes, CreatedUtc, ExpiresUtc";
 
     /// <summary>Creates the repository over the commercial connection factory.</summary>
     public AffiliateRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -94,9 +94,9 @@ public sealed class AffiliateRepository : AdminRepositoryBase, IAffiliateReposit
     public Task AddAgreementAsync(AffiliateAgreement agreement, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             "INSERT INTO AffiliateAgreements (Id, AffiliateId, Token, Status, TermsHtml, CountersignatoryName, " +
-            "CountersignatoryTitle, SignatureDataUrl, SignedByName, SignedUtc, PdfBytes, CreatedUtc) VALUES " +
+            "CountersignatoryTitle, SignatureDataUrl, SignedByName, SignedUtc, PdfBytes, CreatedUtc, ExpiresUtc) VALUES " +
             "(@Id, @AffiliateId, @Token, @Status, @TermsHtml, @CountersignatoryName, " +
-            "@CountersignatoryTitle, @SignatureDataUrl, @SignedByName, @SignedUtc, @PdfBytes, @CreatedUtc)",
+            "@CountersignatoryTitle, @SignatureDataUrl, @SignedByName, @SignedUtc, @PdfBytes, @CreatedUtc, @ExpiresUtc)",
             AgreementParameters(agreement), cancellationToken);
 
     /// <summary>Returns an agreement by its public token, or null.</summary>
@@ -120,7 +120,8 @@ public sealed class AffiliateRepository : AdminRepositoryBase, IAffiliateReposit
     public Task UpdateAgreementAsync(AffiliateAgreement agreement, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             "UPDATE AffiliateAgreements SET Status = @Status, SignatureDataUrl = @SignatureDataUrl, " +
-            "SignedByName = @SignedByName, SignedUtc = @SignedUtc, PdfBytes = @PdfBytes WHERE Id = @Id",
+            "SignedByName = @SignedByName, SignedUtc = @SignedUtc, PdfBytes = @PdfBytes, " +
+            "Token = @Token, ExpiresUtc = @ExpiresUtc WHERE Id = @Id",
             AgreementParameters(agreement), cancellationToken);
 
     // ---- Mapping ----
@@ -167,7 +168,7 @@ public sealed class AffiliateRepository : AdminRepositoryBase, IAffiliateReposit
     private static object AgreementParameters(AffiliateAgreement a) => new
     {
         a.Id, a.AffiliateId, a.Token, Status = (int)a.Status, a.TermsHtml, a.CountersignatoryName,
-        a.CountersignatoryTitle, a.SignatureDataUrl, a.SignedByName, a.SignedUtc, a.PdfBytes, a.CreatedUtc,
+        a.CountersignatoryTitle, a.SignatureDataUrl, a.SignedByName, a.SignedUtc, a.PdfBytes, a.CreatedUtc, a.ExpiresUtc,
     };
 
     private static AffiliateAgreement ToAgreement(AgreementRow r) => new()
@@ -184,6 +185,7 @@ public sealed class AffiliateRepository : AdminRepositoryBase, IAffiliateReposit
         SignedUtc = r.SignedUtc,
         PdfBytes = r.PdfBytes,
         CreatedUtc = r.CreatedUtc,
+        ExpiresUtc = r.ExpiresUtc,
     };
 
     private sealed record AffiliateRow(
@@ -197,5 +199,5 @@ public sealed class AffiliateRepository : AdminRepositoryBase, IAffiliateReposit
     private sealed record AgreementRow(
         Guid Id, Guid AffiliateId, string Token, int Status, string TermsHtml, string CountersignatoryName,
         string? CountersignatoryTitle, string? SignatureDataUrl, string? SignedByName, DateTimeOffset? SignedUtc,
-        byte[]? PdfBytes, DateTimeOffset CreatedUtc);
+        byte[]? PdfBytes, DateTimeOffset CreatedUtc, DateTimeOffset? ExpiresUtc);
 }
