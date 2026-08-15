@@ -43,6 +43,9 @@ public static class ShellChrome
     public static IReadOnlyList<NavItem> AdminNavItems { get; } = new List<NavItem>
     {
         new("Admin Dashboard",     Icons.Material.Outlined.AdminPanelSettings, "/admin"),
+        new("Launch List",         Icons.Material.Outlined.Campaign,           "/admin/launch-list"),
+        new("Leads",               Icons.Material.Outlined.ContactPage,        "/admin/leads"),
+        new("Affiliates",          Icons.Material.Outlined.Handshake,          "/admin/affiliates"),
         new("Companies",           Icons.Material.Outlined.Business,           "/admin/companies"),
         new("Users",               Icons.Material.Outlined.PeopleOutline,      "/admin/users"),
         new("Subscriptions",       Icons.Material.Outlined.CardMembership,     "/admin/subscriptions"),

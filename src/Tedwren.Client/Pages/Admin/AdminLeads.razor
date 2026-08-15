@@ -1,0 +1,123 @@
+@page "/admin/leads"
+@using Tedwren.Abstractions.Contracts.Leads
+@using Tedwren.Abstractions.Services
+@inject ILeadService Leads
+@inject IDialogService DialogService
+@inject NavigationManager Nav
+
+<PageTitle>Leads · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Leads" Subtitle="Prospective customers in the sales pipeline">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add" OnClick="AddLead">
+                Add lead
+            </MudButton>
+        </Actions>
+    </PageHeader>
+
+    @if (_loading)
+    {
+        <LoadingSkeleton />
+    }
+    else if (_leads.Count == 0)
+    {
+        <EmptyState Title="No leads yet" Description="Add a lead, or wait for one to arrive from the marketing site."
+                    Icon="@Icons.Material.Outlined.ContactPage" />
+    }
+    else
+    {
+        <div class="lead-grid">
+            @foreach (var lead in _leads)
+            {
+                <div class="lead-card" @onclick="@(() => Open(lead.Id))" role="button" tabindex="0">
+                    <div class="lead-card__head">
+                        <span class="lead-card__company">@lead.CompanyName</span>
+                        <StatusPill Label="@StatusLabel(lead.Status)" Status="StatusPillKind(lead.Status)" />
+                    </div>
+                    @if (!string.IsNullOrWhiteSpace(lead.ContactName) || !string.IsNullOrWhiteSpace(lead.Location))
+                    {
+                        <div class="lead-card__sub">
+                            @lead.ContactName@(string.IsNullOrWhiteSpace(lead.ContactName) || string.IsNullOrWhiteSpace(lead.Location) ? "" : " · ")@lead.Location
+                        </div>
+                    }
+                    <div class="lead-card__chips">
+                        <span class="lead-chip"><MudIcon Icon="@ModelIcon(lead.Model)" Size="Size.Small" /> @ModelLabel(lead.Model)</span>
+                        @if (lead.NumberOfSites is { } sites)
+                        {
+                            <span class="lead-chip"><MudIcon Icon="@Icons.Material.Outlined.LocationCity" Size="Size.Small" /> @sites site@(sites == 1 ? "" : "s")</span>
+                        }
+                    </div>
+                    <div class="lead-card__foot">
+                        <span class="lead-card__revenue">@Revenue(lead.EstimatedRevenue)</span>
+                        <span class="lead-card__owner">@(string.IsNullOrWhiteSpace(lead.AccountManager) ? "Unassigned" : lead.AccountManager)</span>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<LeadDto> _leads = Array.Empty<LeadDto>();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _leads = await Leads.ListAsync();
+        _loading = false;
+    }
+
+    private void Open(Guid id) => Nav.NavigateTo($"/admin/leads/{id}");
+
+    private async Task AddLead()
+    {
+        var dialog = await DialogService.ShowAsync<AddLeadDialog>("Add lead");
+        var result = await dialog.Result;
+        if (result?.Canceled == false && result.Data is Guid id)
+        {
+            Nav.NavigateTo($"/admin/leads/{id}");
+        }
+    }
+
+    // Presentation helpers — read-only labels rendered as plain markup.
+    private static string StatusLabel(string status) => status switch
+    {
+        "New" => "New",
+        "Contacted" => "Contacted",
+        "Qualified" => "Qualified",
+        "Proposal" => "Proposal",
+        "Converted" => "Converted",
+        "Lost" => "Lost",
+        _ => status,
+    };
+
+    private static StatusKind StatusPillKind(string status) => status switch
+    {
+        "Converted" => StatusKind.Success,
+        "Proposal" => StatusKind.Info,
+        "Qualified" => StatusKind.Info,
+        "Contacted" => StatusKind.Warning,
+        "Lost" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+
+    private static string ModelLabel(string model) => model switch
+    {
+        "MainContractor" => "Main contractor",
+        "Subcontractor" => "Subcontractor",
+        _ => "Model TBC",
+    };
+
+    private static string ModelIcon(string model) => model switch
+    {
+        "MainContractor" => Icons.Material.Outlined.Domain,
+        "Subcontractor" => Icons.Material.Outlined.Engineering,
+        _ => Icons.Material.Outlined.HelpOutline,
+    };
+
+    private static string Revenue(decimal? amount) => amount is { } a ? $"£{a:N0}/yr" : "—";
+}

@@ -6,14 +6,14 @@ using Tedwren.Domain.Enums;
 namespace Tedwren.DataAccess.Repositories;
 
 /// <summary>Dapper <see cref="IMandateRepository"/> for direct-debit mandates. ANSI-portable across engines.</summary>
-public sealed class MandateRepository : RepositoryBase, IMandateRepository
+public sealed class MandateRepository : AdminRepositoryBase, IMandateRepository
 {
     private const string Columns =
         "Id, CompanyId, GoCardlessBillingRequestId, GoCardlessMandateId, GoCardlessCustomerId, " +
         "Reference, BankName, AccountNumberEnding, Status, CreatedUtc, UpdatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
-    public MandateRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+    public MandateRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
     {
     }
 

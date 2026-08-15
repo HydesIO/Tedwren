@@ -6,13 +6,13 @@ using Tedwren.Domain.Enums;
 namespace Tedwren.DataAccess.Repositories;
 
 /// <summary>Dapper <see cref="IPayoutRepository"/> for BACS payouts. ANSI-portable across engines.</summary>
-public sealed class PayoutRepository : RepositoryBase, IPayoutRepository
+public sealed class PayoutRepository : AdminRepositoryBase, IPayoutRepository
 {
     private const string Columns =
         "Id, GoCardlessPayoutId, AmountPence, Currency, Status, Reference, ArrivalDate, CreatedUtc, UpdatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
-    public PayoutRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+    public PayoutRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
     {
     }
 

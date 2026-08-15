@@ -1,6 +1,7 @@
 using System.Text.Unicode;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.WebEncoders;
 using Tedwren.Web.Analytics;
 using Tedwren.Web.Configuration;
@@ -33,7 +34,32 @@ builder.Services.Configure<WebEncoderOptions>(options =>
 // Lead capture (Web Plan §7): options + the routing seam. LoggingLeadRouter is the launch
 // implementation; a CRM/email integration replaces it behind ILeadRouter with no controller changes.
 builder.Services.Configure<LeadOptions>(builder.Configuration.GetSection(LeadOptions.SectionName));
-builder.Services.AddScoped<ILeadRouter, LoggingLeadRouter>();
+
+// Lead delivery: forward captured demo/contact leads to the API's anonymous /api/leads/capture endpoint so
+// they land in the admin sales pipeline (Web Plan §7). With no Api:BaseUrl set, ApiLeadRouter logs and no-ops,
+// so the marketing site still runs standalone (as LoggingLeadRouter did).
+builder.Services.Configure<WebApiOptions>(builder.Configuration.GetSection(WebApiOptions.SectionName));
+builder.Services.AddHttpClient<ILeadRouter, ApiLeadRouter>((sp, client) =>
+{
+    var baseUrl = sp.GetRequiredService<IOptions<WebApiOptions>>().Value.BaseUrl;
+    if (!string.IsNullOrWhiteSpace(baseUrl))
+    {
+        client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    }
+});
+
+// Launch-list capture (Web Content Spec §6.9): options + a typed HttpClient sink that forwards a captured
+// email to the API's anonymous /api/launch-signups endpoint. With no ApiBaseUrl set, the sink logs and
+// no-ops so the marketing site still runs standalone.
+builder.Services.Configure<LaunchSignupOptions>(builder.Configuration.GetSection(LaunchSignupOptions.SectionName));
+builder.Services.AddHttpClient<ILaunchSignupSink, ApiLaunchSignupSink>((sp, client) =>
+{
+    var baseUrl = sp.GetRequiredService<IOptions<LaunchSignupOptions>>().Value.ApiBaseUrl;
+    if (!string.IsNullOrWhiteSpace(baseUrl))
+    {
+        client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");
+    }
+});
 
 // Analytics (Web Plan §8): GA4 is off unless configured AND consented to. Empty id by default.
 builder.Services.Configure<AnalyticsOptions>(builder.Configuration.GetSection(AnalyticsOptions.SectionName));

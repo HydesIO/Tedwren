@@ -1,0 +1,78 @@
+@using Tedwren.Abstractions.Contracts.Affiliates
+@using Tedwren.Abstractions.Services
+@inject IAffiliateService Affiliates
+@inject ISnackbar Snackbar
+
+@* Create an affiliate on a commission plan. On save the API drafts their agreement and emails the setup link. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="add-affiliate">
+            <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="A name is required." />
+            <TedwrenTextField Label="Contact email" @bind-Value="_email" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="A contact email is required." />
+            <TedwrenTextField Label="Company" @bind-Value="_company" />
+            <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
+            <TedwrenTextField Label="Payee reference" @bind-Value="_payeeReference"
+                              HelperText="A non-sensitive reference for payouts — never a sort code or account number." />
+            <MudNumericField T="decimal" Label="Affiliate rate (%)" @bind-Value="_ratePercent" Min="0" Max="100"
+                             HelperText="Percentage of profit the affiliate earns." />
+            <MudNumericField T="decimal" Label="Profit margin (%)" @bind-Value="_marginPercent" Min="0" Max="100"
+                             HelperText="Margin taken from deal revenue before commission." />
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-2">
+                On £15,000 revenue: profit £@Example(_marginPercent), commission £@Example(_marginPercent, _ratePercent).
+            </MudAlert>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Create affiliate</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string? _name;
+    private string? _email;
+    private string? _company;
+    private string? _accountManager;
+    private string? _payeeReference;
+    private decimal _ratePercent = 20m;
+    private decimal _marginPercent = 33m;
+    private bool _submitted;
+    private bool _busy;
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_email))
+        {
+            Snackbar.Add("Name and contact email are required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var affiliate = await Affiliates.CreateAsync(new CreateAffiliateRequest(
+                _name!, _email!, _company, _accountManager, _payeeReference,
+                _ratePercent / 100m, _marginPercent / 100m));
+            Snackbar.Add("Affiliate created — setup email sent.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(affiliate.Id));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Example(decimal marginPercent) => $"{decimal.Round(15000m * marginPercent / 100m, 0):N0}";
+    private static string Example(decimal marginPercent, decimal ratePercent) =>
+        $"{decimal.Round(15000m * (marginPercent / 100m) * (ratePercent / 100m), 0):N0}";
+}

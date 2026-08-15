@@ -6,14 +6,14 @@ using Tedwren.Domain.Enums;
 namespace Tedwren.DataAccess.Repositories;
 
 /// <summary>Dapper <see cref="IPaymentRepository"/> for direct-debit payments. ANSI-portable across engines.</summary>
-public sealed class PaymentRepository : RepositoryBase, IPaymentRepository
+public sealed class PaymentRepository : AdminRepositoryBase, IPaymentRepository
 {
     private const string Columns =
         "Id, CompanyId, MandateId, GoCardlessPaymentId, AmountPence, Currency, Description, " +
         "Status, ChargeDate, FailureReason, CreatedUtc, UpdatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
-    public PaymentRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+    public PaymentRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
     {
     }
 

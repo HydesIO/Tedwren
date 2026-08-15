@@ -1,0 +1,7 @@
+/* Responsive KPI row for the launch-list overview — auto-fills columns, wraps on narrow screens. */
+.kpi-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--spacing-16, 16px);
+    margin-bottom: var(--spacing-16, 16px);
+}

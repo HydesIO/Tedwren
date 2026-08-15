@@ -159,6 +159,33 @@ folders apart. SQL Server is the supported EF path today.
 
 ---
 
+## 8. Two databases: product and commercial
+
+The runtime uses **two databases**. The product/compliance data lives in the primary database
+(`ConnectionStrings:SqlServer`); the commercial/admin plane — subscriptions, payments, mandates, payouts,
+webhook events, and the go-to-market slices (launch list, and later leads and affiliates) — lives in a
+**separate commercial database** (`ConnectionStrings:SqlServerCommercial`, and `PostgreSqlCommercial`). When
+the commercial connection string is empty it falls back to the product connection string, so a single-database
+dev setup still runs.
+
+- **Runtime schema (authoritative):** the idempotent SQL scripts under
+  `src/Tedwren.DataAccess/Migrations/Scripts/{SqlServer,Postgres}/` are split into two areas — everything at
+  the engine-folder root is the **product** set, and the `Commercial/` subfolder is the **commercial** set.
+  `MigrationRunner.RunAsync(factory, area)` runs each area against its own database; `Program.cs` calls it once
+  per database at startup. Add a new commercial table's script under `.../Commercial/` (continue the number
+  sequence, e.g. `025_*`), and a new product table's script at the engine-folder root.
+- **EF migrations:** the EF `TedwrenDbContext` covers the product database. A commercial-database EF context is
+  **deferred** (like the PostgreSQL EF path in §7) — the idempotent commercial scripts are the source of truth
+  for the commercial schema for now.
+- **Relocation of the billing tables:** scripts `022`–`024` (billing, webhook events, payouts) moved from the
+  product set into the commercial set. Fresh environments get these created directly in the commercial
+  database. **An already-populated product database** that predates this change still has those tables in the
+  product database; migrate them with a one-off data copy into the commercial database (e.g. `SELECT INTO` /
+  `INSERT … SELECT` across the two catalogues, or a scripted export/import), then drop the orphaned product
+  copies once verified. There is no automatic data move — the scripts only create empty tables.
+
+---
+
 ## Quick reference
 
 ```bash

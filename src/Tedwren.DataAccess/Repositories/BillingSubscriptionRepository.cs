@@ -6,13 +6,13 @@ using Tedwren.Domain.Enums;
 namespace Tedwren.DataAccess.Repositories;
 
 /// <summary>Dapper <see cref="IBillingSubscriptionRepository"/> for company billing subscriptions. ANSI-portable.</summary>
-public sealed class BillingSubscriptionRepository : RepositoryBase, IBillingSubscriptionRepository
+public sealed class BillingSubscriptionRepository : AdminRepositoryBase, IBillingSubscriptionRepository
 {
     private const string Columns =
         "Id, CompanyId, MandateId, MeterKey, BandKey, Description, Status, CreatedUtc, UpdatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
-    public BillingSubscriptionRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
+    public BillingSubscriptionRepository(IAdminDbConnectionFactory connectionFactory) : base(connectionFactory)
     {
     }
 
