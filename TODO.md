@@ -380,6 +380,11 @@ Adds real console sign-in (the PRD leaves the mechanism to the implementer, §10
   returns the real user with a **real tenant CompanyId** (R15); the config stub is deleted.
 - ✅ **Bootstrap admin** — `AdminUserSeeder` (idempotent, both modes) seeds an Administrator from the `Seed`
   config section so a fresh install can sign in.
+- ✅ **Master administrators** — `AdminUserSeeder` also seeds the named Tedwren master administrators
+  (`AdminUserSeeder.MasterAdmins`: leigh.hydes@, james.darby@, james.wheeler@tedwren.com) as active
+  `Administrator` accounts in the seed tenant. Idempotent (matched by email, never clobbers an existing
+  account); each uses the `Seed:Password` and should change it on first sign-in. Covered by
+  `AdminUserSeederTests`.
 - ✅ **Client** — `TokenStore` + `AuthTokenHandler` (attaches bearer, 401→`/login`), `AuthState`
   (login/accept/logout, localStorage token via `tedwren.auth.*`), `/login` + `/accept-invite` pages
   (RecipientLayout), MainLayout gates the console + sign-out; Auditor UI write-gating via `AuthState.CanWrite`.
