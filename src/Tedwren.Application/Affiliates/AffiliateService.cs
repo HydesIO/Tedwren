@@ -29,20 +29,26 @@ public sealed class AffiliateService : IAffiliateService
     /// <summary>Default lifetime of an agreement's signing link before it expires.</summary>
     private static readonly TimeSpan AgreementLifetime = TimeSpan.FromDays(30);
 
+    /// <summary>Payment states that count as cleared revenue (funds confirmed or settled).</summary>
+    private static readonly PaymentStatus[] ClearedStates = { PaymentStatus.Confirmed, PaymentStatus.PaidOut };
+
     private readonly IAffiliateRepository _repository;
     private readonly ILeadRepository _leads;
+    private readonly IPaymentRepository _payments;
     private readonly IEmailSender _emailSender;
     private readonly EmailOptions _emailOptions;
 
-    /// <summary>Injects the affiliate repository, the lead repository, the email sender and email options.</summary>
+    /// <summary>Injects the affiliate + lead repositories, the payment repository (for earned commission), the email sender and options.</summary>
     public AffiliateService(
         IAffiliateRepository repository,
         ILeadRepository leads,
+        IPaymentRepository payments,
         IEmailSender emailSender,
         EmailOptions emailOptions)
     {
         _repository = repository;
         _leads = leads;
+        _payments = payments;
         _emailSender = emailSender;
         _emailOptions = emailOptions;
     }
@@ -64,17 +70,27 @@ public sealed class AffiliateService : IAffiliateService
         }
 
         var leads = await _leads.ListByAffiliateAsync(id, cancellationToken);
-        var accounts = leads.Select(l => new AssociatedAccountDto(
-            l.Id, l.CompanyName, l.Status.ToString(), l.EstimatedRevenue,
-            affiliate.CommissionOn(l.EstimatedRevenue ?? 0m))).ToList();
+        var accounts = new List<AssociatedAccountDto>(leads.Count);
+        foreach (var l in leads)
+        {
+            var (clearedRevenue, earned) = await EarnedForAccountAsync(affiliate, l, cancellationToken);
+            accounts.Add(new AssociatedAccountDto(
+                l.Id, l.CompanyName, l.Status.ToString(), l.EstimatedRevenue,
+                affiliate.CommissionOn(l.EstimatedRevenue ?? 0m), clearedRevenue, earned));
+        }
 
         var payouts = await _repository.ListPayoutsAsync(id, cancellationToken);
+        var paid = payouts.Where(p => p.Status == AffiliatePayoutStatus.Paid).Sum(p => p.Amount);
+        var earnedTotal = accounts.Sum(a => a.EarnedCommission);
+        var commission = new CommissionSummaryDto(earnedTotal, paid, earnedTotal - paid);
+
         var agreement = await _repository.GetAgreementByAffiliateAsync(id, cancellationToken);
 
         return new AffiliateDetailDto(
             ToDto(affiliate),
             accounts,
             payouts.Select(ToPayoutDto).ToList(),
+            commission,
             agreement is null ? null : ToAgreementSummary(agreement));
     }
 
@@ -278,6 +294,37 @@ public sealed class AffiliateService : IAffiliateService
     {
         var agreement = await _repository.GetAgreementByTokenAsync(token, cancellationToken);
         return agreement?.PdfBytes;
+    }
+
+    /// <summary>
+    /// Computes an account's cleared first-year revenue and the commission earned on it. Revenue is the net of
+    /// cleared payments (Confirmed/PaidOut) less chargebacks (the clawback), within twelve months of the first
+    /// payment; commission is the affiliate's profit-share of that net. Returns (0, 0) when the lead isn't
+    /// linked to an account or has no cleared payments.
+    /// </summary>
+    private async Task<(decimal ClearedRevenue, decimal Earned)> EarnedForAccountAsync(Affiliate affiliate, Lead lead, CancellationToken cancellationToken)
+    {
+        if (lead.ConvertedAccountId is not { } accountId)
+        {
+            return (0m, 0m);
+        }
+
+        var payments = await _payments.GetByCompanyAsync(accountId, cancellationToken);
+        if (payments.Count == 0)
+        {
+            return (0m, 0m);
+        }
+
+        // First-year window from the earliest payment.
+        var firstPaymentUtc = payments.Min(p => p.CreatedUtc);
+        var windowEnd = firstPaymentUtc.AddMonths(12);
+        var inWindow = payments.Where(p => p.CreatedUtc <= windowEnd).ToList();
+
+        var clearedPence = inWindow.Where(p => ClearedStates.Contains(p.Status)).Sum(p => p.AmountPence);
+        var chargedBackPence = inWindow.Where(p => p.Status == PaymentStatus.ChargedBack).Sum(p => p.AmountPence);
+
+        var netRevenue = Math.Max(0, clearedPence - chargedBackPence) / 100m;
+        return (netRevenue, affiliate.CommissionOn(netRevenue));
     }
 
     /// <summary>Builds the public link to view/sign an agreement (served by the console's anonymous page).</summary>

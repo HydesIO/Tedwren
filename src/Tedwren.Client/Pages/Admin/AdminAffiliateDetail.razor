@@ -35,7 +35,9 @@
         <div class="kpi-row">
             <KpiCard Title="Affiliate rate" Value="@Percent(a.AffiliateRatePct)" Icon="@Icons.Material.Outlined.Percent" />
             <KpiCard Title="Profit margin" Value="@Percent(a.ProfitMarginPct)" Icon="@Icons.Material.Outlined.Savings" />
-            <KpiCard Title="Live accounts" Value="@_detail.AssociatedAccounts.Count.ToString()" Icon="@Icons.Material.Outlined.AccountBalance" AccentColour="var(--color-success)" />
+            <KpiCard Title="Commission earned" Value="@Money(_detail.Commission.Earned)" Icon="@Icons.Material.Outlined.PriceCheck" AccentColour="var(--color-success)" />
+            <KpiCard Title="Paid out" Value="@Money(_detail.Commission.Paid)" Icon="@Icons.Material.Outlined.Payments" />
+            <KpiCard Title="Outstanding" Value="@Money(_detail.Commission.Outstanding)" Icon="@Icons.Material.Outlined.HourglassBottom" AccentColour="var(--color-warning)" />
         </div>
 
         <MudTabs Elevation="0" Rounded="true" Class="mt-4">
@@ -236,10 +238,14 @@
         {
             new() { Title = "Company", Value = a => a.CompanyName },
             new() { Title = "Status", Text = a => a.Status, CellTemplate = a => @<StatusPill Label="@a.Status" Status="@(a.Status == "Converted" ? StatusKind.Success : StatusKind.Neutral)" /> },
-            new() { Title = "Revenue", Value = a => a.EstimatedRevenue ?? 0m, AlignRight = true,
+            new() { Title = "Est. revenue", Value = a => a.EstimatedRevenue ?? 0m, AlignRight = true,
                     CellTemplate = a => @<span>@(a.EstimatedRevenue is { } r ? Money(r) : "—")</span> },
-            new() { Title = "Commission", Value = a => a.Commission, AlignRight = true,
-                    CellTemplate = a => @<span>@Money(a.Commission)</span> },
+            new() { Title = "Est. commission", Value = a => a.EstimatedCommission, AlignRight = true,
+                    CellTemplate = a => @<span>@Money(a.EstimatedCommission)</span> },
+            new() { Title = "Cleared revenue", Value = a => a.ClearedRevenue, AlignRight = true,
+                    CellTemplate = a => @<span>@Money(a.ClearedRevenue)</span> },
+            new() { Title = "Earned commission", Value = a => a.EarnedCommission, AlignRight = true,
+                    CellTemplate = a => @<span>@Money(a.EarnedCommission)</span> },
         };
 
         _payoutColumns = new()

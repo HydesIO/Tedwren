@@ -11,6 +11,20 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Real commission & company matching (Phase 6, this change)
+- ✅ **Commission from cleared revenue.** `AffiliateService` now reads the account's actual direct-debit
+  payments (`IPaymentRepository`, commercial DB) and computes **earned** commission = net cleared first-year
+  revenue (Confirmed/PaidOut less ChargedBack, within 12 months of the first payment) × profit margin ×
+  affiliate rate. Associated-accounts show estimated *and* earned; the detail page surfaces
+  **earned / paid / outstanding** KPI tiles (`CommissionSummaryDto`). The admin-entered estimate is kept
+  alongside as `EstimatedCommission`.
+- ✅ **Company-number matching.** `ICompanyRepository.GetByRegistrationNumberAsync` (space/case-tolerant, Dapper
+  + in-memory). `LeadService.ConvertAsync` auto-links the account by the lead's company number when no account
+  is passed (manual assignment still wins); the conversion note records the auto-match. Cross-DB soft match
+  (lead in commercial DB, company in product DB), resolved in the Application layer.
+- ✅ Tests: earned-commission net-of-chargebacks math; convert auto-match by registration number; no-match
+  leaves the account unset. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
+
 ### Admin — CRUD/UX completion (Phase 5, this change)
 - ✅ **Edit dialogs.** `EditLeadDialog` (Edit action on `AdminLeadDetail`) and `EditAffiliateDialog` (Edit
   action on `AdminAffiliateDetail`, includes status), both persisting via the existing `Update` endpoints.

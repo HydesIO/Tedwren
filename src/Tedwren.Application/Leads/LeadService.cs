@@ -16,9 +16,14 @@ namespace Tedwren.Application.Leads;
 public sealed class LeadService : ILeadService
 {
     private readonly ILeadRepository _repository;
+    private readonly ICompanyRepository _companies;
 
-    /// <summary>Injects the lead repository.</summary>
-    public LeadService(ILeadRepository repository) => _repository = repository;
+    /// <summary>Injects the lead repository and the (product-database) company repository for account matching.</summary>
+    public LeadService(ILeadRepository repository, ICompanyRepository companies)
+    {
+        _repository = repository;
+        _companies = companies;
+    }
 
     /// <summary>Returns every lead, newest-updated first.</summary>
     public async Task<IReadOnlyList<LeadDto>> ListAsync(CancellationToken cancellationToken = default)
@@ -141,12 +146,27 @@ public sealed class LeadService : ILeadService
             return null;
         }
 
+        // Manual assignment wins; otherwise try to match the account by the lead's company (registration) number.
+        var accountId = request.AccountId;
+        var matched = false;
+        if (accountId is null && !string.IsNullOrWhiteSpace(lead.CompanyNumber))
+        {
+            var company = await _companies.GetByRegistrationNumberAsync(lead.CompanyNumber!, cancellationToken);
+            if (company is not null)
+            {
+                accountId = company.Id;
+                matched = true;
+            }
+        }
+
         lead.Status = LeadStatus.Converted;
-        lead.ConvertedAccountId = request.AccountId;
+        lead.ConvertedAccountId = accountId;
         lead.UpdatedUtc = DateTimeOffset.UtcNow;
         await _repository.UpdateAsync(lead, cancellationToken);
 
-        var detail = request.AccountId is { } acc ? $" Account {acc}." : string.Empty;
+        var detail = accountId is { } acc
+            ? matched ? $" Auto-matched to account {acc} by company number." : $" Account {acc}."
+            : string.Empty;
         await _repository.AddNoteAsync(SystemNote(lead.Id, actor, $"Converted to account.{detail}", "Converted"), cancellationToken);
         return ToDto(lead);
     }

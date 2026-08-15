@@ -44,7 +44,7 @@ public sealed class AffiliateServiceTests
     {
         var leads = new InMemoryLeadRepository();
         var email = new FakeEmailSender();
-        var service = new AffiliateService(new InMemoryAffiliateRepository(), leads, email,
+        var service = new AffiliateService(new InMemoryAffiliateRepository(), leads, new InMemoryPaymentRepository(), email,
             new EmailOptions { ConsoleBaseUrl = "https://console.tedwren.example" });
         return (service, leads, email);
     }
@@ -99,7 +99,7 @@ public sealed class AffiliateServiceTests
     public async Task Sign_IsRejected_WhenExpired()
     {
         var repo = new InMemoryAffiliateRepository();
-        var service = new AffiliateService(repo, new InMemoryLeadRepository(), new FakeEmailSender(),
+        var service = new AffiliateService(repo, new InMemoryLeadRepository(), new InMemoryPaymentRepository(), new FakeEmailSender(),
             new EmailOptions { ConsoleBaseUrl = "https://console.tedwren.example" });
         var affiliate = await service.CreateAsync(new CreateAffiliateRequest("Pat", "pat@partner.com"));
         var token = (await service.GetAsync(affiliate.Id))!.Agreement!.Token;
@@ -167,7 +167,42 @@ public sealed class AffiliateServiceTests
 
         var detail = await service.GetAsync(affiliate.Id);
         Assert.Single(detail!.AssociatedAccounts);
-        Assert.Equal(990m, detail.AssociatedAccounts[0].Commission);
+        Assert.Equal(990m, detail.AssociatedAccounts[0].EstimatedCommission);
+    }
+
+    [Fact]
+    public async Task EarnedCommission_ComesFromClearedPayments_NetOfChargebacks()
+    {
+        var leads = new InMemoryLeadRepository();
+        var payments = new InMemoryPaymentRepository();
+        var service = new AffiliateService(new InMemoryAffiliateRepository(), leads, payments, new FakeEmailSender(),
+            new EmailOptions { ConsoleBaseUrl = "https://console.tedwren.example" });
+        var affiliate = await service.CreateAsync(new CreateAffiliateRequest("Pat", "pat@partner.com", null, null, null, 0.20m, 0.33m));
+
+        // A converted lead linked to a real account (company), attributed to the affiliate.
+        var accountId = Guid.NewGuid();
+        await leads.AddAsync(new Lead
+        {
+            CompanyName = "Won Ltd",
+            AffiliateId = affiliate.Id,
+            ConvertedAccountId = accountId,
+            Status = Domain.Enums.LeadStatus.Converted,
+        });
+
+        var mandate = Guid.NewGuid();
+        // £10,000 cleared (Confirmed) + £5,000 settled (PaidOut) − £3,000 chargeback = £12,000 net revenue.
+        await payments.AddAsync(new Payment { CompanyId = accountId, MandateId = mandate, AmountPence = 1_000_000, Status = Domain.Enums.PaymentStatus.Confirmed });
+        await payments.AddAsync(new Payment { CompanyId = accountId, MandateId = mandate, AmountPence = 500_000, Status = Domain.Enums.PaymentStatus.PaidOut });
+        await payments.AddAsync(new Payment { CompanyId = accountId, MandateId = mandate, AmountPence = 300_000, Status = Domain.Enums.PaymentStatus.ChargedBack });
+        await payments.AddAsync(new Payment { CompanyId = accountId, MandateId = mandate, AmountPence = 999_999, Status = Domain.Enums.PaymentStatus.Failed }); // never cleared → ignored
+
+        var detail = await service.GetAsync(affiliate.Id);
+        var account = detail!.AssociatedAccounts.Single();
+        Assert.Equal(12000m, account.ClearedRevenue);
+        Assert.Equal(792m, account.EarnedCommission); // 12000 × 33% × 20%
+        Assert.Equal(792m, detail.Commission.Earned);
+        Assert.Equal(0m, detail.Commission.Paid);
+        Assert.Equal(792m, detail.Commission.Outstanding);
     }
 
     [Fact]
@@ -175,7 +210,7 @@ public sealed class AffiliateServiceTests
     {
         var repo = new InMemoryAffiliateRepository();
         var email = new FakeEmailSender();
-        var service = new AffiliateService(repo, new InMemoryLeadRepository(), email,
+        var service = new AffiliateService(repo, new InMemoryLeadRepository(), new InMemoryPaymentRepository(), email,
             new EmailOptions { ConsoleBaseUrl = "https://console.tedwren.example" });
         var affiliate = await service.CreateAsync(new CreateAffiliateRequest("Pat", "pat@partner.com"));
         var token = (await service.GetAsync(affiliate.Id))!.Agreement!.Token;
