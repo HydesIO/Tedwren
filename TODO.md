@@ -11,6 +11,23 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Operational readiness (Phase 7, this change)
+- ✅ **Commercial-DB topology visibility.** Startup log states whether the commercial plane is SEPARATE from or
+  SHARED (fallback) with the product database, so a missing `*Commercial` connection string is obvious.
+- ✅ **Runbook.** `docs/operations.md` — provisioning the commercial catalogue, the one-off billing-data
+  relocation, and enabling outbound email (Resend). `docs/migrations/relocate-billing-to-commercial.sql` is the
+  idempotent SQL-Server copy script (product→commercial); the doc gives the PostgreSQL `pg_dump`/`psql` recipe.
+- ✅ **Email-provider guidance.** Documented that launch/affiliate emails don't dispatch until
+  `Email:Provider=Resend` + `ApiKey` are set (outbox no-op default), incl. the `PublicBaseUrl`/`ConsoleBaseUrl`
+  roles for unsubscribe/agreement links.
+- ✅ **Commercial-repo integration tests.** `CommercialRepositoryTests` — LocalDB round-trips for
+  `LaunchSignupRepository`, `LeadRepository`, `AffiliateRepository` via the **admin** factory +
+  `MigrationArea.Commercial` (SkippableFact; skipped without `TEDWREN_TEST_SQLSERVER`). The Postgres parity gate
+  for the commercial slice. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
+- ❗ Follow-ups still open: a commercial EF `DbContext` mirror (scripts remain authoritative), a pending-payouts
+  dashboard tile (needs an aggregate endpoint to avoid N+1), and reconciling the profit-vs-revenue commission
+  models with `Tedwren.Web.Partners`.
+
 ### Admin — Real commission & company matching (Phase 6, this change)
 - ✅ **Commission from cleared revenue.** `AffiliateService` now reads the account's actual direct-debit
   payments (`IPaymentRepository`, commercial DB) and computes **earned** commission = net cleared first-year
