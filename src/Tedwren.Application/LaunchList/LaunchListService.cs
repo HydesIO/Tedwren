@@ -135,6 +135,42 @@ public sealed class LaunchListService : ILaunchListService
         return true;
     }
 
+    /// <summary>Removes a subscriber (admin).</summary>
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var all = await _repository.ListAsync(cancellationToken);
+        if (all.All(s => s.Id != id))
+        {
+            return false;
+        }
+
+        await _repository.DeleteAsync(id, cancellationToken);
+        return true;
+    }
+
+    /// <summary>Exports every subscriber as CSV bytes (admin).</summary>
+    public async Task<byte[]> ExportCsvAsync(CancellationToken cancellationToken = default)
+    {
+        var signups = await _repository.ListAsync(cancellationToken);
+        var rows = signups
+            .Select(s => (IReadOnlyList<string>)new[]
+            {
+                s.Email,
+                s.Source ?? string.Empty,
+                s.UtmSource ?? string.Empty,
+                s.CreatedUtc.ToString("u"),
+                s.Notified ? "yes" : "no",
+                s.Unsubscribed ? "yes" : "no",
+            })
+            .ToList();
+
+        var sheet = new Export.TabularSheet(
+            "LaunchList",
+            new[] { "Email", "Source", "UtmSource", "SignedUpUtc", "Notified", "Unsubscribed" },
+            rows);
+        return System.Text.Encoding.UTF8.GetBytes(Export.CsvWriter.Write(sheet));
+    }
+
     /// <summary>Maps a signup entity to its list DTO.</summary>
     private static LaunchSignupDto ToDto(LaunchSignup s) =>
         new(s.Id, s.Email, s.Source, s.UtmSource, s.CreatedUtc, s.Notified, s.NotifiedUtc);

@@ -1,0 +1,51 @@
+@using Tedwren.Abstractions.Contracts.LaunchList
+@using Tedwren.Abstractions.Services
+@inject ILaunchListService LaunchList
+@inject ISnackbar Snackbar
+
+@* Manually add an email to the launch list (dedupes on the address). *@
+
+<MudDialog>
+    <DialogContent>
+        <TedwrenTextField Label="Email address" @bind-Value="_email" Required="true"
+                          Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="An email address is required." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Add</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string? _email;
+    private bool _submitted;
+    private bool _busy;
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_email))
+        {
+            Snackbar.Add("An email address is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await LaunchList.SignUpAsync(new CreateLaunchSignupRequest(_email!, "manual"));
+            Snackbar.Add(result.AlreadyOnList ? "That email was already on the list." : "Subscriber added.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

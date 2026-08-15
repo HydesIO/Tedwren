@@ -181,6 +181,32 @@ public sealed class AffiliateService : IAffiliateService
         return ToPayoutDto(payout);
     }
 
+    /// <summary>Re-sends the affiliate's setup + agreement email, refreshing the signing-link expiry.</summary>
+    public async Task<bool> ResendAgreementAsync(Guid affiliateId, CancellationToken cancellationToken = default)
+    {
+        var affiliate = await _repository.GetAsync(affiliateId, cancellationToken);
+        if (affiliate is null)
+        {
+            return false;
+        }
+
+        var agreement = await _repository.GetAgreementByAffiliateAsync(affiliateId, cancellationToken);
+        if (agreement is null || agreement.Status == AffiliateAgreementStatus.Signed)
+        {
+            return false; // nothing to resend (already signed, or no agreement)
+        }
+
+        // Refresh the expiry so a stale/expired link works again, keeping the same token.
+        agreement.ExpiresUtc = DateTimeOffset.UtcNow.Add(AgreementLifetime);
+        agreement.Status = AffiliateAgreementStatus.Sent;
+        await _repository.UpdateAgreementAsync(agreement, cancellationToken);
+
+        var url = AgreementUrl(agreement.Token);
+        var content = AffiliateEmails.BuildSetupContent(affiliate.Name, affiliate.AffiliateRatePct, affiliate.ProfitMarginPct, url);
+        await SafeSendAsync(affiliate.ContactEmail, AffiliateEmails.SetupSubject, content, cancellationToken);
+        return true;
+    }
+
     /// <summary>Returns the public, token-gated view of an agreement, or null when the token is unknown.</summary>
     public async Task<AffiliateAgreementViewDto?> GetAgreementAsync(string token, CancellationToken cancellationToken = default)
     {

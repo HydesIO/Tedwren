@@ -4,6 +4,7 @@
 @inject IAffiliateService Affiliates
 @inject ISnackbar Snackbar
 @inject NavigationManager Nav
+@inject IDialogService DialogService
 
 <PageTitle>Affiliate · Admin · Tedwren</PageTitle>
 
@@ -23,7 +24,13 @@
                       Subtitle="@(a.Company ?? a.ContactEmail)"
                       StatusLabel="@a.Status"
                       Status="StatusPillKind(a.Status)"
-                      Breadcrumbs="_crumbs" />
+                      Breadcrumbs="_crumbs">
+            <Actions>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Edit" Disabled="_busy" OnClick="EditAffiliate">
+                    Edit
+                </MudButton>
+            </Actions>
+        </DetailHeader>
 
         <div class="kpi-row">
             <KpiCard Title="Affiliate rate" Value="@Percent(a.AffiliateRatePct)" Icon="@Icons.Material.Outlined.Percent" />
@@ -70,6 +77,11 @@
                                 <MudTextField T="string" Value="@AgreementUrl(agreement.Token)" ReadOnly="true" Label="Signing link" Variant="Variant.Outlined" />
                                 <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@AgreementUrl(agreement.Token)" Target="_blank"
                                            StartIcon="@Icons.Material.Outlined.OpenInNew">Open agreement</MudButton>
+                                @if (agreement.Status != "Signed")
+                                {
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Email"
+                                               Disabled="_busy" OnClick="ResendAgreement">Resend setup email</MudButton>
+                                }
                                 @if (agreement.Status == "Signed")
                                 {
                                     <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@PdfUrl(agreement.Token)" Target="_blank"
@@ -115,6 +127,41 @@
         if (_detail is not null)
         {
             _crumbs = new List<DetailHeader.Crumb> { new("Affiliates", "/admin/affiliates"), new(_detail.Affiliate.Name) };
+        }
+    }
+
+    private async Task EditAffiliate()
+    {
+        if (_detail is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<EditAffiliateDialog> { { x => x.Affiliate, _detail.Affiliate } };
+        var dialog = await DialogService.ShowAsync<EditAffiliateDialog>("Edit affiliate", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled == false)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ResendAgreement()
+    {
+        _busy = true;
+        try
+        {
+            var ok = await Affiliates.ResendAgreementAsync(Id);
+            Snackbar.Add(ok ? "Setup email resent." : "Nothing to resend.", ok ? Severity.Success : Severity.Info);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
         }
     }
 

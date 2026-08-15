@@ -171,6 +171,30 @@ public sealed class AffiliateServiceTests
     }
 
     [Fact]
+    public async Task Resend_RefreshesExpiry_ResendsEmail_AndRefusesWhenSigned()
+    {
+        var repo = new InMemoryAffiliateRepository();
+        var email = new FakeEmailSender();
+        var service = new AffiliateService(repo, new InMemoryLeadRepository(), email,
+            new EmailOptions { ConsoleBaseUrl = "https://console.tedwren.example" });
+        var affiliate = await service.CreateAsync(new CreateAffiliateRequest("Pat", "pat@partner.com"));
+        var token = (await service.GetAsync(affiliate.Id))!.Agreement!.Token;
+
+        // Expire the link, then resend — expiry refreshed and a second setup email sent.
+        var agreement = await repo.GetAgreementByTokenAsync(token);
+        agreement!.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(-1);
+        await repo.UpdateAgreementAsync(agreement);
+
+        Assert.True(await service.ResendAgreementAsync(affiliate.Id));
+        Assert.Equal(2, email.Sent.Count(s => s == "You've been set up as a Tedwren affiliate"));
+        Assert.True((await service.GetAgreementAsync(token))!.Signable); // no longer expired
+
+        // Once signed, there's nothing to resend.
+        await service.SignAgreementAsync(token, new SignAffiliateAgreementRequest("data:image/png;base64,iVBORw0KGgo=", "Pat"));
+        Assert.False(await service.ResendAgreementAsync(affiliate.Id));
+    }
+
+    [Fact]
     public async Task Payout_Raised_ThenMarkedPaid()
     {
         var (service, _, _) = Create();

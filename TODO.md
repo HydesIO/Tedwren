@@ -11,6 +11,19 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — CRUD/UX completion (Phase 5, this change)
+- ✅ **Edit dialogs.** `EditLeadDialog` (Edit action on `AdminLeadDetail`) and `EditAffiliateDialog` (Edit
+  action on `AdminAffiliateDetail`, includes status), both persisting via the existing `Update` endpoints.
+- ✅ **Launch List management.** CSV export (`GET /api/launch-signups/export` → `CsvWriter`/`TabularSheet`,
+  downloaded via the existing `tedwrenDownload` JS helper); manual-add dialog (`AddLaunchSubscriberDialog`);
+  per-row delete (`DELETE /api/launch-signups/{id}`, confirm-gated).
+- ✅ **Resend agreement.** `POST /api/affiliates/{id}/resend-agreement` refreshes the signing-link expiry and
+  re-sends the setup email (refused once signed); "Resend setup email" button on the affiliate Agreement tab.
+- ✅ **Admin dashboard tiles.** `/admin` gains live tiles: launch subscribers, open leads, pipeline value
+  (Σ open estimated revenue), active affiliates — reusing the existing `admin-stat` tile style.
+- ✅ Tests: `LaunchList` export/delete API, affiliate resend service (refresh + refuse-when-signed). Whole
+  solution builds (no new code warnings); all tests pass (LocalDB skipped).
+
 ### Admin — Compliance & security hardening (Phase 4, this change)
 - ✅ **Marketing-email unsubscribe (PECR/GDPR).** `LaunchSignup` gains `Unsubscribed`/`UnsubscribeToken`
   (ALTER script `031_launch_unsubscribe.sql`, both engines); `LaunchListService.NotifyAsync` skips opted-out

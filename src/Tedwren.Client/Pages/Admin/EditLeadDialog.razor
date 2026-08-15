@@ -1,0 +1,88 @@
+@using Tedwren.Abstractions.Contracts.Leads
+@using Tedwren.Abstractions.Services
+@inject ILeadService Leads
+@inject ISnackbar Snackbar
+
+@* Edit a lead's details and persist via ILeadService.UpdateAsync. Returns true on success. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="edit-lead">
+            <TedwrenTextField Label="Company name" @bind-Value="_companyName" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_companyName)" ErrorText="Company name is required." />
+            <TedwrenTextField Label="Contact name" @bind-Value="_contactName" />
+            <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail" />
+            <TedwrenTextField Label="Location" @bind-Value="_location" />
+            <TedwrenSelect T="string" Label="Model" @bind-Value="_model" Options="_models" />
+            <MudNumericField T="int?" Label="Number of sites" @bind-Value="_numberOfSites" Min="0" />
+            <TedwrenNumericField Label="Estimated annual revenue (£)" @bind-Value="_estimatedRevenue" Min="0" />
+            <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
+            <TedwrenTextField Label="Company number" @bind-Value="_companyNumber" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Save changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public LeadDto Lead { get; set; } = default!;
+
+    private readonly string[] _models = { "Unknown", "MainContractor", "Subcontractor" };
+
+    private string? _companyName;
+    private string? _contactName;
+    private string? _contactEmail;
+    private string? _location;
+    private string _model = "Unknown";
+    private int? _numberOfSites;
+    private decimal? _estimatedRevenue;
+    private string? _accountManager;
+    private string? _companyNumber;
+    private bool _submitted;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _companyName = Lead.CompanyName;
+        _contactName = Lead.ContactName;
+        _contactEmail = Lead.ContactEmail;
+        _location = Lead.Location;
+        _model = string.IsNullOrWhiteSpace(Lead.Model) ? "Unknown" : Lead.Model;
+        _numberOfSites = Lead.NumberOfSites;
+        _estimatedRevenue = Lead.EstimatedRevenue;
+        _accountManager = Lead.AccountManager;
+        _companyNumber = Lead.CompanyNumber;
+    }
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_companyName))
+        {
+            Snackbar.Add("Company name is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Leads.UpdateAsync(Lead.Id, new UpdateLeadRequest(
+                _companyName!, _contactName, _contactEmail, _location, _model, _numberOfSites,
+                _estimatedRevenue, _accountManager, _companyNumber));
+            Snackbar.Add("Lead updated.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

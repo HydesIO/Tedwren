@@ -1,0 +1,87 @@
+@using Tedwren.Abstractions.Contracts.Affiliates
+@using Tedwren.Abstractions.Services
+@inject IAffiliateService Affiliates
+@inject ISnackbar Snackbar
+
+@* Edit an affiliate's details, status and commission plan via IAffiliateService.UpdateAsync. Returns true on success. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="edit-affiliate">
+            <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="A name is required." />
+            <TedwrenTextField Label="Contact email" @bind-Value="_email" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="A contact email is required." />
+            <TedwrenTextField Label="Company" @bind-Value="_company" />
+            <TedwrenSelect T="string" Label="Status" @bind-Value="_status" Options="_statuses" />
+            <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
+            <TedwrenTextField Label="Payee reference" @bind-Value="_payeeReference"
+                              HelperText="A non-sensitive reference for payouts — never a sort code or account number." />
+            <MudNumericField T="decimal" Label="Affiliate rate (%)" @bind-Value="_ratePercent" Min="0" Max="100" />
+            <MudNumericField T="decimal" Label="Profit margin (%)" @bind-Value="_marginPercent" Min="0" Max="100" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Save changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public AffiliateDto Affiliate { get; set; } = default!;
+
+    private readonly string[] _statuses = { "Pending", "Active", "Inactive" };
+
+    private string? _name;
+    private string? _email;
+    private string? _company;
+    private string _status = "Pending";
+    private string? _accountManager;
+    private string? _payeeReference;
+    private decimal _ratePercent;
+    private decimal _marginPercent;
+    private bool _submitted;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _name = Affiliate.Name;
+        _email = Affiliate.ContactEmail;
+        _company = Affiliate.Company;
+        _status = string.IsNullOrWhiteSpace(Affiliate.Status) ? "Pending" : Affiliate.Status;
+        _accountManager = Affiliate.AccountManager;
+        _payeeReference = Affiliate.PayeeReference;
+        _ratePercent = decimal.Round(Affiliate.AffiliateRatePct * 100m, 2);
+        _marginPercent = decimal.Round(Affiliate.ProfitMarginPct * 100m, 2);
+    }
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_email))
+        {
+            Snackbar.Add("Name and contact email are required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Affiliates.UpdateAsync(Affiliate.Id, new UpdateAffiliateRequest(
+                _name!, _email!, _company, _status, _accountManager, _payeeReference,
+                _ratePercent / 100m, _marginPercent / 100m));
+            Snackbar.Add("Affiliate updated.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

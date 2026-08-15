@@ -51,6 +51,14 @@ public static class LaunchListEndpoints
                 Results.Ok(await service.NotifyAsync(request ?? new NotifyLaunchRequest(), cancellationToken)))
             .WithName("NotifyLaunchList");
 
+        admin.MapDelete("/{id:guid}", async (Guid id, ILaunchListService service, CancellationToken cancellationToken) =>
+                await service.DeleteAsync(id, cancellationToken) ? Results.NoContent() : Results.NotFound())
+            .WithName("DeleteLaunchSignup");
+
+        admin.MapGet("/export", async (ILaunchListService service, CancellationToken cancellationToken) =>
+                Results.File(await service.ExportCsvAsync(cancellationToken), "text/csv", "launch-list.csv"))
+            .WithName("ExportLaunchList");
+
         return app;
     }
 

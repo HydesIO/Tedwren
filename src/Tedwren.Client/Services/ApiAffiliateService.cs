@@ -75,6 +75,13 @@ public sealed class ApiAffiliateService : IAffiliateService
         return await response.Content.ReadFromJsonAsync<AffiliatePayoutDto>(cancellationToken);
     }
 
+    /// <summary>Re-sends the affiliate's setup + agreement email, refreshing the signing-link expiry.</summary>
+    public async Task<bool> ResendAgreementAsync(Guid affiliateId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsync($"api/affiliates/{affiliateId}/resend-agreement", content: null, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     /// <summary>Returns the public, token-gated view of an agreement, or null.</summary>
     public async Task<AffiliateAgreementViewDto?> GetAgreementAsync(string token, CancellationToken cancellationToken = default) =>
         await GetOrNull<AffiliateAgreementViewDto>($"api/affiliate-agreements/{Uri.EscapeDataString(token)}", cancellationToken);

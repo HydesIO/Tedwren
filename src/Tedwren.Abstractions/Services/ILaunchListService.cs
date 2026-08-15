@@ -24,4 +24,10 @@ public interface ILaunchListService
 
     /// <summary>Opts a subscriber out via their unsubscribe token (PECR/GDPR). Returns true when a matching subscriber was found.</summary>
     Task<bool> UnsubscribeAsync(string token, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes a subscriber (admin). Returns true when one was removed.</summary>
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Exports every subscriber as CSV bytes (admin).</summary>
+    Task<byte[]> ExportCsvAsync(CancellationToken cancellationToken = default);
 }

@@ -28,6 +28,9 @@ public interface IAffiliateService
     /// <summary>Marks a payout paid. Null when it doesn't exist.</summary>
     Task<AffiliatePayoutDto?> MarkPayoutPaidAsync(Guid payoutId, CancellationToken cancellationToken = default);
 
+    /// <summary>Re-sends the affiliate's setup + agreement email, refreshing the signing-link expiry. False when there's nothing to resend (no affiliate, or already signed).</summary>
+    Task<bool> ResendAgreementAsync(Guid affiliateId, CancellationToken cancellationToken = default);
+
     /// <summary>Returns the public, token-gated view of an agreement, or null when the token is unknown.</summary>
     Task<AffiliateAgreementViewDto?> GetAgreementAsync(string token, CancellationToken cancellationToken = default);
 
