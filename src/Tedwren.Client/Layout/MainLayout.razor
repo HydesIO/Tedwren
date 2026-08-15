@@ -12,6 +12,7 @@
 @inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject IJSRuntime JS
+@inject AdminAreaOptions AdminArea
 
 @* Application shell: theme provider + sidebar + top bar + routed content. *@
 
@@ -33,7 +34,7 @@
                     BrandName="Tedwren"
                     ActiveRoute="@_activeRoute"
                     @bind-IsCollapsed="_sidebarCollapsed"
-                    Platforms="@ShellChrome.Platforms"
+                    Platforms="@_platforms"
                     SelectedPlatform="@_selectedPlatform"
                     OnPlatformSelected="OnPlatformSelected"
                     Environment="_environment"
@@ -63,7 +64,12 @@
 @code {
     private bool _sidebarCollapsed;
     private IReadOnlyList<NavItem> _navItems = Array.Empty<NavItem>();
+    private IReadOnlyList<string> _platforms = Array.Empty<string>();
     private string _selectedPlatform = string.Empty;
+
+    // True when the shell is showing the Tedwren platform admin area (admin menus + /admin pages) rather
+    // than the tenant console. Set once at init from the deployment flag and the signed-in user's role.
+    private bool _isAdminArea;
     private string _userName = string.Empty;
     private string _userRole = string.Empty;
     private AppSidebar.EnvironmentInfo? _environment;
@@ -108,23 +114,37 @@
             return;
         }
 
-        await Tenant.InitializeAsync();
-
-        // First run against an empty database has no companies: send the operator to onboarding to
-        // provision the first organisation. Mock mode always has seed companies, so this only fires
-        // under DataSource=Database with an empty Companies table. Fails open on lookup error.
-        if (await ShouldOnboardAsync())
-        {
-            Nav.NavigateTo("/onboarding");
-            return;
-        }
-
-        _navItems = await GatedNavItemsAsync(ShellChrome.NavItems);
-        _selectedPlatform = ShellChrome.DefaultPlatform;
-
         var user = await CurrentUser.GetCurrentAsync();
         _userName = user.Name;
         _userRole = user.Role;
+
+        // Platform administrators (Administrator in the Tedwren tenant) see the admin area instead of the
+        // tenant console, when this deployment enables it. The admin surfaces are not purchasable modules,
+        // so they bypass entitlement gating and the first-run onboarding wizard.
+        _isAdminArea = AdminArea.Enabled && Auth.IsPlatformAdmin;
+        if (_isAdminArea)
+        {
+            _navItems = ShellChrome.AdminNavItems;
+            _platforms = Array.Empty<string>();
+            _selectedPlatform = string.Empty;
+        }
+        else
+        {
+            await Tenant.InitializeAsync();
+
+            // First run against an empty database has no companies: send the operator to onboarding to
+            // provision the first organisation. This only fires under DataSource=Database with an empty
+            // Companies table. Fails open on lookup error.
+            if (await ShouldOnboardAsync())
+            {
+                Nav.NavigateTo("/onboarding");
+                return;
+            }
+
+            _navItems = await GatedNavItemsAsync(ShellChrome.NavItems);
+            _platforms = ShellChrome.Platforms;
+            _selectedPlatform = ShellChrome.DefaultPlatform;
+        }
 
         _notifications = await BuildNotificationsAsync();
 

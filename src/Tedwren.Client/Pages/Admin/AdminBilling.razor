@@ -1,0 +1,170 @@
+@page "/admin/billing"
+@using Tedwren.Abstractions.Contracts.Billing
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IBillingService Billing
+@inject IPlatformAdminService Admin
+
+<PageTitle>Billing & Mandates · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Billing & Mandates" Subtitle="Direct-debit mandates via GoCardless" />
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _message = null)">@_message</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _error = null)">@_error</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_authorisationUrl))
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            Send this authorisation link to the customer to set up their direct debit:
+            <MudLink Href="@_authorisationUrl" Target="_blank" Class="ml-1">@_authorisationUrl</MudLink>
+        </MudAlert>
+    }
+
+    <DashboardCard Class="mb-4">
+        <Body>
+            <div class="admin-action-row">
+                <MudSelect T="Guid?" @bind-Value="_selectedCompanyId" Label="Company" Dense="true"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-action-row__grow">
+                    @foreach (var c in _companies)
+                    {
+                        <MudSelectItem T="Guid?" Value="@c.Id">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.AccountBalance"
+                           Disabled="@(_selectedCompanyId is null || _busy)"
+                           OnClick="StartSetup">
+                    Start direct-debit setup
+                </MudButton>
+            </div>
+        </Body>
+    </DashboardCard>
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="MandateDto"
+                       Items="_mandates"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search mandates…"
+                       EmptyTitle="No mandates yet"
+                       EmptyDescription="Start direct-debit setup for a company to create its first mandate."
+                       EmptyIcon="@Icons.Material.Outlined.AccountBalance" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<MandateDto> _mandates = Array.Empty<MandateDto>();
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private Dictionary<Guid, string> _companyNames = new();
+    private List<DataColumn<MandateDto>> _columns = new();
+    private Guid? _selectedCompanyId;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+    private string? _authorisationUrl;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _companies = await Admin.GetCompaniesAsync();
+        _companyNames = _companies.ToDictionary(c => c.Id, c => c.Name);
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _mandates = await Billing.GetMandatesAsync();
+        _loading = false;
+    }
+
+    private async Task StartSetup()
+    {
+        if (_selectedCompanyId is not { } companyId) return;
+
+        _busy = true;
+        _message = _error = _authorisationUrl = null;
+        try
+        {
+            var result = await Billing.StartMandateSetupAsync(companyId);
+            _authorisationUrl = result.AuthorisationUrl;
+            _message = "Mandate set-up started.";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CancelMandate(MandateDto mandate)
+    {
+        _busy = true;
+        _message = _error = _authorisationUrl = null;
+        try
+        {
+            var cancelled = await Billing.CancelMandateAsync(mandate.CompanyId);
+            _message = cancelled ? "Mandate cancelled." : "No mandate to cancel.";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string CompanyName(Guid companyId) => _companyNames.GetValueOrDefault(companyId, companyId.ToString());
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Company", Value = m => CompanyName(m.CompanyId) },
+            new() { Title = "GoCardless mandate", Value = m => m.GoCardlessMandateId ?? "—" },
+            new() { Title = "Reference", Value = m => m.Reference ?? "—" },
+            new()
+            {
+                Title = "Status", Text = m => m.Status, Filterable = true, Sortable = false,
+                CellTemplate = m => @<StatusPill Label="@m.Status" Status="MandatePill(m.Status)" />
+            },
+            new()
+            {
+                Title = "Created", Value = m => m.CreatedUtc, Searchable = false,
+                CellTemplate = m => @<span>@m.CreatedUtc.LocalDateTime.ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "", Sortable = false, Searchable = false, AlignRight = true,
+                CellTemplate = m => @<MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Error"
+                                                Disabled="@(_busy || m.Status is "Cancelled" or "Failed" or "Expired")"
+                                                OnClick="@(() => CancelMandate(m))">Cancel</MudButton>
+            },
+        };
+    }
+
+    // Maps a mandate status label to the shared pill palette.
+    private static StatusKind MandatePill(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "PendingCustomerApproval" or "PendingSubmission" or "Submitted" => StatusKind.Warning,
+        "Failed" or "Cancelled" or "Expired" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -50,6 +50,11 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IOnboardingLinkRepository, OnboardingLinkRepository>();
         services.AddScoped<IImageStore, ImageStore>();
         services.AddScoped<IEntitlementRepository, EntitlementRepository>();
+        services.AddScoped<IMandateRepository, MandateRepository>();
+        services.AddScoped<IPaymentRepository, PaymentRepository>();
+        services.AddScoped<IBillingSubscriptionRepository, BillingSubscriptionRepository>();
+        services.AddScoped<IWebhookEventRepository, WebhookEventRepository>();
+        services.AddScoped<IPayoutRepository, PayoutRepository>();
         services.AddScoped<IAuditRepository, AuditRepository>();
         services.AddScoped<IDecisionRepository, DecisionRepository>();
         services.AddScoped<Qualifications.QualificationLibrarySeeder>();

@@ -11,6 +11,99 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin area — Phase D: GoCardless BACS payouts (this change)
+- ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /
+  `PayoutStatus` enum (Pending/Paid), `IPayoutRepository` (Dapper dual-engine + in-memory), migration
+  **`024_payouts.sql`** (both engines, unique on the GoCardless payout id). A payout is Tedwren's own
+  settlement, so it is **not** tenant-scoped (documented on the entity).
+- ✅ **Sync + admin surface.** `PayoutSyncService` upserts payouts from GoCardless (deduped, safe no-op when
+  unconfigured — same shape as `BillingReconciliationService`), folded into
+  `BillingReconciliationHostedService` so payouts refresh on the existing schedule. `IBillingService` gains
+  `GetPayoutsAsync`/`SyncPayoutsAsync`; `GET /api/admin/billing/payouts` + `POST .../payouts/sync` under
+  `PlatformAdmin` (sync returns 503 when GoCardless is unconfigured). `/admin/payouts` is now a live
+  `DataTable` with a "Refresh from GoCardless" button (reuses the money formatter + `StatusPill`).
+- ✅ Tests: `PayoutSyncServiceTests` (add, update-not-duplicate, unchanged-not-recounted, unconfigured no-op)
+  + API payouts-200 and sync-503. Whole solution builds (0 new warnings); all 509 tests pass (15 LocalDB
+  skipped). **Admin-area plan (Phases A–D) complete.**
+
+### Admin area — Phase C: GoCardless webhooks, returns & reconciliation (this change)
+- ✅ **Signature-verified webhook receiver.** `POST /api/webhooks/gocardless` is `.AllowAnonymous()` (webhooks
+  aren't JWT-authed) but authenticated by the `Webhook-Signature` HMAC-SHA256, verified against
+  `GoCardless:WebhookSecret` **before** any processing (`GoCardlessSignatureVerifier`, constant-time); it
+  fails closed on a bad/absent signature or unset secret (401). The read-only write-blocker only applies to
+  authenticated users, so the anonymous webhook is unaffected.
+- ✅ **Idempotent event processing.** `GoCardlessWebhookProcessor` stores each event once (deduped by
+  GoCardless event id), updates the referenced mandate/payment to the event's status via `GoCardlessStatusMap`
+  (now action-aware, returning null for no-op actions), and records a **returned payment's** failure reason so
+  the admin can re-take it (the Phase B retry path). One failing event never aborts the batch; every event's
+  outcome is stored. New `WebhookEvent` entity + repo (Dapper dual-engine + in-memory) + migration
+  **`023_webhook_events.sql`** (both engines, unique on the event id).
+- ✅ **Reconciliation backstop.** `BillingReconciliationService` polls GoCardless for non-terminal
+  mandates/payments and converges their status if a webhook was missed; `BillingReconciliationHostedService`
+  runs it on a schedule (modeled on `ExpirySchedulerHostedService`, gated by `Jobs:SchedulerEnabled`,
+  `Jobs:ReconciliationIntervalHours` default 6). Safe no-op when GoCardless is unconfigured.
+- ✅ **Admin events view.** `/admin/events` is now functional (`GET /api/admin/billing/events` under
+  `PlatformAdmin` → `IBillingService.GetWebhookEventsAsync`), showing each event's resource/action/outcome.
+- ✅ Tests: `GoCardlessWebhookTests` (signature valid/tampered/empty; processor status-update, returned-reason,
+  dedupe, unknown-resource) + `BillingReconciliationServiceTests` (converge, skip-terminal, unconfigured no-op)
+  + API webhook 401-without-signature and events-200. Whole solution builds (0 new warnings); all 503 tests
+  pass (15 LocalDB skipped).
+- ⏳ **Next (Phase D):** BACS payouts (settlement reads) + `/admin/payouts`. **Sandbox credentials** still let
+  Phases B–C be verified live (token in `GoCardless:AccessToken`, `GoCardless:WebhookSecret` for webhooks).
+
+### Admin area — Phase B: GoCardless mandates & payments (this change)
+- ✅ **GoCardless transport seam.** `GoCardlessOptions` (Abstractions) + a conditional typed `HttpClient`
+  in `Program.cs` (base address + Bearer token + `GoCardless-Version` header), mirroring the Resend email
+  integration. `IGoCardlessClient`/`GoCardlessClient` (Application) cover hosted mandate set-up (Billing
+  Request Flow — no raw bank details handled), get/cancel mandate, create/get/retry payment, with
+  idempotency keys on payment creation. When no token is configured an `UnconfiguredGoCardlessClient`
+  default stands so reads work and collection actions fail with a clear "not configured" (503) message.
+- ✅ **Billing domain slice (net-new, `CompanyId`-scoped, R15).** `Mandate`, `Payment`, `BillingSubscription`
+  entities + status enums mirroring GoCardless; `IBillingService`/`BillingService` map provider statuses via
+  `GoCardlessStatusMap`; Dapper repositories over `RepositoryBase` (ANSI-portable) + in-memory doubles;
+  migration **`022_billing.sql`** in both SqlServer and Postgres folders. Meter/band held as **configuration
+  keys, not prices** (PRD §9); amounts in minor units (pence).
+- ✅ **Admin billing UI + API.** `BillingEndpoints` under `PlatformAdmin` (`/api/admin/billing`): list
+  mandates/payments, company overview, start/cancel mandate, take/retry payment, set subscription.
+  `ApiBillingService` client proxy; the `/admin/billing`, `/admin/payments` and `/admin/subscriptions`
+  placeholder pages are now functional (mandate set-up returns the hosted authorisation link; take a
+  payment; **re-take a returned payment**; set a company's meter/band). Two-way bound inputs per the
+  live-state rule.
+- ✅ Tests: `BillingServiceTests` (11 — set-up, reuse-pending, take-payment + no-mandate/zero guards,
+  re-take returned/non-returned/unknown, cancel, subscription upsert) + `AdminBillingApiTests` (4 — reads
+  200 under platform admin, setup → 503 unconfigured, subscription persists). Whole solution builds
+  (0 new warnings); all 491 tests pass (15 LocalDB skipped).
+- ⏳ **Next (Phase C):** GoCardless webhooks (HMAC-verified, deduped) to keep mandate/payment status live,
+  returns→retry automation, and a reconciliation background job. **Needs sandbox credentials** to verify
+  live end-to-end (token in `GoCardless:AccessToken`); no secrets committed.
+
+### Admin area — Phase A: platform-admin shell & read-only views (this change)
+- ✅ **Platform-admin gate (server-authoritative).** New `PlatformAdmin` authorization policy
+  (`src/Tedwren.Api/Program.cs`) — stricter than `AdminOnly`: requires `AccessRole.Administrator` **and**
+  the `company` claim to equal the Tedwren seed tenant (`AdminUserSeeder.SeedCompanyId`), so a customer's
+  own company administrator can never reach cross-company data. `CurrentUserDto` gains a server-computed
+  `IsPlatformAdmin` (in `ClaimsCurrentUserService`); the client exposes `AuthState.IsPlatformAdmin`
+  (sourced from `/api/me`, never derived client-side).
+- ✅ **Admin menu swap.** `Admin:Enabled` flag in the client `appsettings.json` (bound to
+  `AdminAreaOptions`) turns the capability on per deployment; `MainLayout` swaps the sidebar to
+  `ShellChrome.AdminNavItems` when the flag is set **and** the signed-in user is a platform admin, bypassing
+  entitlement/onboarding gating for the (non-purchasable) admin surfaces. Regular users are unaffected.
+- ✅ **Admin surface.** New `/admin/*` pages under `Pages/Admin` (dashboard, companies, users, plus
+  placeholders for subscriptions/billing/payments/events/payouts/settings), each wrapped in an `AdminGuard`
+  that redirects non-admins. Reuses the existing `DataTable`/cards/`StatusPill` kit. Backed by a
+  dedicated, `PlatformAdmin`-gated `/api/admin` surface (`AdminEndpoints`, `IPlatformAdminService` →
+  `ApiPlatformAdminService`) that reuses the existing organisation/user services — the tenant console
+  endpoints are left untouched so they keep working for normal company admins.
+- ✅ Tests: `ClaimsCurrentUserServiceTests` (platform-admin computation: seed-tenant admin true; other-tenant
+  admin, non-admin role and anonymous all false) + `AdminApiTests` (admin reads 200 under the seed-tenant
+  identity; `/api/me` reports the flag). Whole solution builds (0 new warnings); all 476 tests pass.
+- ❗ **PRD gap raised (per CLAUDE.md — do not silently work around).** The admin area's billing scope
+  (GoCardless direct-debit collection for the SaaS, Phases B–D) is **not in PRD v6.4** — §9 defines the
+  commercial model (metered by sites/operatives) but names no collection rail, and §12.8 only cites Stripe
+  card checkout for the separate Worker Passport product. Confirmed with the product owner that GoCardless
+  is the intended SaaS billing rail; this should be reconciled into PRD §9 in a future revision. Tracked in
+  `docs/plan-and-scope.md` (Admin-area phases).
+
 ### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
 - ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
   content JSON + Razor views and fails on three commercial/legal breaches: a hardcoded price symbol

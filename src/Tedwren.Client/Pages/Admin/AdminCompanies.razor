@@ -1,0 +1,64 @@
+@page "/admin/companies"
+@using Tedwren.Abstractions.Common
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IPlatformAdminService Admin
+
+<PageTitle>Companies · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Companies" Subtitle="Every organisation on the platform" />
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="CompanySummary"
+                       Items="_companies"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search companies…"
+                       EmptyTitle="No companies yet"
+                       EmptyDescription="Organisations appear here as they are onboarded."
+                       EmptyIcon="@Icons.Material.Outlined.Business" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private List<DataColumn<CompanySummary>> _columns = new();
+    private bool _loading = true;
+
+    // Lists every company across all tenants. Reuses the shared organisation service; the API restricts the
+    // cross-company read to platform admins (PlatformAdmin policy).
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _companies = await Admin.GetCompaniesAsync();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Name", Value = c => c.Name },
+            new() { Title = "Type", Value = c => c.Type ?? "—", Filterable = true },
+            new() { Title = "Trade", Value = c => c.Trade ?? "—", Filterable = true },
+            new() { Title = "Operatives", Value = c => c.Operatives, AlignRight = true },
+            new()
+            {
+                Title = "Status", Text = c => c.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = c => @<StatusPill Label="@c.StatusLabel" Status="ToStatus(c.State)" />
+            },
+        };
+    }
+
+    // Maps the compliance state to the shared pill palette.
+    private static StatusKind ToStatus(ComplianceState state) => state switch
+    {
+        ComplianceState.Compliant => StatusKind.Success,
+        ComplianceState.AtRisk => StatusKind.Warning,
+        ComplianceState.NonCompliant => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

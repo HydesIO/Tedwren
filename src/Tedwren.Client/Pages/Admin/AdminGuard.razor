@@ -1,0 +1,30 @@
+@inject AuthState Auth
+@inject AdminAreaOptions AdminArea
+@inject NavigationManager Nav
+
+@* Renders admin-page content only for a signed-in Tedwren platform administrator when the admin area is
+   enabled for this deployment. Any other user is redirected to the console home. The API independently
+   enforces the same gate (PlatformAdmin policy) — this guard is UX, not the security boundary. *@
+
+@if (_allowed)
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>The admin page content to protect.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private bool _allowed;
+
+    // The shell (MainLayout) confirms sign-in before any routed page renders, so the auth state is already
+    // resolved here and IsPlatformAdmin can be read synchronously.
+    protected override void OnInitialized()
+    {
+        _allowed = AdminArea.Enabled && Auth.IsPlatformAdmin;
+        if (!_allowed)
+        {
+            Nav.NavigateTo("/", replace: true);
+        }
+    }
+}

@@ -255,6 +255,39 @@ reused by PRD-Phase 3) has its own detailed plan of works — **Phases 19–25**
 [`forms-library-plan.md`](forms-library-plan.md): per-tenant form builder, versioned templates,
 DB-stored submissions, branded PDF (QuestPDF) + email, and assignment to sites/operators/inductions.
 
+### Admin area & GoCardless billing (Tedwren platform operations)
+
+A platform-operator area inside the existing console (`Tedwren.Client`), shown to Tedwren **platform
+administrators** (an `Administrator` in the Tedwren seed tenant — the accounts seeded by
+`AdminUserSeeder`) in place of the tenant console. Gated server-side by a `PlatformAdmin` policy and
+enabled per deployment by an `Admin:Enabled` client flag; the menu swap is UI only, never the security
+boundary. Phased, each independently shippable:
+
+- **Admin Phase A — shell & read-only views (done).** Platform-admin gate + menu swap; `/admin/*`
+  companies/users/dashboard over a dedicated `PlatformAdmin`-gated `/api/admin` surface; placeholders for
+  the billing surfaces below.
+- **Admin Phase B — GoCardless mandates & payments (done).** `GoCardlessOptions` + typed `HttpClient`
+  (mirroring the Resend email integration) and `IGoCardlessClient`; a `Mandate`/`Subscription`/`Payment`
+  domain slice (Dapper, dual-engine, migration `022`) tied to `CompanyId` (R15); create/cancel mandate
+  (hosted Billing Request Flow — we never handle raw bank details), take payment, **retry after a return**.
+  Meter/band are **configuration, not hard-coded numbers** (PRD §9). Reads work with no token; collection
+  actions require a configured provider (sandbox by default).
+- **Admin Phase C — webhooks, returns/retries & reconciliation (done).** `AllowAnonymous` webhook endpoint
+  with `Webhook-Signature` HMAC verification (fails closed) + event dedupe (`WebhookEvent`, migration `023`);
+  events update mandate/payment status and record a returned payment's reason for re-taking; a reconciliation
+  `BackgroundService` (`BillingReconciliationHostedService`) modelled on `ExpirySchedulerHostedService`
+  backstops missed webhooks. `/admin/events` shows each event's outcome. (Mandate-active → entitlement flip
+  is left as a deliberate seam — which module a mandate gates is a §9 commercial decision, not yet specified.)
+- **Admin Phase D — BACS payouts (done).** Payout/settlement reads (`IGoCardlessClient.ListPayoutsAsync`,
+  `Payout` entity, migration `024`) mirrored by `PayoutSyncService` (folded into the reconciliation hosted
+  service); `GET /api/admin/billing/payouts` + `POST .../payouts/sync` under `PlatformAdmin`, and a live
+  `/admin/payouts` view with a "Refresh from GoCardless" button. Not tenant-scoped (Tedwren's own settlement).
+
+> **PRD gap (raise, don't work around).** GoCardless / direct-debit collection is **not in PRD v6.4**:
+> §9 sets the commercial model (metered by sites/operatives) but names no collection rail, and §12.8 cites
+> Stripe card checkout only for the separate Worker Passport product. GoCardless as the SaaS billing rail
+> is confirmed with the product owner and should be reconciled into §9 in a future PRD revision.
+
 ---
 
 ## Cross-cutting engineering standards (apply every phase)

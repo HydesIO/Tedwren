@@ -29,6 +29,7 @@ builder.Services.AddInductionCore();
 builder.Services.AddFormCore();
 builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
+builder.Services.AddBillingCore();
 builder.Services.AddWorkforceCore();
 builder.Services.AddDashboardCore();
 builder.Services.AddReferenceDataCore();
@@ -53,6 +54,24 @@ if (emailOptions.Provider == EmailProvider.Resend && !string.IsNullOrWhiteSpace(
         client.BaseAddress = new Uri(emailOptions.ApiBaseUrl.TrimEnd('/') + "/");
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", emailOptions.ApiKey);
+    });
+}
+
+// Direct-debit billing (GoCardless; admin area). Bind the "GoCardless" section and, when an access token is
+// configured, register the real transport as a typed HttpClient (base address + Bearer token + version
+// header). With no token the Application-layer UnconfiguredGoCardlessClient default stands, so read surfaces
+// still work and collection actions fail with a clear "not configured" message — mirroring the Resend override.
+var goCardlessOptions = builder.Configuration.GetSection(GoCardlessOptions.SectionName).Get<GoCardlessOptions>() ?? new GoCardlessOptions();
+builder.Services.AddSingleton(goCardlessOptions);
+if (!string.IsNullOrWhiteSpace(goCardlessOptions.AccessToken))
+{
+    builder.Services.AddHttpClient<Tedwren.Application.Billing.IGoCardlessClient,
+        Tedwren.Application.Billing.GoCardlessClient>(client =>
+    {
+        client.BaseAddress = new Uri(goCardlessOptions.ApiBaseUrl.TrimEnd('/') + "/");
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", goCardlessOptions.AccessToken);
+        client.DefaultRequestHeaders.Add("GoCardless-Version", goCardlessOptions.ApiVersion);
     });
 }
 
@@ -111,6 +130,12 @@ builder.Services.AddAuthorization(options =>
         Tedwren.Domain.Enums.AccessRole.ComplianceManager.ToString(),
         Tedwren.Domain.Enums.AccessRole.SiteManager.ToString()));
     options.AddPolicy("AdminOnly", p => p.RequireRole(Tedwren.Domain.Enums.AccessRole.Administrator.ToString()));
+    // Platform-admin surfaces (the admin area: all companies/users/billing). Stricter than AdminOnly — a
+    // customer's own Administrator must NOT pass. Requires Administrator in the fixed Tedwren tenant.
+    options.AddPolicy("PlatformAdmin", p => p.RequireAssertion(ctx =>
+        ctx.User.IsInRole(Tedwren.Domain.Enums.AccessRole.Administrator.ToString()) &&
+        Guid.TryParse(ctx.User.FindFirst(Tedwren.Api.Auth.JwtTokenIssuer.CompanyClaim)?.Value, out var cid) &&
+        cid == Tedwren.Application.Auth.AdminUserSeeder.SeedCompanyId));
 });
 // Database is the only supported runtime backend. The in-memory stores are a test-only double, selected
 // exclusively by the API test host (DataSource:Mode=InMemory) so the end-to-end tests run without SQL Server.
@@ -127,6 +152,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryInductionStore();
     builder.Services.AddInMemoryFormStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
+    builder.Services.AddInMemoryBillingStore();
     builder.Services.AddInMemoryReferenceDataStore();
     builder.Services.AddInMemorySettingsStore();
     builder.Services.AddInMemoryPermitStore();
@@ -141,6 +167,9 @@ else
 
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
 builder.Services.AddHostedService<ExpirySchedulerHostedService>();
+
+// Backstops GoCardless webhooks by reconciling billing status on a schedule (gated by Jobs:SchedulerEnabled).
+builder.Services.AddHostedService<BillingReconciliationHostedService>();
 
 builder.Services.AddOpenApi();
 
@@ -233,6 +262,9 @@ app.MapPermitEndpoints();
 app.MapOnboardingEndpoints();
 app.MapImageEndpoints();
 app.MapEmailTemplateEndpoints();
+app.MapAdminEndpoints();
+app.MapBillingEndpoints();
+app.MapGoCardlessWebhookEndpoints();
 app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration
