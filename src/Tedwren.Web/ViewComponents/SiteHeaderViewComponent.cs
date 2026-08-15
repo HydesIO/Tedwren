@@ -25,7 +25,7 @@ public sealed class SiteHeaderViewComponent : ViewComponent
         _content = content;
     }
 
-    /// <summary>Builds the header view model, choosing the CTA from the current path.</summary>
+    /// <summary>Builds the header view model, choosing the CTA and the active nav item from the path.</summary>
     public IViewComponentResult Invoke()
     {
         var path = HttpContext.Request.Path.Value ?? "/";
@@ -33,8 +33,40 @@ public sealed class SiteHeaderViewComponent : ViewComponent
             ? CtaAction.GetWorkerPassport
             : CtaAction.BookDemo;
 
-        var model = new SiteHeaderModel(_content.Site.BrandName, _site.PrimaryNav, cta);
+        var model = new SiteHeaderModel(
+            _content.Site.BrandName, _site.PrimaryNav, cta, ResolveActiveHref(_site.PrimaryNav, path));
         return View(model);
+    }
+
+    /// <summary>
+    /// Chooses which nav link is "current" for the given request path so exactly one item is always
+    /// selected. A non-root link matches when the path equals it or begins with it plus "/", and the
+    /// longest such match wins (so "/subcontractors/x" prefers "For Subcontractors" over "Home"). When
+    /// nothing else matches — the home page and any off-nav page (FAQ, Trust, Partners, legal, contact,
+    /// lead flows) — it falls back to the root ("/") link, which is the Home item.
+    /// </summary>
+    /// <param name="nav">The primary navigation links.</param>
+    /// <param name="path">The current request path.</param>
+    private static string ResolveActiveHref(IReadOnlyList<NavLink> nav, string path)
+    {
+        string? best = null;
+        foreach (var link in nav)
+        {
+            var href = link.Href;
+            if (href == "/")
+            {
+                continue; // the root is the fallback, considered only if nothing more specific matches
+            }
+
+            var matches = path.Equals(href, StringComparison.OrdinalIgnoreCase)
+                || path.StartsWith(href + "/", StringComparison.OrdinalIgnoreCase);
+            if (matches && (best is null || href.Length > best.Length))
+            {
+                best = href;
+            }
+        }
+
+        return best ?? "/";
     }
 }
 
@@ -42,4 +74,6 @@ public sealed class SiteHeaderViewComponent : ViewComponent
 /// <param name="BrandName">Trading name shown by the logo/wordmark.</param>
 /// <param name="PrimaryNav">Ordered primary navigation links.</param>
 /// <param name="Cta">The canonical CTA to render top-right.</param>
-public sealed record SiteHeaderModel(string BrandName, IReadOnlyList<NavLink> PrimaryNav, CtaAction Cta);
+/// <param name="ActiveHref">Href of the nav link to mark as the current page (always exactly one).</param>
+public sealed record SiteHeaderModel(
+    string BrandName, IReadOnlyList<NavLink> PrimaryNav, CtaAction Cta, string ActiveHref);

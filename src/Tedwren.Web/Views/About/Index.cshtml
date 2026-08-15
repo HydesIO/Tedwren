@@ -5,24 +5,39 @@
     ViewData["MetaDescription"] = about.MetaDescription;
 }
 
-<section class="about-intro">
-    <h1 class="section-heading">@about.Heading</h1>
-    <p class="about-intro__body">@about.Intro</p>
-</section>
-
-<section class="about-sections">
-    @foreach (var part in about.Sections)
-    {
-        <div class="about-section">
-            <h2 class="about-section__heading">@part.Heading</h2>
-            <p class="about-section__body">@part.Body</p>
+@* ---- INTRO --------------------------------------------------------------------------------- *@
+<section class="band hero">
+    <span class="hero__blob" aria-hidden="true"></span>
+    <div class="band__inner">
+        <div class="section-head" style="max-width:56ch;">
+            <p class="kicker">About Tedwren</p>
+            <h1 class="section-title">@about.Heading</h1>
+            <p class="section-lede">@about.Intro</p>
         </div>
-    }
+    </div>
 </section>
 
-<section class="closing">
-    <h2 class="closing__heading">Want to see it in action?</h2>
-    <div class="closing__actions">
-        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+@* ---- STORY --------------------------------------------------------------------------------- *@
+<section class="band band--surface">
+    <div class="band__inner reveal">
+        <div class="about-sections">
+            @foreach (var part in about.Sections)
+            {
+                <div class="about-section">
+                    <h2 class="about-section__heading">@part.Heading</h2>
+                    <p class="about-section__body">@part.Body</p>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@* ---- CLOSING CTA --------------------------------------------------------------------------- *@
+<section class="band band--ink cta-band">
+    <div class="band__inner cta-band__inner reveal">
+        <h2 class="cta-band__title">Want to see it in action?</h2>
+        <div class="button-row">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+        </div>
     </div>
 </section>

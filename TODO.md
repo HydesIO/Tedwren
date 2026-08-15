@@ -243,6 +243,62 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   card checkout for the separate Worker Passport product. Confirmed with the product owner that GoCardless
   is the intended SaaS billing rail; this should be reconciled into PRD §9 in a future revision. Tracked in
   `docs/plan-and-scope.md` (Admin-area phases).
+### Tedwren.Web — Landing gate, pricing ticks, diagram logo (this change)
+- ✅ **Pre-launch landing gate.** New `Site:IsLanding` flag (`SiteConfig`, default false). When on,
+  `LandingGateMiddleware` (registered after static files, before routing in `Program.cs`) funnels the whole
+  site to a single inviting landing page — `LandingController` (`/landing`) + `Views/Landing/Index.cshtml`
+  on a minimal `_LandingLayout`, with an email-capture "notify me" form routed through the existing
+  `ILeadRouter` pipeline (antiforgery + honeypot + fill-time + rate-limit reused via `LandingNotifyRequest`).
+  Static assets, the form POST and consent/health/robots stay reachable. Landing CSS block in `site.css`.
+- ✅ **Pricing ticks unified.** The "Pricing you can trust" ticks now use the circular green-badge tick
+  (matching `.ticklist` on the product/home feature lists) — CSS-only in `site.css`.
+- ✅ **Diagram centre = real logo.** The retrofit hub now embeds `logo-icon.svg` (orange tile + white T)
+  at its centre with no wordmark beneath; removed the drawn "T"/`.diagram__wordmark`.
+- ✅ **Tests + build.** Whole solution builds clean; `Tedwren.Web.Tests` 174 → 178 (new `LandingGateTests`:
+  home + deep route funnel to landing, static assets still served, notify form routes a sign-up).
+
+### Tedwren.Web — Marketing polish: bespoke icons, legal, nav, address (this change)
+- ✅ **Bespoke SVG icon set.** New reusable `Views/Shared/_Icon.cshtml` renders a hand-drawn 24×24
+  `currentColor` icon by key (theme-aware, decorative). Optional `Icon` key added to `FeatureCard`,
+  `Differentiator`, `HowItWorksStep` (`WebContentTypes.cs`) and populated in `home.json`,
+  `products.json`, `worker-passport.json`; consumed by the FeatureGrid, Differentiators and HowItWorks
+  components (replacing the letter-monogram placeholder).
+- ✅ **Retrofit diagram redrawn.** The home hub-and-spoke SVG now centres a Tedwren mark (brand disc +
+  white "T" + wordmark) with bespoke property/worker icon nodes (house, flats, van, hard-hat, wrench,
+  clipboard) on the ink band — professional and legible, still `aria-hidden`.
+- ✅ **Persistent active nav (always exactly one).** Added a "Home" primary-nav item; `SiteHeaderViewComponent`
+  computes the active href by longest-prefix match with a Home fallback for off-nav pages; the header marks
+  it `is-active` + `aria-current="page"` with a clear brand treatment in `site.css`.
+- ✅ **Centred frame stamps.** "Evidence Logged" / "Fixed at Send" now sit as a centred, translucent
+  "stamped" watermark over the frame detail (never clipped) — CSS-only in `site.css`.
+- ✅ **Registered address.** `site.json` `RegisteredOffice` set to 5 Rectory Park Close, Sutton Coldfield,
+  B75 7BW, England (rendered by the existing footer).
+- ✅ **Comprehensive legal drafts.** `legal.json` expanded — Privacy, Cookies, Terms and Data Protection
+  are now full generic UK drafts (clearly "pending legal sign-off"), ContentLint-safe (no hardcoded price,
+  absolute-compliance or CSCS-rivalry wording).
+- ✅ **Tests + build.** Whole solution builds clean; `Tedwren.Web.Tests` 167 → 174 (nav-active per route,
+  comprehensive-legal render); `ContentLint` gate still green.
+
+### Tedwren.Web — Marketing site SaaS redesign (this change)
+- ✅ **Refined design language (tokens-only).** Rebuilt `wwwroot/css/site.css` as a full SaaS design
+  system: full-bleed alternating bands (`.band`, `--surface`/`--tint`/`--ink` derived via `color-mix`
+  from existing tokens — no new colour/spacing literals), section-header primitives (`.kicker`,
+  `.section-title`), refined buttons (`--lg`, ink-band variants), sticky translucent header, dark
+  multi-column footer, and a CSS-only load entrance (`.js .reveal`; content stays visible with JS off).
+- ✅ **Product "screenshots" as token-driven frames.** New `ProductFrame` ViewComponent + templates
+  (`SiteRegister`, `Dashboard`, `CompliancePack`, `Induction`) render browser/phone-chromed product
+  snapshots — theme-aware, no raster assets, each exposed to AT as a single labelled image. Live clock +
+  pulse dot on the register. Used across home, product pages and Worker Passport.
+- ✅ **Rebuilt pages.** Home (hero + audience toggle + tabbed two-product section mirrored by the toggle,
+  differentiators, ink retrofit band, numbered how-it-works, trust strip, ink CTA), both product pages
+  (`ProductDetail`: split hero + feature monograms + alternating copy/frame split + emphasis sections),
+  Pricing (elevated cards, featured Main Contractor band with per-plan CTAs), Worker Passport, Trust,
+  About — all still content-driven via `IContentProvider`; no copy or price typed into a view.
+- ✅ **Progressive enhancement.** `wwwroot/js/site.js` (deferred, dependency-free) drives the audience
+  toggle/product tabs and the live clock; every page is fully usable with JS disabled.
+- ✅ **Tests + build.** Whole solution builds clean (no new warnings); all tests green
+  (`Tedwren.Web.Tests` 167). Updated one home assertion to the new tabbed panels; `ContentLint`
+  gate still passes over the new views (no hardcoded price / absolute-compliance / CSCS-rivalry copy).
 
 ### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
 - ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the

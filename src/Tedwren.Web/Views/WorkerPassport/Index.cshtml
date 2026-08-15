@@ -6,34 +6,62 @@
     ViewData["MetaDescription"] = wp.MetaDescription;
 }
 
-<section class="wp-hero">
-    <h1 class="wp-hero__heading">@wp.Heading</h1>
-    <p class="wp-hero__subheading">@wp.Subheading</p>
-    <p class="wp-hero__copy">@wp.HeroCopy</p>
-    @if (plan is not null && plan.AnnualPrice > 0)
-    {
-        <p class="wp-hero__price">@Content.FormatMoney(plan.AnnualPrice) <span class="wp-hero__per">per year</span></p>
-    }
-    <div class="wp-hero__actions">
-        @await Component.InvokeAsync("Cta", new { action = CtaAction.GetWorkerPassport })
+@* ---- HERO (split) -------------------------------------------------------------------------- *@
+<section class="band hero">
+    <span class="hero__blob" aria-hidden="true"></span>
+    <div class="band__inner product-hero__inner">
+        <div>
+            <p class="kicker">Worker Passport</p>
+            <h1 class="wp-hero__heading">@wp.Heading</h1>
+            <p class="wp-hero__subheading">@wp.Subheading</p>
+            <p class="wp-hero__copy">@wp.HeroCopy</p>
+            @if (plan is not null && plan.AnnualPrice > 0)
+            {
+                <p class="wp-hero__price">@Content.FormatMoney(plan.AnnualPrice) <span class="wp-hero__per">per year</span></p>
+            }
+            <div class="wp-hero__actions">
+                @await Component.InvokeAsync("Cta", new { action = CtaAction.GetWorkerPassport })
+            </div>
+        </div>
+        <div class="frame-wrap">
+            @await Component.InvokeAsync("ProductFrame", new { variant = ProductFrameVariant.CompliancePack })
+        </div>
     </div>
 </section>
 
-@await Component.InvokeAsync("FeatureGrid", new { features = wp.Benefits })
-
-<section class="wp-terms" aria-label="What to expect at checkout">
-    <h2 class="section-heading">Before you buy</h2>
-    <ul class="wp-terms__list">
-        @foreach (var term in wp.ConsumerTerms)
-        {
-            <li class="wp-terms__item">@term</li>
-        }
-    </ul>
+@* ---- BENEFITS ------------------------------------------------------------------------------ *@
+<section class="band band--surface">
+    <div class="band__inner reveal">
+        <div class="section-head">
+            <p class="kicker">What's included</p>
+            <h2 class="section-title">One record that follows you</h2>
+        </div>
+        @await Component.InvokeAsync("FeatureGrid", new { features = wp.Benefits })
+    </div>
 </section>
 
-<section class="closing">
-    <h2 class="closing__heading">Get your Worker Passport</h2>
-    <div class="closing__actions">
-        @await Component.InvokeAsync("Cta", new { action = CtaAction.GetWorkerPassport })
+@* ---- BEFORE YOU BUY ------------------------------------------------------------------------ *@
+<section class="band">
+    <div class="band__inner reveal">
+        <div class="section-head">
+            <p class="kicker">Before you buy</p>
+            <h2 class="section-title">What to expect at checkout</h2>
+        </div>
+        <ul class="wp-terms__list">
+            @foreach (var term in wp.ConsumerTerms)
+            {
+                <li class="wp-terms__item">@term</li>
+            }
+        </ul>
+    </div>
+</section>
+
+@* ---- CLOSING CTA --------------------------------------------------------------------------- *@
+<section class="band band--ink cta-band">
+    <div class="band__inner cta-band__inner reveal">
+        <h2 class="cta-band__title">Get your Worker Passport</h2>
+        <div class="button-row">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.GetWorkerPassport })
+        </div>
     </div>
 </section>
