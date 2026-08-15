@@ -1,0 +1,67 @@
+@page "/admin/events"
+@using Tedwren.Abstractions.Contracts.Billing
+@using Tedwren.Abstractions.Services
+@inject IBillingService Billing
+
+<PageTitle>Webhook Events · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Webhook Events" Subtitle="Inbound GoCardless events and their processing outcome" />
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="WebhookEventDto"
+                       Items="_events"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search events…"
+                       EmptyTitle="No webhook events yet"
+                       EmptyDescription="GoCardless events appear here once webhooks are received (mandate and payment status changes)."
+                       EmptyIcon="@Icons.Material.Outlined.Webhook" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<WebhookEventDto> _events = Array.Empty<WebhookEventDto>();
+    private List<DataColumn<WebhookEventDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _events = await Billing.GetWebhookEventsAsync();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Resource", Value = e => e.ResourceType, Filterable = true },
+            new() { Title = "Action", Value = e => e.Action, Filterable = true },
+            new() { Title = "Reference", Value = e => e.ResourceId ?? "—" },
+            new()
+            {
+                Title = "Outcome", Text = e => e.Outcome, Filterable = true, Sortable = false,
+                CellTemplate = e => @<StatusPill Label="@e.Outcome" Status="OutcomePill(e.Outcome)" />
+            },
+            new() { Title = "Detail", Value = e => e.Detail ?? "—" },
+            new()
+            {
+                Title = "Received", Value = e => e.ReceivedUtc, Searchable = false,
+                CellTemplate = e => @<span>@e.ReceivedUtc.LocalDateTime.ToString("dd MMM yyyy HH:mm")</span>
+            },
+        };
+    }
+
+    // Maps a processing outcome to the shared pill palette.
+    private static StatusKind OutcomePill(string outcome) => outcome switch
+    {
+        "Applied" => StatusKind.Success,
+        "Pending" => StatusKind.Warning,
+        "Ignored" => StatusKind.Neutral,
+        "Failed" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

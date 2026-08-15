@@ -1,0 +1,23 @@
+.admin-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--spacing-16, 16px);
+    margin-bottom: var(--spacing-16, 16px);
+}
+
+.admin-stat {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-16, 16px);
+}
+
+.admin-stat__value {
+    font-size: var(--font-size-28, 28px);
+    font-weight: 600;
+    line-height: 1.1;
+}
+
+.admin-stat__label {
+    color: var(--color-text-muted, #64748b);
+    font-size: var(--font-size-14, 14px);
+}

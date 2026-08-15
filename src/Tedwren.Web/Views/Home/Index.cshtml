@@ -167,6 +167,28 @@
     </div>
 </section>
 
+@* Pre-launch interest capture (Web Content Spec §6.9) — posts to the Launch controller, which forwards to the API. *@
+<section class="launch-signup">
+    <h2 class="section-heading">Launching soon — be the first to know</h2>
+    <p class="launch-signup__body">Leave your email and we'll let you know the moment Tedwren is live.</p>
+    <form class="launch-signup__form" method="post" asp-controller="Launch" asp-action="Index">
+        <input type="hidden" name="RenderedAtUnixMs" value="@DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()" />
+        <div class="hp" aria-hidden="true">
+            <label>Website<input name="Website" tabindex="-1" autocomplete="off" /></label>
+        </div>
+        <label class="launch-signup__label" for="launch-email">Email address</label>
+        <div class="launch-signup__row">
+            <input id="launch-email" name="Email" type="email" autocomplete="email" required placeholder="you@company.co.uk" />
+            <button class="cta cta--primary" type="submit">Notify me</button>
+        </div>
+    </form>
+</section>
+
+<section class="closing">
+    <h2 class="closing__heading">@home.ClosingHeading</h2>
+    <p class="closing__body">@home.ClosingBody</p>
+    <div class="closing__actions">
+        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
 @* ---- CLOSING CTA (ink) --------------------------------------------------------------------- *@
 <section class="band band--ink cta-band">
     <div class="band__inner cta-band__inner reveal">

@@ -1,0 +1,273 @@
+@page "/admin/affiliates/{Id:guid}"
+@using Tedwren.Abstractions.Contracts.Affiliates
+@using Tedwren.Abstractions.Services
+@inject IAffiliateService Affiliates
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IDialogService DialogService
+
+<PageTitle>Affiliate · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    @if (_loading)
+    {
+        <LoadingSkeleton />
+    }
+    else if (_detail is null)
+    {
+        <EmptyState Title="Affiliate not found" Description="This affiliate may have been removed." Icon="@Icons.Material.Outlined.SearchOff" />
+    }
+    else
+    {
+        var a = _detail.Affiliate;
+        <DetailHeader Title="@a.Name"
+                      Subtitle="@(a.Company ?? a.ContactEmail)"
+                      StatusLabel="@a.Status"
+                      Status="StatusPillKind(a.Status)"
+                      Breadcrumbs="_crumbs">
+            <Actions>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Edit" Disabled="_busy" OnClick="EditAffiliate">
+                    Edit
+                </MudButton>
+            </Actions>
+        </DetailHeader>
+
+        <div class="kpi-row">
+            <KpiCard Title="Affiliate rate" Value="@Percent(a.AffiliateRatePct)" Icon="@Icons.Material.Outlined.Percent" />
+            <KpiCard Title="Profit margin" Value="@Percent(a.ProfitMarginPct)" Icon="@Icons.Material.Outlined.Savings" />
+            <KpiCard Title="Commission earned" Value="@Money(_detail.Commission.Earned)" Icon="@Icons.Material.Outlined.PriceCheck" AccentColour="var(--color-success)" />
+            <KpiCard Title="Paid out" Value="@Money(_detail.Commission.Paid)" Icon="@Icons.Material.Outlined.Payments" />
+            <KpiCard Title="Outstanding" Value="@Money(_detail.Commission.Outstanding)" Icon="@Icons.Material.Outlined.HourglassBottom" AccentColour="var(--color-warning)" />
+        </div>
+
+        <MudTabs Elevation="0" Rounded="true" Class="mt-4">
+            <MudTabPanel Text="@($"Associated accounts ({_detail.AssociatedAccounts.Count})")">
+                <DashboardCard>
+                    <Body>
+                        <DataTable TItem="AssociatedAccountDto" Items="_detail.AssociatedAccounts" Columns="_accountColumns"
+                                   EmptyTitle="No associated accounts"
+                                   EmptyDescription="Leads attributed to this affiliate appear here with the commission they earn."
+                                   EmptyIcon="@Icons.Material.Outlined.AccountBalance" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+
+            <MudTabPanel Text="@($"Payouts ({_detail.Payouts.Count})")">
+                <DashboardCard>
+                    <Body>
+                        <div class="payout-add">
+                            <TedwrenNumericField Label="Amount (£)" @bind-Value="_payoutAmount" Min="0" />
+                            <TedwrenTextField Label="Reference" @bind-Value="_payoutReference" />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="RaisePayout"
+                                       Disabled="@(_busy || _payoutAmount is null or <= 0)">Raise payout</MudButton>
+                        </div>
+                        <DataTable TItem="AffiliatePayoutDto" Items="_detail.Payouts" Columns="_payoutColumns"
+                                   EmptyTitle="No payouts yet"
+                                   EmptyDescription="Raise a payout for commission earned on this affiliate's accounts."
+                                   EmptyIcon="@Icons.Material.Outlined.Payments" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+
+            <MudTabPanel Text="Agreement">
+                <DashboardCard>
+                    <Body>
+                        @if (_detail.Agreement is { } agreement)
+                        {
+                            <KeyValueList Items="@AgreementPairs(agreement)" />
+                            <div class="agreement-actions">
+                                <MudTextField T="string" Value="@AgreementUrl(agreement.Token)" ReadOnly="true" Label="Signing link" Variant="Variant.Outlined" />
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Href="@AgreementUrl(agreement.Token)" Target="_blank"
+                                           StartIcon="@Icons.Material.Outlined.OpenInNew">Open agreement</MudButton>
+                                @if (agreement.Status != "Signed")
+                                {
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Email"
+                                               Disabled="_busy" OnClick="ResendAgreement">Resend setup email</MudButton>
+                                }
+                                @if (agreement.Status == "Signed")
+                                {
+                                    <MudButton Variant="Variant.Text" Color="Color.Primary" Href="@PdfUrl(agreement.Token)" Target="_blank"
+                                               StartIcon="@Icons.Material.Outlined.PictureAsPdf">Download signed PDF</MudButton>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <EmptyState Title="No agreement" Description="This affiliate has no agreement yet." Icon="@Icons.Material.Outlined.Description" />
+                        }
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</AdminGuard>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private AffiliateDetailDto? _detail;
+    private bool _loading = true;
+    private bool _busy;
+    private decimal? _payoutAmount;
+    private string? _payoutReference;
+
+    private List<DataColumn<AssociatedAccountDto>> _accountColumns = new();
+    private List<DataColumn<AffiliatePayoutDto>> _payoutColumns = new();
+    private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        BuildColumns();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _detail = await Affiliates.GetAsync(Id);
+        _loading = false;
+        if (_detail is not null)
+        {
+            _crumbs = new List<DetailHeader.Crumb> { new("Affiliates", "/admin/affiliates"), new(_detail.Affiliate.Name) };
+        }
+    }
+
+    private async Task EditAffiliate()
+    {
+        if (_detail is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<EditAffiliateDialog> { { x => x.Affiliate, _detail.Affiliate } };
+        var dialog = await DialogService.ShowAsync<EditAffiliateDialog>("Edit affiliate", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled == false)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ResendAgreement()
+    {
+        _busy = true;
+        try
+        {
+            var ok = await Affiliates.ResendAgreementAsync(Id);
+            Snackbar.Add(ok ? "Setup email resent." : "Nothing to resend.", ok ? Severity.Success : Severity.Info);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RaisePayout()
+    {
+        if (_payoutAmount is null or <= 0)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Affiliates.CreatePayoutAsync(Id, new CreatePayoutRequest(_payoutAmount.Value, "GBP", null, _payoutReference));
+            _payoutAmount = null;
+            _payoutReference = null;
+            Snackbar.Add("Payout raised.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task MarkPaid(Guid payoutId)
+    {
+        _busy = true;
+        try
+        {
+            await Affiliates.MarkPayoutPaidAsync(payoutId);
+            Snackbar.Add("Payout marked paid.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static List<KeyValueList.Pair> AgreementPairs(AffiliateAgreementSummaryDto agreement) => new()
+    {
+        new("Status", agreement.Status),
+        new("Signed", agreement.SignedUtc is { } s ? s.ToLocalTime().ToString("dd MMM yyyy HH:mm") : "Not yet signed"),
+        new("Signed by", string.IsNullOrWhiteSpace(agreement.SignedByName) ? "—" : agreement.SignedByName),
+    };
+
+    private string AgreementUrl(string token) => $"{Nav.BaseUri.TrimEnd('/')}/affiliate-agreement/{token}";
+    private string PdfUrl(string token) => $"{Nav.BaseUri.TrimEnd('/')}/api/affiliate-agreements/{token}/pdf";
+
+    private static string Percent(decimal fraction) => $"{decimal.Round(fraction * 100, 2):0.##}%";
+    private static string Money(decimal amount) => $"£{amount:N2}";
+
+    private static StatusKind StatusPillKind(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "Pending" => StatusKind.Warning,
+        _ => StatusKind.Neutral,
+    };
+
+    private void BuildColumns()
+    {
+        _accountColumns = new()
+        {
+            new() { Title = "Company", Value = a => a.CompanyName },
+            new() { Title = "Status", Text = a => a.Status, CellTemplate = a => @<StatusPill Label="@a.Status" Status="@(a.Status == "Converted" ? StatusKind.Success : StatusKind.Neutral)" /> },
+            new() { Title = "Est. revenue", Value = a => a.EstimatedRevenue ?? 0m, AlignRight = true,
+                    CellTemplate = a => @<span>@(a.EstimatedRevenue is { } r ? Money(r) : "—")</span> },
+            new() { Title = "Est. commission", Value = a => a.EstimatedCommission, AlignRight = true,
+                    CellTemplate = a => @<span>@Money(a.EstimatedCommission)</span> },
+            new() { Title = "Cleared revenue", Value = a => a.ClearedRevenue, AlignRight = true,
+                    CellTemplate = a => @<span>@Money(a.ClearedRevenue)</span> },
+            new() { Title = "Earned commission", Value = a => a.EarnedCommission, AlignRight = true,
+                    CellTemplate = a => @<span>@Money(a.EarnedCommission)</span> },
+        };
+
+        _payoutColumns = new()
+        {
+            new() { Title = "Amount", Value = p => p.Amount, AlignRight = true, CellTemplate = p => @<span>@Money(p.Amount)</span> },
+            new() { Title = "Reference", Text = p => p.Reference ?? "—", CellTemplate = p => @<span>@(p.Reference ?? "—")</span> },
+            new()
+            {
+                Title = "Status", Text = p => p.Status, Filterable = true, Sortable = false,
+                CellTemplate = p => @<StatusPill Label="@p.Status" Status="@(p.Status == "Paid" ? StatusKind.Success : StatusKind.Warning)" />
+            },
+            new()
+            {
+                Title = "", Sortable = false, Searchable = false,
+                CellTemplate = p => @<text>
+                    @if (p.Status != "Paid")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Disabled="_busy"
+                                   OnClick="@(() => MarkPaid(p.Id))">Mark paid</MudButton>
+                    }
+                </text>
+            },
+        };
+    }
+}

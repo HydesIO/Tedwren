@@ -1,0 +1,309 @@
+@page "/admin/leads/{Id:guid}"
+@using Tedwren.Abstractions.Contracts.Leads
+@using Tedwren.Abstractions.Contracts.Affiliates
+@using Tedwren.Abstractions.Services
+@inject ILeadService Leads
+@inject IAffiliateService Affiliates
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Lead · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    @if (_loading)
+    {
+        <LoadingSkeleton />
+    }
+    else if (_detail is null)
+    {
+        <EmptyState Title="Lead not found" Description="This lead may have been removed." Icon="@Icons.Material.Outlined.SearchOff" />
+    }
+    else
+    {
+        var lead = _detail.Lead;
+        <DetailHeader Title="@lead.CompanyName"
+                      Subtitle="@Subtitle(lead)"
+                      StatusLabel="@lead.Status"
+                      Status="StatusPillKind(lead.Status)"
+                      Breadcrumbs="_crumbs">
+            <Actions>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Edit" Disabled="_busy" OnClick="EditLead">
+                    Edit
+                </MudButton>
+                <MudMenu Label="Change status" Variant="Variant.Outlined" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowDropDown" Disabled="_busy">
+                    @foreach (var status in _statuses)
+                    {
+                        <MudMenuItem OnClick="@(() => ChangeStatus(status))">@status</MudMenuItem>
+                    }
+                </MudMenu>
+                <MudMenu Label="Assign affiliate" Variant="Variant.Outlined" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowDropDown" Disabled="_busy">
+                    <MudMenuItem OnClick="@(() => AssignAffiliate(null))">None</MudMenuItem>
+                    @foreach (var affiliate in _affiliates)
+                    {
+                        <MudMenuItem OnClick="@(() => AssignAffiliate(affiliate.Id))">@affiliate.Name</MudMenuItem>
+                    }
+                </MudMenu>
+                @if (lead.Status != "Converted")
+                {
+                    <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Outlined.HowToReg"
+                               Disabled="_busy" OnClick="Convert">
+                        Convert to account
+                    </MudButton>
+                }
+            </Actions>
+        </DetailHeader>
+
+        <MudTabs Elevation="0" Rounded="true" Class="mt-4">
+            <MudTabPanel Text="Overview">
+                <DashboardCard>
+                    <Body>
+                        <KeyValueList Items="_overview" />
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+            <MudTabPanel Text="@($"Activity ({_detail.Notes.Count})")">
+                <DashboardCard>
+                    <Body>
+                        <div class="note-add">
+                            <TedwrenTextField Label="Add a note" @bind-Value="_newNote" Placeholder="What happened, and what's next?" />
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="AddNote"
+                                       Disabled="@(_busy || string.IsNullOrWhiteSpace(_newNote))">Add note</MudButton>
+                        </div>
+                        @if (_activity.Count == 0)
+                        {
+                            <EmptyState Title="No activity yet" Description="Log the first note to start this lead's timeline."
+                                        Icon="@Icons.Material.Outlined.History" />
+                        }
+                        else
+                        {
+                            <ActivityFeed Items="_activity" />
+                        }
+                    </Body>
+                </DashboardCard>
+            </MudTabPanel>
+        </MudTabs>
+    }
+</AdminGuard>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private LeadDetailDto? _detail;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _newNote;
+
+    private readonly string[] _statuses = { "New", "Contacted", "Qualified", "Proposal", "Converted", "Lost" };
+    private IReadOnlyList<AffiliateDto> _affiliates = Array.Empty<AffiliateDto>();
+    private List<KeyValueList.Pair> _overview = new();
+    private List<ActivityItem> _activity = new();
+    private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
+
+    protected override async Task OnParametersSetAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _detail = await Leads.GetAsync(Id);
+        _loading = false;
+        if (_detail is not null)
+        {
+            if (_affiliates.Count == 0)
+            {
+                _affiliates = await Affiliates.ListAsync();
+            }
+
+            BuildView(_detail);
+        }
+    }
+
+    private async Task EditLead()
+    {
+        if (_detail is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<EditLeadDialog> { { x => x.Lead, _detail.Lead } };
+        var dialog = await DialogService.ShowAsync<EditLeadDialog>("Edit lead", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled == false)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task AssignAffiliate(Guid? affiliateId)
+    {
+        _busy = true;
+        try
+        {
+            await Leads.AssignAffiliateAsync(Id, new AssignLeadAffiliateRequest(affiliateId), actor: null);
+            Snackbar.Add(affiliateId is null ? "Affiliate cleared." : "Affiliate assigned.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void BuildView(LeadDetailDto detail)
+    {
+        var lead = detail.Lead;
+        _crumbs = new List<DetailHeader.Crumb>
+        {
+            new("Leads", "/admin/leads"),
+            new(lead.CompanyName),
+        };
+
+        _overview = new()
+        {
+            new("Contact", string.IsNullOrWhiteSpace(lead.ContactName) ? "—" : lead.ContactName),
+            new("Email", string.IsNullOrWhiteSpace(lead.ContactEmail) ? "—" : lead.ContactEmail),
+            new("Location", string.IsNullOrWhiteSpace(lead.Location) ? "—" : lead.Location),
+            new("Model", ModelLabel(lead.Model)),
+            new("Number of sites", lead.NumberOfSites?.ToString() ?? "—"),
+            new("Estimated revenue", lead.EstimatedRevenue is { } r ? $"£{r:N0}/yr" : "—"),
+            new("Account manager", string.IsNullOrWhiteSpace(lead.AccountManager) ? "Unassigned" : lead.AccountManager),
+            new("Affiliate", AffiliateName(lead.AffiliateId)),
+            new("Company number", string.IsNullOrWhiteSpace(lead.CompanyNumber) ? "—" : lead.CompanyNumber),
+            new("Source", string.IsNullOrWhiteSpace(lead.Source) ? "—" : lead.Source),
+            new("Created", lead.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy")),
+        };
+
+        _activity = detail.Notes.Select(n => new ActivityItem(
+            n.StatusChange is null ? Icons.Material.Outlined.StickyNote2 : Icons.Material.Outlined.TrendingUp,
+            n.Body,
+            string.IsNullOrWhiteSpace(n.Author) ? "System" : n.Author!,
+            Relative(n.CreatedUtc),
+            n.StatusChange is null ? StatusKind.Neutral : StatusKind.Info)).ToList();
+    }
+
+    private async Task ChangeStatus(string status)
+    {
+        _busy = true;
+        try
+        {
+            var updated = await Leads.UpdateStatusAsync(Id, new UpdateLeadStatusRequest(status), actor: null);
+            if (updated is null)
+            {
+                Snackbar.Add("Lead not found.", Severity.Error);
+            }
+            else
+            {
+                Snackbar.Add($"Status set to {status}.", Severity.Success);
+                await ReloadAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task AddNote()
+    {
+        if (string.IsNullOrWhiteSpace(_newNote))
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Leads.AddNoteAsync(Id, new AddLeadNoteRequest(_newNote!), actor: null);
+            _newNote = null;
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task Convert()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Convert this lead into an account? It will be marked Converted." },
+            { x => x.ConfirmText, "Convert" },
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Convert lead", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled != false)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await Leads.ConvertAsync(Id, new ConvertLeadRequest(AccountId: null), actor: null);
+            Snackbar.Add("Lead converted.", Severity.Success);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Subtitle(LeadDto lead)
+    {
+        var parts = new List<string> { ModelLabel(lead.Model) };
+        if (!string.IsNullOrWhiteSpace(lead.Location))
+        {
+            parts.Add(lead.Location!);
+        }
+
+        return string.Join(" · ", parts);
+    }
+
+    private string AffiliateName(Guid? affiliateId) =>
+        affiliateId is { } id && _affiliates.FirstOrDefault(a => a.Id == id) is { } a ? a.Name : "None";
+
+    private static string ModelLabel(string model) => model switch
+    {
+        "MainContractor" => "Main contractor",
+        "Subcontractor" => "Subcontractor",
+        _ => "Model TBC",
+    };
+
+    private static StatusKind StatusPillKind(string status) => status switch
+    {
+        "Converted" => StatusKind.Success,
+        "Proposal" => StatusKind.Info,
+        "Qualified" => StatusKind.Info,
+        "Contacted" => StatusKind.Warning,
+        "Lost" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+
+    // Compact relative time for the activity feed.
+    private static string Relative(DateTimeOffset when)
+    {
+        var delta = DateTimeOffset.UtcNow - when;
+        if (delta < TimeSpan.FromMinutes(1)) return "just now";
+        if (delta < TimeSpan.FromHours(1)) return $"{(int)delta.TotalMinutes}m ago";
+        if (delta < TimeSpan.FromDays(1)) return $"{(int)delta.TotalHours}h ago";
+        if (delta < TimeSpan.FromDays(30)) return $"{(int)delta.TotalDays}d ago";
+        return when.ToLocalTime().ToString("dd MMM yyyy");
+    }
+}

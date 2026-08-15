@@ -34,6 +34,28 @@ public static class ShellChrome
         new("Audit Log",           Icons.Material.Outlined.History,        "/audit-log"),
     };
 
+    /// <summary>
+    /// The Tedwren platform admin-area navigation / route inventory. Shown in place of <see cref="NavItems"/>
+    /// when the admin area is enabled and a platform administrator is signed in. These are platform-operator
+    /// surfaces (all companies/users, subscriptions, direct debits, payments, webhook events, payouts) — not
+    /// purchasable modules, so they are never entitlement-gated.
+    /// </summary>
+    public static IReadOnlyList<NavItem> AdminNavItems { get; } = new List<NavItem>
+    {
+        new("Admin Dashboard",     Icons.Material.Outlined.AdminPanelSettings, "/admin"),
+        new("Launch List",         Icons.Material.Outlined.Campaign,           "/admin/launch-list"),
+        new("Leads",               Icons.Material.Outlined.ContactPage,        "/admin/leads"),
+        new("Affiliates",          Icons.Material.Outlined.Handshake,          "/admin/affiliates"),
+        new("Companies",           Icons.Material.Outlined.Business,           "/admin/companies"),
+        new("Users",               Icons.Material.Outlined.PeopleOutline,      "/admin/users"),
+        new("Subscriptions",       Icons.Material.Outlined.CardMembership,     "/admin/subscriptions"),
+        new("Billing & Mandates",  Icons.Material.Outlined.AccountBalance,     "/admin/billing"),
+        new("Payments",            Icons.Material.Outlined.Payments,           "/admin/payments"),
+        new("Webhook Events",      Icons.Material.Outlined.Webhook,            "/admin/events"),
+        new("Payouts",             Icons.Material.Outlined.AccountBalanceWallet, "/admin/payouts"),
+        new("Admin Settings",      Icons.Material.Outlined.Settings,           "/admin/settings"),
+    };
+
     /// <summary>The platform-switcher options.</summary>
     public static IReadOnlyList<string> Platforms { get; } = new[] { "Main Contractor", "Subcontractor" };
 

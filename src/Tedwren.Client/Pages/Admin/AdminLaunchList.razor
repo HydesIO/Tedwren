@@ -1,0 +1,204 @@
+@page "/admin/launch-list"
+@using Tedwren.Abstractions.Contracts.LaunchList
+@using Tedwren.Abstractions.Services
+@inject ILaunchListService LaunchList
+@inject IDialogService DialogService
+@inject IJSRuntime JS
+
+<PageTitle>Launch List · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Launch List" Subtitle="People who asked to be told when Tedwren launches">
+        <Actions>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAddAlt"
+                       Disabled="_busy" OnClick="AddSubscriber">
+                Add subscriber
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
+                       Disabled="@(_busy || _signups.Count == 0)" OnClick="ExportCsv">
+                Export CSV
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Campaign"
+                       Disabled="@(_busy || _signups.Count == 0)" OnClick="SendAnnouncement">
+                Send launch email
+            </MudButton>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _message = null)">@_message</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _error = null)">@_error</MudAlert>
+    }
+
+    <div class="kpi-row">
+        <KpiCard Title="Total subscribers" Value="@_signups.Count.ToString()" Icon="@Icons.Material.Outlined.Group" />
+        <KpiCard Title="Notified" Value="@_notifiedCount.ToString()" Icon="@Icons.Material.Outlined.MarkEmailRead" AccentColour="var(--color-success)" />
+        <KpiCard Title="Awaiting announcement" Value="@_pendingCount.ToString()" Icon="@Icons.Material.Outlined.Schedule" AccentColour="var(--color-warning)" />
+    </div>
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="LaunchSignupDto"
+                       Items="_signups"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search email…"
+                       EmptyTitle="No signups yet"
+                       EmptyDescription="Emails entered on the marketing landing page appear here."
+                       EmptyIcon="@Icons.Material.Outlined.MarkEmailUnread" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<LaunchSignupDto> _signups = Array.Empty<LaunchSignupDto>();
+    private List<DataColumn<LaunchSignupDto>> _columns = new();
+    private bool _loading = true;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    private int _notifiedCount => _signups.Count(s => s.Notified);
+    private int _pendingCount => _signups.Count(s => !s.Notified);
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _signups = await LaunchList.ListAsync();
+        _loading = false;
+    }
+
+    private async Task SendAnnouncement()
+    {
+        var pending = _pendingCount;
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Send the launch announcement to {pending} subscriber(s) who haven't been notified yet? Each is emailed individually." },
+            { x => x.ConfirmText, "Send" },
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Send launch email", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled != false)
+        {
+            return;
+        }
+
+        _busy = true;
+        _message = _error = null;
+        try
+        {
+            var outcome = await LaunchList.NotifyAsync(new NotifyLaunchRequest(OnlyUnnotified: true));
+            _message = outcome.Failed == 0
+                ? $"Sent {outcome.Sent} launch email(s)."
+                : $"Sent {outcome.Sent} launch email(s); {outcome.Failed} failed.";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Email", Value = s => s.Email },
+            new()
+            {
+                Title = "Source", Text = s => s.Source ?? "—", Filterable = true,
+                CellTemplate = s => @<span>@(s.Source ?? "—")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = s => s.Notified ? "Notified" : "Pending", Filterable = true, Sortable = false,
+                CellTemplate = s => @<StatusPill Label="@(s.Notified ? "Notified" : "Pending")" Status="@(s.Notified ? StatusKind.Success : StatusKind.Warning)" />
+            },
+            new()
+            {
+                Title = "Signed up", Value = s => s.CreatedUtc, Searchable = false,
+                CellTemplate = s => @<span>@s.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "", Sortable = false, Searchable = false,
+                CellTemplate = s => @<MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Default"
+                                                    Disabled="_busy" OnClick="@(() => DeleteSubscriber(s))" aria-label="Remove subscriber" />
+            },
+        };
+    }
+
+    private async Task AddSubscriber()
+    {
+        var dialog = await DialogService.ShowAsync<AddLaunchSubscriberDialog>("Add subscriber");
+        var result = await dialog.Result;
+        if (result?.Canceled == false)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ExportCsv()
+    {
+        _busy = true;
+        try
+        {
+            var bytes = await LaunchList.ExportCsvAsync();
+            var csv = System.Text.Encoding.UTF8.GetString(bytes);
+            await JS.InvokeVoidAsync("tedwrenDownload", $"launch-list-{DateTime.Now:yyyyMMdd}.csv", "text/csv", csv);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteSubscriber(LaunchSignupDto signup)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Remove {signup.Email} from the launch list?" },
+            { x => x.ConfirmText, "Remove" },
+            { x => x.Destructive, true },
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Remove subscriber", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled != false)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await LaunchList.DeleteAsync(signup.Id);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

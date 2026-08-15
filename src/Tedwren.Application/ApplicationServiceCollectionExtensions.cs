@@ -7,6 +7,7 @@ using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Audit;
 using Tedwren.Application.Auth;
+using Tedwren.Application.Billing;
 using Tedwren.Application.Dashboard;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
@@ -279,6 +280,51 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic launch-list service (Web Content Spec §6.9). Uses the ambient email sender.</summary>
+    public static IServiceCollection AddLaunchListCore(this IServiceCollection services)
+    {
+        services.AddScoped<ILaunchListService, LaunchList.LaunchListService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory launch-signup store (singleton so signups persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryLaunchListStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryLaunchSignupRepository>();
+        services.AddScoped<ILaunchSignupRepository>(sp => sp.GetRequiredService<InMemoryLaunchSignupRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic sales-lead pipeline service (Web Plan §7).</summary>
+    public static IServiceCollection AddLeadsCore(this IServiceCollection services)
+    {
+        services.AddScoped<ILeadService, Leads.LeadService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory lead store (singleton so leads/notes persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryLeadsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryLeadRepository>();
+        services.AddScoped<ILeadRepository>(sp => sp.GetRequiredService<InMemoryLeadRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic affiliate programme service (Web Plan §7). Uses the ambient email sender.</summary>
+    public static IServiceCollection AddAffiliatesCore(this IServiceCollection services)
+    {
+        services.AddScoped<IAffiliateService, Affiliates.AffiliateService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory affiliate store (singleton so affiliates/payouts/agreements persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryAffiliatesStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryAffiliateRepository>();
+        services.AddScoped<IAffiliateRepository>(sp => sp.GetRequiredService<InMemoryAffiliateRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic permits-to-work service.</summary>
     public static IServiceCollection AddPermitCore(this IServiceCollection services)
     {
@@ -327,6 +373,37 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IAuditRepository, InMemoryAuditRepository>();
         services.AddSingleton<InMemoryDecisionRepository>();
         services.AddScoped<IDecisionRepository>(sp => sp.GetRequiredService<InMemoryDecisionRepository>());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the direct-debit billing service (admin area). The GoCardless transport defaults to the
+    /// "not configured" stub; the API composition root overrides it with the real typed-<c>HttpClient</c>
+    /// client when an access token is set — mirroring how the Resend sender overrides the outbox default.
+    /// </summary>
+    public static IServiceCollection AddBillingCore(this IServiceCollection services)
+    {
+        services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IGoCardlessClient, UnconfiguredGoCardlessClient>();
+        services.AddScoped<GoCardlessWebhookProcessor>();
+        services.AddScoped<BillingReconciliationService>();
+        services.AddScoped<PayoutSyncService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory mandate, payment and subscription repositories (test-only double).</summary>
+    public static IServiceCollection AddInMemoryBillingStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryMandateRepository>();
+        services.AddScoped<IMandateRepository>(sp => sp.GetRequiredService<InMemoryMandateRepository>());
+        services.AddSingleton<InMemoryPaymentRepository>();
+        services.AddScoped<IPaymentRepository>(sp => sp.GetRequiredService<InMemoryPaymentRepository>());
+        services.AddSingleton<InMemoryBillingSubscriptionRepository>();
+        services.AddScoped<IBillingSubscriptionRepository>(sp => sp.GetRequiredService<InMemoryBillingSubscriptionRepository>());
+        services.AddSingleton<InMemoryWebhookEventRepository>();
+        services.AddScoped<IWebhookEventRepository>(sp => sp.GetRequiredService<InMemoryWebhookEventRepository>());
+        services.AddSingleton<InMemoryPayoutRepository>();
+        services.AddScoped<IPayoutRepository>(sp => sp.GetRequiredService<InMemoryPayoutRepository>());
         return services;
     }
 }

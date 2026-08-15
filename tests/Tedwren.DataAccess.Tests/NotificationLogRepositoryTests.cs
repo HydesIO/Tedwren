@@ -31,7 +31,7 @@ public sealed class NotificationLogRepositoryTests
         Skip.If(string.IsNullOrWhiteSpace(ConnectionString), "TEDWREN_TEST_SQLSERVER not set — DB integration tests skipped.");
 
         var factory = CreateFactory();
-        await new MigrationRunner(factory, new SqlServerDialect()).RunAsync();
+        await new MigrationRunner(new SqlServerDialect()).RunAsync(factory, MigrationArea.Product);
 
         var log = new NotificationLogRepository(factory);
         var runs = new JobRunRepository(factory);

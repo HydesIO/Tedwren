@@ -11,6 +11,9 @@ public interface ICompanyRepository
     /// <summary>Returns a company by id, or null.</summary>
     Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the company whose registration (Companies House) number matches, or null. Used to match a lead to its converted account.</summary>
+    Task<Company?> GetByRegistrationNumberAsync(string registrationNumber, CancellationToken cancellationToken = default);
+
     /// <summary>Persists a new company.</summary>
     Task AddAsync(Company company, CancellationToken cancellationToken = default);
 

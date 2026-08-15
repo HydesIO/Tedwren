@@ -31,7 +31,7 @@ public sealed class CompanyDocumentRepositoryTests
         Skip.If(string.IsNullOrWhiteSpace(ConnectionString), "TEDWREN_TEST_SQLSERVER not set — DB integration tests skipped.");
 
         var factory = CreateFactory();
-        await new MigrationRunner(factory, new SqlServerDialect()).RunAsync();
+        await new MigrationRunner(new SqlServerDialect()).RunAsync(factory, MigrationArea.Product);
 
         var companies = new CompanyRepository(factory);
         var documents = new CompanyDocumentRepository(factory);

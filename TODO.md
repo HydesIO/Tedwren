@@ -11,6 +11,238 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Operational readiness (Phase 7, this change)
+- ✅ **Commercial-DB topology visibility.** Startup log states whether the commercial plane is SEPARATE from or
+  SHARED (fallback) with the product database, so a missing `*Commercial` connection string is obvious.
+- ✅ **Runbook.** `docs/operations.md` — provisioning the commercial catalogue, the one-off billing-data
+  relocation, and enabling outbound email (Resend). `docs/migrations/relocate-billing-to-commercial.sql` is the
+  idempotent SQL-Server copy script (product→commercial); the doc gives the PostgreSQL `pg_dump`/`psql` recipe.
+- ✅ **Email-provider guidance.** Documented that launch/affiliate emails don't dispatch until
+  `Email:Provider=Resend` + `ApiKey` are set (outbox no-op default), incl. the `PublicBaseUrl`/`ConsoleBaseUrl`
+  roles for unsubscribe/agreement links.
+- ✅ **Commercial-repo integration tests.** `CommercialRepositoryTests` — LocalDB round-trips for
+  `LaunchSignupRepository`, `LeadRepository`, `AffiliateRepository` via the **admin** factory +
+  `MigrationArea.Commercial` (SkippableFact; skipped without `TEDWREN_TEST_SQLSERVER`). The Postgres parity gate
+  for the commercial slice. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
+- ❗ Follow-ups still open: a commercial EF `DbContext` mirror (scripts remain authoritative), a pending-payouts
+  dashboard tile (needs an aggregate endpoint to avoid N+1), and reconciling the profit-vs-revenue commission
+  models with `Tedwren.Web.Partners`.
+
+### Admin — Real commission & company matching (Phase 6, this change)
+- ✅ **Commission from cleared revenue.** `AffiliateService` now reads the account's actual direct-debit
+  payments (`IPaymentRepository`, commercial DB) and computes **earned** commission = net cleared first-year
+  revenue (Confirmed/PaidOut less ChargedBack, within 12 months of the first payment) × profit margin ×
+  affiliate rate. Associated-accounts show estimated *and* earned; the detail page surfaces
+  **earned / paid / outstanding** KPI tiles (`CommissionSummaryDto`). The admin-entered estimate is kept
+  alongside as `EstimatedCommission`.
+- ✅ **Company-number matching.** `ICompanyRepository.GetByRegistrationNumberAsync` (space/case-tolerant, Dapper
+  + in-memory). `LeadService.ConvertAsync` auto-links the account by the lead's company number when no account
+  is passed (manual assignment still wins); the conversion note records the auto-match. Cross-DB soft match
+  (lead in commercial DB, company in product DB), resolved in the Application layer.
+- ✅ Tests: earned-commission net-of-chargebacks math; convert auto-match by registration number; no-match
+  leaves the account unset. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
+
+### Admin — CRUD/UX completion (Phase 5, this change)
+- ✅ **Edit dialogs.** `EditLeadDialog` (Edit action on `AdminLeadDetail`) and `EditAffiliateDialog` (Edit
+  action on `AdminAffiliateDetail`, includes status), both persisting via the existing `Update` endpoints.
+- ✅ **Launch List management.** CSV export (`GET /api/launch-signups/export` → `CsvWriter`/`TabularSheet`,
+  downloaded via the existing `tedwrenDownload` JS helper); manual-add dialog (`AddLaunchSubscriberDialog`);
+  per-row delete (`DELETE /api/launch-signups/{id}`, confirm-gated).
+- ✅ **Resend agreement.** `POST /api/affiliates/{id}/resend-agreement` refreshes the signing-link expiry and
+  re-sends the setup email (refused once signed); "Resend setup email" button on the affiliate Agreement tab.
+- ✅ **Admin dashboard tiles.** `/admin` gains live tiles: launch subscribers, open leads, pipeline value
+  (Σ open estimated revenue), active affiliates — reusing the existing `admin-stat` tile style.
+- ✅ Tests: `LaunchList` export/delete API, affiliate resend service (refresh + refuse-when-signed). Whole
+  solution builds (no new code warnings); all tests pass (LocalDB skipped).
+
+### Admin — Compliance & security hardening (Phase 4, this change)
+- ✅ **Marketing-email unsubscribe (PECR/GDPR).** `LaunchSignup` gains `Unsubscribed`/`UnsubscribeToken`
+  (ALTER script `031_launch_unsubscribe.sql`, both engines); `LaunchListService.NotifyAsync` skips opted-out
+  addresses and includes a per-recipient one-click unsubscribe link; anonymous
+  `GET /api/launch-signups/unsubscribe?token=…` opts out and returns a friendly HTML page. The email shell
+  already carries the legal-name/address footer.
+- ✅ **API-side rate limiting.** Fixed-window (60/min per IP) `"public"` policy applied to every anonymous
+  group — launch signup, `/api/leads/capture`, `/api/affiliate-agreements` — via `AddRateLimiter` +
+  `UseRateLimiter` in `Program.cs`. Signature payload capped (~1 MB) in `AffiliateService.SignAgreementAsync`.
+- ✅ **Server-side email validation.** Shared `EmailValidation.IsValid` (`Application/Common`) enforced in
+  launch signup, lead create/update/capture, and affiliate create/update → `ArgumentException` (400).
+- ✅ **Agreement-link expiry.** `AffiliateAgreement` gains `ExpiresUtc` (default +30 days, ALTER
+  `032_agreement_expiry.sql`); `GetAgreementAsync`/`SignAgreementAsync` reject an expired link (view shows
+  "Expired", not signable). Already-signed agreements ignore expiry.
+- ✅ Tests: unsubscribe skips a subscriber + unknown-token no-op; malformed email → reject; expired agreement
+  can't be signed; oversized signature rejected; unsubscribe endpoint anonymous+HTML. Whole solution builds
+  (no new code warnings); all tests pass (LocalDB skipped).
+
+### Admin — Affiliates, payouts & e-sign agreements (Phase 3, this change)
+- ✅ **Affiliate slice (commercial DB).** `Affiliate` (embedded commission plan), `AffiliatePayout`,
+  `AffiliateAgreement` entities + enums, DTOs, `IAffiliateService`/`AffiliateService`, `IAffiliateRepository`
+  (Dapper dual-engine + in-memory), scripts **`028_affiliates.sql`**, **`029_affiliate_payouts.sql`**,
+  **`030_affiliate_agreements.sql`**. No raw bank details — only a payee reference.
+- ✅ **Profit-after-margin commission.** `Affiliate.CommissionOn(revenue) = revenue × ProfitMarginPct ×
+  AffiliateRatePct` (e.g. £15,000 × 33% × 20% = £990). Associated accounts are the affiliate's attributed
+  converted leads, each showing its computed commission. Payouts recorded as amount + status (raise → mark paid).
+- ✅ **Agreement e-sign + PDF.** `AffiliateAgreementTemplate` builds the clauses once → HTML (web) + PDF
+  (`AffiliateAgreementPdfRenderer`, QuestPDF, both-party signature block; render falls back to the typed name
+  if the signature image is invalid). Public token-gated Blazor page `/affiliate-agreement/{token}`
+  (`RecipientLayout` + `TedwrenSignaturePad`) → sign → download countersigned PDF. Countersignatory James
+  Darby, Director.
+- ✅ **Endpoints.** `PlatformAdmin` affiliate CRUD + payouts; anonymous `GET/POST/GET .../affiliate-agreements/{token}[/sign|/pdf]`.
+  Client `ApiAffiliateService`. Lead↔affiliate link: `POST /api/leads/{id}/affiliate` + assignment menu on the
+  lead detail page.
+- ✅ **Emails.** On create, a branded setup email with the terms + signing link; on signing, a confirmation
+  email with the countersigned PDF attached (`SendHtmlWithAttachmentsAsync`).
+- ✅ **Admin UI.** `/admin/affiliates` list + Add dialog (commission plan with a live worked example);
+  `/admin/affiliates/{id}` detail with **Associated accounts / Payouts / Agreement** tabs. Nav item added.
+- ✅ Tests: `AffiliateServiceTests` (commission math, create→agreement+email, sign→PDF+activate+attachment,
+  associated-account commission, payouts) + `AffiliateApiTests` (admin flow, anonymous view/sign/pdf, 404).
+  Whole solution builds (0 code warnings); all tests pass (LocalDB skipped).
+- ❗ **Raised discrepancy (commission model).** This profit-after-margin model **supersedes** the earlier
+  website-spec rule (`Tedwren-Website-Content-Build-Spec-v2.md` §7: "20% of first-year subcontractor
+  *revenue*", 90-day clawback), confirmed with the product owner. The `Tedwren.Web.Partners`
+  `ReferralService` still implements the old revenue-based rule for the marketing site; reconcile the two
+  models (and whether the 90-day clawback applies here) in a future revision.
+
+### Admin — Lead management (Phase 2, this change)
+- ✅ **Lead pipeline slice (commercial DB).** `Lead` + `LeadNote` entities, `LeadModel`/`LeadStatus` enums,
+  DTOs, `ILeadService`/`LeadService`, `ILeadRepository` (Dapper dual-engine + in-memory), scripts
+  **`026_leads.sql`** + **`027_lead_notes.sql`**. Estimated revenue is admin-entered (pricing is
+  configuration, not hard-coded — PRD §9). Account/affiliate links are soft `Guid` references (no cross-DB FK).
+- ✅ **Pipeline rules.** Statuses New → Contacted → Qualified → Proposal → Converted/Lost; every status change
+  writes an automatic activity note; convert-to-account sets Converted + links the account id; anonymous
+  capture deduplicates against an open lead (company + email).
+- ✅ **Endpoints.** `PlatformAdmin` CRUD + `/{id}/status`, `/{id}/notes`, `/{id}/convert`; anonymous
+  `POST /api/leads/capture` for marketing-site inbound. Client `ApiLeadService`.
+- ✅ **Admin UI.** `/admin/leads` responsive **card grid** (status chips, model, sites, revenue, owner) +
+  Add-lead dialog; `/admin/leads/{id}` detail with overview + **activity/notes tab** (`ActivityFeed`), status
+  menu and confirm-gated convert. Nav item added.
+- ✅ **Marketing capture rewired.** `Tedwren.Web` `ILeadRouter` now `ApiLeadRouter` — forwards demo/contact
+  leads to `/api/leads/capture` (typed HttpClient, `Api:BaseUrl`; logs/no-ops when unset), replacing
+  `LoggingLeadRouter`. Referral attribution in `LeadController` is unchanged.
+- ✅ Tests: `LeadServiceTests` (create/status-note/convert/capture-dedupe) + `LeadApiTests` (admin flow,
+  anonymous capture dedupe, 404). Whole solution builds (0 code warnings); all tests pass (LocalDB skipped).
+
+### Admin — Launch List + separate Commercial database (this change)
+- ✅ **Separate Commercial database (architecture).** All commercial/admin-plane data now targets a second
+  database via its own connection string (`ConnectionStrings:SqlServerCommercial` / `PostgreSqlCommercial`,
+  empty ⇒ falls back to the product connection string). New `AdminSqlDataAccessOptions`,
+  `IAdminDbConnectionFactory`/`AdminDbConnectionFactory` and `AdminRepositoryBase` (reuses every
+  `RepositoryBase` helper); `MigrationRunner` is area-aware (`MigrationArea.Product`/`Commercial`) and run
+  once per database from `Program.cs`. Registered via `AddCommercialSqlDataAccess(...)`. Cross-DB links are
+  soft `Guid` references (no cross-database FK); R15 tenant scoping stays in query predicates.
+- ✅ **Billing plane relocated.** Mandates/payments/subscriptions/webhook-events/payouts repositories now use
+  `AdminRepositoryBase` and register in `AddCommercialSqlDataAccess`; scripts `022`–`024` moved to
+  `Migrations/Scripts/{SqlServer,Postgres}/Commercial/`. Existing populated product DBs need a one-off data
+  copy of those tables into the commercial DB (see `docs/ef-migrations.md`).
+- ✅ **Launch List (Web Content Spec §6.9).** Vertical slice in the commercial DB: `LaunchSignup` entity,
+  DTOs, `ILaunchListService`/`LaunchListService`, `ILaunchSignupRepository` (Dapper dual-engine + in-memory),
+  script **`025_launch_signups.sql`** (dedupe on lower-cased email). Endpoints: anonymous
+  `POST /api/launch-signups`; `PlatformAdmin` `GET /api/launch-signups` + `POST .../notify`. Admin page
+  `/admin/launch-list` (KPI row + `DataTable` + confirm-gated bulk send); branded `LaunchAnnouncementEmail`
+  sent per address individually via `IEmailSender`. Nav item added to `AdminNavItems`.
+- ✅ **Landing-page capture (Tedwren.Web).** Email form on the home page + standalone `/launch` (antiforgery +
+  honeypot + min-fill via existing `AntiBot`, rate-limited) → `ILaunchSignupSink`/`ApiLaunchSignupSink`
+  forwards to the API (`LaunchSignup:ApiBaseUrl`; logs/no-ops when unset).
+- ✅ Tests: `LaunchListServiceTests` (dedupe, per-address notify, failure counting) + `LaunchListApiTests`
+  (anonymous signup/dedupe, list, notify). Whole solution builds (0 new warnings); all tests pass (LocalDB
+  integration tests skipped). Existing DataAccess integration tests updated to the new `MigrationRunner`
+  signature (Product area).
+- ⏳ Next: Phase 2 Lead management (card-grid admin UI + notes + convert), Phase 3 Affiliates (profit-after-
+  margin commission plans, payouts, e-sign agreement + PDF). A commercial-DB EF `DbContext` mirror is
+  deferred — the idempotent SQL scripts are authoritative for the commercial DB for now (as with the deferred
+  Postgres EF path, `docs/ef-migrations.md §7`).
+
+### Admin area — Phase D: GoCardless BACS payouts (this change)
+- ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /
+  `PayoutStatus` enum (Pending/Paid), `IPayoutRepository` (Dapper dual-engine + in-memory), migration
+  **`024_payouts.sql`** (both engines, unique on the GoCardless payout id). A payout is Tedwren's own
+  settlement, so it is **not** tenant-scoped (documented on the entity).
+- ✅ **Sync + admin surface.** `PayoutSyncService` upserts payouts from GoCardless (deduped, safe no-op when
+  unconfigured — same shape as `BillingReconciliationService`), folded into
+  `BillingReconciliationHostedService` so payouts refresh on the existing schedule. `IBillingService` gains
+  `GetPayoutsAsync`/`SyncPayoutsAsync`; `GET /api/admin/billing/payouts` + `POST .../payouts/sync` under
+  `PlatformAdmin` (sync returns 503 when GoCardless is unconfigured). `/admin/payouts` is now a live
+  `DataTable` with a "Refresh from GoCardless" button (reuses the money formatter + `StatusPill`).
+- ✅ Tests: `PayoutSyncServiceTests` (add, update-not-duplicate, unchanged-not-recounted, unconfigured no-op)
+  + API payouts-200 and sync-503. Whole solution builds (0 new warnings); all 509 tests pass (15 LocalDB
+  skipped). **Admin-area plan (Phases A–D) complete.**
+
+### Admin area — Phase C: GoCardless webhooks, returns & reconciliation (this change)
+- ✅ **Signature-verified webhook receiver.** `POST /api/webhooks/gocardless` is `.AllowAnonymous()` (webhooks
+  aren't JWT-authed) but authenticated by the `Webhook-Signature` HMAC-SHA256, verified against
+  `GoCardless:WebhookSecret` **before** any processing (`GoCardlessSignatureVerifier`, constant-time); it
+  fails closed on a bad/absent signature or unset secret (401). The read-only write-blocker only applies to
+  authenticated users, so the anonymous webhook is unaffected.
+- ✅ **Idempotent event processing.** `GoCardlessWebhookProcessor` stores each event once (deduped by
+  GoCardless event id), updates the referenced mandate/payment to the event's status via `GoCardlessStatusMap`
+  (now action-aware, returning null for no-op actions), and records a **returned payment's** failure reason so
+  the admin can re-take it (the Phase B retry path). One failing event never aborts the batch; every event's
+  outcome is stored. New `WebhookEvent` entity + repo (Dapper dual-engine + in-memory) + migration
+  **`023_webhook_events.sql`** (both engines, unique on the event id).
+- ✅ **Reconciliation backstop.** `BillingReconciliationService` polls GoCardless for non-terminal
+  mandates/payments and converges their status if a webhook was missed; `BillingReconciliationHostedService`
+  runs it on a schedule (modeled on `ExpirySchedulerHostedService`, gated by `Jobs:SchedulerEnabled`,
+  `Jobs:ReconciliationIntervalHours` default 6). Safe no-op when GoCardless is unconfigured.
+- ✅ **Admin events view.** `/admin/events` is now functional (`GET /api/admin/billing/events` under
+  `PlatformAdmin` → `IBillingService.GetWebhookEventsAsync`), showing each event's resource/action/outcome.
+- ✅ Tests: `GoCardlessWebhookTests` (signature valid/tampered/empty; processor status-update, returned-reason,
+  dedupe, unknown-resource) + `BillingReconciliationServiceTests` (converge, skip-terminal, unconfigured no-op)
+  + API webhook 401-without-signature and events-200. Whole solution builds (0 new warnings); all 503 tests
+  pass (15 LocalDB skipped).
+- ⏳ **Next (Phase D):** BACS payouts (settlement reads) + `/admin/payouts`. **Sandbox credentials** still let
+  Phases B–C be verified live (token in `GoCardless:AccessToken`, `GoCardless:WebhookSecret` for webhooks).
+
+### Admin area — Phase B: GoCardless mandates & payments (this change)
+- ✅ **GoCardless transport seam.** `GoCardlessOptions` (Abstractions) + a conditional typed `HttpClient`
+  in `Program.cs` (base address + Bearer token + `GoCardless-Version` header), mirroring the Resend email
+  integration. `IGoCardlessClient`/`GoCardlessClient` (Application) cover hosted mandate set-up (Billing
+  Request Flow — no raw bank details handled), get/cancel mandate, create/get/retry payment, with
+  idempotency keys on payment creation. When no token is configured an `UnconfiguredGoCardlessClient`
+  default stands so reads work and collection actions fail with a clear "not configured" (503) message.
+- ✅ **Billing domain slice (net-new, `CompanyId`-scoped, R15).** `Mandate`, `Payment`, `BillingSubscription`
+  entities + status enums mirroring GoCardless; `IBillingService`/`BillingService` map provider statuses via
+  `GoCardlessStatusMap`; Dapper repositories over `RepositoryBase` (ANSI-portable) + in-memory doubles;
+  migration **`022_billing.sql`** in both SqlServer and Postgres folders. Meter/band held as **configuration
+  keys, not prices** (PRD §9); amounts in minor units (pence).
+- ✅ **Admin billing UI + API.** `BillingEndpoints` under `PlatformAdmin` (`/api/admin/billing`): list
+  mandates/payments, company overview, start/cancel mandate, take/retry payment, set subscription.
+  `ApiBillingService` client proxy; the `/admin/billing`, `/admin/payments` and `/admin/subscriptions`
+  placeholder pages are now functional (mandate set-up returns the hosted authorisation link; take a
+  payment; **re-take a returned payment**; set a company's meter/band). Two-way bound inputs per the
+  live-state rule.
+- ✅ Tests: `BillingServiceTests` (11 — set-up, reuse-pending, take-payment + no-mandate/zero guards,
+  re-take returned/non-returned/unknown, cancel, subscription upsert) + `AdminBillingApiTests` (4 — reads
+  200 under platform admin, setup → 503 unconfigured, subscription persists). Whole solution builds
+  (0 new warnings); all 491 tests pass (15 LocalDB skipped).
+- ⏳ **Next (Phase C):** GoCardless webhooks (HMAC-verified, deduped) to keep mandate/payment status live,
+  returns→retry automation, and a reconciliation background job. **Needs sandbox credentials** to verify
+  live end-to-end (token in `GoCardless:AccessToken`); no secrets committed.
+
+### Admin area — Phase A: platform-admin shell & read-only views (this change)
+- ✅ **Platform-admin gate (server-authoritative).** New `PlatformAdmin` authorization policy
+  (`src/Tedwren.Api/Program.cs`) — stricter than `AdminOnly`: requires `AccessRole.Administrator` **and**
+  the `company` claim to equal the Tedwren seed tenant (`AdminUserSeeder.SeedCompanyId`), so a customer's
+  own company administrator can never reach cross-company data. `CurrentUserDto` gains a server-computed
+  `IsPlatformAdmin` (in `ClaimsCurrentUserService`); the client exposes `AuthState.IsPlatformAdmin`
+  (sourced from `/api/me`, never derived client-side).
+- ✅ **Admin menu swap.** `Admin:Enabled` flag in the client `appsettings.json` (bound to
+  `AdminAreaOptions`) turns the capability on per deployment; `MainLayout` swaps the sidebar to
+  `ShellChrome.AdminNavItems` when the flag is set **and** the signed-in user is a platform admin, bypassing
+  entitlement/onboarding gating for the (non-purchasable) admin surfaces. Regular users are unaffected.
+- ✅ **Admin surface.** New `/admin/*` pages under `Pages/Admin` (dashboard, companies, users, plus
+  placeholders for subscriptions/billing/payments/events/payouts/settings), each wrapped in an `AdminGuard`
+  that redirects non-admins. Reuses the existing `DataTable`/cards/`StatusPill` kit. Backed by a
+  dedicated, `PlatformAdmin`-gated `/api/admin` surface (`AdminEndpoints`, `IPlatformAdminService` →
+  `ApiPlatformAdminService`) that reuses the existing organisation/user services — the tenant console
+  endpoints are left untouched so they keep working for normal company admins.
+- ✅ Tests: `ClaimsCurrentUserServiceTests` (platform-admin computation: seed-tenant admin true; other-tenant
+  admin, non-admin role and anonymous all false) + `AdminApiTests` (admin reads 200 under the seed-tenant
+  identity; `/api/me` reports the flag). Whole solution builds (0 new warnings); all 476 tests pass.
+- ❗ **PRD gap raised (per CLAUDE.md — do not silently work around).** The admin area's billing scope
+  (GoCardless direct-debit collection for the SaaS, Phases B–D) is **not in PRD v6.4** — §9 defines the
+  commercial model (metered by sites/operatives) but names no collection rail, and §12.8 only cites Stripe
+  card checkout for the separate Worker Passport product. Confirmed with the product owner that GoCardless
+  is the intended SaaS billing rail; this should be reconciled into PRD §9 in a future revision. Tracked in
+  `docs/plan-and-scope.md` (Admin-area phases).
 ### Tedwren.Web — Landing gate, pricing ticks, diagram logo (this change)
 - ✅ **Pre-launch landing gate.** New `Site:IsLanding` flag (`SiteConfig`, default false). When on,
   `LandingGateMiddleware` (registered after static files, before routing in `Program.cs`) funnels the whole
@@ -437,6 +669,11 @@ Adds real console sign-in (the PRD leaves the mechanism to the implementer, §10
   returns the real user with a **real tenant CompanyId** (R15); the config stub is deleted.
 - ✅ **Bootstrap admin** — `AdminUserSeeder` (idempotent, both modes) seeds an Administrator from the `Seed`
   config section so a fresh install can sign in.
+- ✅ **Master administrators** — `AdminUserSeeder` also seeds the named Tedwren master administrators
+  (`AdminUserSeeder.MasterAdmins`: leigh.hydes@, james.darby@, james.wheeler@tedwren.com) as active
+  `Administrator` accounts in the seed tenant. Idempotent (matched by email, never clobbers an existing
+  account); each uses the `Seed:Password` and should change it on first sign-in. Covered by
+  `AdminUserSeederTests`.
 - ✅ **Client** — `TokenStore` + `AuthTokenHandler` (attaches bearer, 401→`/login`), `AuthState`
   (login/accept/logout, localStorage token via `tedwren.auth.*`), `/login` + `/accept-invite` pages
   (RecipientLayout), MainLayout gates the console + sign-out; Auditor UI write-gating via `AuthState.CanWrite`.

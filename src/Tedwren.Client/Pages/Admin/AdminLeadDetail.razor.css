@@ -1,0 +1,8 @@
+/* Add-note row on the lead activity tab. */
+.note-add {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--spacing-12, 12px);
+    margin-bottom: var(--spacing-16, 16px);
+}
+.note-add > :first-child { flex: 1 1 auto; }

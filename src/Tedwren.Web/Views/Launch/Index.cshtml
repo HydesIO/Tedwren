@@ -1,0 +1,24 @@
+@model Tedwren.Web.Models.LaunchSignupRequest
+@{
+    ViewData["Title"] = "Join the launch list";
+    ViewData["MetaDescription"] = "Be the first to know when Tedwren launches. Leave your email and we'll let you know the moment it's live.";
+}
+<section class="lead">
+    <h1 class="section-heading">Be the first to know</h1>
+    <p class="lead__intro">Tedwren is launching soon. Leave your email and we'll let you know the moment it's live — no spam, just the one message.</p>
+
+    <form class="lead-form" method="post" asp-controller="Launch" asp-action="Index">
+        <input type="hidden" asp-for="RenderedAtUnixMs" />
+        <div class="hp" aria-hidden="true">
+            <label>Website<input asp-for="Website" tabindex="-1" autocomplete="off" /></label>
+        </div>
+
+        <div class="lead-form__field">
+            <label asp-for="Email"></label>
+            <input asp-for="Email" type="email" autocomplete="email" placeholder="you@company.co.uk" />
+            <span asp-validation-for="Email" class="lead-form__error"></span>
+        </div>
+
+        <button class="cta cta--primary" type="submit">Notify me at launch</button>
+    </form>
+</section>

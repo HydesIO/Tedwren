@@ -31,7 +31,7 @@ public sealed class ConsoleFoundationRepositoryTests
         Skip.If(string.IsNullOrWhiteSpace(ConnectionString), "TEDWREN_TEST_SQLSERVER not set — DB integration tests skipped.");
 
         var factory = CreateFactory();
-        await new MigrationRunner(factory, new SqlServerDialect()).RunAsync();
+        await new MigrationRunner(new SqlServerDialect()).RunAsync(factory, MigrationArea.Product);
         var repository = new EntitlementRepository(factory);
         var company = Guid.NewGuid();
 
@@ -57,7 +57,7 @@ public sealed class ConsoleFoundationRepositoryTests
         Skip.If(string.IsNullOrWhiteSpace(ConnectionString), "TEDWREN_TEST_SQLSERVER not set — DB integration tests skipped.");
 
         var factory = CreateFactory();
-        await new MigrationRunner(factory, new SqlServerDialect()).RunAsync();
+        await new MigrationRunner(new SqlServerDialect()).RunAsync(factory, MigrationArea.Product);
         var repository = new AuditRepository(factory);
         var company = Guid.NewGuid();
         var marker = "Riverside-" + Guid.NewGuid().ToString("N");
@@ -89,7 +89,7 @@ public sealed class ConsoleFoundationRepositoryTests
         Skip.If(string.IsNullOrWhiteSpace(ConnectionString), "TEDWREN_TEST_SQLSERVER not set — DB integration tests skipped.");
 
         var factory = CreateFactory();
-        await new MigrationRunner(factory, new SqlServerDialect()).RunAsync();
+        await new MigrationRunner(new SqlServerDialect()).RunAsync(factory, MigrationArea.Product);
         var repository = new DecisionRepository(factory);
         var personId = Guid.NewGuid();
         var siteId = Guid.NewGuid();
