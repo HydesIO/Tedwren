@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Auth;
+using Tedwren.Domain.Enums;
 
 namespace Tedwren.Api.Auth;
 
@@ -28,6 +30,15 @@ public sealed class ClaimsCurrentUserService : ICurrentUserService
         var name = principal.FindFirstValue(ClaimTypes.Name) ?? "User";
         var role = principal.FindFirstValue(ClaimTypes.Role) ?? "Auditor";
         Guid? companyId = Guid.TryParse(principal.FindFirstValue(JwtTokenIssuer.CompanyClaim), out var cid) ? cid : null;
-        return Task.FromResult(new CurrentUserDto(name, role, companyId));
+        return Task.FromResult(new CurrentUserDto(name, role, companyId, IsPlatformAdmin(role, companyId)));
     }
+
+    /// <summary>
+    /// A platform administrator is an <see cref="AccessRole.Administrator"/> in the fixed Tedwren tenant
+    /// (<see cref="AdminUserSeeder.SeedCompanyId"/>) — a Tedwren operator, not a customer's own company
+    /// administrator. This is the authoritative, server-side gate for the admin area.
+    /// </summary>
+    private static bool IsPlatformAdmin(string role, Guid? companyId) =>
+        string.Equals(role, AccessRole.Administrator.ToString(), StringComparison.OrdinalIgnoreCase) &&
+        companyId == AdminUserSeeder.SeedCompanyId;
 }

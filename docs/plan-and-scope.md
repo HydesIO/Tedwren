@@ -255,6 +255,33 @@ reused by PRD-Phase 3) has its own detailed plan of works — **Phases 19–25**
 [`forms-library-plan.md`](forms-library-plan.md): per-tenant form builder, versioned templates,
 DB-stored submissions, branded PDF (QuestPDF) + email, and assignment to sites/operators/inductions.
 
+### Admin area & GoCardless billing (Tedwren platform operations)
+
+A platform-operator area inside the existing console (`Tedwren.Client`), shown to Tedwren **platform
+administrators** (an `Administrator` in the Tedwren seed tenant — the accounts seeded by
+`AdminUserSeeder`) in place of the tenant console. Gated server-side by a `PlatformAdmin` policy and
+enabled per deployment by an `Admin:Enabled` client flag; the menu swap is UI only, never the security
+boundary. Phased, each independently shippable:
+
+- **Admin Phase A — shell & read-only views (done).** Platform-admin gate + menu swap; `/admin/*`
+  companies/users/dashboard over a dedicated `PlatformAdmin`-gated `/api/admin` surface; placeholders for
+  the billing surfaces below.
+- **Admin Phase B — GoCardless mandates & payments.** `GoCardlessOptions` + typed `HttpClient` (mirroring
+  the Resend email integration) and `IGoCardlessClient`; a `Mandate`/`Subscription`/`Payment` domain slice
+  (Dapper, dual-engine, migration `022`) tied to `CompanyId` (R15); create/cancel mandate (hosted Billing
+  Request Flow — we never handle raw bank details), take payment, **retry after a return**. Meter/band are
+  **configuration, not hard-coded numbers** (PRD §9).
+- **Admin Phase C — webhooks, returns/retries & reconciliation.** `AllowAnonymous` webhook endpoint with
+  HMAC signature verification + event dedupe; durable side-effects via the existing outbox/`JobRunner`
+  (e.g. mandate-active → `IEntitlementService.SetEnabledAsync`, honouring §9 "off hides but never
+  deletes"); a reconciliation `BackgroundService` modelled on `ExpirySchedulerHostedService`.
+- **Admin Phase D — BACS payouts.** Payout/settlement reads (migration `023`) + `/admin/payouts`.
+
+> **PRD gap (raise, don't work around).** GoCardless / direct-debit collection is **not in PRD v6.4**:
+> §9 sets the commercial model (metered by sites/operatives) but names no collection rail, and §12.8 cites
+> Stripe card checkout only for the separate Worker Passport product. GoCardless as the SaaS billing rail
+> is confirmed with the product owner and should be reconciled into §9 in a future PRD revision.
+
 ---
 
 ## Cross-cutting engineering standards (apply every phase)

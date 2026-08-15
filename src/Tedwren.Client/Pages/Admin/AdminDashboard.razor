@@ -1,0 +1,65 @@
+@page "/admin"
+@using Tedwren.Abstractions.Services
+@inject IPlatformAdminService Admin
+
+<PageTitle>Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Admin Dashboard" Subtitle="Tedwren platform administration" />
+
+    <div class="admin-stat-grid">
+        <DashboardCard>
+            <Body>
+                <div class="admin-stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.Business" />
+                    <div>
+                        <div class="admin-stat__value">@(_loading ? "—" : _companyCount.ToString())</div>
+                        <div class="admin-stat__label">Companies</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
+        <DashboardCard>
+            <Body>
+                <div class="admin-stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.PeopleOutline" />
+                    <div>
+                        <div class="admin-stat__value">@(_loading ? "—" : _userCount.ToString())</div>
+                        <div class="admin-stat__label">Users</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
+    </div>
+
+    <DashboardCard>
+        <Body>
+            <EmptyState Icon="@Icons.Material.Outlined.Insights"
+                        Title="Billing overview coming soon"
+                        Description="Direct-debit mandates, payments and payouts appear here once GoCardless billing (Phase B) lands." />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private int _companyCount;
+    private int _userCount;
+    private bool _loading = true;
+
+    // Loads headline counts across the whole platform (all companies/users). The API gates these reads to
+    // platform admins; the AdminGuard prevents non-admins reaching this page at all.
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var companies = await Admin.GetCompaniesAsync();
+            var users = await Admin.GetUsersAsync();
+            _companyCount = companies.Count;
+            _userCount = users.Count;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

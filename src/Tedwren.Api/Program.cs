@@ -111,6 +111,12 @@ builder.Services.AddAuthorization(options =>
         Tedwren.Domain.Enums.AccessRole.ComplianceManager.ToString(),
         Tedwren.Domain.Enums.AccessRole.SiteManager.ToString()));
     options.AddPolicy("AdminOnly", p => p.RequireRole(Tedwren.Domain.Enums.AccessRole.Administrator.ToString()));
+    // Platform-admin surfaces (the admin area: all companies/users/billing). Stricter than AdminOnly — a
+    // customer's own Administrator must NOT pass. Requires Administrator in the fixed Tedwren tenant.
+    options.AddPolicy("PlatformAdmin", p => p.RequireAssertion(ctx =>
+        ctx.User.IsInRole(Tedwren.Domain.Enums.AccessRole.Administrator.ToString()) &&
+        Guid.TryParse(ctx.User.FindFirst(Tedwren.Api.Auth.JwtTokenIssuer.CompanyClaim)?.Value, out var cid) &&
+        cid == Tedwren.Application.Auth.AdminUserSeeder.SeedCompanyId));
 });
 // Database is the only supported runtime backend. The in-memory stores are a test-only double, selected
 // exclusively by the API test host (DataSource:Mode=InMemory) so the end-to-end tests run without SQL Server.
@@ -233,6 +239,7 @@ app.MapPermitEndpoints();
 app.MapOnboardingEndpoints();
 app.MapImageEndpoints();
 app.MapEmailTemplateEndpoints();
+app.MapAdminEndpoints();
 app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration

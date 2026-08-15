@@ -26,6 +26,12 @@ public sealed class AuthState
     public bool CanWrite => CurrentUser is not null &&
         !string.Equals(CurrentUser.Role, "Auditor", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Whether the signed-in user is a Tedwren platform administrator (gates the admin area). Computed
+    /// server-side and carried on <see cref="CurrentUserDto.IsPlatformAdmin"/>; the client never derives it.
+    /// </summary>
+    public bool IsPlatformAdmin => CurrentUser?.IsPlatformAdmin ?? false;
+
     /// <summary>Creates the auth state over the API client, token store and JS interop.</summary>
     public AuthState(HttpClient http, ITokenStore tokens, IJSRuntime js)
     {
@@ -119,6 +125,18 @@ public sealed class AuthState
         _tokens.Token = result.Token;
         await _js.InvokeVoidAsync("tedwren.auth.set", result.Token);
         CurrentUser = new CurrentUserDto(result.Name, result.Role, result.CompanyId);
+
+        // The auth result cannot carry the platform-admin flag (it is computed from claims, not returned by
+        // the token endpoint), so refresh the identity from /api/me. This keeps the admin-area gate
+        // authoritative and server-derived; a failure here just leaves the (non-admin) partial identity.
+        try
+        {
+            CurrentUser = await _http.GetFromJsonAsync<CurrentUserDto>("api/me") ?? CurrentUser;
+        }
+        catch (HttpRequestException)
+        {
+            // Keep the partial identity from the auth result; the shell will re-resolve on next load.
+        }
         return true;
     }
 }

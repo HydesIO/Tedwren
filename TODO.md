@@ -11,6 +11,33 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin area — Phase A: platform-admin shell & read-only views (this change)
+- ✅ **Platform-admin gate (server-authoritative).** New `PlatformAdmin` authorization policy
+  (`src/Tedwren.Api/Program.cs`) — stricter than `AdminOnly`: requires `AccessRole.Administrator` **and**
+  the `company` claim to equal the Tedwren seed tenant (`AdminUserSeeder.SeedCompanyId`), so a customer's
+  own company administrator can never reach cross-company data. `CurrentUserDto` gains a server-computed
+  `IsPlatformAdmin` (in `ClaimsCurrentUserService`); the client exposes `AuthState.IsPlatformAdmin`
+  (sourced from `/api/me`, never derived client-side).
+- ✅ **Admin menu swap.** `Admin:Enabled` flag in the client `appsettings.json` (bound to
+  `AdminAreaOptions`) turns the capability on per deployment; `MainLayout` swaps the sidebar to
+  `ShellChrome.AdminNavItems` when the flag is set **and** the signed-in user is a platform admin, bypassing
+  entitlement/onboarding gating for the (non-purchasable) admin surfaces. Regular users are unaffected.
+- ✅ **Admin surface.** New `/admin/*` pages under `Pages/Admin` (dashboard, companies, users, plus
+  placeholders for subscriptions/billing/payments/events/payouts/settings), each wrapped in an `AdminGuard`
+  that redirects non-admins. Reuses the existing `DataTable`/cards/`StatusPill` kit. Backed by a
+  dedicated, `PlatformAdmin`-gated `/api/admin` surface (`AdminEndpoints`, `IPlatformAdminService` →
+  `ApiPlatformAdminService`) that reuses the existing organisation/user services — the tenant console
+  endpoints are left untouched so they keep working for normal company admins.
+- ✅ Tests: `ClaimsCurrentUserServiceTests` (platform-admin computation: seed-tenant admin true; other-tenant
+  admin, non-admin role and anonymous all false) + `AdminApiTests` (admin reads 200 under the seed-tenant
+  identity; `/api/me` reports the flag). Whole solution builds (0 new warnings); all 476 tests pass.
+- ❗ **PRD gap raised (per CLAUDE.md — do not silently work around).** The admin area's billing scope
+  (GoCardless direct-debit collection for the SaaS, Phases B–D) is **not in PRD v6.4** — §9 defines the
+  commercial model (metered by sites/operatives) but names no collection rail, and §12.8 only cites Stripe
+  card checkout for the separate Worker Passport product. Confirmed with the product owner that GoCardless
+  is the intended SaaS billing rail; this should be reconciled into PRD §9 in a future revision. Tracked in
+  `docs/plan-and-scope.md` (Admin-area phases).
+
 ### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
 - ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
   content JSON + Razor views and fails on three commercial/legal breaches: a hardcoded price symbol

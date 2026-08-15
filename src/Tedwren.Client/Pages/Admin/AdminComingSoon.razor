@@ -1,0 +1,21 @@
+@* Shared placeholder panel for admin surfaces delivered in a later phase (billing, payments, webhooks,
+   payouts). Keeps the admin navigation whole while the backing services are built, per the phased plan. *@
+
+<DashboardCard>
+    <Body>
+        <EmptyState Icon="@Icon"
+                    Title="@Title"
+                    Description="@Description" />
+    </Body>
+</DashboardCard>
+
+@code {
+    /// <summary>Icon shown in the placeholder.</summary>
+    [Parameter] public string Icon { get; set; } = Icons.Material.Outlined.Construction;
+
+    /// <summary>Placeholder heading.</summary>
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    /// <summary>Placeholder body copy describing what will land here.</summary>
+    [Parameter, EditorRequired] public string Description { get; set; } = string.Empty;
+}

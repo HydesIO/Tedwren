@@ -1,0 +1,67 @@
+@page "/admin/users"
+@using Tedwren.Abstractions.Contracts.Users
+@using Tedwren.Abstractions.Services
+@inject IPlatformAdminService Admin
+
+<PageTitle>Users · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Users" Subtitle="Every console account across the platform" />
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="UserDto"
+                       Items="_users"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search users…"
+                       EmptyTitle="No users yet"
+                       EmptyDescription="Console accounts appear here as they are created."
+                       EmptyIcon="@Icons.Material.Outlined.People" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private IReadOnlyList<UserDto> _users = Array.Empty<UserDto>();
+    private List<DataColumn<UserDto>> _columns = new();
+    private bool _loading = true;
+
+    // Lists every console user across all tenants. The API restricts the cross-company read to platform
+    // admins (PlatformAdmin policy). Shows only operational fields — no sensitive personal data.
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _users = await Admin.GetUsersAsync();
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Name", Value = u => u.Name },
+            new() { Title = "Email", Value = u => u.Email, Filterable = true },
+            new() { Title = "Role", Value = u => u.RoleLabel, Filterable = true },
+            new()
+            {
+                Title = "Created", Value = u => u.CreatedUtc, Searchable = false,
+                CellTemplate = u => @<span>@u.CreatedUtc.LocalDateTime.ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "Status", Text = u => u.StatusLabel, Filterable = true, Sortable = false,
+                CellTemplate = u => @<StatusPill Label="@u.StatusLabel" Status="ToStatus(u.Status)" />
+            },
+        };
+    }
+
+    // Maps the account status to the shared pill palette.
+    private static StatusKind ToStatus(string status) => status switch
+    {
+        "Active" => StatusKind.Success,
+        "Invited" => StatusKind.Warning,
+        "Suspended" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+}

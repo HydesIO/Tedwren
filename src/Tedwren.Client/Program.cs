@@ -20,6 +20,14 @@ builder.Services.AddScoped<ITenantState, TenantState>();
 // wwwroot/appsettings.json ("Api:BaseUrl"), falling back to the app's own origin. The HttpClient runs
 // through AuthTokenHandler so the bearer token (D1) is attached to every request and a 401 redirects to login.
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? builder.HostEnvironment.BaseAddress;
+
+// Admin-area availability for this deployment ("Admin:Enabled" in wwwroot/appsettings.json). This only
+// enables the capability; access is still gated on the signed-in user being a platform admin.
+builder.Services.AddSingleton(new AdminAreaOptions
+{
+    Enabled = bool.TryParse(builder.Configuration[$"{AdminAreaOptions.SectionName}:Enabled"], out var adminEnabled) && adminEnabled,
+});
+
 builder.Services.AddSingleton<ITokenStore, TokenStore>();
 builder.Services.AddScoped<AuthTokenHandler>();
 builder.Services.AddScoped(sp =>
@@ -52,5 +60,6 @@ builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
 builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
 builder.Services.AddScoped<IPermitService, ApiPermitService>();
 builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
+builder.Services.AddScoped<IPlatformAdminService, ApiPlatformAdminService>();
 
 await builder.Build().RunAsync();
