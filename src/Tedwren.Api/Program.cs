@@ -37,6 +37,7 @@ builder.Services.AddSettingsCore();
 builder.Services.AddPermitCore();
 builder.Services.AddOnboardingCore();
 builder.Services.AddLaunchListCore();
+builder.Services.AddLeadsCore();
 builder.Services.AddAuthCore();
 
 // Email delivery (PRD-Phase 7): bind the "Email" section and register the branded HTML template renderer.
@@ -159,6 +160,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryPermitStore();
     builder.Services.AddInMemoryOnboardingStore();
     builder.Services.AddInMemoryLaunchListStore();
+    builder.Services.AddInMemoryLeadsStore();
 }
 else
 {
@@ -279,6 +281,7 @@ app.MapSettingsEndpoints();
 app.MapPermitEndpoints();
 app.MapOnboardingEndpoints();
 app.MapLaunchListEndpoints();
+app.MapLeadEndpoints();
 app.MapImageEndpoints();
 app.MapEmailTemplateEndpoints();
 app.MapAdminEndpoints();

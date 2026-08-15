@@ -295,6 +295,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic sales-lead pipeline service (Web Plan §7).</summary>
+    public static IServiceCollection AddLeadsCore(this IServiceCollection services)
+    {
+        services.AddScoped<ILeadService, Leads.LeadService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory lead store (singleton so leads/notes persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryLeadsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryLeadRepository>();
+        services.AddScoped<ILeadRepository>(sp => sp.GetRequiredService<InMemoryLeadRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic permits-to-work service.</summary>
     public static IServiceCollection AddPermitCore(this IServiceCollection services)
     {

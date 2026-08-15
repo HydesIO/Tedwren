@@ -80,6 +80,7 @@ public static class DataAccessServiceCollectionExtensions
 
         // Go-to-market slices.
         services.AddScoped<ILaunchSignupRepository, LaunchSignupRepository>();
+        services.AddScoped<ILeadRepository, LeadRepository>();
         return services;
     }
 }

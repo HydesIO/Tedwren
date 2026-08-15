@@ -11,6 +11,25 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Lead management (Phase 2, this change)
+- ✅ **Lead pipeline slice (commercial DB).** `Lead` + `LeadNote` entities, `LeadModel`/`LeadStatus` enums,
+  DTOs, `ILeadService`/`LeadService`, `ILeadRepository` (Dapper dual-engine + in-memory), scripts
+  **`026_leads.sql`** + **`027_lead_notes.sql`**. Estimated revenue is admin-entered (pricing is
+  configuration, not hard-coded — PRD §9). Account/affiliate links are soft `Guid` references (no cross-DB FK).
+- ✅ **Pipeline rules.** Statuses New → Contacted → Qualified → Proposal → Converted/Lost; every status change
+  writes an automatic activity note; convert-to-account sets Converted + links the account id; anonymous
+  capture deduplicates against an open lead (company + email).
+- ✅ **Endpoints.** `PlatformAdmin` CRUD + `/{id}/status`, `/{id}/notes`, `/{id}/convert`; anonymous
+  `POST /api/leads/capture` for marketing-site inbound. Client `ApiLeadService`.
+- ✅ **Admin UI.** `/admin/leads` responsive **card grid** (status chips, model, sites, revenue, owner) +
+  Add-lead dialog; `/admin/leads/{id}` detail with overview + **activity/notes tab** (`ActivityFeed`), status
+  menu and confirm-gated convert. Nav item added.
+- ✅ **Marketing capture rewired.** `Tedwren.Web` `ILeadRouter` now `ApiLeadRouter` — forwards demo/contact
+  leads to `/api/leads/capture` (typed HttpClient, `Api:BaseUrl`; logs/no-ops when unset), replacing
+  `LoggingLeadRouter`. Referral attribution in `LeadController` is unchanged.
+- ✅ Tests: `LeadServiceTests` (create/status-note/convert/capture-dedupe) + `LeadApiTests` (admin flow,
+  anonymous capture dedupe, 404). Whole solution builds (0 code warnings); all tests pass (LocalDB skipped).
+
 ### Admin — Launch List + separate Commercial database (this change)
 - ✅ **Separate Commercial database (architecture).** All commercial/admin-plane data now targets a second
   database via its own connection string (`ConnectionStrings:SqlServerCommercial` / `PostgreSqlCommercial`,
