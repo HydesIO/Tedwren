@@ -11,6 +11,21 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin area — Phase D: GoCardless BACS payouts (this change)
+- ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /
+  `PayoutStatus` enum (Pending/Paid), `IPayoutRepository` (Dapper dual-engine + in-memory), migration
+  **`024_payouts.sql`** (both engines, unique on the GoCardless payout id). A payout is Tedwren's own
+  settlement, so it is **not** tenant-scoped (documented on the entity).
+- ✅ **Sync + admin surface.** `PayoutSyncService` upserts payouts from GoCardless (deduped, safe no-op when
+  unconfigured — same shape as `BillingReconciliationService`), folded into
+  `BillingReconciliationHostedService` so payouts refresh on the existing schedule. `IBillingService` gains
+  `GetPayoutsAsync`/`SyncPayoutsAsync`; `GET /api/admin/billing/payouts` + `POST .../payouts/sync` under
+  `PlatformAdmin` (sync returns 503 when GoCardless is unconfigured). `/admin/payouts` is now a live
+  `DataTable` with a "Refresh from GoCardless" button (reuses the money formatter + `StatusPill`).
+- ✅ Tests: `PayoutSyncServiceTests` (add, update-not-duplicate, unchanged-not-recounted, unconfigured no-op)
+  + API payouts-200 and sync-503. Whole solution builds (0 new warnings); all 509 tests pass (15 LocalDB
+  skipped). **Admin-area plan (Phases A–D) complete.**
+
 ### Admin area — Phase C: GoCardless webhooks, returns & reconciliation (this change)
 - ✅ **Signature-verified webhook receiver.** `POST /api/webhooks/gocardless` is `.AllowAnonymous()` (webhooks
   aren't JWT-authed) but authenticated by the `Webhook-Signature` HMAC-SHA256, verified against

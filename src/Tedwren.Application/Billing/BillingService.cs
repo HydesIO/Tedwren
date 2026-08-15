@@ -20,6 +20,8 @@ public sealed class BillingService : IBillingService
     private readonly IPaymentRepository _payments;
     private readonly IBillingSubscriptionRepository _subscriptions;
     private readonly IWebhookEventRepository _webhookEvents;
+    private readonly IPayoutRepository _payouts;
+    private readonly PayoutSyncService _payoutSync;
     private readonly GoCardlessOptions _options;
 
     /// <summary>Creates the service over the GoCardless client, the billing repositories and the options.</summary>
@@ -29,6 +31,8 @@ public sealed class BillingService : IBillingService
         IPaymentRepository payments,
         IBillingSubscriptionRepository subscriptions,
         IWebhookEventRepository webhookEvents,
+        IPayoutRepository payouts,
+        PayoutSyncService payoutSync,
         GoCardlessOptions options)
     {
         _goCardless = goCardless;
@@ -36,6 +40,8 @@ public sealed class BillingService : IBillingService
         _payments = payments;
         _subscriptions = subscriptions;
         _webhookEvents = webhookEvents;
+        _payouts = payouts;
+        _payoutSync = payoutSync;
         _options = options;
     }
 
@@ -240,6 +246,19 @@ public sealed class BillingService : IBillingService
             e.Id, e.GoCardlessEventId, e.ResourceType, e.Action, e.ResourceId,
             e.Outcome.ToString(), e.Detail, e.ReceivedUtc, e.ProcessedUtc)).ToList();
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PayoutDto>> GetPayoutsAsync(CancellationToken cancellationToken = default)
+    {
+        var payouts = await _payouts.GetAllAsync(cancellationToken);
+        return payouts.Select(p => new PayoutDto(
+            p.Id, p.GoCardlessPayoutId, p.AmountPence, p.Currency, p.Status.ToString(),
+            p.Reference, p.ArrivalDate, p.CreatedUtc)).ToList();
+    }
+
+    /// <inheritdoc />
+    public Task<int> SyncPayoutsAsync(CancellationToken cancellationToken = default) =>
+        _payoutSync.SyncAsync(cancellationToken);
 
     /// <summary>Maps a mandate entity to its DTO.</summary>
     private static MandateDto ToDto(Mandate m) => new(

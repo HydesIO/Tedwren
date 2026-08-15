@@ -66,6 +66,14 @@ public sealed class BillingReconciliationHostedService : BackgroundService
                 _logger.LogInformation("Billing reconciliation updated {Mandates} mandate(s) and {Payments} payment(s).",
                     result.MandatesUpdated, result.PaymentsUpdated);
             }
+
+            // Refresh BACS payouts on the same schedule (Phase D). Quiet no-op when GoCardless is unconfigured.
+            var payoutSync = scope.ServiceProvider.GetRequiredService<PayoutSyncService>();
+            var payoutsSynced = await payoutSync.SyncAsync(cancellationToken);
+            if (payoutsSynced > 0)
+            {
+                _logger.LogInformation("Billing reconciliation synced {Payouts} payout(s).", payoutsSynced);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

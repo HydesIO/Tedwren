@@ -52,4 +52,11 @@ public static class GoCardlessStatusMap
     /// <summary>Whether a payment in this state may be re-taken (returned/charged back).</summary>
     public static bool IsRetryable(PaymentStatus status) =>
         status is PaymentStatus.Failed or PaymentStatus.ChargedBack;
+
+    /// <summary>Maps a GoCardless payout status to <see cref="PayoutStatus"/>.</summary>
+    public static PayoutStatus ToPayoutStatus(string? status) => status switch
+    {
+        "paid" => PayoutStatus.Paid,
+        _ => PayoutStatus.Pending,
+    };
 }

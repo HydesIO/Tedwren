@@ -1,10 +1,111 @@
 @page "/admin/payouts"
+@using Tedwren.Abstractions.Contracts.Billing
+@using Tedwren.Abstractions.Services
+@inject IBillingService Billing
 
 <PageTitle>Payouts · Admin · Tedwren</PageTitle>
 
 <AdminGuard>
-    <PageHeader Title="Payouts" Subtitle="BACS settlement from GoCardless" />
-    <AdminComingSoon Icon="@Icons.Material.Outlined.AccountBalanceWallet"
-                     Title="Payouts coming soon"
-                     Description="BACS payouts and their line items from GoCardless. Delivered in Phase D." />
+    <PageHeader Title="Payouts" Subtitle="BACS settlement from GoCardless">
+        <Actions>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Sync"
+                       Disabled="@_busy" OnClick="Sync">
+                Refresh from GoCardless
+            </MudButton>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _message = null)">@_message</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _error = null)">@_error</MudAlert>
+    }
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="PayoutDto"
+                       Items="_payouts"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search payouts…"
+                       EmptyTitle="No payouts yet"
+                       EmptyDescription="BACS settlements from GoCardless appear here once collected funds are paid out."
+                       EmptyIcon="@Icons.Material.Outlined.AccountBalanceWallet" />
+        </Body>
+    </DashboardCard>
 </AdminGuard>
+
+@code {
+    private IReadOnlyList<PayoutDto> _payouts = Array.Empty<PayoutDto>();
+    private List<DataColumn<PayoutDto>> _columns = new();
+    private bool _loading = true;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _payouts = await Billing.GetPayoutsAsync();
+        _loading = false;
+    }
+
+    private async Task Sync()
+    {
+        _busy = true;
+        _message = _error = null;
+        try
+        {
+            var synced = await Billing.SyncPayoutsAsync();
+            _message = $"Synced {synced} payout(s) from GoCardless.";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string Money(int pence, string currency) => $"{(currency == "GBP" ? "£" : currency + " ")}{pence / 100m:0.00}";
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Reference", Value = p => p.Reference ?? p.GoCardlessPayoutId },
+            new() { Title = "Amount", Value = p => p.AmountPence, AlignRight = true,
+                    CellTemplate = p => @<span>@Money(p.AmountPence, p.Currency)</span> },
+            new()
+            {
+                Title = "Status", Text = p => p.Status, Filterable = true, Sortable = false,
+                CellTemplate = p => @<StatusPill Label="@p.Status" Status="PayoutPill(p.Status)" />
+            },
+            new()
+            {
+                Title = "Arrival", Value = p => p.ArrivalDate ?? DateOnly.MinValue, Searchable = false,
+                CellTemplate = p => @<span>@(p.ArrivalDate is { } d ? d.ToString("dd MMM yyyy") : "—")</span>
+            },
+        };
+    }
+
+    // Maps a payout status label to the shared pill palette.
+    private static StatusKind PayoutPill(string status) => status switch
+    {
+        "Paid" => StatusKind.Success,
+        "Pending" => StatusKind.Warning,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -28,6 +28,9 @@ public interface IGoCardlessClient
 
     /// <summary>Retries a failed payment and returns its updated state.</summary>
     Task<GoCardlessPayment> RetryPaymentAsync(string paymentId, CancellationToken cancellationToken = default);
+
+    /// <summary>Lists BACS payouts (settlement to the creditor account), most recent first.</summary>
+    Task<IReadOnlyList<GoCardlessPayout>> ListPayoutsAsync(CancellationToken cancellationToken = default);
 }
 
 /// <summary>Request to start hosted mandate set-up.</summary>
@@ -55,3 +58,6 @@ public sealed record GoCardlessPaymentRequest(
 
 /// <summary>A GoCardless payment in transport-neutral form. Amount is in minor units (pence).</summary>
 public sealed record GoCardlessPayment(string Id, string Status, int Amount, string Currency, DateOnly? ChargeDate, string? Description);
+
+/// <summary>A GoCardless BACS payout in transport-neutral form. Amount is in minor units (pence).</summary>
+public sealed record GoCardlessPayout(string Id, string Status, int Amount, string Currency, string? Reference, DateOnly? ArrivalDate);

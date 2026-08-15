@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Billing;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Billing;
@@ -33,6 +34,24 @@ public static class BillingEndpoints
         group.MapGet("/events", async (IBillingService billing, CancellationToken ct) =>
                 Results.Ok(await billing.GetWebhookEventsAsync(200, ct)))
             .WithName("AdminGetWebhookEvents");
+
+        group.MapGet("/payouts", async (IBillingService billing, CancellationToken ct) =>
+                Results.Ok(await billing.GetPayoutsAsync(ct)))
+            .WithName("AdminGetPayouts");
+
+        group.MapPost("/payouts/sync", async (GoCardlessOptions goCardless, IBillingService billing, CancellationToken ct) =>
+            {
+                if (string.IsNullOrWhiteSpace(goCardless.AccessToken))
+                {
+                    return Results.Problem(
+                        detail: "GoCardless is not configured (no access token).",
+                        statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
+
+                var synced = await billing.SyncPayoutsAsync(ct);
+                return Results.Ok(new { synced });
+            })
+            .WithName("AdminSyncPayouts");
 
         group.MapPost("/companies/{companyId:guid}/mandate/setup", async (Guid companyId, IBillingService billing, CancellationToken ct) =>
                 await GuardProviderAsync(async () => Results.Ok(await billing.StartMandateSetupAsync(companyId, ct))))

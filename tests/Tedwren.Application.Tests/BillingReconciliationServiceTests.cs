@@ -34,6 +34,8 @@ public sealed class BillingReconciliationServiceTests
         }
         public Task<GoCardlessPayment> RetryPaymentAsync(string paymentId, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
+        public Task<IReadOnlyList<GoCardlessPayout>> ListPayoutsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<GoCardlessPayout>>(Array.Empty<GoCardlessPayout>());
     }
 
     [Fact]

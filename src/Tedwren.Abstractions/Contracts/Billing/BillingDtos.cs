@@ -55,6 +55,17 @@ public sealed record TakePaymentRequest(int AmountPence, string? Description, st
 /// <summary>Request to set (create or update) a company's billing subscription. Meter/band are configuration keys (§9).</summary>
 public sealed record SetSubscriptionRequest(string MeterKey, string? BandKey, string? Description);
 
+/// <summary>A BACS payout (Tedwren settlement) for the admin payouts view. Amount is in minor units (pence).</summary>
+public sealed record PayoutDto(
+    Guid Id,
+    string GoCardlessPayoutId,
+    int AmountPence,
+    string Currency,
+    string Status,
+    string? Reference,
+    DateOnly? ArrivalDate,
+    DateTimeOffset CreatedUtc);
+
 /// <summary>A stored GoCardless webhook event for the admin events view. Status is the string form of the outcome.</summary>
 public sealed record WebhookEventDto(
     Guid Id,

@@ -96,6 +96,15 @@ public sealed class GoCardlessClient : IGoCardlessClient
         return Map(envelope?.Payments) ?? throw new InvalidOperationException("GoCardless did not return the retried payment.");
     }
 
+    /// <summary>Lists BACS payouts, most recent first.</summary>
+    public async Task<IReadOnlyList<GoCardlessPayout>> ListPayoutsAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync("payouts", cancellationToken);
+        response.EnsureSuccessStatusCode();
+        var envelope = await response.Content.ReadFromJsonAsync<PayoutListEnvelope>(JsonOptions, cancellationToken);
+        return envelope?.Payouts?.Select(Map).ToList() ?? new List<GoCardlessPayout>();
+    }
+
     /// <summary>POSTs a JSON body (optionally idempotent) and deserialises the response, throwing on non-success.</summary>
     private async Task<TResponse?> PostAsync<TRequest, TResponse>(string path, TRequest body, string? idempotencyKey, CancellationToken cancellationToken)
     {
@@ -116,6 +125,11 @@ public sealed class GoCardlessClient : IGoCardlessClient
     /// <summary>Maps a GoCardless mandate resource to the transport-neutral record.</summary>
     private static GoCardlessMandate? Map(MandateResource? m) =>
         m is null ? null : new GoCardlessMandate(m.Id, m.Status, m.Reference, m.Links?.Customer);
+
+    /// <summary>Maps a GoCardless payout resource to the transport-neutral record.</summary>
+    private static GoCardlessPayout Map(PayoutResource p) => new(
+        p.Id, p.Status, p.Amount, p.Currency, p.Reference,
+        DateOnly.TryParse(p.ArrivalDate, out var d) ? d : null);
 
     /// <summary>Maps a GoCardless payment resource to the transport-neutral record.</summary>
     private static GoCardlessPayment? Map(PaymentResource? p) =>
@@ -178,4 +192,14 @@ public sealed class GoCardlessClient : IGoCardlessClient
         [property: JsonPropertyName("currency")] string Currency,
         [property: JsonPropertyName("charge_date")] string? ChargeDate,
         [property: JsonPropertyName("description")] string? Description);
+
+    private sealed record PayoutListEnvelope([property: JsonPropertyName("payouts")] IReadOnlyList<PayoutResource>? Payouts);
+
+    private sealed record PayoutResource(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("status")] string Status,
+        [property: JsonPropertyName("amount")] int Amount,
+        [property: JsonPropertyName("currency")] string Currency,
+        [property: JsonPropertyName("reference")] string? Reference,
+        [property: JsonPropertyName("arrival_date")] string? ArrivalDate);
 }

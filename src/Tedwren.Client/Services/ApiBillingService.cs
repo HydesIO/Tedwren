@@ -91,6 +91,20 @@ public sealed class ApiBillingService : IBillingService
         await _http.GetFromJsonAsync<IReadOnlyList<WebhookEventDto>>("api/admin/billing/events", cancellationToken)
         ?? Array.Empty<WebhookEventDto>();
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PayoutDto>> GetPayoutsAsync(CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<IReadOnlyList<PayoutDto>>("api/admin/billing/payouts", cancellationToken)
+        ?? Array.Empty<PayoutDto>();
+
+    /// <inheritdoc />
+    public async Task<int> SyncPayoutsAsync(CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsync("api/admin/billing/payouts/sync", content: null, cancellationToken);
+        await ThrowIfActionFailedAsync(response, cancellationToken);
+        var result = await response.Content.ReadFromJsonAsync<SyncResult>(cancellationToken);
+        return result?.Synced ?? 0;
+    }
+
     /// <summary>Turns a non-success collection response into an <see cref="InvalidOperationException"/> carrying the server message.</summary>
     private static async Task ThrowIfActionFailedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {
@@ -115,4 +129,7 @@ public sealed class ApiBillingService : IBillingService
 
     /// <summary>Shape of an error body: either an <c>error</c> field or a ProblemDetails <c>detail</c>.</summary>
     private sealed record ErrorResponse(string? Error, string? Detail);
+
+    /// <summary>Shape of the payout-sync response body.</summary>
+    private sealed record SyncResult(int Synced);
 }

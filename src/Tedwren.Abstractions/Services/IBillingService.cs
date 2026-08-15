@@ -42,4 +42,10 @@ public interface IBillingService
 
     /// <summary>Returns the most recent inbound GoCardless webhook events and their processing outcome.</summary>
     Task<IReadOnlyList<WebhookEventDto>> GetWebhookEventsAsync(int limit = 100, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the BACS payouts mirrored locally (most recent first).</summary>
+    Task<IReadOnlyList<PayoutDto>> GetPayoutsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Pulls the latest payouts from GoCardless into the local store and returns the number added/updated.</summary>
+    Task<int> SyncPayoutsAsync(CancellationToken cancellationToken = default);
 }

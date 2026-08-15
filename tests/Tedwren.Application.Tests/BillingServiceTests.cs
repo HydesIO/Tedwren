@@ -49,6 +49,9 @@ public sealed class BillingServiceTests
             LastRetriedPaymentId = paymentId;
             return Task.FromResult(new GoCardlessPayment(paymentId, RetryStatus, 1000, "GBP", null, null));
         }
+
+        public Task<IReadOnlyList<GoCardlessPayout>> ListPayoutsAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<GoCardlessPayout>>(Array.Empty<GoCardlessPayout>());
     }
 
     private static (BillingService Service, InMemoryMandateRepository Mandates, InMemoryPaymentRepository Payments, FakeGoCardlessClient Client) Create()
@@ -57,8 +60,10 @@ public sealed class BillingServiceTests
         var payments = new InMemoryPaymentRepository();
         var subscriptions = new InMemoryBillingSubscriptionRepository();
         var webhookEvents = new InMemoryWebhookEventRepository();
+        var payouts = new InMemoryPayoutRepository();
         var client = new FakeGoCardlessClient();
-        var service = new BillingService(client, mandates, payments, subscriptions, webhookEvents, new GoCardlessOptions());
+        var payoutSync = new PayoutSyncService(client, payouts);
+        var service = new BillingService(client, mandates, payments, subscriptions, webhookEvents, payouts, payoutSync, new GoCardlessOptions());
         return (service, mandates, payments, client);
     }
 

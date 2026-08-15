@@ -27,6 +27,9 @@ public sealed class UnconfiguredGoCardlessClient : IGoCardlessClient
     /// <inheritdoc />
     public Task<GoCardlessPayment> RetryPaymentAsync(string paymentId, CancellationToken cancellationToken = default) => throw NotConfigured();
 
+    /// <inheritdoc />
+    public Task<IReadOnlyList<GoCardlessPayout>> ListPayoutsAsync(CancellationToken cancellationToken = default) => throw NotConfigured();
+
     private static GoCardlessNotConfiguredException NotConfigured() => new();
 }
 

@@ -76,6 +76,28 @@ public sealed class AdminBillingApiTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
+    public async Task Payouts_AsPlatformAdmin_ReturnsOk()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/api/admin/billing/payouts");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var payouts = await response.Content.ReadFromJsonAsync<List<PayoutDto>>();
+        Assert.NotNull(payouts);
+    }
+
+    [Fact]
+    public async Task SyncPayouts_WithoutGoCardlessConfigured_Returns503()
+    {
+        var client = CreateClient();
+
+        var response = await client.PostAsync("/api/admin/billing/payouts/sync", content: null);
+
+        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
+    }
+
+    [Fact]
     public async Task SetSubscription_ThenReadOverview_PersistsMeter()
     {
         var client = CreateClient();

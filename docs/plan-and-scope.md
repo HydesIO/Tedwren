@@ -278,7 +278,10 @@ boundary. Phased, each independently shippable:
   `BackgroundService` (`BillingReconciliationHostedService`) modelled on `ExpirySchedulerHostedService`
   backstops missed webhooks. `/admin/events` shows each event's outcome. (Mandate-active → entitlement flip
   is left as a deliberate seam — which module a mandate gates is a §9 commercial decision, not yet specified.)
-- **Admin Phase D — BACS payouts.** Payout/settlement reads (migration `023`) + `/admin/payouts`.
+- **Admin Phase D — BACS payouts (done).** Payout/settlement reads (`IGoCardlessClient.ListPayoutsAsync`,
+  `Payout` entity, migration `024`) mirrored by `PayoutSyncService` (folded into the reconciliation hosted
+  service); `GET /api/admin/billing/payouts` + `POST .../payouts/sync` under `PlatformAdmin`, and a live
+  `/admin/payouts` view with a "Refresh from GoCardless" button. Not tenant-scoped (Tedwren's own settlement).
 
 > **PRD gap (raise, don't work around).** GoCardless / direct-debit collection is **not in PRD v6.4**:
 > §9 sets the commercial model (metered by sites/operatives) but names no collection rail, and §12.8 cites
