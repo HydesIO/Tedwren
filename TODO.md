@@ -11,6 +11,32 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin area — Phase B: GoCardless mandates & payments (this change)
+- ✅ **GoCardless transport seam.** `GoCardlessOptions` (Abstractions) + a conditional typed `HttpClient`
+  in `Program.cs` (base address + Bearer token + `GoCardless-Version` header), mirroring the Resend email
+  integration. `IGoCardlessClient`/`GoCardlessClient` (Application) cover hosted mandate set-up (Billing
+  Request Flow — no raw bank details handled), get/cancel mandate, create/get/retry payment, with
+  idempotency keys on payment creation. When no token is configured an `UnconfiguredGoCardlessClient`
+  default stands so reads work and collection actions fail with a clear "not configured" (503) message.
+- ✅ **Billing domain slice (net-new, `CompanyId`-scoped, R15).** `Mandate`, `Payment`, `BillingSubscription`
+  entities + status enums mirroring GoCardless; `IBillingService`/`BillingService` map provider statuses via
+  `GoCardlessStatusMap`; Dapper repositories over `RepositoryBase` (ANSI-portable) + in-memory doubles;
+  migration **`022_billing.sql`** in both SqlServer and Postgres folders. Meter/band held as **configuration
+  keys, not prices** (PRD §9); amounts in minor units (pence).
+- ✅ **Admin billing UI + API.** `BillingEndpoints` under `PlatformAdmin` (`/api/admin/billing`): list
+  mandates/payments, company overview, start/cancel mandate, take/retry payment, set subscription.
+  `ApiBillingService` client proxy; the `/admin/billing`, `/admin/payments` and `/admin/subscriptions`
+  placeholder pages are now functional (mandate set-up returns the hosted authorisation link; take a
+  payment; **re-take a returned payment**; set a company's meter/band). Two-way bound inputs per the
+  live-state rule.
+- ✅ Tests: `BillingServiceTests` (11 — set-up, reuse-pending, take-payment + no-mandate/zero guards,
+  re-take returned/non-returned/unknown, cancel, subscription upsert) + `AdminBillingApiTests` (4 — reads
+  200 under platform admin, setup → 503 unconfigured, subscription persists). Whole solution builds
+  (0 new warnings); all 491 tests pass (15 LocalDB skipped).
+- ⏳ **Next (Phase C):** GoCardless webhooks (HMAC-verified, deduped) to keep mandate/payment status live,
+  returns→retry automation, and a reconciliation background job. **Needs sandbox credentials** to verify
+  live end-to-end (token in `GoCardless:AccessToken`); no secrets committed.
+
 ### Admin area — Phase A: platform-admin shell & read-only views (this change)
 - ✅ **Platform-admin gate (server-authoritative).** New `PlatformAdmin` authorization policy
   (`src/Tedwren.Api/Program.cs`) — stricter than `AdminOnly`: requires `AccessRole.Administrator` **and**

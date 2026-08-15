@@ -29,6 +29,7 @@ builder.Services.AddInductionCore();
 builder.Services.AddFormCore();
 builder.Services.AddSiteEntryCore();
 builder.Services.AddConsoleFoundationCore();
+builder.Services.AddBillingCore();
 builder.Services.AddWorkforceCore();
 builder.Services.AddDashboardCore();
 builder.Services.AddReferenceDataCore();
@@ -53,6 +54,24 @@ if (emailOptions.Provider == EmailProvider.Resend && !string.IsNullOrWhiteSpace(
         client.BaseAddress = new Uri(emailOptions.ApiBaseUrl.TrimEnd('/') + "/");
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", emailOptions.ApiKey);
+    });
+}
+
+// Direct-debit billing (GoCardless; admin area). Bind the "GoCardless" section and, when an access token is
+// configured, register the real transport as a typed HttpClient (base address + Bearer token + version
+// header). With no token the Application-layer UnconfiguredGoCardlessClient default stands, so read surfaces
+// still work and collection actions fail with a clear "not configured" message — mirroring the Resend override.
+var goCardlessOptions = builder.Configuration.GetSection(GoCardlessOptions.SectionName).Get<GoCardlessOptions>() ?? new GoCardlessOptions();
+builder.Services.AddSingleton(goCardlessOptions);
+if (!string.IsNullOrWhiteSpace(goCardlessOptions.AccessToken))
+{
+    builder.Services.AddHttpClient<Tedwren.Application.Billing.IGoCardlessClient,
+        Tedwren.Application.Billing.GoCardlessClient>(client =>
+    {
+        client.BaseAddress = new Uri(goCardlessOptions.ApiBaseUrl.TrimEnd('/') + "/");
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", goCardlessOptions.AccessToken);
+        client.DefaultRequestHeaders.Add("GoCardless-Version", goCardlessOptions.ApiVersion);
     });
 }
 
@@ -133,6 +152,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryInductionStore();
     builder.Services.AddInMemoryFormStore();
     builder.Services.AddInMemoryConsoleFoundationStore();
+    builder.Services.AddInMemoryBillingStore();
     builder.Services.AddInMemoryReferenceDataStore();
     builder.Services.AddInMemorySettingsStore();
     builder.Services.AddInMemoryPermitStore();
@@ -240,6 +260,7 @@ app.MapOnboardingEndpoints();
 app.MapImageEndpoints();
 app.MapEmailTemplateEndpoints();
 app.MapAdminEndpoints();
+app.MapBillingEndpoints();
 app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration

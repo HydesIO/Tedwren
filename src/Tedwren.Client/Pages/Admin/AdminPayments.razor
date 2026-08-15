@@ -1,10 +1,177 @@
 @page "/admin/payments"
+@using Tedwren.Abstractions.Contracts.Billing
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IBillingService Billing
+@inject IPlatformAdminService Admin
 
 <PageTitle>Payments · Admin · Tedwren</PageTitle>
 
 <AdminGuard>
     <PageHeader Title="Payments" Subtitle="Collections, returns and retries" />
-    <AdminComingSoon Icon="@Icons.Material.Outlined.Payments"
-                     Title="Payments coming soon"
-                     Description="Take payments, track status, and re-take returned payments. Delivered in Phase B, with webhook-driven status in Phase C." />
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _message = null)">@_message</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _error = null)">@_error</MudAlert>
+    }
+
+    <DashboardCard Class="mb-4">
+        <Body>
+            <div class="admin-action-row">
+                <MudSelect T="Guid?" @bind-Value="_selectedCompanyId" Label="Company" Dense="true"
+                           Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-action-row__grow">
+                    @foreach (var c in _companies)
+                    {
+                        <MudSelectItem T="Guid?" Value="@c.Id">@c.Name</MudSelectItem>
+                    }
+                </MudSelect>
+                <MudNumericField T="decimal" @bind-Value="_amountPounds" Label="Amount (£)" Min="0.01m" Step="1m"
+                                 Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-action-row__amount" />
+                <MudTextField T="string" @bind-Value="_description" Label="Description" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Class="admin-action-row__grow" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Payments"
+                           Disabled="@(_selectedCompanyId is null || _amountPounds <= 0 || _busy)"
+                           OnClick="TakePayment">
+                    Take payment
+                </MudButton>
+            </div>
+        </Body>
+    </DashboardCard>
+
+    <DashboardCard>
+        <Body>
+            <DataTable TItem="PaymentDto"
+                       Items="_payments"
+                       Columns="_columns"
+                       Loading="_loading"
+                       SearchPlaceholder="Search payments…"
+                       EmptyTitle="No payments yet"
+                       EmptyDescription="Collections appear here once you take a payment against a mandate."
+                       EmptyIcon="@Icons.Material.Outlined.Payments" />
+        </Body>
+    </DashboardCard>
 </AdminGuard>
+
+@code {
+    private IReadOnlyList<PaymentDto> _payments = Array.Empty<PaymentDto>();
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private Dictionary<Guid, string> _companyNames = new();
+    private List<DataColumn<PaymentDto>> _columns = new();
+    private Guid? _selectedCompanyId;
+    private decimal _amountPounds;
+    private string _description = string.Empty;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        _companies = await Admin.GetCompaniesAsync();
+        _companyNames = _companies.ToDictionary(c => c.Id, c => c.Name);
+        await ReloadAsync();
+    }
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        _payments = await Billing.GetPaymentsAsync();
+        _loading = false;
+    }
+
+    private async Task TakePayment()
+    {
+        if (_selectedCompanyId is not { } companyId) return;
+
+        _busy = true;
+        _message = _error = null;
+        try
+        {
+            var pence = (int)Math.Round(_amountPounds * 100m, MidpointRounding.AwayFromZero);
+            var payment = await Billing.TakePaymentAsync(companyId,
+                new TakePaymentRequest(pence, string.IsNullOrWhiteSpace(_description) ? null : _description));
+            _message = $"Payment created ({payment.Status}).";
+            _amountPounds = 0;
+            _description = string.Empty;
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RetryPayment(PaymentDto payment)
+    {
+        _busy = true;
+        _message = _error = null;
+        try
+        {
+            var retried = await Billing.RetryPaymentAsync(payment.Id);
+            _message = retried is null ? "Payment not found." : $"Payment re-taken ({retried.Status}).";
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private string CompanyName(Guid companyId) => _companyNames.GetValueOrDefault(companyId, companyId.ToString());
+
+    private static string Money(int pence, string currency) => $"{(currency == "GBP" ? "£" : currency + " ")}{pence / 100m:0.00}";
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Company", Value = p => CompanyName(p.CompanyId) },
+            new() { Title = "Amount", Value = p => p.AmountPence, AlignRight = true,
+                    CellTemplate = p => @<span>@Money(p.AmountPence, p.Currency)</span> },
+            new() { Title = "Description", Value = p => p.Description ?? "—" },
+            new()
+            {
+                Title = "Status", Text = p => p.Status, Filterable = true, Sortable = false,
+                CellTemplate = p => @<StatusPill Label="@p.Status" Status="PaymentPill(p.Status)" />
+            },
+            new()
+            {
+                Title = "Created", Value = p => p.CreatedUtc, Searchable = false,
+                CellTemplate = p => @<span>@p.CreatedUtc.LocalDateTime.ToString("dd MMM yyyy")</span>
+            },
+            new()
+            {
+                Title = "", Sortable = false, Searchable = false, AlignRight = true,
+                CellTemplate = p =>@<span>
+                    @if (p.Status is "Failed" or "ChargedBack")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary"
+                                   Disabled="@_busy" OnClick="@(() => RetryPayment(p))">Re-take</MudButton>
+                    }
+                </span>
+            },
+        };
+    }
+
+    // Maps a payment status label to the shared pill palette.
+    private static StatusKind PaymentPill(string status) => status switch
+    {
+        "Confirmed" or "PaidOut" => StatusKind.Success,
+        "PendingSubmission" or "Submitted" => StatusKind.Warning,
+        "Failed" or "ChargedBack" or "Cancelled" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+}

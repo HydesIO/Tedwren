@@ -127,3 +127,37 @@ h1:focus-visible {
 .detail-tabs__panel {
     padding-top: var(--spacing-16) !important;
 }
+
+/* Admin area: inline action rows (company picker + inputs + action button) and small overview blocks. */
+.admin-action-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-12);
+}
+
+.admin-action-row__grow {
+    flex: 1 1 200px;
+    min-width: 160px;
+}
+
+.admin-action-row__amount {
+    flex: 0 1 160px;
+}
+
+.admin-muted {
+    color: var(--color-text-muted, #64748b);
+    margin: 0 0 var(--spacing-12);
+}
+
+.admin-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: var(--spacing-16);
+}
+
+.admin-overview__label {
+    color: var(--color-text-muted, #64748b);
+    font-size: var(--font-size-14, 14px);
+    margin-bottom: var(--spacing-4);
+}

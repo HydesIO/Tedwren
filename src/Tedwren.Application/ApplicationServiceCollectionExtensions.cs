@@ -7,6 +7,7 @@ using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
 using Tedwren.Application.Audit;
 using Tedwren.Application.Auth;
+using Tedwren.Application.Billing;
 using Tedwren.Application.Dashboard;
 using Tedwren.Application.Decisions;
 using Tedwren.Application.Entitlements;
@@ -327,6 +328,30 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IAuditRepository, InMemoryAuditRepository>();
         services.AddSingleton<InMemoryDecisionRepository>();
         services.AddScoped<IDecisionRepository>(sp => sp.GetRequiredService<InMemoryDecisionRepository>());
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the direct-debit billing service (admin area). The GoCardless transport defaults to the
+    /// "not configured" stub; the API composition root overrides it with the real typed-<c>HttpClient</c>
+    /// client when an access token is set — mirroring how the Resend sender overrides the outbox default.
+    /// </summary>
+    public static IServiceCollection AddBillingCore(this IServiceCollection services)
+    {
+        services.AddScoped<IBillingService, BillingService>();
+        services.AddScoped<IGoCardlessClient, UnconfiguredGoCardlessClient>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory mandate, payment and subscription repositories (test-only double).</summary>
+    public static IServiceCollection AddInMemoryBillingStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryMandateRepository>();
+        services.AddScoped<IMandateRepository>(sp => sp.GetRequiredService<InMemoryMandateRepository>());
+        services.AddSingleton<InMemoryPaymentRepository>();
+        services.AddScoped<IPaymentRepository>(sp => sp.GetRequiredService<InMemoryPaymentRepository>());
+        services.AddSingleton<InMemoryBillingSubscriptionRepository>();
+        services.AddScoped<IBillingSubscriptionRepository>(sp => sp.GetRequiredService<InMemoryBillingSubscriptionRepository>());
         return services;
     }
 }

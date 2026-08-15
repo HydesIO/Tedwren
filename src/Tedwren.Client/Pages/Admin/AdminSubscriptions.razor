@@ -1,10 +1,133 @@
 @page "/admin/subscriptions"
+@using Tedwren.Abstractions.Contracts.Billing
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IBillingService Billing
+@inject IPlatformAdminService Admin
 
 <PageTitle>Subscriptions · Admin · Tedwren</PageTitle>
 
 <AdminGuard>
     <PageHeader Title="Subscriptions" Subtitle="Plans, meters and bands per company (PRD §9)" />
-    <AdminComingSoon Icon="@Icons.Material.Outlined.CardMembership"
-                     Title="Subscriptions coming soon"
-                     Description="Per-company plans and metered billing (sites / operatives) land with GoCardless billing in Phase B." />
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _message = null)">@_message</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _error = null)">@_error</MudAlert>
+    }
+
+    <DashboardCard Class="mb-4">
+        <Body>
+            <MudSelect T="Guid?" Value="_selectedCompanyId" ValueChanged="OnCompanyChanged" Label="Company" Dense="true"
+                       Variant="Variant.Outlined" Margin="Margin.Dense">
+                @foreach (var c in _companies)
+                {
+                    <MudSelectItem T="Guid?" Value="@c.Id">@c.Name</MudSelectItem>
+                }
+            </MudSelect>
+        </Body>
+    </DashboardCard>
+
+    @if (_overview is not null)
+    {
+        <DashboardCard>
+            <Body>
+                <p class="admin-muted">
+                    Meter and band are configuration keys, not prices — pricing moves without a code change (PRD §9).
+                </p>
+                <div class="admin-action-row">
+                    <MudSelect T="string" @bind-Value="_meterKey" Label="Meter" Dense="true"
+                               Variant="Variant.Outlined" Margin="Margin.Dense" Class="admin-action-row__grow">
+                        <MudSelectItem T="string" Value="@("sites")">Sites (main contractor)</MudSelectItem>
+                        <MudSelectItem T="string" Value="@("operatives")">Operatives (subcontractor)</MudSelectItem>
+                    </MudSelect>
+                    <MudTextField T="string" @bind-Value="_bandKey" Label="Band (optional)" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Class="admin-action-row__grow" />
+                    <MudTextField T="string" @bind-Value="_description" Label="Description" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Class="admin-action-row__grow" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Save"
+                               Disabled="@(string.IsNullOrWhiteSpace(_meterKey) || _busy)" OnClick="SaveSubscription">
+                        Save
+                    </MudButton>
+                </div>
+
+                <MudDivider Class="my-4" />
+
+                <div class="admin-overview">
+                    <div>
+                        <div class="admin-overview__label">Mandate</div>
+                        <div>@(_overview.Mandate is null ? "None" : _overview.Mandate.Status)</div>
+                    </div>
+                    <div>
+                        <div class="admin-overview__label">Subscription</div>
+                        <div>@(_overview.Subscription is null ? "None" : $"{_overview.Subscription.MeterKey} · {_overview.Subscription.Status}")</div>
+                    </div>
+                    <div>
+                        <div class="admin-overview__label">Recent payments</div>
+                        <div>@_overview.RecentPayments.Count</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
+    }
 </AdminGuard>
+
+@code {
+    private IReadOnlyList<CompanySummary> _companies = Array.Empty<CompanySummary>();
+    private Guid? _selectedCompanyId;
+    private CompanyBillingOverviewDto? _overview;
+    private string _meterKey = "sites";
+    private string? _bandKey;
+    private string? _description;
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _companies = await Admin.GetCompaniesAsync();
+    }
+
+    private async Task OnCompanyChanged(Guid? companyId)
+    {
+        _selectedCompanyId = companyId;
+        _message = _error = null;
+        if (companyId is not { } id)
+        {
+            _overview = null;
+            return;
+        }
+
+        _overview = await Billing.GetCompanyBillingAsync(id);
+        _meterKey = _overview.Subscription?.MeterKey ?? "sites";
+        _bandKey = _overview.Subscription?.BandKey;
+        _description = _overview.Subscription?.Description;
+    }
+
+    private async Task SaveSubscription()
+    {
+        if (_selectedCompanyId is not { } companyId) return;
+
+        _busy = true;
+        _message = _error = null;
+        try
+        {
+            await Billing.SetSubscriptionAsync(companyId,
+                new SetSubscriptionRequest(_meterKey, string.IsNullOrWhiteSpace(_bandKey) ? null : _bandKey,
+                    string.IsNullOrWhiteSpace(_description) ? null : _description));
+            _message = "Subscription saved.";
+            _overview = await Billing.GetCompanyBillingAsync(companyId);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

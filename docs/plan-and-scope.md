@@ -266,11 +266,12 @@ boundary. Phased, each independently shippable:
 - **Admin Phase A — shell & read-only views (done).** Platform-admin gate + menu swap; `/admin/*`
   companies/users/dashboard over a dedicated `PlatformAdmin`-gated `/api/admin` surface; placeholders for
   the billing surfaces below.
-- **Admin Phase B — GoCardless mandates & payments.** `GoCardlessOptions` + typed `HttpClient` (mirroring
-  the Resend email integration) and `IGoCardlessClient`; a `Mandate`/`Subscription`/`Payment` domain slice
-  (Dapper, dual-engine, migration `022`) tied to `CompanyId` (R15); create/cancel mandate (hosted Billing
-  Request Flow — we never handle raw bank details), take payment, **retry after a return**. Meter/band are
-  **configuration, not hard-coded numbers** (PRD §9).
+- **Admin Phase B — GoCardless mandates & payments (done).** `GoCardlessOptions` + typed `HttpClient`
+  (mirroring the Resend email integration) and `IGoCardlessClient`; a `Mandate`/`Subscription`/`Payment`
+  domain slice (Dapper, dual-engine, migration `022`) tied to `CompanyId` (R15); create/cancel mandate
+  (hosted Billing Request Flow — we never handle raw bank details), take payment, **retry after a return**.
+  Meter/band are **configuration, not hard-coded numbers** (PRD §9). Reads work with no token; collection
+  actions require a configured provider (sandbox by default).
 - **Admin Phase C — webhooks, returns/retries & reconciliation.** `AllowAnonymous` webhook endpoint with
   HMAC signature verification + event dedupe; durable side-effects via the existing outbox/`JobRunner`
   (e.g. mandate-active → `IEntitlementService.SetEnabledAsync`, honouring §9 "off hides but never
