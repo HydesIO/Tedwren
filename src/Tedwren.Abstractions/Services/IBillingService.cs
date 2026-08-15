@@ -39,4 +39,7 @@ public interface IBillingService
 
     /// <summary>Creates or updates a company's billing subscription (meter/band are configuration, §9).</summary>
     Task<SubscriptionDto> SetSubscriptionAsync(Guid companyId, SetSubscriptionRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the most recent inbound GoCardless webhook events and their processing outcome.</summary>
+    Task<IReadOnlyList<WebhookEventDto>> GetWebhookEventsAsync(int limit = 100, CancellationToken cancellationToken = default);
 }

@@ -340,6 +340,8 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddScoped<IBillingService, BillingService>();
         services.AddScoped<IGoCardlessClient, UnconfiguredGoCardlessClient>();
+        services.AddScoped<GoCardlessWebhookProcessor>();
+        services.AddScoped<BillingReconciliationService>();
         return services;
     }
 
@@ -352,6 +354,8 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IPaymentRepository>(sp => sp.GetRequiredService<InMemoryPaymentRepository>());
         services.AddSingleton<InMemoryBillingSubscriptionRepository>();
         services.AddScoped<IBillingSubscriptionRepository>(sp => sp.GetRequiredService<InMemoryBillingSubscriptionRepository>());
+        services.AddSingleton<InMemoryWebhookEventRepository>();
+        services.AddScoped<IWebhookEventRepository>(sp => sp.GetRequiredService<InMemoryWebhookEventRepository>());
         return services;
     }
 }

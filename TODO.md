@@ -11,6 +11,31 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin area — Phase C: GoCardless webhooks, returns & reconciliation (this change)
+- ✅ **Signature-verified webhook receiver.** `POST /api/webhooks/gocardless` is `.AllowAnonymous()` (webhooks
+  aren't JWT-authed) but authenticated by the `Webhook-Signature` HMAC-SHA256, verified against
+  `GoCardless:WebhookSecret` **before** any processing (`GoCardlessSignatureVerifier`, constant-time); it
+  fails closed on a bad/absent signature or unset secret (401). The read-only write-blocker only applies to
+  authenticated users, so the anonymous webhook is unaffected.
+- ✅ **Idempotent event processing.** `GoCardlessWebhookProcessor` stores each event once (deduped by
+  GoCardless event id), updates the referenced mandate/payment to the event's status via `GoCardlessStatusMap`
+  (now action-aware, returning null for no-op actions), and records a **returned payment's** failure reason so
+  the admin can re-take it (the Phase B retry path). One failing event never aborts the batch; every event's
+  outcome is stored. New `WebhookEvent` entity + repo (Dapper dual-engine + in-memory) + migration
+  **`023_webhook_events.sql`** (both engines, unique on the event id).
+- ✅ **Reconciliation backstop.** `BillingReconciliationService` polls GoCardless for non-terminal
+  mandates/payments and converges their status if a webhook was missed; `BillingReconciliationHostedService`
+  runs it on a schedule (modeled on `ExpirySchedulerHostedService`, gated by `Jobs:SchedulerEnabled`,
+  `Jobs:ReconciliationIntervalHours` default 6). Safe no-op when GoCardless is unconfigured.
+- ✅ **Admin events view.** `/admin/events` is now functional (`GET /api/admin/billing/events` under
+  `PlatformAdmin` → `IBillingService.GetWebhookEventsAsync`), showing each event's resource/action/outcome.
+- ✅ Tests: `GoCardlessWebhookTests` (signature valid/tampered/empty; processor status-update, returned-reason,
+  dedupe, unknown-resource) + `BillingReconciliationServiceTests` (converge, skip-terminal, unconfigured no-op)
+  + API webhook 401-without-signature and events-200. Whole solution builds (0 new warnings); all 503 tests
+  pass (15 LocalDB skipped).
+- ⏳ **Next (Phase D):** BACS payouts (settlement reads) + `/admin/payouts`. **Sandbox credentials** still let
+  Phases B–C be verified live (token in `GoCardless:AccessToken`, `GoCardless:WebhookSecret` for webhooks).
+
 ### Admin area — Phase B: GoCardless mandates & payments (this change)
 - ✅ **GoCardless transport seam.** `GoCardlessOptions` (Abstractions) + a conditional typed `HttpClient`
   in `Program.cs` (base address + Bearer token + `GoCardless-Version` header), mirroring the Resend email

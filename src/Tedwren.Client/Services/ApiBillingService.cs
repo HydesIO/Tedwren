@@ -86,6 +86,11 @@ public sealed class ApiBillingService : IBillingService
             ?? throw new InvalidOperationException("The subscription could not be saved.");
     }
 
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<WebhookEventDto>> GetWebhookEventsAsync(int limit = 100, CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<IReadOnlyList<WebhookEventDto>>("api/admin/billing/events", cancellationToken)
+        ?? Array.Empty<WebhookEventDto>();
+
     /// <summary>Turns a non-success collection response into an <see cref="InvalidOperationException"/> carrying the server message.</summary>
     private static async Task ThrowIfActionFailedAsync(HttpResponseMessage response, CancellationToken cancellationToken)
     {

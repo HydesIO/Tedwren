@@ -168,6 +168,9 @@ else
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
 builder.Services.AddHostedService<ExpirySchedulerHostedService>();
 
+// Backstops GoCardless webhooks by reconciling billing status on a schedule (gated by Jobs:SchedulerEnabled).
+builder.Services.AddHostedService<BillingReconciliationHostedService>();
+
 builder.Services.AddOpenApi();
 
 // CORS: permit the Blazor WASM client origin(s) declared in configuration to call the API.
@@ -261,6 +264,7 @@ app.MapImageEndpoints();
 app.MapEmailTemplateEndpoints();
 app.MapAdminEndpoints();
 app.MapBillingEndpoints();
+app.MapGoCardlessWebhookEndpoints();
 app.MapAuthEndpoints();
 
 // Liveness probe. Reports the resolved data-source mode and provider so the active configuration

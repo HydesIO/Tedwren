@@ -9,31 +9,44 @@ namespace Tedwren.Application.Billing;
 /// </summary>
 public static class GoCardlessStatusMap
 {
-    /// <summary>Maps a GoCardless mandate status to <see cref="MandateStatus"/>.</summary>
-    public static MandateStatus ToMandateStatus(string? status) => status switch
+    /// <summary>
+    /// Maps a GoCardless mandate status <b>or</b> webhook action to <see cref="MandateStatus"/>. The resource
+    /// status strings and the webhook action names overlap; both are handled here so processing and
+    /// reconciliation share one mapping. Returns null for a value that carries no status change (e.g. an
+    /// informational action), so the caller can ignore it rather than forcing a wrong state.
+    /// </summary>
+    public static MandateStatus? ToMandateStatus(string? statusOrAction) => statusOrAction switch
     {
         "pending_customer_approval" => MandateStatus.PendingCustomerApproval,
+        "created" => MandateStatus.PendingSubmission,
         "pending_submission" => MandateStatus.PendingSubmission,
+        "customer_approval_granted" => MandateStatus.PendingSubmission,
         "submitted" => MandateStatus.Submitted,
         "active" => MandateStatus.Active,
         "failed" => MandateStatus.Failed,
         "cancelled" => MandateStatus.Cancelled,
         "expired" => MandateStatus.Expired,
-        _ => MandateStatus.PendingCustomerApproval,
+        _ => null,
     };
 
-    /// <summary>Maps a GoCardless payment status to <see cref="PaymentStatus"/>.</summary>
-    public static PaymentStatus ToPaymentStatus(string? status) => status switch
+    /// <summary>
+    /// Maps a GoCardless payment status <b>or</b> webhook action to <see cref="PaymentStatus"/>. Returns null
+    /// for a value that carries no status change, so the caller can ignore it.
+    /// </summary>
+    public static PaymentStatus? ToPaymentStatus(string? statusOrAction) => statusOrAction switch
     {
+        "created" => PaymentStatus.PendingSubmission,
         "pending_submission" => PaymentStatus.PendingSubmission,
         "pending_customer_approval" => PaymentStatus.PendingSubmission,
+        "resubmission_requested" => PaymentStatus.PendingSubmission,
         "submitted" => PaymentStatus.Submitted,
         "confirmed" => PaymentStatus.Confirmed,
         "paid_out" => PaymentStatus.PaidOut,
         "failed" => PaymentStatus.Failed,
+        "late_failure_settled" => PaymentStatus.Failed,
         "cancelled" => PaymentStatus.Cancelled,
         "charged_back" => PaymentStatus.ChargedBack,
-        _ => PaymentStatus.PendingSubmission,
+        _ => null,
     };
 
     /// <summary>Whether a payment in this state may be re-taken (returned/charged back).</summary>

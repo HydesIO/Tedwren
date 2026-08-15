@@ -272,10 +272,12 @@ boundary. Phased, each independently shippable:
   (hosted Billing Request Flow — we never handle raw bank details), take payment, **retry after a return**.
   Meter/band are **configuration, not hard-coded numbers** (PRD §9). Reads work with no token; collection
   actions require a configured provider (sandbox by default).
-- **Admin Phase C — webhooks, returns/retries & reconciliation.** `AllowAnonymous` webhook endpoint with
-  HMAC signature verification + event dedupe; durable side-effects via the existing outbox/`JobRunner`
-  (e.g. mandate-active → `IEntitlementService.SetEnabledAsync`, honouring §9 "off hides but never
-  deletes"); a reconciliation `BackgroundService` modelled on `ExpirySchedulerHostedService`.
+- **Admin Phase C — webhooks, returns/retries & reconciliation (done).** `AllowAnonymous` webhook endpoint
+  with `Webhook-Signature` HMAC verification (fails closed) + event dedupe (`WebhookEvent`, migration `023`);
+  events update mandate/payment status and record a returned payment's reason for re-taking; a reconciliation
+  `BackgroundService` (`BillingReconciliationHostedService`) modelled on `ExpirySchedulerHostedService`
+  backstops missed webhooks. `/admin/events` shows each event's outcome. (Mandate-active → entitlement flip
+  is left as a deliberate seam — which module a mandate gates is a §9 commercial decision, not yet specified.)
 - **Admin Phase D — BACS payouts.** Payout/settlement reads (migration `023`) + `/admin/payouts`.
 
 > **PRD gap (raise, don't work around).** GoCardless / direct-debit collection is **not in PRD v6.4**:

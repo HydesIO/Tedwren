@@ -19,6 +19,7 @@ public sealed class BillingService : IBillingService
     private readonly IMandateRepository _mandates;
     private readonly IPaymentRepository _payments;
     private readonly IBillingSubscriptionRepository _subscriptions;
+    private readonly IWebhookEventRepository _webhookEvents;
     private readonly GoCardlessOptions _options;
 
     /// <summary>Creates the service over the GoCardless client, the billing repositories and the options.</summary>
@@ -27,12 +28,14 @@ public sealed class BillingService : IBillingService
         IMandateRepository mandates,
         IPaymentRepository payments,
         IBillingSubscriptionRepository subscriptions,
+        IWebhookEventRepository webhookEvents,
         GoCardlessOptions options)
     {
         _goCardless = goCardless;
         _mandates = mandates;
         _payments = payments;
         _subscriptions = subscriptions;
+        _webhookEvents = webhookEvents;
         _options = options;
     }
 
@@ -100,7 +103,7 @@ public sealed class BillingService : IBillingService
         if (!string.IsNullOrEmpty(mandate.GoCardlessMandateId))
         {
             var cancelled = await _goCardless.CancelMandateAsync(mandate.GoCardlessMandateId, cancellationToken);
-            mandate.Status = GoCardlessStatusMap.ToMandateStatus(cancelled.Status);
+            mandate.Status = GoCardlessStatusMap.ToMandateStatus(cancelled.Status) ?? MandateStatus.Cancelled;
         }
         else
         {
@@ -148,7 +151,7 @@ public sealed class BillingService : IBillingService
                 cancellationToken);
 
             payment.GoCardlessPaymentId = created.Id;
-            payment.Status = GoCardlessStatusMap.ToPaymentStatus(created.Status);
+            payment.Status = GoCardlessStatusMap.ToPaymentStatus(created.Status) ?? PaymentStatus.PendingSubmission;
             payment.ChargeDate = created.ChargeDate;
         }
         catch (Exception ex)
@@ -185,7 +188,7 @@ public sealed class BillingService : IBillingService
         }
 
         var retried = await _goCardless.RetryPaymentAsync(payment.GoCardlessPaymentId, cancellationToken);
-        payment.Status = GoCardlessStatusMap.ToPaymentStatus(retried.Status);
+        payment.Status = GoCardlessStatusMap.ToPaymentStatus(retried.Status) ?? PaymentStatus.Submitted;
         payment.ChargeDate = retried.ChargeDate;
         payment.FailureReason = null;
         payment.UpdatedUtc = DateTimeOffset.UtcNow;
@@ -227,6 +230,15 @@ public sealed class BillingService : IBillingService
         }
 
         return ToDto(subscription);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<WebhookEventDto>> GetWebhookEventsAsync(int limit = 100, CancellationToken cancellationToken = default)
+    {
+        var events = await _webhookEvents.GetRecentAsync(limit, cancellationToken);
+        return events.Select(e => new WebhookEventDto(
+            e.Id, e.GoCardlessEventId, e.ResourceType, e.Action, e.ResourceId,
+            e.Outcome.ToString(), e.Detail, e.ReceivedUtc, e.ProcessedUtc)).ToList();
     }
 
     /// <summary>Maps a mandate entity to its DTO.</summary>

@@ -30,6 +30,10 @@ public static class BillingEndpoints
                 Results.Ok(await billing.GetCompanyBillingAsync(companyId, ct)))
             .WithName("AdminGetCompanyBilling");
 
+        group.MapGet("/events", async (IBillingService billing, CancellationToken ct) =>
+                Results.Ok(await billing.GetWebhookEventsAsync(200, ct)))
+            .WithName("AdminGetWebhookEvents");
+
         group.MapPost("/companies/{companyId:guid}/mandate/setup", async (Guid companyId, IBillingService billing, CancellationToken ct) =>
                 await GuardProviderAsync(async () => Results.Ok(await billing.StartMandateSetupAsync(companyId, ct))))
             .WithName("AdminStartMandateSetup");

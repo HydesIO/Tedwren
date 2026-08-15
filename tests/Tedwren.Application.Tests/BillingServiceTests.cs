@@ -56,8 +56,9 @@ public sealed class BillingServiceTests
         var mandates = new InMemoryMandateRepository();
         var payments = new InMemoryPaymentRepository();
         var subscriptions = new InMemoryBillingSubscriptionRepository();
+        var webhookEvents = new InMemoryWebhookEventRepository();
         var client = new FakeGoCardlessClient();
-        var service = new BillingService(client, mandates, payments, subscriptions, new GoCardlessOptions());
+        var service = new BillingService(client, mandates, payments, subscriptions, webhookEvents, new GoCardlessOptions());
         return (service, mandates, payments, client);
     }
 

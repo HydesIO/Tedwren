@@ -54,6 +54,28 @@ public sealed class AdminBillingApiTests : IClassFixture<WebApplicationFactory<P
     }
 
     [Fact]
+    public async Task Events_AsPlatformAdmin_ReturnsOk()
+    {
+        var client = CreateClient();
+
+        var response = await client.GetAsync("/api/admin/billing/events");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Webhook_WithoutValidSignature_Returns401()
+    {
+        var client = CreateClient();
+
+        // No configured secret and no valid Webhook-Signature header: the endpoint fails closed.
+        using var content = new StringContent("{\"events\":[]}", System.Text.Encoding.UTF8, "application/json");
+        var response = await client.PostAsync("/api/webhooks/gocardless", content);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task SetSubscription_ThenReadOverview_PersistsMeter()
     {
         var client = CreateClient();
