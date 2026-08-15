@@ -40,7 +40,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   `ReferralService` still implements the old revenue-based rule for the marketing site; reconcile the two
   models (and whether the 90-day clawback applies here) in a future revision.
 
-### Admin — Lead management (Phase 2, this change)
+### Admin — Lead management (Phase 2, previous change)
 - ✅ **Lead pipeline slice (commercial DB).** `Lead` + `LeadNote` entities, `LeadModel`/`LeadStatus` enums,
   DTOs, `ILeadService`/`LeadService`, `ILeadRepository` (Dapper dual-engine + in-memory), scripts
   **`026_leads.sql`** + **`027_lead_notes.sql`**. Estimated revenue is admin-entered (pricing is
@@ -59,7 +59,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Tests: `LeadServiceTests` (create/status-note/convert/capture-dedupe) + `LeadApiTests` (admin flow,
   anonymous capture dedupe, 404). Whole solution builds (0 code warnings); all tests pass (LocalDB skipped).
 
-### Admin — Launch List + separate Commercial database (this change)
+### Admin — Launch List + separate Commercial database (previous change)
 - ✅ **Separate Commercial database (architecture).** All commercial/admin-plane data now targets a second
   database via its own connection string (`ConnectionStrings:SqlServerCommercial` / `PostgreSqlCommercial`,
   empty ⇒ falls back to the product connection string). New `AdminSqlDataAccessOptions`,
@@ -89,7 +89,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   deferred — the idempotent SQL scripts are authoritative for the commercial DB for now (as with the deferred
   Postgres EF path, `docs/ef-migrations.md §7`).
 
-### Admin area — Phase D: GoCardless BACS payouts (this change)
+### Admin area — Phase D: GoCardless BACS payouts (previous change)
 - ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /
   `PayoutStatus` enum (Pending/Paid), `IPayoutRepository` (Dapper dual-engine + in-memory), migration
   **`024_payouts.sql`** (both engines, unique on the GoCardless payout id). A payout is Tedwren's own
@@ -104,7 +104,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   + API payouts-200 and sync-503. Whole solution builds (0 new warnings); all 509 tests pass (15 LocalDB
   skipped). **Admin-area plan (Phases A–D) complete.**
 
-### Admin area — Phase C: GoCardless webhooks, returns & reconciliation (this change)
+### Admin area — Phase C: GoCardless webhooks, returns & reconciliation (previous change)
 - ✅ **Signature-verified webhook receiver.** `POST /api/webhooks/gocardless` is `.AllowAnonymous()` (webhooks
   aren't JWT-authed) but authenticated by the `Webhook-Signature` HMAC-SHA256, verified against
   `GoCardless:WebhookSecret` **before** any processing (`GoCardlessSignatureVerifier`, constant-time); it
@@ -129,7 +129,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ⏳ **Next (Phase D):** BACS payouts (settlement reads) + `/admin/payouts`. **Sandbox credentials** still let
   Phases B–C be verified live (token in `GoCardless:AccessToken`, `GoCardless:WebhookSecret` for webhooks).
 
-### Admin area — Phase B: GoCardless mandates & payments (this change)
+### Admin area — Phase B: GoCardless mandates & payments (previous change)
 - ✅ **GoCardless transport seam.** `GoCardlessOptions` (Abstractions) + a conditional typed `HttpClient`
   in `Program.cs` (base address + Bearer token + `GoCardless-Version` header), mirroring the Resend email
   integration. `IGoCardlessClient`/`GoCardlessClient` (Application) cover hosted mandate set-up (Billing
@@ -155,7 +155,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   returns→retry automation, and a reconciliation background job. **Needs sandbox credentials** to verify
   live end-to-end (token in `GoCardless:AccessToken`); no secrets committed.
 
-### Admin area — Phase A: platform-admin shell & read-only views (this change)
+### Admin area — Phase A: platform-admin shell & read-only views (previous change)
 - ✅ **Platform-admin gate (server-authoritative).** New `PlatformAdmin` authorization policy
   (`src/Tedwren.Api/Program.cs`) — stricter than `AdminOnly`: requires `AccessRole.Administrator` **and**
   the `company` claim to equal the Tedwren seed tenant (`AdminUserSeeder.SeedCompanyId`), so a customer's
@@ -182,7 +182,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   is the intended SaaS billing rail; this should be reconciled into PRD §9 in a future revision. Tracked in
   `docs/plan-and-scope.md` (Admin-area phases).
 
-### Tedwren.Web — Phase W8 Hardening & pre-launch QA (this change)
+### Tedwren.Web — Phase W8 Hardening & pre-launch QA (previous change)
 - ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
   content JSON + Razor views and fails on three commercial/legal breaches: a hardcoded price symbol
   outside the single `PricingPlan` source (`hardcoded-price` — `£` always, `$`/`€` only next to a digit
@@ -206,7 +206,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   pages, the Companies House footer number/address, and the Plan §11 / Spec §13 open items remain
   founder/legal sign-off before go-live.
 
-### Tedwren.Web — Phase W7 Partners programme (this change)
+### Tedwren.Web — Phase W7 Partners programme (previous change)
 - ✅ **Approval-gated applications — no self-serve activation (Web Plan §7.2).** `/partners` shows the
   programme content + an application form; submitting only ever creates a **pending** record.
   `PartnerService.Approve` is a separate human step that mints a `Partner` with a **unique referral
@@ -232,7 +232,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   auth is a follow-up. Whether the programme goes public at launch vs. an unlinked application page, and
   the vetting owner, remain sign-off items (Plan §11.7–8).
 
-### Tedwren.Web — Phase W6 Lead capture & consent (this change)
+### Tedwren.Web — Phase W6 Lead capture & consent (previous change)
 - ✅ **Demo + Contact forms (Web Plan §6.9, §7).** `/demo` and `/contact` are server-validated
   (DataAnnotations) with **antiforgery**, a **honeypot**, a **minimum fill-time** check (`AntiBot`) and
   **rate limiting** (fixed-window policy on the POST endpoints). Genuine submissions route via the
@@ -259,7 +259,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   start/complete) — the consent-gated dataLayer/GA mechanism is in place; wiring those specific events is
   incremental (WP checkout is product-owned). Real CRM/email + calendar provider behind the seams.
 
-### Tedwren.Web — Phase W5 Trust, About, FAQ, Legal (this change)
+### Tedwren.Web — Phase W5 Trust, About, FAQ, Legal (previous change)
 - ✅ **Security & Trust (`/security`, §6.6).** Own stable URL; only makeable claims (data ownership,
   access control, encryption in transit, audit trail, DPA on request). No fabricated ISO/Cyber Essentials
   badges and no absolute-compliance language — asserted by a test scanning for prohibited phrasing.
@@ -274,7 +274,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Tests: +6 (security no-fabricated/absolute claims, about renders, FAQ questions + valid schema, four
   legal pages serve real content, valid Organization schema). Whole solution builds; Web project 0 warnings.
 
-### Tedwren.Web — Phase W4 Worker Passport & Pricing (this change)
+### Tedwren.Web — Phase W4 Worker Passport & Pricing (previous change)
 - ✅ **Worker Passport (`/worker-passport`, §6.4).** Individual-buyer register/tone; the "never locked out
   for non-payment" benefit (PRD Rule W2); price line from the single configured `PricingPlan` source;
   consumer-contract facts (annual billing, UK 14-day cancellation, informed consent). **CSCS positioning
@@ -293,7 +293,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Tests: +8 (WP benefit, WP price from config, CSCS meta restriction, pricing clarifiers + unpriced band,
   valid SoftwareApplication schema, provider FindLegal + FormatMoney). Web tests 41 → 57.
 
-### Tedwren.Web — Phase W3 Core pages (this change)
+### Tedwren.Web — Phase W3 Core pages (previous change)
 - ✅ **Home, Subcontractors, Main Contractors from content (Web Plan §6.1–6.3).** The three core pages
   now render from the content layer, not stubs. Home: hero + audience split, problem section, the two
   product cards (short-form), differentiators, five-step how-it-works, trust strip, closing CTA. Product
@@ -316,7 +316,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   company-documents present, emphasised retrofit section, product copy single-sourced). Whole solution
   builds (0 errors); Web project 0 warnings.
 
-### Tedwren.Web — Phase W2 Content layer (this change)
+### Tedwren.Web — Phase W2 Content layer (previous change)
 - ✅ **`IContentProvider` seam + content types (Web Plan §3).** Added
   `Tedwren.Abstractions.Services.IContentProvider` and the content model
   (`Tedwren.Abstractions.Contracts.WebContent`: `SiteContent`, `ProductProfile`, `FeatureCard`,
@@ -343,7 +343,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   loads at the real content root and reaches the footer. Whole solution builds (0 errors); Web project 0
   warnings.
 
-### Tedwren.Web — Phase W1 Skeleton (this change)
+### Tedwren.Web — Phase W1 Skeleton (previous change)
 - ✅ **New marketing-site project.** Added `src/Tedwren.Web` (ASP.NET Core MVC, `Microsoft.NET.Sdk.Web`,
   `net10.0`) and `tests/Tedwren.Web.Tests`, both wired into `Tedwren.sln`. Server-rendered Razor, no auth
   (public site) — deliberately no `FallbackPolicy` unlike the API. Per the Tedwren.Web Plan & Scope of Works
@@ -367,7 +367,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   error page, the config chrome renders, the CTA swap works, and both stylesheets (incl. client-sourced tokens)
   are served. Whole solution builds (0 errors; pre-existing MUD0002 + one Api.Tests nullable warning unchanged).
 
-### Onboarding wizard per-step validation (this change)
+### Onboarding wizard per-step validation (previous change)
 - ✅ **Validate on Next, per step.** The onboarding wizard previously only validated required fields on the
   final "Finish setup". It now validates the step being left when the user presses Next: `TedwrenStepper`
   forwards MudStepper's `OnPreviewInteraction` (`Func<StepperInteractionEventArgs, Task>`), and
@@ -377,7 +377,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   at once; `Finish` remains a backstop.
 - ✅ Client builds clean (0 errors); pre-existing MUD0002 analyzer casing warnings unchanged.
 
-### Onboarding wizard polish + binding/auth guardrails (this change)
+### Onboarding wizard polish + binding/auth guardrails (previous change)
 - ✅ **Chrome-free layout.** `OnboardingLayout` app bar removed; the wizard now carries the Tedwren brand
   mark top-left in its own masthead, on a plain sunken (`--color-bg`) centered shell.
 - ✅ **Wizard tidy-up.** Professional step scaffolding: heading/hint per step, selectable choice cards for the
@@ -393,7 +393,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   API (`FallbackPolicy` requires auth; pre-auth flows must `.AllowAnonymous()`, sensitive ones must not).
 - ✅ Whole solution builds; `dotnet test` green (API 63, Application 117, others unchanged).
 
-### Login redesign + forgot-password (D1, this change)
+### Login redesign + forgot-password (D1, previous change)
 - ✅ **401 crash fix (root cause).** `MainLayout` redirected unauthenticated users to `/login` but still
   rendered the routed `@Body`, so a console page (e.g. Dashboard) called the API tokenless, threw on the 401
   and crashed the WASM renderer before the redirect landed (surfaced *on* the login page). The shell + `@Body`
@@ -411,7 +411,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 - ✅ Tests: `AuthApiTests` — forgot-password stays anonymous & non-enumerating; forgot → reset → login
   (old password rejected, new accepted). `dotnet test` green (API 63, Application 117).
 
-### Email notifications wired into real flows — invite email + test-send (this change)
+### Email notifications wired into real flows — invite email + test-send (previous change)
 - ✅ **Console-user invite now emails the accept-invite link.** `UserService.InviteUserAsync` composes a
   branded invite (greeting, "Accept your invitation" button → `{ConsoleBaseUrl}/accept-invite?token=…`,
   expiry note, fallback link via new `InviteEmail` composer) and sends it. **Best-effort:** the user is still
@@ -676,7 +676,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
   OperativeDetail, Compliance, Permits, etc.) — migrating each to real API data is a separate project.
   Also `/api/decisions` has no client caller (server-side write path only).
 
-### Organisation onboarding wizard (this change)
+### Organisation onboarding wizard (previous change)
 - ✅ **Onboarding wizard (branches by org type: Subcontractor / Main Contractor).** New `OnboardingLayout`
   (plain centered shell modelled on `RecipientLayout`) + `/onboarding` wizard (`Onboarding.razor` +
   `OnboardingModel`) built from the existing `TedwrenStepper`/Forms suite/`DashboardCard`. Steps: org type →
@@ -700,7 +700,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
 - ✅ Tests: invite `CompanyId` honoured; company-document add/read + expiry state; induction-template seed;
   API document + template endpoints; skippable Dapper `CompanyDocumentRepository` integration test.
 
-### UX completeness pass — user management, UI defect closure & EF migrations tooling (this change)
+### UX completeness pass — user management, UI defect closure & EF migrations tooling (previous change)
 - ✅ **Console user management (SF-20, SF-23, Q2).** New full vertical: `User` entity + `UserStatus` enum
   (reusing the existing `AccessRole`); `IUserService` + DTOs; `UserService` (invite with duplicate-email
   guard, edit, suspend/reactivate — access withdrawn, never deleted, keeping audit history); seeded
@@ -739,7 +739,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
   `Flyout`, `NotificationsMenu`, `KeyValueList`.
 - Mock data behind five interfaces (`IShell/IDashboard/IList/IForm/IDetailSampleDataService`).
 
-### Phase 7 — Governance & backend scaffolding (this change)
+### Phase 7 — Governance & backend scaffolding (previous change)
 - ✅ Reset designated branch onto latest `origin/main` (was stale at PR #2; now at PR #10).
 - ✅ Stored source-of-truth PRD (`docs/TedwrenPRDv6_4.docx`) and the phased plan
   (`docs/plan-and-scope.md`) in the solution.
@@ -761,7 +761,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
 
 ---
 
-### Phase 8 — Data-access seam on the first slice (SF-1, SF-2, SF-3) (this change)
+### Phase 8 — Data-access seam on the first slice (SF-1, SF-2, SF-3) (previous change)
 - ✅ **Domain** (`Tedwren.Domain`): `PhoneNumber` value object (settle-once mobile normaliser, SF-1/Q9);
   `Company`, `Person`, `Engagement` entities; `EngagementStatus` enum.
 - ✅ **Abstractions**: `IOrganisationService` + organisation DTOs (`CompanySummary`, `CompanyDetailDto`,
@@ -787,7 +787,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
 - ✅ Verified live: `GET /api/organisation/companies` returns seeded data; SF-1 (`07700 900123` and
   `+447700900123` → one person) and SF-2 (duplicate → HTTP 409 naming the existing) proven over HTTP.
 
-### Phase 9 — Qualification cards & competency (SF-5–SF-8, SF-10–SF-12) (this change)
+### Phase 9 — Qualification cards & competency (SF-5–SF-8, SF-10–SF-12) (previous change)
 - ✅ **Domain**: `QualificationType` (SF-12), `QualificationCard` with pure `GetStatus(asOf, window)`
   computing currency from expiry (SF-8) + supersede fields (SF-10), `TradeQualificationRequirement`
   (SF-11); enums `CardVerificationState` (SF-7), `CardStatus` (SF-8), `CardCaptureSource` (SF-5).
@@ -813,7 +813,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
 - ✅ Verified live (mock mode): `GET /api/qualifications/types` returns the 7-type default library;
   capture → "Read — not checked" (SF-5, not auto-confirmed) → confirm → "Checked" by the named person (SF-6).
 
-### Phase 10 — Expiry engine, warning schedule & job heartbeat (SF-9, SF-21, SUB-5, R12) (this change)
+### Phase 10 — Expiry engine, warning schedule & job heartbeat (SF-9, SF-21, SUB-5, R12) (previous change)
 - ✅ **Domain**: `Notifications/ExpiryWarningStage` (60/30/7/0/−1) + pure `ExpiryWarningSchedule.DueStages`
   (catch-up-safe, SF-9), `NotificationChannel`, `ExpiryNotification` (idempotency log row); `Jobs/JobRun`
   + `JobRunStatus` (SF-21/R12).
@@ -842,7 +842,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
   second scan sent **0** (SF-9 idempotent); runs recorded Succeeded (SF-21); heartbeat flagged only the
   never-run weekly-digest (R12).
 
-### Phase 11 — Sites, boundaries & dispersed schemes (SF-6, SF-14, SF-25, SF-26) (this change)
+### Phase 11 — Sites, boundaries & dispersed schemes (SF-6, SF-14, SF-25, SF-26) (previous change)
 - ✅ **Domain**: `Geofence` value object (centre + radius, haversine `Contains`/`DistanceMetresTo`, SF-14);
   `Site` (owner company, boundary, `HasCompound` for SF-25, `IsDispersed` for SF-26) and `SiteProperty`
   (own address + geofence, SF-26).
@@ -866,7 +866,7 @@ Phase M1 delivers the shared foundations and the first page migrations:
 - ✅ Verified live (mock): `GET /api/sites` shows the dispersed no-compound scheme (2 geofenced properties);
   creating a scheme and adding a property over HTTP marks it dispersed with nothing installed on site.
 
-### Phase 17 — Site-entry decision, competency cover & muster (MC-8–MC-14, MC-28, R2, R3, R10, R14) (this change)
+### Phase 17 — Site-entry decision, competency cover & muster (MC-8–MC-14, MC-28, R2, R3, R10, R14) (previous change)
 - ✅ **Domain**: pure `SiteEntryPolicy` — fail-closed admission (admitted only if no check failed, R2) +
   actionable block reason from failed checks (MC-9). Reuses the Phase-13 `SiteEntryDecision`/`DecisionCheck`
   store for the record (R10).
