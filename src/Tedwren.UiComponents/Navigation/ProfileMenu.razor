@@ -44,10 +44,6 @@
                     <MudIcon Icon="@Icons.Material.Outlined.Person" Size="Size.Small" />
                     <span>Profile</span>
                 </a>
-                <a class="menu__item" href="@SettingsHref">
-                    <MudIcon Icon="@Icons.Material.Outlined.Settings" Size="Size.Small" />
-                    <span>Settings</span>
-                </a>
             </div>
 
             <div class="menu__divider"></div>
@@ -67,7 +63,6 @@
     [Parameter] public string UserRole { get; set; } = string.Empty;
     [Parameter] public string? AvatarUrl { get; set; }
     [Parameter] public string ProfileHref { get; set; } = "#";
-    [Parameter] public string SettingsHref { get; set; } = "/system-configuration";
     [Parameter] public EventCallback OnSignOut { get; set; }
 
     private string Initials

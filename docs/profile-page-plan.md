@@ -1,9 +1,21 @@
 # Profile page — development plan
 
-> Status: **plan only** (no implementation in this change). This document records the agreed scope
-> and approach for the self-service Profile page in the tenant console (main contractor /
+> Status: **implemented** (see `TODO.md` → "Self-service Profile page"). This document records the agreed
+> scope and approach for the self-service Profile page in the tenant console (main contractor /
 > subcontractor area). The PRD (`docs/TedwrenPRDv6_4.docx`) remains the source of truth; where this
 > plan touches a requirement, cite the SF/SUB/MC/R id in the implementing commit and `TODO.md`.
+>
+> **Delivered:** domain/persistence (User `Mobile` + `AvatarImageReference`), `IProfileService` +
+> authenticated `/api/me/*` endpoints, the `/profile` page and shell wiring, and the "Settings" removal —
+> with tests across the Application and API layers.
+>
+> **Not delivered — PRD discrepancy raised:** the customer-facing **self-service billing** section. PRD v6.4
+> §9 (Commercial model) treats which-meter/which-band as configuration and §8.4 (Phase 4 — Pay and cost) is
+> worker payment release; no requirement sanctions a customer-facing subscription/direct-debit surface, and the
+> existing GoCardless billing is deliberately `PlatformAdmin`-only. Per `CLAUDE.md`, the section was omitted and
+> the discrepancy raised rather than the requirement invented. The **email-as-identity** open item was handled
+> conservatively (name/mobile edit freely; email change allowed but guarded against collisions, no
+> re-verification flow).
 
 ## Context
 
