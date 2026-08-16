@@ -38,6 +38,7 @@ public sealed class RecurringFormReminderJobTests
             Task.FromResult<Company?>(null);
         public Task AddAsync(Company company, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task UpdateAsync(Company company, CancellationToken cancellationToken = default) => Task.CompletedTask;
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
 
     private sealed record Harness(

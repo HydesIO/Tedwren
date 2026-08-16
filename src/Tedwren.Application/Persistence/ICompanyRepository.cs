@@ -19,4 +19,7 @@ public interface ICompanyRepository
 
     /// <summary>Persists changes to an existing company's editable fields.</summary>
     Task UpdateAsync(Company company, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a company by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

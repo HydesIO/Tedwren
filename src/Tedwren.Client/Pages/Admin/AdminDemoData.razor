@@ -1,0 +1,147 @@
+@page "/admin/demo-data"
+@using Tedwren.Abstractions.Contracts.DemoData
+@using Tedwren.Abstractions.Services
+@inject IDemoDataService DemoData
+@inject IDialogService DialogService
+
+<PageTitle>Demo Data · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Demo Data" Subtitle="Seed, recreate or delete the demonstration dataset">
+        <Actions>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.AutoAwesome"
+                       Disabled="@_busy" OnClick="SeedAsync">
+                @(_status.Present ? "Recreate demo data" : "Create demo data")
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" StartIcon="@Icons.Material.Outlined.DeleteSweep"
+                       Disabled="@(_busy || !_status.Present)" OnClick="DeleteAsync" Class="ml-2">
+                Delete demo data
+            </MudButton>
+        </Actions>
+    </PageHeader>
+
+    @if (!string.IsNullOrEmpty(_message))
+    {
+        <MudAlert Severity="Severity.Success" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _message = null)">@_message</MudAlert>
+    }
+    @if (!string.IsNullOrEmpty(_error))
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _error = null)">@_error</MudAlert>
+    }
+
+    <DashboardCard>
+        <Body>
+            <p class="mb-4">
+                Creates two demo tenants — <strong>Demo Contractors Ltd</strong> (main contractor, sign in as
+                <code>contractor@@tedwren.com</code>) and <strong>Demo Sub Contractors Ltd</strong> (subcontractor,
+                sign in as <code>subcontractor@@tedwren.com</code>) — both with password <code>Demo123!</code>.
+                The main contractor has ten gated sites and 25 operatives; the subcontractor has its own distinct
+                sites (including dispersed retrofit sites with no gate) and five contractors. Both carry
+                qualification and attendance history, and a full year of commercial payment history for reporting.
+                <em>Recreate</em> clears and rebuilds the dataset; <em>Delete</em> removes it entirely. Nothing
+                outside these two demo companies is affected.
+            </p>
+
+            <div class="kpi-row">
+                <KpiCard Title="Status" Value="@(_status.Present ? "Present" : "Not created")"
+                         Icon="@Icons.Material.Outlined.Dataset"
+                         AccentColour="@(_status.Present ? "var(--color-success)" : "var(--color-warning)")" />
+                <KpiCard Title="Companies" Value="@_status.Companies.ToString()" Icon="@Icons.Material.Outlined.Business" />
+                <KpiCard Title="Users" Value="@_status.Users.ToString()" Icon="@Icons.Material.Outlined.PeopleOutline" />
+                <KpiCard Title="Sites" Value="@_status.Sites.ToString()" Icon="@Icons.Material.Outlined.Place" />
+                <KpiCard Title="Operatives" Value="@_status.Operatives.ToString()" Icon="@Icons.Material.Outlined.Engineering" />
+                <KpiCard Title="Qualification cards" Value="@_status.QualificationCards.ToString()" Icon="@Icons.Material.Outlined.Badge" />
+                <KpiCard Title="Attendance records" Value="@_status.AttendanceRecords.ToString()" Icon="@Icons.Material.Outlined.HowToReg" />
+                <KpiCard Title="Payments (commercial)" Value="@_status.Payments.ToString()" Icon="@Icons.Material.Outlined.Payments" />
+            </div>
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private DemoDataStatus _status = new(false, 0, 0, 0, 0, 0, 0, 0);
+    private bool _busy;
+    private string? _message;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        try
+        {
+            _status = await DemoData.GetStatusAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private async Task SeedAsync()
+    {
+        if (_status.Present)
+        {
+            var parameters = new DialogParameters<ConfirmDialog>
+            {
+                { x => x.ContentText, "Recreate the demo dataset? The existing demo data is cleared and rebuilt from scratch." },
+                { x => x.ConfirmText, "Recreate" },
+            };
+            var confirm = await DialogService.ShowAsync<ConfirmDialog>("Recreate demo data", parameters);
+            if ((await confirm.Result)?.Canceled != false)
+            {
+                return;
+            }
+        }
+
+        await RunOperationAsync("seed", "Demo data created.");
+    }
+
+    private async Task DeleteAsync()
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, "Delete the entire demo dataset from both the product and commercial databases? This cannot be undone." },
+            { x => x.ConfirmText, "Delete" },
+            { x => x.Destructive, true },
+        };
+        var confirm = await DialogService.ShowAsync<ConfirmDialog>("Delete demo data", parameters);
+        if ((await confirm.Result)?.Canceled != false)
+        {
+            return;
+        }
+
+        await RunOperationAsync("delete", "Demo data deleted.");
+    }
+
+    private async Task RunOperationAsync(string operation, string successMessage)
+    {
+        _busy = true;
+        _message = _error = null;
+        try
+        {
+            var options = new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false };
+            var parameters = new DialogParameters<DemoDataProgressDialog>
+            {
+                { x => x.Operation, operation },
+            };
+            var title = operation == "delete" ? "Deleting demo data" : "Creating demo data";
+            var dialog = await DialogService.ShowAsync<DemoDataProgressDialog>(title, parameters, options);
+            var result = await dialog.Result;
+
+            if (result?.Canceled == false)
+            {
+                _message = successMessage;
+            }
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

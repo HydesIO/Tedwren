@@ -11,6 +11,13 @@ public sealed class InMemoryEngagementRepository : IEngagementRepository
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemoryEngagementRepository(InMemoryOrganisationStore store) => _store = store;
 
+    /// <summary>Removes an engagement from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Engagements.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Returns the active engagements for a company, ordered by name.</summary>
     public Task<IReadOnlyList<Engagement>> GetActiveByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
     {

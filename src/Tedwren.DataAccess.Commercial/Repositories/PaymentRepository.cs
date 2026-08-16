@@ -17,6 +17,10 @@ public sealed class PaymentRepository : AdminRepositoryBase, IPaymentRepository
     {
     }
 
+    /// <summary>Deletes a payment by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Payments WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns every payment, most recent first.</summary>
     public async Task<IReadOnlyList<Payment>> GetAllAsync(CancellationToken cancellationToken = default)
     {

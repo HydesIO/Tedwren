@@ -17,6 +17,10 @@ public sealed class SiteRepository : RepositoryBase, ISiteRepository
     {
     }
 
+    /// <summary>Deletes a site by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Sites WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns all sites ordered by name.</summary>
     public async Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken cancellationToken = default)
     {

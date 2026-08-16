@@ -1,0 +1,129 @@
+@using Tedwren.Abstractions.Contracts.DemoData
+@using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
+@inject IDemoDataService DemoData
+
+@* Runs a demo-data seed or delete and shows live progress. Started via IDialogService with the Operation
+   parameter set to "seed" or "delete"; closes itself with DialogResult.Ok(DemoDataStatus) on success. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="demo-progress">
+            <p class="demo-progress__stage">@(_progress.Stage ?? "Working…")</p>
+            <MudProgressLinear Color="@(_error is null ? Color.Primary : Color.Error)"
+                               Value="@_progress.Percent"
+                               Buffer="false"
+                               Indeterminate="@(_progress.Total == 0 && _error is null)"
+                               Class="my-3" />
+            <p class="demo-progress__count">
+                @if (_error is not null)
+                {
+                    <span class="demo-progress__error">@_error</span>
+                }
+                else
+                {
+                    @($"{_progress.Completed} / {_progress.Total} steps · {_progress.Percent}%")
+                }
+            </p>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (_error is not null)
+        {
+            <MudButton Variant="Variant.Outlined" OnClick="Close">Close</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The operation to run: "seed" (which also recreates) or "delete".</summary>
+    [Parameter] public string Operation { get; set; } = "seed";
+
+    private DemoDataProgress _progress = new(true, null, "Starting…", 0, 0, 0, null);
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Kick off the operation, then poll progress until it finishes.
+        var work = Operation == "delete" ? RunDeleteAsync() : RunSeedAsync();
+        var poller = PollAsync();
+        await Task.WhenAll(work, poller);
+    }
+
+    private DemoDataStatus? _result;
+    private bool _done;
+
+    private async Task RunSeedAsync()
+    {
+        try
+        {
+            _result = await DemoData.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _done = true;
+        }
+    }
+
+    private async Task RunDeleteAsync()
+    {
+        try
+        {
+            await DemoData.DeleteAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _done = true;
+        }
+    }
+
+    private async Task PollAsync()
+    {
+        // Poll the server's live progress snapshot until the operation is no longer running.
+        var api = DemoData as ApiDemoDataService;
+        while (_error is null)
+        {
+            if (api is not null)
+            {
+                try
+                {
+                    _progress = await api.GetProgressAsync();
+                }
+                catch
+                {
+                    // Ignore transient poll failures; the work task governs completion.
+                }
+            }
+
+            await InvokeAsync(StateHasChanged);
+
+            if (_error is not null || (_done && !_progress.Running))
+            {
+                break;
+            }
+
+            await Task.Delay(400);
+        }
+
+        if (_error is null)
+        {
+            MudDialog.Close(DialogResult.Ok(_result));
+        }
+        else
+        {
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void Close() => MudDialog.Cancel();
+}

@@ -16,6 +16,10 @@ public sealed class PayoutRepository : AdminRepositoryBase, IPayoutRepository
     {
     }
 
+    /// <summary>Deletes a payout by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Payouts WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns every payout, most recent first.</summary>
     public async Task<IReadOnlyList<Payout>> GetAllAsync(CancellationToken cancellationToken = default)
     {

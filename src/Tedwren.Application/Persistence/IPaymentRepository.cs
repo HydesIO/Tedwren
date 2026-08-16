@@ -22,4 +22,7 @@ public interface IPaymentRepository
 
     /// <summary>Updates an existing payment.</summary>
     Task UpdateAsync(Payment payment, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a payment by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

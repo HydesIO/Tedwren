@@ -61,6 +61,7 @@ builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
 builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
 builder.Services.AddScoped<IPermitService, ApiPermitService>();
 builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
+builder.Services.AddScoped<IDemoDataService, ApiDemoDataService>();
 builder.Services.AddScoped<IPlatformAdminService, ApiPlatformAdminService>();
 builder.Services.AddScoped<ILaunchListService, ApiLaunchListService>();
 builder.Services.AddScoped<ILeadService, ApiLeadService>();

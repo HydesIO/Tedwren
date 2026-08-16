@@ -15,6 +15,10 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
     {
     }
 
+    /// <summary>Deletes a company by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Companies WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns all companies ordered by name.</summary>
     public async Task<IReadOnlyList<Company>> GetAllAsync(CancellationToken cancellationToken = default)
     {

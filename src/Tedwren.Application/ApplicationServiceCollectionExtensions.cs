@@ -392,6 +392,18 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>
+    /// Registers the demo-data service (Product Admin seed/recreate/delete) and its shared progress tracker.
+    /// The service consumes the ordinary repositories, so it works over either data source; the progress
+    /// tracker is a singleton because seeding and polling happen on different requests.
+    /// </summary>
+    public static IServiceCollection AddDemoDataCore(this IServiceCollection services)
+    {
+        services.AddSingleton<Tedwren.Application.DemoData.DemoDataProgressState>();
+        services.AddScoped<IDemoDataService, Tedwren.Application.DemoData.DemoDataService>();
+        return services;
+    }
+
     /// <summary>Registers the in-memory mandate, payment and subscription repositories (test-only double).</summary>
     public static IServiceCollection AddInMemoryBillingStore(this IServiceCollection services)
     {

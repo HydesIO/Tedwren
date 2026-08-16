@@ -10,6 +10,13 @@ public sealed class InMemoryCompanyRepository : ICompanyRepository
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemoryCompanyRepository(InMemoryOrganisationStore store) => _store = store;
 
+    /// <summary>Removes a company from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Companies.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Returns all companies ordered by name.</summary>
     public Task<IReadOnlyList<Company>> GetAllAsync(CancellationToken cancellationToken = default)
     {

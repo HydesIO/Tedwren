@@ -27,6 +27,10 @@ public sealed class AttendanceRepository : RepositoryBase, IAttendanceRepository
     {
     }
 
+    /// <summary>Deletes an attendance record by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Attendance WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Appends an attendance record.</summary>
     public Task AddAsync(AttendanceRecord record, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
