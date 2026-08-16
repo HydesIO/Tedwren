@@ -17,6 +17,10 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
     {
     }
 
+    /// <summary>Deletes a user by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Users WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns all users ordered by name.</summary>
     public async Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default)
     {

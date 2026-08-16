@@ -10,6 +10,13 @@ public sealed class InMemoryQualificationCardRepository : IQualificationCardRepo
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemoryQualificationCardRepository(InMemoryQualificationStore store) => _store = store;
 
+    /// <summary>Removes a qualification card from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Cards.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Returns all cards held by a person (including superseded ones), newest first.</summary>
     public Task<IReadOnlyList<QualificationCard>> GetByPersonAsync(Guid personId, CancellationToken cancellationToken = default)
     {

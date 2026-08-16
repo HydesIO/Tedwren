@@ -11,6 +11,9 @@ public interface IAttendanceRepository
     /// <summary>Appends an attendance record.</summary>
     Task AddAsync(AttendanceRecord record, CancellationToken cancellationToken = default);
 
+    /// <summary>Permanently removes an attendance record by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
     /// <summary>Returns the person's current open sign-in anywhere, or null (the SF-18 cross-site check, Q4).</summary>
     Task<AttendanceRecord?> GetOpenSignInForPersonAsync(Guid personId, CancellationToken cancellationToken = default);
 

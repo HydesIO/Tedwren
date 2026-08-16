@@ -22,4 +22,7 @@ public interface IUserRepository
 
     /// <summary>Persists changes to an existing user (role, name, status).</summary>
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a user by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

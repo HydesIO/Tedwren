@@ -16,6 +16,10 @@ public sealed class BillingSubscriptionRepository : AdminRepositoryBase, IBillin
     {
     }
 
+    /// <summary>Deletes a subscription by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM BillingSubscriptions WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns every subscription, most recent first.</summary>
     public async Task<IReadOnlyList<BillingSubscription>> GetAllAsync(CancellationToken cancellationToken = default)
     {

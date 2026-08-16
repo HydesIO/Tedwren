@@ -11,6 +11,33 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Admin — Demo Data Service (this change)
+- ✅ **Demo Data Service (`IDemoDataService`/`DemoDataService`, `src/Tedwren.Application/DemoData`).** Seeds,
+  recreates and deletes a deterministic demonstration dataset across the **product and commercial** databases
+  for the Product Admin portal. Two tenants: **Demo Contractors Ltd** (main contractor, admin
+  `contractor@tedwren.com`) with 10 gated sites + 25 uniquely-named operatives, and **Demo Sub Contractors Ltd**
+  (subcontractor, admin `subcontractor@tedwren.com`) with its own **distinct** sites — deliberately including
+  dispersed **retrofit sites with no gate** (`HasCompound=false`, `IsDispersed=true`, attendance flagged, MC
+  retrofit path) — plus 5 contractors. Both admins use password `Demo123!`. Comprehensive history: module
+  entitlements, qualification cards (valid/expiring/expired mix), 10 working days of sign-in/out attendance,
+  and a full commercial history — mandate + metered subscription + 12 months of payments (incl. a
+  failed-then-re-taken month and an in-flight latest) + BACS payouts per company, so `/admin/payments`,
+  `/admin/billing`, `/admin/subscriptions` and `/admin/payouts` all show live reporting data.
+- ✅ **Deterministic, precise teardown.** Every record's id derives from a fixed namespace + stable key
+  (`DemoDataIds.Derive`, SHA-1 name-based), so a single `DemoDataPlanBuilder.Build()` drives both seed (insert)
+  and delete (remove by id, reverse dependency order). Recreate = clear + rebuild with the same ids. Nothing
+  outside the two demo companies is ever touched. Added a uniform `DeleteAsync(id)` (and entitlement
+  `ClearForCompanyAsync`) to the touched repositories — Dapper (dual-engine, parameterised `DELETE`) and the
+  in-memory doubles — so teardown runs identically on either data source.
+- ✅ **API + Product Admin UI.** `DemoDataEndpoints` (`/api/admin/demo-data` `status`/`progress`/`seed`/`delete`)
+  gated by the `PlatformAdmin` policy; client `ApiDemoDataService`. New page `/admin/demo-data` (nav item added)
+  with status KPIs and Create/Recreate/Delete buttons; the action runs inside a **`MudDialog`
+  (`DemoDataProgressDialog`)** driven by a **`MudProgressLinear`** that polls the server's staged progress
+  (`DemoDataProgressState` singleton). Delete/Recreate are confirm-gated (`ConfirmDialog`).
+- ✅ Tests: `DemoDataServiceTests` (seed counts, complete delete, idempotent reseed) + `DemoDataApiTests`
+  (platform-admin seed→status→delete round-trip). Whole solution builds (0 warnings); all tests pass
+  (Application 194, Api 100; LocalDB integration skipped).
+
 ### Admin — Affiliates, payouts & e-sign agreements (Phase 3, this change)
 - ✅ **Affiliate slice (commercial DB).** `Affiliate` (embedded commission plan), `AffiliatePayout`,
   `AffiliateAgreement` entities + enums, DTOs, `IAffiliateService`/`AffiliateService`, `IAffiliateRepository`

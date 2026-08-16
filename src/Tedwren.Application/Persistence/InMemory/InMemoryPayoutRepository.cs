@@ -26,6 +26,13 @@ public sealed class InMemoryPayoutRepository : IPayoutRepository
         return Task.CompletedTask;
     }
 
+    /// <summary>Removes a payout from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _payouts.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Updates a payout.</summary>
     public Task UpdateAsync(Payout payout, CancellationToken cancellationToken = default)
     {

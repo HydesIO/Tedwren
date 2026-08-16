@@ -10,6 +10,13 @@ public sealed class InMemoryUserRepository : IUserRepository
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemoryUserRepository(InMemoryUserStore store) => _store = store;
 
+    /// <summary>Removes a user from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Users.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Returns all users ordered by name.</summary>
     public Task<IReadOnlyList<User>> GetAllAsync(CancellationToken cancellationToken = default)
     {

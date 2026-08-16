@@ -11,6 +11,13 @@ public sealed class InMemoryPersonRepository : IPersonRepository
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemoryPersonRepository(InMemoryOrganisationStore store) => _store = store;
 
+    /// <summary>Removes a person from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.People.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Returns the person holding this mobile number, or null (SF-1).</summary>
     public Task<Person?> GetByPhoneAsync(PhoneNumber phoneNumber, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.People.Values.FirstOrDefault(p => p.PhoneNumber.Equals(phoneNumber)));
