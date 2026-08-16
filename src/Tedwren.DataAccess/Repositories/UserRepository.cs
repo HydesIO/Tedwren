@@ -9,7 +9,7 @@ namespace Tedwren.DataAccess.Repositories;
 public sealed class UserRepository : RepositoryBase, IUserRepository
 {
     private const string Columns =
-        "Id, CompanyId, Name, Email, Role, Status, CreatedUtc, LastActiveUtc, " +
+        "Id, CompanyId, Name, Email, Mobile, AvatarImageReference, Role, Status, CreatedUtc, LastActiveUtc, " +
         "PasswordHash, PasswordSetUtc, InviteToken, InviteTokenExpiresUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
@@ -53,18 +53,29 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
     /// <summary>Inserts a new user.</summary>
     public Task AddAsync(User user, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "INSERT INTO Users (Id, CompanyId, Name, Email, Role, Status, CreatedUtc, LastActiveUtc, " +
+            "INSERT INTO Users (Id, CompanyId, Name, Email, Mobile, AvatarImageReference, Role, Status, CreatedUtc, LastActiveUtc, " +
             "PasswordHash, PasswordSetUtc, InviteToken, InviteTokenExpiresUtc) " +
-            "VALUES (@Id, @CompanyId, @Name, @Email, @Role, @Status, @CreatedUtc, @LastActiveUtc, " +
+            "VALUES (@Id, @CompanyId, @Name, @Email, @Mobile, @AvatarImageReference, @Role, @Status, @CreatedUtc, @LastActiveUtc, " +
             "@PasswordHash, @PasswordSetUtc, @InviteToken, @InviteTokenExpiresUtc)",
             ToParameters(user), cancellationToken);
 
     /// <summary>Updates an existing user's mutable fields (including credentials/invite state).</summary>
     public Task UpdateAsync(User user, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "UPDATE Users SET Name = @Name, Email = @Email, Role = @Role, Status = @Status, " +
-            "LastActiveUtc = @LastActiveUtc, PasswordHash = @PasswordHash, PasswordSetUtc = @PasswordSetUtc, " +
-            "InviteToken = @InviteToken, InviteTokenExpiresUtc = @InviteTokenExpiresUtc WHERE Id = @Id",
+            "UPDATE Users SET Name = @Name, Email = @Email, Mobile = @Mobile, AvatarImageReference = @AvatarImageReference, " +
+            "Role = @Role, Status = @Status, LastActiveUtc = @LastActiveUtc, PasswordHash = @PasswordHash, " +
+            "PasswordSetUtc = @PasswordSetUtc, InviteToken = @InviteToken, InviteTokenExpiresUtc = @InviteTokenExpiresUtc WHERE Id = @Id",
+            ToParameters(user), cancellationToken);
+
+    /// <summary>
+    /// Self-service profile update (SF-20). Writes only the fields a user may change about themselves — name,
+    /// email, mobile, avatar and credentials — and deliberately never <c>Role</c> or <c>Status</c>, so a user
+    /// can never escalate their own access or reactivate a suspended account (tenant safety, R15).
+    /// </summary>
+    public Task UpdateProfileAsync(User user, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            "UPDATE Users SET Name = @Name, Email = @Email, Mobile = @Mobile, AvatarImageReference = @AvatarImageReference, " +
+            "LastActiveUtc = @LastActiveUtc, PasswordHash = @PasswordHash, PasswordSetUtc = @PasswordSetUtc WHERE Id = @Id",
             ToParameters(user), cancellationToken);
 
     /// <summary>Flattens a user to Dapper parameters (enums stored as ints).</summary>
@@ -74,6 +85,8 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
         u.CompanyId,
         u.Name,
         u.Email,
+        u.Mobile,
+        u.AvatarImageReference,
         Role = (int)u.Role,
         Status = (int)u.Status,
         u.CreatedUtc,
@@ -91,6 +104,8 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
         CompanyId = r.CompanyId,
         Name = r.Name,
         Email = r.Email,
+        Mobile = r.Mobile,
+        AvatarImageReference = r.AvatarImageReference,
         Role = (AccessRole)r.Role,
         Status = (UserStatus)r.Status,
         CreatedUtc = r.CreatedUtc,
@@ -103,7 +118,7 @@ public sealed class UserRepository : RepositoryBase, IUserRepository
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
     private sealed record Row(
-        Guid Id, Guid CompanyId, string Name, string Email, int Role, int Status,
+        Guid Id, Guid CompanyId, string Name, string Email, string? Mobile, string? AvatarImageReference, int Role, int Status,
         DateTimeOffset CreatedUtc, DateTimeOffset? LastActiveUtc,
         string? PasswordHash, DateTimeOffset? PasswordSetUtc, string? InviteToken, DateTimeOffset? InviteTokenExpiresUtc);
 }

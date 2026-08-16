@@ -20,6 +20,13 @@ public sealed class TestBypassAuthenticationHandler : AuthenticationHandler<Auth
     /// <summary>The seed company the fabricated identity is scoped to (matches the client's default tenant).</summary>
     private static readonly Guid SeedCompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
 
+    /// <summary>
+    /// A fixed user id for the fabricated identity, so self-service endpoints (e.g. <c>/api/me/profile</c>) can
+    /// resolve "the caller" deterministically in tests. A test that exercises those endpoints seeds a matching
+    /// user with this id; every other test simply ignores it.
+    /// </summary>
+    public static readonly Guid OperatorId = Guid.Parse("33333333-3333-4333-8333-000000000001");
+
     /// <summary>Creates the handler.</summary>
     public TestBypassAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger, UrlEncoder encoder)
@@ -32,7 +39,7 @@ public sealed class TestBypassAuthenticationHandler : AuthenticationHandler<Auth
     {
         var claims = new[]
         {
-            new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()),
+            new Claim(ClaimTypes.NameIdentifier, OperatorId.ToString()),
             new Claim(ClaimTypes.Name, "Test Administrator"),
             new Claim(ClaimTypes.Role, AccessRole.Administrator.ToString()),
             new Claim(JwtTokenIssuer.CompanyClaim, SeedCompanyId.ToString()),

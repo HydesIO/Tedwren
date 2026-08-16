@@ -306,6 +306,7 @@ app.MapAuditEndpoints();
 app.MapDecisionEndpoints();
 app.MapReferenceDataEndpoints();
 app.MapCurrentUserEndpoints();
+app.MapProfileEndpoints();
 app.MapWorkforceEndpoints();
 app.MapDashboardEndpoints();
 app.MapSettingsEndpoints();

@@ -33,7 +33,7 @@
                        aria-label="Help" />
         <div class="topbar__divider" aria-hidden="true"></div>
         <ProfileMenu UserName="@CurrentUserName" UserRole="@CurrentUserRole"
-                     AvatarUrl="@CurrentUserAvatarUrl" OnSignOut="OnSignOut" />
+                     AvatarUrl="@CurrentUserAvatarUrl" ProfileHref="@ProfileHref" OnSignOut="OnSignOut" />
     </div>
 </header>
 
@@ -44,6 +44,7 @@
     [Parameter] public string CurrentUserName { get; set; } = string.Empty;
     [Parameter] public string CurrentUserRole { get; set; } = string.Empty;
     [Parameter] public string? CurrentUserAvatarUrl { get; set; }
+    [Parameter] public string ProfileHref { get; set; } = "#";
     [Parameter] public bool ShowMenuButton { get; set; }
     [Parameter] public bool IsDark { get; set; }
     [Parameter] public EventCallback OnMenuClick { get; set; }

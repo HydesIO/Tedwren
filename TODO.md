@@ -11,6 +11,41 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Self-service Profile page (Phase 7, this change) — SF-20, R9, R15
+Implements the plan recorded in `docs/profile-page-plan.md`. The avatar dropdown's "Profile" link was a dead
+link (`ProfileHref` defaulted to `"#"`); a signed-in console user now has a real `/profile` page.
+- ✅ **Domain/persistence.** Added `Mobile` + `AvatarImageReference` to `User` (`Tedwren.Domain`). Dapper
+  `UserRepository` round-trips both columns and gains an `UpdateProfileAsync` that writes only
+  name/email/mobile/avatar/credentials and **never** role/status, so a user cannot escalate their own access
+  (R15). In-memory double mirrors that guard. EF migration `AddUserMobileAndAvatar` + additive idempotent SQL
+  scripts `022_user_profile.sql` (SQL Server + Postgres) so the runtime `MigrationRunner` schema matches.
+- ✅ **Contracts.** New `Account/AccountDtos` (`MyProfileDto`, `UpdateMyProfileRequest`, `ChangePasswordRequest`,
+  `UpdateAvatarRequest`); `CurrentUserDto` extended with `AvatarUrl` + `UserId` so `/api/me` renders the top-bar
+  avatar without a second call and resolves "the caller" server-side.
+- ✅ **Application.** `IProfileService`/`ProfileService` resolves the caller from `ICurrentUserService` (never a
+  client id), reuses `PasswordHasher` for change-password (verifies current → rehashes) and `IImageStore` for the
+  base64 avatar (R9). `ClaimsCurrentUserService` now surfaces the caller's id (from the JWT subject) + avatar.
+- ✅ **API.** Authenticated (secure-by-default, no `AllowAnonymous`) `/api/me/*`: `GET`/`PUT profile`,
+  `POST password`, `POST avatar`. Avatar served via the existing `GET /api/images/{id}`.
+- ✅ **Client/UI.** `ApiProfileService` + DI. New `Pages/Profile/Profile.razor` (`/profile`) reusing the kit only
+  (`FormSection`/`FormActions`/`Tedwren*`/`KeyValueList`/snackbar) with personal-details, avatar, security and
+  company sections; company editable by Administrators only, read-only otherwise. Shell wiring: `MainLayout`
+  passes the real avatar URL, wires sign-out and `ProfileHref="/profile"`. Removed the redundant "Settings" item
+  (and unused `SettingsHref`) from `ProfileMenu`; sidebar "System Configuration" and admin "Admin Settings" left
+  untouched.
+- ✅ **Tests.** `ProfileServiceTests` (11) + `ProfileApiTests` (6): read/update own record, change-password
+  (wrong→rejected, correct→rehashed), avatar round-trip, role/status not self-changeable, and 401 for every
+  anonymous `/api/me/*`. Whole solution builds (0 errors, no new warnings); all suites green (LocalDB integration
+  tests skipped as usual).
+- ❗ **Self-service billing deferred — PRD discrepancy raised (not built).** The plan's billing section was
+  **not** implemented. Per `CLAUDE.md`, PRD v6.4 was checked: §9 (Commercial model) treats which-meter/which-band
+  as configuration and §8.4 (Phase 4 — Pay and cost) is worker payment release, not a customer-facing
+  subscription/direct-debit surface. No SF/SUB/MC/R id sanctions self-service billing; the existing GoCardless
+  surface is deliberately `PlatformAdmin`-only. Rather than invent the requirement, the customer-facing billing
+  section was omitted and this discrepancy is raised for a product decision. The open **email-as-identity**
+  question was handled conservatively: name/mobile edit freely; an email change is allowed but guarded against
+  colliding with another account (no re-verification flow yet).
+
 ### Bugfix — Dapper DateOnly/TimeOnly materialisation against SQL Server (this change)
 - ✅ **DateOnly/TimeOnly Dapper type handlers.** Microsoft.Data.SqlClient returns `date`/`time` columns as
   `DateTime`/`TimeSpan`, which Dapper could not bind to record-constructor parameters typed `DateOnly`/`TimeOnly`,
