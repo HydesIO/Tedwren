@@ -589,6 +589,8 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
                     Email = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Mobile = table.Column<string>(type: "nvarchar(32)", maxLength: 32, nullable: true),
+                    AvatarImageReference = table.Column<string>(type: "nvarchar(max)", nullable: true),
                     Role = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),

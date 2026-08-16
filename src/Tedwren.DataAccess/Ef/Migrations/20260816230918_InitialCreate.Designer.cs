@@ -12,8 +12,8 @@ using Tedwren.DataAccess.Ef;
 namespace Tedwren.DataAccess.Ef.Migrations
 {
     [DbContext(typeof(TedwrenDbContext))]
-    [Migration("20260816205906_AddUserMobileAndAvatar")]
-    partial class AddUserMobileAndAvatar
+    [Migration("20260816230918_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
