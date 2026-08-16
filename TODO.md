@@ -11,6 +11,17 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Bugfix — Dapper DateOnly/TimeOnly materialisation against SQL Server (this change)
+- ✅ **DateOnly/TimeOnly Dapper type handlers.** Microsoft.Data.SqlClient returns `date`/`time` columns as
+  `DateTime`/`TimeSpan`, which Dapper could not bind to record-constructor parameters typed `DateOnly`/`TimeOnly`,
+  throwing `InvalidOperationException: A parameterless default constructor or one matching signature ... is
+  required` at runtime (first surfaced from `QualificationCardRepository.GetCurrentWithExpiryAsync` via the
+  expiry query). Added `DateOnlyTypeHandler`/`TimeOnlyTypeHandler` + idempotent, process-wide
+  `DapperTypeHandlers.EnsureRegistered()` (`src/Tedwren.DataAccess/TypeHandlers/`), registered from both
+  `AddSqlDataAccess` and `AddCommercialSqlDataAccess`. Fixes every DateOnly-bearing repository (qualification
+  cards, permits, compliance packs, company documents, timesheets, payments/payouts). DB-free regression tests
+  in `DapperTypeHandlerTests`.
+
 ### Commercial data plane — separate project + EF migrations (this change)
 - ✅ **New `src/Tedwren.DataAccess.Commercial` project.** The commercial/admin Dapper plane is extracted from
   `Tedwren.DataAccess` into its own project: `AdminRepositoryBase`, `IAdminDbConnectionFactory`/

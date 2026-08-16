@@ -20,6 +20,10 @@ public static class CommercialDataAccessServiceCollectionExtensions
     public static IServiceCollection AddCommercialSqlDataAccess(
         this IServiceCollection services, DatabaseProvider provider, string connectionString)
     {
+        // Ensure the Dapper DateOnly/TimeOnly handlers are registered even if this plane is wired up
+        // on its own; registration is idempotent and process-wide.
+        Tedwren.DataAccess.TypeHandlers.DapperTypeHandlers.EnsureRegistered();
+
         services.AddSingleton(new AdminSqlDataAccessOptions { Provider = provider, ConnectionString = connectionString });
         services.AddSingleton<IAdminDbConnectionFactory, AdminDbConnectionFactory>();
 

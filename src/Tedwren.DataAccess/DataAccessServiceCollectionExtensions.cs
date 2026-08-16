@@ -19,6 +19,11 @@ public static class DataAccessServiceCollectionExtensions
     public static IServiceCollection AddSqlDataAccess(
         this IServiceCollection services, DatabaseProvider provider, string connectionString)
     {
+        // Register the Dapper DateOnly/TimeOnly handlers before any repository runs — SQL Server
+        // returns date/time columns as DateTime/TimeSpan, which Dapper cannot otherwise map onto the
+        // DateOnly/TimeOnly record constructor parameters used across the repositories.
+        Tedwren.DataAccess.TypeHandlers.DapperTypeHandlers.EnsureRegistered();
+
         services.AddSingleton(new SqlDataAccessOptions { Provider = provider, ConnectionString = connectionString });
         services.AddSingleton<ISqlDialect>(_ =>
             provider == DatabaseProvider.PostgreSql ? new PostgresDialect() : new SqlServerDialect());
