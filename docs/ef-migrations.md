@@ -5,8 +5,8 @@ data access stays on **Dapper (DML)**. The two are deliberately separate:
 
 | Concern | Owner |
 |---|---|
-| Creating / evolving tables, columns, indexes | EF Core migrations (`Tedwren.DataAccess/Ef`) |
-| Reading / writing rows at runtime | Dapper repositories (`Tedwren.DataAccess/Repositories`) |
+| Creating / evolving tables, columns, indexes | EF Core migrations — product: `Tedwren.DataAccess/Ef`; commercial: `Tedwren.DataAccess.Commercial/Ef` (see §8) |
+| Reading / writing rows at runtime | Dapper repositories (`Tedwren.DataAccess/Repositories`, `Tedwren.DataAccess.Commercial/Repositories`) |
 
 The EF model lives in `src/Tedwren.DataAccess/Ef`:
 
@@ -174,9 +174,28 @@ dev setup still runs.
   `MigrationRunner.RunAsync(factory, area)` runs each area against its own database; `Program.cs` calls it once
   per database at startup. Add a new commercial table's script under `.../Commercial/` (continue the number
   sequence, e.g. `025_*`), and a new product table's script at the engine-folder root.
-- **EF migrations:** the EF `TedwrenDbContext` covers the product database. A commercial-database EF context is
-  **deferred** (like the PostgreSQL EF path in §7) — the idempotent commercial scripts are the source of truth
-  for the commercial schema for now.
+- **EF migrations:** the EF `TedwrenDbContext` (in `Tedwren.DataAccess`) covers the **product** database. The
+  **commercial** database has its own EF context, `CommercialDbContext`, in the separate
+  **`Tedwren.DataAccess.Commercial`** project (`Ef/CommercialDbContext.cs`, `Ef/CommercialSchemaRecords.cs`,
+  design-time `Ef/CommercialDbContextFactory.cs`). Its design-time factory reads
+  `ConnectionStrings:SqlServerCommercial` (falling back to `ConnectionStrings:SqlServer` when empty, mirroring the
+  runtime fallback); `TEDWREN_EF_COMMERCIAL_CONNECTION` overrides it. Because two contexts are now discoverable,
+  pass `--context` and point `-p/-s` at the commercial project:
+
+  ```bash
+  # create/evolve the commercial migration
+  dotnet ef migrations add <Name> --context CommercialDbContext \
+    -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial -o Ef/Migrations
+
+  # apply to the commercial database
+  dotnet ef database update --context CommercialDbContext \
+    -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial
+  ```
+
+  EF is authoritative for the commercial schema; the idempotent commercial scripts remain valid and the startup
+  `MigrationRunner` (Commercial area) stays a no-op over EF-created tables (the EF mappings reproduce the scripts'
+  table/column/index names). **PostgreSQL** commercial EF is still **deferred** with the Postgres launch gate
+  (§7) — the commercial SQL scripts cover Postgres in the meantime.
 - **Relocation of the billing tables:** scripts `022`–`024` (billing, webhook events, payouts) moved from the
   product set into the commercial set. Fresh environments get these created directly in the commercial
   database. **An already-populated product database** that predates this change still has those tables in the
