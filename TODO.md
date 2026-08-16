@@ -11,6 +11,26 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Commercial data plane — separate project + EF migrations (this change)
+- ✅ **New `src/Tedwren.DataAccess.Commercial` project.** The commercial/admin Dapper plane is extracted from
+  `Tedwren.DataAccess` into its own project: `AdminRepositoryBase`, `IAdminDbConnectionFactory`/
+  `AdminDbConnectionFactory`, `AdminSqlDataAccessOptions`, the 8 commercial repositories (billing plane +
+  go-to-market slices), and `AddCommercialSqlDataAccess` (moved to `CommercialDataAccessServiceCollectionExtensions`).
+  It references `Tedwren.DataAccess` to reuse `RepositoryBase`, the connection abstraction, dialects and the
+  area-aware `MigrationRunner` (no duplication). `Tedwren.Api` and `Tedwren.DataAccess.Tests` now reference it;
+  `Program.cs` is unchanged (same `AddCommercialSqlDataAccess` + `MigrationArea.Commercial` run).
+- ✅ **Commercial EF `DbContext` mirror (SQL Server).** `Ef/CommercialDbContext` + `CommercialSchemaRecords` +
+  design-time `CommercialDbContextFactory` (reads `ConnectionStrings:SqlServerCommercial`, falls back to the
+  product string, `TEDWREN_EF_COMMERCIAL_CONNECTION` override). Mirrors scripts `022`–`032` 1:1 (table/column
+  names, lengths, precision, defaults, the persisted `EmailLower` computed column, and index names) so the
+  idempotent startup scripts stay a no-op over EF-created tables. `InitialCommercialCreate` migration generated
+  under `Ef/Migrations`. EF is now authoritative for the commercial schema; the idempotent scripts remain valid
+  (belt-and-braces), exactly as on the product side.
+- ✅ Scope: SQL Server only now — Postgres commercial EF stays deferred with the Postgres launch gate
+  (`docs/ef-migrations.md §7`); the commercial SQL scripts keep covering Postgres. Whole solution builds
+  (0 errors, no new warnings); all tests pass (LocalDB integration tests skipped). `docs/ef-migrations.md §8`
+  and `CLAUDE.md` updated.
+
 ### Admin — Operational readiness (Phase 7, this change)
 - ✅ **Commercial-DB topology visibility.** Startup log states whether the commercial plane is SEPARATE from or
   SHARED (fallback) with the product database, so a missing `*Commercial` connection string is obvious.
@@ -24,9 +44,9 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   `LaunchSignupRepository`, `LeadRepository`, `AffiliateRepository` via the **admin** factory +
   `MigrationArea.Commercial` (SkippableFact; skipped without `TEDWREN_TEST_SQLSERVER`). The Postgres parity gate
   for the commercial slice. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
-- ❗ Follow-ups still open: a commercial EF `DbContext` mirror (scripts remain authoritative), a pending-payouts
-  dashboard tile (needs an aggregate endpoint to avoid N+1), and reconciling the profit-vs-revenue commission
-  models with `Tedwren.Web.Partners`.
+- ❗ Follow-ups still open: a pending-payouts dashboard tile (needs an aggregate endpoint to avoid N+1), and
+  reconciling the profit-vs-revenue commission models with `Tedwren.Web.Partners`. (The commercial EF
+  `DbContext` mirror is now delivered — see the separate-project entry below.)
 
 ### Admin — Real commission & company matching (Phase 6, this change)
 - ✅ **Commission from cleared revenue.** `AffiliateService` now reads the account's actual direct-debit
@@ -147,9 +167,9 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
   integration tests skipped). Existing DataAccess integration tests updated to the new `MigrationRunner`
   signature (Product area).
 - ⏳ Next: Phase 2 Lead management (card-grid admin UI + notes + convert), Phase 3 Affiliates (profit-after-
-  margin commission plans, payouts, e-sign agreement + PDF). A commercial-DB EF `DbContext` mirror is
-  deferred — the idempotent SQL scripts are authoritative for the commercial DB for now (as with the deferred
-  Postgres EF path, `docs/ef-migrations.md §7`).
+  margin commission plans, payouts, e-sign agreement + PDF). The commercial-DB EF `DbContext` mirror is now
+  delivered in the separate `Tedwren.DataAccess.Commercial` project (SQL Server; Postgres commercial EF stays
+  deferred with the Postgres launch gate, `docs/ef-migrations.md §7`).
 
 ### Admin area — Phase D: GoCardless BACS payouts (this change)
 - ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /

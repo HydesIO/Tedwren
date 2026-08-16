@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tedwren.DataAccess\Tedwren.DataAccess.csproj" />
+    <ProjectReference Include="..\..\src\Tedwren.DataAccess.Commercial\Tedwren.DataAccess.Commercial.csproj" />
   </ItemGroup>
 
 </Project>
