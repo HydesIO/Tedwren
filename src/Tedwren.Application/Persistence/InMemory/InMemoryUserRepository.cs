@@ -51,4 +51,25 @@ public sealed class InMemoryUserRepository : IUserRepository
         _store.Users[user.Id] = user;
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Self-service profile update: mirrors the Dapper repository by writing only name/email/mobile/avatar and
+    /// credentials while preserving the stored <c>Role</c> and <c>Status</c>, so the double enforces the same
+    /// "a user cannot self-change their role/status" guarantee the SQL does (R15).
+    /// </summary>
+    public Task UpdateProfileAsync(User user, CancellationToken cancellationToken = default)
+    {
+        if (_store.Users.TryGetValue(user.Id, out var existing))
+        {
+            existing.Name = user.Name;
+            existing.Email = user.Email;
+            existing.Mobile = user.Mobile;
+            existing.AvatarImageReference = user.AvatarImageReference;
+            existing.LastActiveUtc = user.LastActiveUtc;
+            existing.PasswordHash = user.PasswordHash;
+            existing.PasswordSetUtc = user.PasswordSetUtc;
+        }
+
+        return Task.CompletedTask;
+    }
 }

@@ -19,6 +19,11 @@ public static class DataAccessServiceCollectionExtensions
     public static IServiceCollection AddSqlDataAccess(
         this IServiceCollection services, DatabaseProvider provider, string connectionString)
     {
+        // Register the Dapper DateOnly/TimeOnly handlers before any repository runs — SQL Server
+        // returns date/time columns as DateTime/TimeSpan, which Dapper cannot otherwise map onto the
+        // DateOnly/TimeOnly record constructor parameters used across the repositories.
+        Tedwren.DataAccess.TypeHandlers.DapperTypeHandlers.EnsureRegistered();
+
         services.AddSingleton(new SqlDataAccessOptions { Provider = provider, ConnectionString = connectionString });
         services.AddSingleton<ISqlDialect>(_ =>
             provider == DatabaseProvider.PostgreSql ? new PostgresDialect() : new SqlServerDialect());
@@ -54,34 +59,6 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IDecisionRepository, DecisionRepository>();
         services.AddScoped<Qualifications.QualificationLibrarySeeder>();
         services.AddSingleton<MigrationRunner>();
-        return services;
-    }
-
-    /// <summary>
-    /// Registers the <b>Commercial</b> database access: the admin connection factory (bound to the second
-    /// connection string) and every repository whose data lives in the commercial catalogue — the billing
-    /// plane (mandates, payments, subscriptions, webhook events, payouts) and the go-to-market slices (launch
-    /// list, leads, affiliates). Called alongside <see cref="AddSqlDataAccess"/>; it reuses the shared
-    /// <see cref="ISqlDialect"/> registered there and the <see cref="MigrationRunner"/>, which the composition
-    /// root runs once per database (product factory then admin factory).
-    /// </summary>
-    public static IServiceCollection AddCommercialSqlDataAccess(
-        this IServiceCollection services, DatabaseProvider provider, string connectionString)
-    {
-        services.AddSingleton(new AdminSqlDataAccessOptions { Provider = provider, ConnectionString = connectionString });
-        services.AddSingleton<IAdminDbConnectionFactory, AdminDbConnectionFactory>();
-
-        // Billing plane (relocated from the product database — see docs/ef-migrations.md).
-        services.AddScoped<IMandateRepository, MandateRepository>();
-        services.AddScoped<IPaymentRepository, PaymentRepository>();
-        services.AddScoped<IBillingSubscriptionRepository, BillingSubscriptionRepository>();
-        services.AddScoped<IWebhookEventRepository, WebhookEventRepository>();
-        services.AddScoped<IPayoutRepository, PayoutRepository>();
-
-        // Go-to-market slices.
-        services.AddScoped<ILaunchSignupRepository, LaunchSignupRepository>();
-        services.AddScoped<ILeadRepository, LeadRepository>();
-        services.AddScoped<IAffiliateRepository, AffiliateRepository>();
         return services;
     }
 }

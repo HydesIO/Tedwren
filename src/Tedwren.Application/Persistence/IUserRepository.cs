@@ -25,4 +25,10 @@ public interface IUserRepository
 
     /// <summary>Permanently removes a user by id (used only by the demo-data teardown).</summary>
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a self-service profile change: name, email, mobile, avatar and credentials only — never role
+    /// or status, so a user cannot escalate their own access from their profile page (R15).
+    /// </summary>
+    Task UpdateProfileAsync(User user, CancellationToken cancellationToken = default);
 }

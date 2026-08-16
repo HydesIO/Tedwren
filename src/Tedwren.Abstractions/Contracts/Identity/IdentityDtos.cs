@@ -13,4 +13,18 @@ namespace Tedwren.Abstractions.Contracts.Identity;
 /// tenant — as opposed to a customer's own company administrator. Gates the admin area. Computed
 /// server-side from the request claims; never trusted from the client.
 /// </param>
-public sealed record CurrentUserDto(string Name, string Role, Guid? CompanyId, bool IsPlatformAdmin = false);
+/// <param name="AvatarUrl">
+/// The operator's avatar address (the authorised <c>/api/images/{ref}</c> endpoint), or null when none is set,
+/// so the top-bar avatar can render from the single <c>/api/me</c> call without a second request.
+/// </param>
+/// <param name="UserId">
+/// The operator's own user id, resolved server-side from the authenticated request. Lets the client link to
+/// its own profile; the server never trusts a client-supplied id when acting on the caller's behalf (R15).
+/// </param>
+public sealed record CurrentUserDto(
+    string Name,
+    string Role,
+    Guid? CompanyId,
+    bool IsPlatformAdmin = false,
+    string? AvatarUrl = null,
+    Guid? UserId = null);

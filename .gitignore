@@ -30,3 +30,6 @@ Thumbs.db
 
 # Generated: shared design tokens copied from Tedwren.Client at build (Tedwren.Web)
 src/Tedwren.Web/wwwroot/css/tokens.css
+
+# Generated: shared brand logo copied from Tedwren.Client at build (Tedwren.Web)
+src/Tedwren.Web/wwwroot/images/logo-icon.svg

@@ -143,6 +143,9 @@ builder.Services.AddAuthorization(options =>
 });
 // Database is the only supported runtime backend. The in-memory stores are a test-only double, selected
 // exclusively by the API test host (DataSource:Mode=InMemory) so the end-to-end tests run without SQL Server.
+// Whether the commercial/admin plane has its own database. When false, it falls back to the product database
+// (a single-database dev setup); logged at startup so an operator can confirm the separation is actually active.
+var commercialDbSeparate = false;
 if (backend.Mode == DataSourceMode.InMemory)
 {
     builder.Services.AddInMemoryOrganisationStore();
@@ -174,12 +177,11 @@ else
     // The commercial/admin plane persists to a separate database (its own connection string, "*Commercial").
     // Falls back to the product connection string when unset, so a single-database dev setup still runs.
     var commercialConnectionString = builder.Configuration.GetConnectionString(connectionStringName + "Commercial");
-    if (string.IsNullOrWhiteSpace(commercialConnectionString))
-    {
-        commercialConnectionString = connectionString;
-    }
+    commercialDbSeparate = !string.IsNullOrWhiteSpace(commercialConnectionString);
+    // When no dedicated commercial connection is configured, fall back to the product one (single-DB dev setup).
+    var effectiveCommercialConnectionString = commercialDbSeparate ? commercialConnectionString! : connectionString;
 
-    builder.Services.AddCommercialSqlDataAccess(backend.Provider, commercialConnectionString);
+    builder.Services.AddCommercialSqlDataAccess(backend.Provider, effectiveCommercialConnectionString);
 }
 
 // Runs the expiry engine on a schedule in a real deployment (gated by Jobs:SchedulerEnabled).
@@ -189,6 +191,25 @@ builder.Services.AddHostedService<ExpirySchedulerHostedService>();
 builder.Services.AddHostedService<BillingReconciliationHostedService>();
 
 builder.Services.AddOpenApi();
+
+// Rate limiting for the public (anonymous) endpoints — launch signup, lead capture, agreement view/sign/pdf.
+// A fixed window per client IP, so a bot can't spam signups/leads or hammer the sign endpoint. Authenticated
+// admin surfaces are unaffected. 429 on rejection.
+const string publicRateLimitPolicy = "public";
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(publicRateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                // Generous enough for a shared/NAT'd origin, tight enough to stop a bot hammering the endpoint.
+                PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
 
 // CORS: permit the Blazor WASM client origin(s) declared in configuration to call the API.
 const string clientCorsPolicy = "TedwrenClient";
@@ -212,6 +233,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 app.UseCors(clientCorsPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -246,6 +268,13 @@ if (backend.Mode != DataSourceMode.InMemory)
     await migrationRunner.RunAsync(productConnectionFactory, Tedwren.DataAccess.Migrations.MigrationArea.Product);
     await migrationRunner.RunAsync(commercialConnectionFactory, Tedwren.DataAccess.Migrations.MigrationArea.Commercial);
 
+    // Make the deployment topology visible: is the commercial plane on its own database, or falling back to the
+    // product one? An operator expecting separation should see "separate"; "shared" flags a missing connection string.
+    app.Logger.LogInformation(
+        "Commercial/admin database is {Topology} the product database. Set ConnectionStrings:{Name}Commercial to separate them.",
+        commercialDbSeparate ? "SEPARATE from" : "SHARED with (fallback)",
+        backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer");
+
     // Seed the default qualification library (SF-12) and trade requirements (SF-11) — idempotent.
     var librarySeeder = scope.ServiceProvider.GetRequiredService<Tedwren.DataAccess.Qualifications.QualificationLibrarySeeder>();
     await librarySeeder.RunAsync();
@@ -278,6 +307,7 @@ app.MapAuditEndpoints();
 app.MapDecisionEndpoints();
 app.MapReferenceDataEndpoints();
 app.MapCurrentUserEndpoints();
+app.MapProfileEndpoints();
 app.MapWorkforceEndpoints();
 app.MapDashboardEndpoints();
 app.MapSettingsEndpoints();

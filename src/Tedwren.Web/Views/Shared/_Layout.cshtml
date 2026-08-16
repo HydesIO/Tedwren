@@ -19,6 +19,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    @* Mark the document as script-enabled before paint so scroll-reveal only hides content when JS can
+       reveal it again. With JS disabled the class is absent and all content renders visible. *@
+    <script>document.documentElement.className += " js";</script>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>@fullTitle</title>
@@ -53,5 +56,7 @@
     </main>
     @await Component.InvokeAsync("SiteFooter")
     @await Component.InvokeAsync("ConsentBanner")
+    @* Progressive enhancement only; every page is fully usable without it (Web redesign §motion). *@
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
 </body>
 </html>

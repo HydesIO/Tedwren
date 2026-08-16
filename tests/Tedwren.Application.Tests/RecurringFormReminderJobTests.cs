@@ -34,6 +34,8 @@ public sealed class RecurringFormReminderJobTests
             Task.FromResult<IReadOnlyList<Company>>(new[] { _company });
         public Task<Company?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
             Task.FromResult(id == _company.Id ? _company : null);
+        public Task<Company?> GetByRegistrationNumberAsync(string registrationNumber, CancellationToken cancellationToken = default) =>
+            Task.FromResult<Company?>(null);
         public Task AddAsync(Company company, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task UpdateAsync(Company company, CancellationToken cancellationToken = default) => Task.CompletedTask;
         public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => Task.CompletedTask;

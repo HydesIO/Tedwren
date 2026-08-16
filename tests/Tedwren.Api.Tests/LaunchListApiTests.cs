@@ -55,10 +55,44 @@ public sealed class LaunchListApiTests : IClassFixture<WebApplicationFactory<Pro
     }
 
     [Fact]
-    public async Task Signup_RejectsInvalidEmpty_WithBadRequest()
+    public async Task Signup_RejectsInvalidEmail_WithBadRequest()
     {
         var client = _factory.CreateClient();
-        var response = await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest("   "));
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest("   "))).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest,
+            (await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest("not-an-email"))).StatusCode);
+    }
+
+    [Fact]
+    public async Task Unsubscribe_IsAnonymous_AndReturnsHtml()
+    {
+        var client = _factory.CreateClient();
+        var response = await client.GetAsync($"/api/launch-signups/unsubscribe?token={Guid.NewGuid():N}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task Export_ReturnsCsv_AndDelete_RemovesSubscriber()
+    {
+        var client = _factory.CreateClient();
+        var email = $"del-{Guid.NewGuid():N}@example.com";
+        await client.PostAsJsonAsync("/api/launch-signups", new CreateLaunchSignupRequest(email));
+
+        // Export returns CSV containing the email.
+        var export = await client.GetAsync("/api/launch-signups/export");
+        Assert.Equal(HttpStatusCode.OK, export.StatusCode);
+        Assert.Equal("text/csv", export.Content.Headers.ContentType?.MediaType);
+        Assert.Contains(email, await export.Content.ReadAsStringAsync());
+
+        // Find the id and delete it.
+        var list = await client.GetFromJsonAsync<List<LaunchSignupDto>>("/api/launch-signups");
+        var id = list!.Single(s => s.Email == email).Id;
+        var delete = await client.DeleteAsync($"/api/launch-signups/{id}");
+        Assert.Equal(HttpStatusCode.NoContent, delete.StatusCode);
+
+        var after = await client.GetFromJsonAsync<List<LaunchSignupDto>>("/api/launch-signups");
+        Assert.DoesNotContain(after!, s => s.Id == id);
     }
 }

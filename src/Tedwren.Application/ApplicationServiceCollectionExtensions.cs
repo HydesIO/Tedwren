@@ -102,6 +102,7 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddUserCore(this IServiceCollection services)
     {
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IProfileService, Account.ProfileService>();
         return services;
     }
 

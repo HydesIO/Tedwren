@@ -121,6 +121,7 @@ public sealed class TedwrenDbContext : DbContext
             e.ToTable("Users");
             e.Property(x => x.Email).HasMaxLength(256);
             e.Property(x => x.Name).HasMaxLength(256);
+            e.Property(x => x.Mobile).HasMaxLength(32);
             e.Property(x => x.PasswordHash).HasMaxLength(512);
             e.Property(x => x.InviteToken).HasMaxLength(128);
             e.HasIndex(x => x.Email).IsUnique();               // one account per email

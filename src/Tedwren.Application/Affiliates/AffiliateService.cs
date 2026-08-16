@@ -2,6 +2,7 @@ using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Affiliates;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Common;
 using Tedwren.Application.Export;
 using Tedwren.Application.Notifications.Email;
 using Tedwren.Application.Persistence;
@@ -22,20 +23,32 @@ public sealed class AffiliateService : IAffiliateService
     private const string CountersignatoryName = "James Darby";
     private const string CountersignatoryTitle = "Director";
 
+    /// <summary>Max accepted length of a drawn-signature data URL (~1 MB of base64) — an anti-abuse cap.</summary>
+    private const int MaxSignatureDataUrlLength = 1_500_000;
+
+    /// <summary>Default lifetime of an agreement's signing link before it expires.</summary>
+    private static readonly TimeSpan AgreementLifetime = TimeSpan.FromDays(30);
+
+    /// <summary>Payment states that count as cleared revenue (funds confirmed or settled).</summary>
+    private static readonly PaymentStatus[] ClearedStates = { PaymentStatus.Confirmed, PaymentStatus.PaidOut };
+
     private readonly IAffiliateRepository _repository;
     private readonly ILeadRepository _leads;
+    private readonly IPaymentRepository _payments;
     private readonly IEmailSender _emailSender;
     private readonly EmailOptions _emailOptions;
 
-    /// <summary>Injects the affiliate repository, the lead repository, the email sender and email options.</summary>
+    /// <summary>Injects the affiliate + lead repositories, the payment repository (for earned commission), the email sender and options.</summary>
     public AffiliateService(
         IAffiliateRepository repository,
         ILeadRepository leads,
+        IPaymentRepository payments,
         IEmailSender emailSender,
         EmailOptions emailOptions)
     {
         _repository = repository;
         _leads = leads;
+        _payments = payments;
         _emailSender = emailSender;
         _emailOptions = emailOptions;
     }
@@ -57,17 +70,27 @@ public sealed class AffiliateService : IAffiliateService
         }
 
         var leads = await _leads.ListByAffiliateAsync(id, cancellationToken);
-        var accounts = leads.Select(l => new AssociatedAccountDto(
-            l.Id, l.CompanyName, l.Status.ToString(), l.EstimatedRevenue,
-            affiliate.CommissionOn(l.EstimatedRevenue ?? 0m))).ToList();
+        var accounts = new List<AssociatedAccountDto>(leads.Count);
+        foreach (var l in leads)
+        {
+            var (clearedRevenue, earned) = await EarnedForAccountAsync(affiliate, l, cancellationToken);
+            accounts.Add(new AssociatedAccountDto(
+                l.Id, l.CompanyName, l.Status.ToString(), l.EstimatedRevenue,
+                affiliate.CommissionOn(l.EstimatedRevenue ?? 0m), clearedRevenue, earned));
+        }
 
         var payouts = await _repository.ListPayoutsAsync(id, cancellationToken);
+        var paid = payouts.Where(p => p.Status == AffiliatePayoutStatus.Paid).Sum(p => p.Amount);
+        var earnedTotal = accounts.Sum(a => a.EarnedCommission);
+        var commission = new CommissionSummaryDto(earnedTotal, paid, earnedTotal - paid);
+
         var agreement = await _repository.GetAgreementByAffiliateAsync(id, cancellationToken);
 
         return new AffiliateDetailDto(
             ToDto(affiliate),
             accounts,
             payouts.Select(ToPayoutDto).ToList(),
+            commission,
             agreement is null ? null : ToAgreementSummary(agreement));
     }
 
@@ -75,7 +98,7 @@ public sealed class AffiliateService : IAffiliateService
     public async Task<AffiliateDto> CreateAsync(CreateAffiliateRequest request, CancellationToken cancellationToken = default)
     {
         var name = Require(request.Name, "A name is required.");
-        var email = Require(request.ContactEmail, "A contact email is required.");
+        var email = RequireEmail(request.ContactEmail);
 
         var affiliate = new Affiliate
         {
@@ -99,6 +122,7 @@ public sealed class AffiliateService : IAffiliateService
             CountersignatoryName = CountersignatoryName,
             CountersignatoryTitle = CountersignatoryTitle,
             Status = AffiliateAgreementStatus.Sent,
+            ExpiresUtc = DateTimeOffset.UtcNow.Add(AgreementLifetime),
         };
         await _repository.AddAgreementAsync(agreement, cancellationToken);
 
@@ -120,7 +144,7 @@ public sealed class AffiliateService : IAffiliateService
         }
 
         affiliate.Name = Require(request.Name, "A name is required.");
-        affiliate.ContactEmail = Require(request.ContactEmail, "A contact email is required.");
+        affiliate.ContactEmail = RequireEmail(request.ContactEmail);
         affiliate.Company = Trim(request.Company);
         affiliate.AccountManager = Trim(request.AccountManager);
         affiliate.PayeeReference = Trim(request.PayeeReference);
@@ -173,6 +197,32 @@ public sealed class AffiliateService : IAffiliateService
         return ToPayoutDto(payout);
     }
 
+    /// <summary>Re-sends the affiliate's setup + agreement email, refreshing the signing-link expiry.</summary>
+    public async Task<bool> ResendAgreementAsync(Guid affiliateId, CancellationToken cancellationToken = default)
+    {
+        var affiliate = await _repository.GetAsync(affiliateId, cancellationToken);
+        if (affiliate is null)
+        {
+            return false;
+        }
+
+        var agreement = await _repository.GetAgreementByAffiliateAsync(affiliateId, cancellationToken);
+        if (agreement is null || agreement.Status == AffiliateAgreementStatus.Signed)
+        {
+            return false; // nothing to resend (already signed, or no agreement)
+        }
+
+        // Refresh the expiry so a stale/expired link works again, keeping the same token.
+        agreement.ExpiresUtc = DateTimeOffset.UtcNow.Add(AgreementLifetime);
+        agreement.Status = AffiliateAgreementStatus.Sent;
+        await _repository.UpdateAgreementAsync(agreement, cancellationToken);
+
+        var url = AgreementUrl(agreement.Token);
+        var content = AffiliateEmails.BuildSetupContent(affiliate.Name, affiliate.AffiliateRatePct, affiliate.ProfitMarginPct, url);
+        await SafeSendAsync(affiliate.ContactEmail, AffiliateEmails.SetupSubject, content, cancellationToken);
+        return true;
+    }
+
     /// <summary>Returns the public, token-gated view of an agreement, or null when the token is unknown.</summary>
     public async Task<AffiliateAgreementViewDto?> GetAgreementAsync(string token, CancellationToken cancellationToken = default)
     {
@@ -190,9 +240,15 @@ public sealed class AffiliateService : IAffiliateService
     public async Task<AffiliateAgreementViewDto?> SignAgreementAsync(string token, SignAffiliateAgreementRequest request, CancellationToken cancellationToken = default)
     {
         var agreement = await _repository.GetAgreementByTokenAsync(token, cancellationToken);
-        if (agreement is null || !agreement.IsSignable)
+        if (agreement is null || !agreement.IsSignable || agreement.IsExpired(DateTimeOffset.UtcNow))
         {
             return null;
+        }
+
+        // Cap the signature payload so an oversized data URL can't be used to exhaust memory/storage.
+        if ((request.SignatureDataUrl?.Length ?? 0) > MaxSignatureDataUrlLength)
+        {
+            throw new ArgumentException("The signature is too large.");
         }
 
         var signedName = Require(request.SignedByName, "A name is required to sign.");
@@ -238,6 +294,37 @@ public sealed class AffiliateService : IAffiliateService
     {
         var agreement = await _repository.GetAgreementByTokenAsync(token, cancellationToken);
         return agreement?.PdfBytes;
+    }
+
+    /// <summary>
+    /// Computes an account's cleared first-year revenue and the commission earned on it. Revenue is the net of
+    /// cleared payments (Confirmed/PaidOut) less chargebacks (the clawback), within twelve months of the first
+    /// payment; commission is the affiliate's profit-share of that net. Returns (0, 0) when the lead isn't
+    /// linked to an account or has no cleared payments.
+    /// </summary>
+    private async Task<(decimal ClearedRevenue, decimal Earned)> EarnedForAccountAsync(Affiliate affiliate, Lead lead, CancellationToken cancellationToken)
+    {
+        if (lead.ConvertedAccountId is not { } accountId)
+        {
+            return (0m, 0m);
+        }
+
+        var payments = await _payments.GetByCompanyAsync(accountId, cancellationToken);
+        if (payments.Count == 0)
+        {
+            return (0m, 0m);
+        }
+
+        // First-year window from the earliest payment.
+        var firstPaymentUtc = payments.Min(p => p.CreatedUtc);
+        var windowEnd = firstPaymentUtc.AddMonths(12);
+        var inWindow = payments.Where(p => p.CreatedUtc <= windowEnd).ToList();
+
+        var clearedPence = inWindow.Where(p => ClearedStates.Contains(p.Status)).Sum(p => p.AmountPence);
+        var chargedBackPence = inWindow.Where(p => p.Status == PaymentStatus.ChargedBack).Sum(p => p.AmountPence);
+
+        var netRevenue = Math.Max(0, clearedPence - chargedBackPence) / 100m;
+        return (netRevenue, affiliate.CommissionOn(netRevenue));
     }
 
     /// <summary>Builds the public link to view/sign an agreement (served by the console's anonymous page).</summary>
@@ -304,6 +391,18 @@ public sealed class AffiliateService : IAffiliateService
         return trimmed;
     }
 
+    /// <summary>Requires a contact email and rejects it when not a valid address.</summary>
+    private static string RequireEmail(string? value)
+    {
+        var email = Require(value, "A contact email is required.");
+        if (!EmailValidation.IsValid(email))
+        {
+            throw new ArgumentException("A valid contact email is required.");
+        }
+
+        return email;
+    }
+
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static AffiliateDto ToDto(Affiliate a) => new(
@@ -322,8 +421,8 @@ public sealed class AffiliateService : IAffiliateService
         a.TermsHtml,
         a.CountersignatoryName,
         a.CountersignatoryTitle,
-        a.Status.ToString(),
-        a.IsSignable,
+        a.IsExpired(DateTimeOffset.UtcNow) ? "Expired" : a.Status.ToString(),
+        a.IsSignable && !a.IsExpired(DateTimeOffset.UtcNow),
         a.SignedUtc,
         a.SignedByName);
 }

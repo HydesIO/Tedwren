@@ -1,5 +1,6 @@
 using Tedwren.Abstractions.Contracts.Leads;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Common;
 using Tedwren.Application.Persistence;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
@@ -15,9 +16,14 @@ namespace Tedwren.Application.Leads;
 public sealed class LeadService : ILeadService
 {
     private readonly ILeadRepository _repository;
+    private readonly ICompanyRepository _companies;
 
-    /// <summary>Injects the lead repository.</summary>
-    public LeadService(ILeadRepository repository) => _repository = repository;
+    /// <summary>Injects the lead repository and the (product-database) company repository for account matching.</summary>
+    public LeadService(ILeadRepository repository, ICompanyRepository companies)
+    {
+        _repository = repository;
+        _companies = companies;
+    }
 
     /// <summary>Returns every lead, newest-updated first.</summary>
     public async Task<IReadOnlyList<LeadDto>> ListAsync(CancellationToken cancellationToken = default)
@@ -46,7 +52,7 @@ public sealed class LeadService : ILeadService
         {
             CompanyName = RequireCompany(request.CompanyName),
             ContactName = Trim(request.ContactName),
-            ContactEmail = Trim(request.ContactEmail),
+            ContactEmail = ValidatedEmail(request.ContactEmail),
             Location = Trim(request.Location),
             Model = ParseModel(request.Model),
             NumberOfSites = request.NumberOfSites,
@@ -72,7 +78,7 @@ public sealed class LeadService : ILeadService
 
         lead.CompanyName = RequireCompany(request.CompanyName);
         lead.ContactName = Trim(request.ContactName);
-        lead.ContactEmail = Trim(request.ContactEmail);
+        lead.ContactEmail = ValidatedEmail(request.ContactEmail);
         lead.Location = Trim(request.Location);
         lead.Model = ParseModel(request.Model);
         lead.NumberOfSites = request.NumberOfSites;
@@ -140,12 +146,27 @@ public sealed class LeadService : ILeadService
             return null;
         }
 
+        // Manual assignment wins; otherwise try to match the account by the lead's company (registration) number.
+        var accountId = request.AccountId;
+        var matched = false;
+        if (accountId is null && !string.IsNullOrWhiteSpace(lead.CompanyNumber))
+        {
+            var company = await _companies.GetByRegistrationNumberAsync(lead.CompanyNumber!, cancellationToken);
+            if (company is not null)
+            {
+                accountId = company.Id;
+                matched = true;
+            }
+        }
+
         lead.Status = LeadStatus.Converted;
-        lead.ConvertedAccountId = request.AccountId;
+        lead.ConvertedAccountId = accountId;
         lead.UpdatedUtc = DateTimeOffset.UtcNow;
         await _repository.UpdateAsync(lead, cancellationToken);
 
-        var detail = request.AccountId is { } acc ? $" Account {acc}." : string.Empty;
+        var detail = accountId is { } acc
+            ? matched ? $" Auto-matched to account {acc} by company number." : $" Account {acc}."
+            : string.Empty;
         await _repository.AddNoteAsync(SystemNote(lead.Id, actor, $"Converted to account.{detail}", "Converted"), cancellationToken);
         return ToDto(lead);
     }
@@ -172,7 +193,7 @@ public sealed class LeadService : ILeadService
     public async Task<LeadDto> CaptureAsync(CaptureLeadRequest request, CancellationToken cancellationToken = default)
     {
         var company = RequireCompany(request.CompanyName);
-        var email = Trim(request.ContactEmail);
+        var email = ValidatedEmail(request.ContactEmail);
 
         var existing = await _repository.FindOpenByCompanyAndEmailAsync(company, email, cancellationToken);
         if (existing is not null)
@@ -222,6 +243,18 @@ public sealed class LeadService : ILeadService
     }
 
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>Trims an optional email and rejects it when present but not a valid address.</summary>
+    private static string? ValidatedEmail(string? value)
+    {
+        var email = Trim(value);
+        if (email is not null && !EmailValidation.IsValid(email))
+        {
+            throw new ArgumentException("A valid email address is required.");
+        }
+
+        return email;
+    }
 
     private static LeadModel ParseModel(string? value) =>
         Enum.TryParse<LeadModel>(value, ignoreCase: true, out var model) ? model : LeadModel.Unknown;
