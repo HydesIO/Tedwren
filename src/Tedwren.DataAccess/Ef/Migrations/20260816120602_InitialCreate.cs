@@ -74,6 +74,36 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "CompanyDocuments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Type = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    ExpiresOn = table.Column<DateOnly>(type: "date", nullable: true),
+                    Reference = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CompanyDocuments", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CompanySettings",
+                columns: table => new
+                {
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SettingsJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    UpdatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CompanySettings", x => x.CompanyId);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "CompliancePacks",
                 columns: table => new
                 {
@@ -150,6 +180,89 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "FormAssignments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FormTemplateFamilyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FormName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Scope = table.Column<int>(type: "int", nullable: false),
+                    SiteId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    PersonId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    InductionTemplateId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    Schedule = table.Column<int>(type: "int", nullable: false),
+                    FailureAlertEmail = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    LastReminderUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FormAssignments", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FormSubmissionFiles",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    SubmissionId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FieldId = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    FileName = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: false),
+                    ContentType = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Content = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
+                    UploadedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FormSubmissionFiles", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FormSubmissions",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FormTemplateId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FormTemplateVersion = table.Column<int>(type: "int", nullable: false),
+                    FormName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Scope = table.Column<int>(type: "int", nullable: false),
+                    SiteId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    PersonId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    AnswersJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    SubmittedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    SubmittedBy = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    ReviewNote = table.Column<string>(type: "nvarchar(max)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FormSubmissions", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FormTemplates",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    FamilyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    Description = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    Version = table.Column<int>(type: "int", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    SectionsJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    UpdatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FormTemplates", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "InductionSessions",
                 columns: table => new
                 {
@@ -186,7 +299,11 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     ValidityDays = table.Column<int>(type: "int", nullable: false),
                     PassMark = table.Column<int>(type: "int", nullable: false),
                     StepsJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
-                    QuestionsJson = table.Column<string>(type: "nvarchar(max)", nullable: false)
+                    QuestionsJson = table.Column<string>(type: "nvarchar(max)", nullable: false),
+                    AttemptLimit = table.Column<int>(type: "int", nullable: false),
+                    Mandatory = table.Column<bool>(type: "bit", nullable: false),
+                    MediaUrl = table.Column<string>(type: "nvarchar(1024)", maxLength: 1024, nullable: true),
+                    SiteId = table.Column<Guid>(type: "uniqueidentifier", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -227,6 +344,28 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "OnboardingLinks",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Token = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    PasscodeHash = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    Name = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    Trade = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    ExpiresUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    PersonId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    EngagementId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CreatedByUserId = table.Column<Guid>(type: "uniqueidentifier", nullable: true),
+                    CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OnboardingLinks", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "PackAccessEvents",
                 columns: table => new
                 {
@@ -238,6 +377,28 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_PackAccessEvents", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Permits",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    CompanyId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    PermitType = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    SiteName = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    ResponsiblePerson = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: true),
+                    ValidFrom = table.Column<DateOnly>(type: "date", nullable: true),
+                    ValidTo = table.Column<DateOnly>(type: "date", nullable: true),
+                    Description = table.Column<string>(type: "nvarchar(max)", nullable: true),
+                    HighRisk = table.Column<bool>(type: "bit", nullable: false),
+                    RamsAttached = table.Column<bool>(type: "bit", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Permits", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -297,6 +458,20 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "ReferenceValues",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ListKey = table.Column<string>(type: "nvarchar(64)", maxLength: 64, nullable: false),
+                    Value = table.Column<string>(type: "nvarchar(256)", maxLength: 256, nullable: false),
+                    SortOrder = table.Column<int>(type: "int", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ReferenceValues", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "SiteProperties",
                 columns: table => new
                 {
@@ -335,6 +510,20 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Sites", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "StoredImages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
+                    ContentType = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: false),
+                    Bytes = table.Column<byte[]>(type: "varbinary(max)", nullable: false),
+                    CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_StoredImages", x => x.Id);
                 });
 
             migrationBuilder.CreateTable(
@@ -403,7 +592,11 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     Role = table.Column<int>(type: "int", nullable: false),
                     Status = table.Column<int>(type: "int", nullable: false),
                     CreatedUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: false),
-                    LastActiveUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
+                    LastActiveUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    PasswordHash = table.Column<string>(type: "nvarchar(512)", maxLength: 512, nullable: true),
+                    PasswordSetUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true),
+                    InviteToken = table.Column<string>(type: "nvarchar(128)", maxLength: 128, nullable: true),
+                    InviteTokenExpiresUtc = table.Column<DateTimeOffset>(type: "datetimeoffset", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -424,6 +617,11 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 name: "IX_AuditEntries_CompanyId_OccurredUtc",
                 table: "AuditEntries",
                 columns: new[] { "CompanyId", "OccurredUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_CompanyDocuments_CompanyId",
+                table: "CompanyDocuments",
+                column: "CompanyId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CompliancePacks_CompanyId_CreatedUtc",
@@ -459,6 +657,41 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_FormAssignments_CompanyId",
+                table: "FormAssignments",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormAssignments_CompanyId_FormTemplateFamilyId",
+                table: "FormAssignments",
+                columns: new[] { "CompanyId", "FormTemplateFamilyId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormSubmissionFiles_SubmissionId",
+                table: "FormSubmissionFiles",
+                column: "SubmissionId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormSubmissions_CompanyId_SubmittedUtc",
+                table: "FormSubmissions",
+                columns: new[] { "CompanyId", "SubmittedUtc" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormSubmissions_FormTemplateId",
+                table: "FormSubmissions",
+                column: "FormTemplateId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormTemplates_CompanyId",
+                table: "FormTemplates",
+                column: "CompanyId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FormTemplates_CompanyId_FamilyId",
+                table: "FormTemplates",
+                columns: new[] { "CompanyId", "FamilyId" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_InductionSessions_CompanyId_StartedUtc",
                 table: "InductionSessions",
                 columns: new[] { "CompanyId", "StartedUtc" });
@@ -485,9 +718,20 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_OnboardingLinks_Token",
+                table: "OnboardingLinks",
+                column: "Token",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_PackAccessEvents_PackId_Kind",
                 table: "PackAccessEvents",
                 columns: new[] { "PackId", "Kind" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Permits_CompanyId_CreatedUtc",
+                table: "Permits",
+                columns: new[] { "CompanyId", "CreatedUtc" });
 
             migrationBuilder.CreateIndex(
                 name: "IX_Persons_PhoneNumber",
@@ -499,6 +743,12 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 name: "IX_QualificationCards_PersonId",
                 table: "QualificationCards",
                 column: "PersonId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ReferenceValues_ListKey_Value",
+                table: "ReferenceValues",
+                columns: new[] { "ListKey", "Value" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_SiteProperties_SiteId",
@@ -542,6 +792,11 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 table: "Users",
                 column: "Email",
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_InviteToken",
+                table: "Users",
+                column: "InviteToken");
         }
 
         /// <inheritdoc />
@@ -557,6 +812,12 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 name: "Companies");
 
             migrationBuilder.DropTable(
+                name: "CompanyDocuments");
+
+            migrationBuilder.DropTable(
+                name: "CompanySettings");
+
+            migrationBuilder.DropTable(
                 name: "CompliancePacks");
 
             migrationBuilder.DropTable(
@@ -567,6 +828,18 @@ namespace Tedwren.DataAccess.Ef.Migrations
 
             migrationBuilder.DropTable(
                 name: "ExpiryNotifications");
+
+            migrationBuilder.DropTable(
+                name: "FormAssignments");
+
+            migrationBuilder.DropTable(
+                name: "FormSubmissionFiles");
+
+            migrationBuilder.DropTable(
+                name: "FormSubmissions");
+
+            migrationBuilder.DropTable(
+                name: "FormTemplates");
 
             migrationBuilder.DropTable(
                 name: "InductionSessions");
@@ -581,7 +854,13 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 name: "ModuleEntitlements");
 
             migrationBuilder.DropTable(
+                name: "OnboardingLinks");
+
+            migrationBuilder.DropTable(
                 name: "PackAccessEvents");
+
+            migrationBuilder.DropTable(
+                name: "Permits");
 
             migrationBuilder.DropTable(
                 name: "Persons");
@@ -593,10 +872,16 @@ namespace Tedwren.DataAccess.Ef.Migrations
                 name: "QualificationTypes");
 
             migrationBuilder.DropTable(
+                name: "ReferenceValues");
+
+            migrationBuilder.DropTable(
                 name: "SiteProperties");
 
             migrationBuilder.DropTable(
                 name: "Sites");
+
+            migrationBuilder.DropTable(
+                name: "StoredImages");
 
             migrationBuilder.DropTable(
                 name: "TimesheetEntries");

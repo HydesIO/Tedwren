@@ -12,8 +12,8 @@ using Tedwren.DataAccess.Ef;
 namespace Tedwren.DataAccess.Ef.Migrations
 {
     [DbContext(typeof(TedwrenDbContext))]
-    [Migration("20260813102005_AddFormAssignments")]
-    partial class AddFormAssignments
+    [Migration("20260816120602_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -398,6 +398,9 @@ namespace Tedwren.DataAccess.Ef.Migrations
 
                     b.Property<Guid?>("InductionTemplateId")
                         .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("LastReminderUtc")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<Guid?>("PersonId")
                         .HasColumnType("uniqueidentifier");

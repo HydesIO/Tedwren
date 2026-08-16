@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Tedwren.DataAccess.Commercial.Ef.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCommercialCreate : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)

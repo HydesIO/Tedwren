@@ -12,8 +12,8 @@ using Tedwren.DataAccess.Commercial.Ef;
 namespace Tedwren.DataAccess.Commercial.Ef.Migrations
 {
     [DbContext(typeof(CommercialDbContext))]
-    [Migration("20260816104954_InitialCommercialCreate")]
-    partial class InitialCommercialCreate
+    [Migration("20260816120630_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

@@ -42,4 +42,8 @@
     <ProjectReference Include="..\Tedwren.DataAccess\Tedwren.DataAccess.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Ef\Migrations\" />
+  </ItemGroup>
+
 </Project>
