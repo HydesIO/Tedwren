@@ -41,7 +41,8 @@ Two deployables that talk over HTTP/CORS, plus supporting libraries:
 | `src/Tedwren.Abstractions` | Shared service interfaces + DTOs + config contracts, referenced by both client and API. |
 | `src/Tedwren.Domain` | Entities, value objects, enums. No external dependencies. |
 | `src/Tedwren.Application` | Business services (each behind an interface, SRP). |
-| `src/Tedwren.DataAccess` | Dapper repositories: shared base + SQL Server / PostgreSQL dialects. |
+| `src/Tedwren.DataAccess` | Dapper repositories (product/compliance DB): shared base + SQL Server / PostgreSQL dialects; product EF `DbContext` + migrations (schema/DDL). |
+| `src/Tedwren.DataAccess.Commercial` | Commercial/admin DB plane: the billing + go-to-market Dapper repositories (reusing `Tedwren.DataAccess`'s base/dialects/runner) and its own EF `CommercialDbContext` + migrations. |
 | `src/Tedwren.Api` | ASP.NET Core Web API (separate deployable, CORS, mobile-ready). |
 | `tests/*` | xUnit unit + integration tests. |
 

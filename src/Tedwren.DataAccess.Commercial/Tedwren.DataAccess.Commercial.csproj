@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <!-- Audit direct dependencies only. The EF SqlServer provider pulls a transitive
+         System.Security.Cryptography.Xml that this environment's audit feed flags on every version
+         (including the latest), so it is unactionable; direct packages are still fully audited. -->
+    <NuGetAuditMode>direct</NuGetAuditMode>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Provider-specific ADO.NET drivers for the commercial connection factory (Dapper runtime helpers are
+         reused from Tedwren.DataAccess via the project reference below). -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <!-- Aligned with the version Npgsql's logging chain requires (>= 10.0.10) to avoid an NU1605 downgrade. -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <!-- The commercial design-time factory reads the connection string / provider from the API's
+         appsettings.json (see CommercialDbContextFactory), matching the product EF workflow. -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.EnvironmentVariables" Version="10.0.0" />
+    <!-- EF Core is used ONLY to author and apply the commercial database schema via migrations (DDL). Runtime
+         data access remains Dapper (DML), reused from Tedwren.DataAccess. See docs/ef-migrations.md §8. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.0" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reuse the shared Dapper base (RepositoryBase), connection abstraction, dialects and the area-aware
+         MigrationRunner from the product data-access project rather than duplicating them. -->
+    <ProjectReference Include="..\Tedwren.Abstractions\Tedwren.Abstractions.csproj" />
+    <ProjectReference Include="..\Tedwren.Application\Tedwren.Application.csproj" />
+    <ProjectReference Include="..\Tedwren.Domain\Tedwren.Domain.csproj" />
+    <ProjectReference Include="..\Tedwren.DataAccess\Tedwren.DataAccess.csproj" />
+  </ItemGroup>
+
+</Project>
