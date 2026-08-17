@@ -34,9 +34,6 @@
                     BrandName="Tedwren"
                     ActiveRoute="@_activeRoute"
                     @bind-IsCollapsed="_sidebarCollapsed"
-                    Platforms="@_platforms"
-                    SelectedPlatform="@_selectedPlatform"
-                    OnPlatformSelected="OnPlatformSelected"
                     Environment="_environment"
                     OnNavigate="OnNavigate" />
     </aside>
@@ -64,8 +61,6 @@
 @code {
     private bool _sidebarCollapsed;
     private IReadOnlyList<NavItem> _navItems = Array.Empty<NavItem>();
-    private IReadOnlyList<string> _platforms = Array.Empty<string>();
-    private string _selectedPlatform = string.Empty;
 
     // True when the shell is showing the Tedwren platform admin area (admin menus + /admin pages) rather
     // than the tenant console. Set once at init from the deployment flag and the signed-in user's role.
@@ -125,8 +120,13 @@
         if (_isAdminArea)
         {
             _navItems = ShellChrome.AdminNavItems;
-            _platforms = Array.Empty<string>();
-            _selectedPlatform = string.Empty;
+
+            // The admin area is a distinct surface: land platform admins on the admin dashboard rather than
+            // leaving them on the tenant dashboard that is mapped to "/".
+            if (IsAtRoot())
+            {
+                Nav.NavigateTo("/admin");
+            }
         }
         else
         {
@@ -142,8 +142,6 @@
             }
 
             _navItems = await GatedNavItemsAsync(ShellChrome.NavItems);
-            _platforms = ShellChrome.Platforms;
-            _selectedPlatform = ShellChrome.DefaultPlatform;
         }
 
         _notifications = await BuildNotificationsAsync();
@@ -248,7 +246,7 @@
             .Select(e => new NotificationEntry(
                 MudBlazor.Icons.Material.Outlined.WarningAmber,
                 "Qualification expiring",
-                $"{e.QualificationName} — {e.StatusLabel}",
+                $"{e.QualificationName} — {DisplayText.Humanize(e.StatusLabel)}",
                 e.ExpiresOn?.ToString("dd MMM yyyy") ?? string.Empty,
                 e.DaysUntilExpiry <= 7 ? StatusKind.Danger : StatusKind.Warning,
                 Unread: true))
@@ -334,7 +332,9 @@
 
     private void OnNavigate(NavItem item) => Nav.NavigateTo(item.Href);
 
-    private void OnPlatformSelected(string platform) => _selectedPlatform = platform;
+    // True when the shell is currently at the app root ("/"), used to bounce platform admins to /admin.
+    private bool IsAtRoot()
+        => Nav.ToBaseRelativePath(Nav.Uri).Split('?', '#')[0].TrimEnd('/').Length == 0;
 
     private void ToggleSidebar() => _sidebarCollapsed = !_sidebarCollapsed;
 

@@ -1,16 +1,14 @@
 @page "/system-configuration"
-@using Tedwren.Abstractions.Contracts.Entitlements
 @using Tedwren.Abstractions.Contracts.Settings
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ISettingsService Settings
-@inject IEntitlementService Entitlements
 @inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
 <PageTitle>System Configuration · Tedwren</PageTitle>
 
-<PageHeader Title="System Configuration" Subtitle="Modules, entitlements and general settings" />
+<PageHeader Title="System Configuration" Subtitle="Organisation-wide settings and enforcement policies" />
 
 <div class="form-page">
     <FormSection Title="General settings" Description="Organisation-wide defaults.">
@@ -38,19 +36,6 @@
         </div>
     </FormSection>
 
-    <FormSection Title="Modules & entitlements" Description="Turn product modules on or off for this workspace. Disabled modules disappear from navigation (SF-22).">
-        <div class="form-page__full form-page__toggles">
-            @foreach (var module in _modules)
-            {
-                <TedwrenToggle Label="@module.Name"
-                               Description="@module.Description"
-                               Value="_entitlements[module.Key]"
-                               ValueChanged="@(v => _entitlements[module.Key] = v)" />
-                <MudDivider />
-            }
-        </div>
-    </FormSection>
-
     <FormActions>
         <Secondary>
             <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="_busy" OnClick="Reset">Reset</MudButton>
@@ -63,8 +48,6 @@
 
 @code {
     private GeneralSettingsState _settings = new();
-    private IReadOnlyList<ModuleEntitlementDto> _modules = Array.Empty<ModuleEntitlementDto>();
-    private readonly Dictionary<string, bool> _entitlements = new();
     private bool _busy;
 
     private readonly IReadOnlyList<string> _timeZones = new[]
@@ -76,7 +59,6 @@
     {
         await Tenant.InitializeAsync();
         await LoadGeneralAsync();
-        await LoadModulesAsync();
     }
 
     private async Task LoadGeneralAsync()
@@ -93,18 +75,7 @@
         };
     }
 
-    // Loads real module entitlements for the current company (SF-22).
-    private async Task LoadModulesAsync()
-    {
-        _modules = await Entitlements.GetForCompanyAsync(Tenant.CurrentCompanyId);
-        _entitlements.Clear();
-        foreach (var module in _modules)
-        {
-            _entitlements[module.Key] = module.Enabled;
-        }
-    }
-
-    // Persists the general settings and any changed module entitlements for the current company.
+    // Persists the general settings for the current company.
     private async Task Save()
     {
         _busy = true;
@@ -116,15 +87,6 @@
             _settings.BlockNonCompliantEntry,
             _settings.NotifyOnExpiry));
 
-        foreach (var module in _modules)
-        {
-            if (_entitlements[module.Key] != module.Enabled)
-            {
-                await Entitlements.SetEnabledAsync(Tenant.CurrentCompanyId, module.Key, _entitlements[module.Key]);
-            }
-        }
-
-        await LoadModulesAsync();
         _busy = false;
         Snackbar.Add("Settings saved.", Severity.Success);
     }
@@ -132,7 +94,6 @@
     private async Task Reset()
     {
         await LoadGeneralAsync();
-        await LoadModulesAsync();
         Snackbar.Add("Reverted unsaved changes.", Severity.Info);
     }
 

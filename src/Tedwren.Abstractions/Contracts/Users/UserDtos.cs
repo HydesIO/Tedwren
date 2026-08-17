@@ -30,5 +30,11 @@ public sealed record InviteUserResult(Guid UserId, string AcceptToken, bool Emai
 /// <summary>Request to change an existing user's name and role.</summary>
 public sealed record UpdateUserRequest(string Name, string Role);
 
+/// <summary>
+/// Platform-admin edit of a console user: name, role, whether the account is suspended, and (optionally) a
+/// new password. A null/blank <see cref="NewPassword"/> leaves the existing password unchanged.
+/// </summary>
+public sealed record AdminUpdateUserRequest(string Name, string Role, bool Suspended, string? NewPassword);
+
 /// <summary>The available access roles, so the UI can populate its role picker from the single source.</summary>
 public sealed record RoleOption(string Value, string Label, bool CanWrite);

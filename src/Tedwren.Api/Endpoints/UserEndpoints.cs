@@ -63,6 +63,20 @@ public static class UserEndpoints
             })
             .WithName("UpdateUser");
 
+        group.MapPut("/{id:guid}/password", async (Guid id, SetPasswordBody body, IUserService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var user = await service.SetPasswordAsync(id, body.NewPassword, cancellationToken);
+                    return user is null ? Results.NotFound() : Results.Ok(user);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("SetUserPassword");
+
         group.MapPost("/{id:guid}/suspend", async (Guid id, IUserService service, CancellationToken cancellationToken) =>
             {
                 var user = await service.SuspendUserAsync(id, cancellationToken);
@@ -79,4 +93,7 @@ public static class UserEndpoints
 
         return app;
     }
+
+    /// <summary>Body for setting a user's password.</summary>
+    public sealed record SetPasswordBody(string NewPassword);
 }
