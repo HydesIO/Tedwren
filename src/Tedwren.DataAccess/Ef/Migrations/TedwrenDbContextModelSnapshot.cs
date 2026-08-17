@@ -1228,6 +1228,9 @@ namespace Tedwren.DataAccess.Ef.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<string>("AvatarImageReference")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1248,6 +1251,10 @@ namespace Tedwren.DataAccess.Ef.Migrations
 
                     b.Property<DateTimeOffset?>("LastActiveUtc")
                         .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Mobile")
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("Name")
                         .IsRequired()

@@ -10,6 +10,13 @@ public sealed class InMemorySiteRepository : ISiteRepository
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemorySiteRepository(InMemorySiteStore store) => _store = store;
 
+    /// <summary>Removes a site from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Sites.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Returns all sites ordered by name.</summary>
     public Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken cancellationToken = default)
     {

@@ -157,6 +157,8 @@ public sealed class UserRecord
     public Guid CompanyId { get; set; }
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
+    public string? Mobile { get; set; }
+    public string? AvatarImageReference { get; set; }
     public int Role { get; set; }
     public int Status { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }

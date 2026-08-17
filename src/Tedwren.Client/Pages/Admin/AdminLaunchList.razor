@@ -3,12 +3,21 @@
 @using Tedwren.Abstractions.Services
 @inject ILaunchListService LaunchList
 @inject IDialogService DialogService
+@inject IJSRuntime JS
 
 <PageTitle>Launch List · Admin · Tedwren</PageTitle>
 
 <AdminGuard>
     <PageHeader Title="Launch List" Subtitle="People who asked to be told when Tedwren launches">
         <Actions>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PersonAddAlt"
+                       Disabled="_busy" OnClick="AddSubscriber">
+                Add subscriber
+            </MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
+                       Disabled="@(_busy || _signups.Count == 0)" OnClick="ExportCsv">
+                Export CSV
+            </MudButton>
             <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Campaign"
                        Disabled="@(_busy || _signups.Count == 0)" OnClick="SendAnnouncement">
                 Send launch email
@@ -124,6 +133,72 @@
                 Title = "Signed up", Value = s => s.CreatedUtc, Searchable = false,
                 CellTemplate = s => @<span>@s.CreatedUtc.ToLocalTime().ToString("dd MMM yyyy")</span>
             },
+            new()
+            {
+                Title = "", Sortable = false, Searchable = false,
+                CellTemplate = s => @<MudIconButton Icon="@Icons.Material.Outlined.Delete" Size="Size.Small" Color="Color.Default"
+                                                    Disabled="_busy" OnClick="@(() => DeleteSubscriber(s))" aria-label="Remove subscriber" />
+            },
         };
+    }
+
+    private async Task AddSubscriber()
+    {
+        var dialog = await DialogService.ShowAsync<AddLaunchSubscriberDialog>("Add subscriber");
+        var result = await dialog.Result;
+        if (result?.Canceled == false)
+        {
+            await ReloadAsync();
+        }
+    }
+
+    private async Task ExportCsv()
+    {
+        _busy = true;
+        try
+        {
+            var bytes = await LaunchList.ExportCsvAsync();
+            var csv = System.Text.Encoding.UTF8.GetString(bytes);
+            await JS.InvokeVoidAsync("tedwrenDownload", $"launch-list-{DateTime.Now:yyyyMMdd}.csv", "text/csv", csv);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task DeleteSubscriber(LaunchSignupDto signup)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Remove {signup.Email} from the launch list?" },
+            { x => x.ConfirmText, "Remove" },
+            { x => x.Destructive, true },
+        };
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Remove subscriber", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled != false)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await LaunchList.DeleteAsync(signup.Id);
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 }

@@ -1,0 +1,64 @@
+@using Tedwren.Abstractions.Services
+@inject IContentProvider Content
+@model Tedwren.Web.Models.LandingNotifyRequest
+@{
+    Layout = "_LandingLayout";
+    ViewData["Title"] = "Launching soon";
+    ViewData["MetaDescription"] = "Tedwren — construction workforce compliance, without the paperwork. Launching soon.";
+    var home = Content.Home;
+    var notified = ViewData["Notified"] as bool? ?? false;
+    // A couple of marketing hooks, drawn from the existing differentiator content (no forked copy).
+    var hooks = home.Differentiators.Take(3).ToList();
+}
+
+<section class="landing">
+    <span class="landing__blob" aria-hidden="true"></span>
+    <div class="landing__inner">
+        <a class="landing__brand" href="/landing" aria-label="@Content.Site.BrandName">
+            <img class="landing__logo" src="~/images/logo-icon.svg" alt="" width="48" height="48" />
+            <span class="landing__wordmark">@Content.Site.BrandName</span>
+        </a>
+
+        <p class="kicker landing__kicker">Launching soon</p>
+        <h1 class="landing__title">@home.HeroHeading</h1>
+        <p class="landing__lede">@home.HeroSubheading</p>
+
+        <ul class="ticklist landing__hooks">
+            @foreach (var hook in hooks)
+            {
+                <li>@hook.Heading</li>
+            }
+        </ul>
+
+        @if (notified)
+        {
+            <div class="landing__thanks" role="status">
+                <h2 class="landing__thanks-title">You're on the list.</h2>
+                <p>Thanks — we'll email you the moment Tedwren is ready.</p>
+            </div>
+        }
+        else
+        {
+            <form class="landing__form lead-form" method="post" action="/landing/notify">
+                @Html.AntiForgeryToken()
+                @* Honeypot: hidden from people and AT, still submitted by bots (Web Plan §7). *@
+                <div class="hp" aria-hidden="true">
+                    <label for="Website">Website</label>
+                    <input type="text" id="Website" name="Website" tabindex="-1" autocomplete="off" />
+                </div>
+                <input type="hidden" name="RenderedAtUnixMs" value="@Model.RenderedAtUnixMs" />
+                <div class="landing__field">
+                    <label for="Email" class="landing__field-label">Get notified at launch</label>
+                    <div class="landing__row">
+                        <input type="email" id="Email" name="Email" placeholder="you@company.co.uk"
+                               autocomplete="email" required aria-label="Email address" />
+                        <button class="cta cta--primary" type="submit">Notify me</button>
+                    </div>
+                    <span asp-validation-for="Email" class="lead-form__error"></span>
+                </div>
+                <p class="landing__note">No spam — just one email when we go live.</p>
+            </form>
+        }
+    </div>
+    <p class="landing__footer">© @DateTime.UtcNow.Year @Content.Site.LegalEntity</p>
+</section>

@@ -23,7 +23,7 @@ public sealed class CorePageContentTests : IClassFixture<WebApplicationFactory<P
         var body = await _factory.CreateClient().GetStringAsync("/");
 
         Assert.Contains("Compliance that works beyond the site gate", body); // hero heading (content)
-        Assert.Contains("product-card", body);                              // product cards present
+        Assert.Contains("data-audience-panel", body);                       // tabbed product panels present
         Assert.Contains("how-it-works__step", body);                        // steps present
         Assert.Contains("trust-strip", body);                               // trust strip present
     }

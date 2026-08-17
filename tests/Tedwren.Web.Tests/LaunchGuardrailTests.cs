@@ -41,4 +41,15 @@ public sealed class LaunchGuardrailTests
             Assert.DoesNotContain(marker, markup, StringComparison.OrdinalIgnoreCase);
         }
     }
+
+    /// <summary>The pack chrome reuses this site's shared brand mark (Plan §4.1).</summary>
+    [Fact]
+    public void PackChrome_ShowsSharedBrandLogo()
+    {
+        var view = Path.Combine(
+            RepoPaths.WebProject, "Views", "Shared", "Components", "PackChrome", "Default.cshtml");
+        var markup = File.ReadAllText(view);
+
+        Assert.Contains("images/logo-icon.svg", markup);
+    }
 }

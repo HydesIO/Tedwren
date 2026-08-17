@@ -15,6 +15,10 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
     {
     }
 
+    /// <summary>Deletes a company by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Companies WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns all companies ordered by name.</summary>
     public async Task<IReadOnlyList<Company>> GetAllAsync(CancellationToken cancellationToken = default)
     {
@@ -29,6 +33,25 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
             $"SELECT {Columns} FROM Companies WHERE Id = @Id", new { Id = id }, cancellationToken);
         return row is null ? null : ToEntity(row);
     }
+
+    /// <summary>Returns the company whose registration number matches (case-insensitive, ignoring spaces), or null.</summary>
+    public async Task<Company?> GetByRegistrationNumberAsync(string registrationNumber, CancellationToken cancellationToken = default)
+    {
+        var normalised = NormaliseRegistration(registrationNumber);
+        if (normalised.Length == 0)
+        {
+            return null;
+        }
+
+        var row = await QuerySingleOrDefaultAsync<CompanyRow>(
+            $"SELECT {Columns} FROM Companies WHERE REPLACE(LOWER(RegistrationNumber), ' ', '') = @Reg",
+            new { Reg = normalised }, cancellationToken);
+        return row is null ? null : ToEntity(row);
+    }
+
+    /// <summary>Lower-cases and strips spaces from a registration number for tolerant matching.</summary>
+    private static string NormaliseRegistration(string? value) =>
+        (value ?? string.Empty).Replace(" ", string.Empty).ToLowerInvariant();
 
     /// <summary>Inserts a new company.</summary>
     public Task AddAsync(Company company, CancellationToken cancellationToken = default) =>

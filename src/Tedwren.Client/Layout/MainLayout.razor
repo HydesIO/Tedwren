@@ -44,12 +44,14 @@
                    NotificationsHref="/notifications"
                    CurrentUserName="@_userName"
                    CurrentUserRole="@_userRole"
-                   CurrentUserAvatarUrl="@(string.Empty)"
+                   CurrentUserAvatarUrl="@_userAvatarUrl"
+                   ProfileHref="/profile"
                    ShowMenuButton="true"
                    IsDark="_isDark"
                    OnMenuClick="ToggleSidebar"
                    OnOpenSearch="OpenPalette"
-                   OnToggleTheme="ToggleTheme" />
+                   OnToggleTheme="ToggleTheme"
+                   OnSignOut="SignOut" />
 
         <main class="app-shell__content" role="main">
             @Body
@@ -67,6 +69,7 @@
     private bool _isAdminArea;
     private string _userName = string.Empty;
     private string _userRole = string.Empty;
+    private string? _userAvatarUrl;
     private AppSidebar.EnvironmentInfo? _environment;
     private string _activeRoute = "/";
     private string _pageTitle = "Dashboard";
@@ -112,6 +115,7 @@
         var user = await CurrentUser.GetCurrentAsync();
         _userName = user.Name;
         _userRole = user.Role;
+        _userAvatarUrl = user.AvatarUrl;
 
         // Platform administrators (Administrator in the Tedwren tenant) see the admin area instead of the
         // tenant console, when this deployment enables it. The admin surfaces are not purchasable modules,
@@ -328,6 +332,14 @@
         {
             return false;
         }
+    }
+
+    // Signs the operator out from the profile dropdown, mirroring the command-palette logout: clear the token
+    // and force a full reload to /login so no stale authenticated state survives.
+    private async Task SignOut()
+    {
+        await Auth.LogoutAsync();
+        Nav.NavigateTo("/login", forceLoad: true);
     }
 
     private void OnNavigate(NavItem item) => Nav.NavigateTo(item.Href);
