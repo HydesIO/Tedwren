@@ -1,7 +1,8 @@
 @* Standard progress / loading dialog: a titled, spacious panel (not a bare spinner) with a short
-   description, a progress indicator and status text. Show at Medium size via TedwrenDialog.Medium().
+   description, a progress indicator and status text. Show at Medium size via TedwrenDialog.Progress().
    Determinate when Max > 0 (Value / Max drive a linear bar); otherwise an indeterminate bar. A Cancel
-   button appears only when OnCancel is set — offer cancellation only where the operation supports it. *@
+   button appears only when OnCancel is set — offer cancellation only where the operation supports it.
+   When Error is set the bar turns red and a Close button (invoking OnClose) is shown. *@
 
 <MudDialog>
     <DialogContent>
@@ -11,7 +12,12 @@
                 <p class="progress-dialog__description">@Description</p>
             }
 
-            @if (IsDeterminate)
+            @if (HasError)
+            {
+                <MudProgressLinear Color="Color.Error" Value="100" Rounded="true" Size="Size.Large" />
+                <p class="progress-dialog__error">@Error</p>
+            }
+            else if (IsDeterminate)
             {
                 <MudProgressLinear Color="Color.Primary" Value="@Percentage" Rounded="true" Size="Size.Large" />
             }
@@ -20,14 +26,18 @@
                 <MudProgressLinear Color="Color.Primary" Indeterminate="true" Rounded="true" Size="Size.Large" />
             }
 
-            @if (!string.IsNullOrEmpty(StatusText))
+            @if (!HasError && !string.IsNullOrEmpty(StatusText))
             {
                 <p class="progress-dialog__status">@StatusText</p>
             }
         </div>
     </DialogContent>
     <DialogActions>
-        @if (OnCancel.HasDelegate)
+        @if (HasError)
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CloseAsync">@CloseText</MudButton>
+        }
+        else if (OnCancel.HasDelegate)
         {
             <MudButton Variant="Variant.Text" Disabled="_cancelling" OnClick="CancelAsync">@CancelText</MudButton>
         }
@@ -49,13 +59,25 @@
     /// <summary>Total for a determinate bar. Leave at zero (default) for an indeterminate bar.</summary>
     [Parameter] public double Max { get; set; }
 
+    /// <summary>When set, the dialog shows a failed state: a red bar, this message, and a Close button.</summary>
+    [Parameter] public string? Error { get; set; }
+
     /// <summary>Label for the cancel button. The button only shows when <see cref="OnCancel"/> is set.</summary>
     [Parameter] public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>Label for the Close button shown in the error state.</summary>
+    [Parameter] public string CloseText { get; set; } = "Close";
 
     /// <summary>Invoked when the user cancels. Wire this only when the operation genuinely supports cancellation.</summary>
     [Parameter] public EventCallback OnCancel { get; set; }
 
+    /// <summary>Invoked when the user dismisses the error state via Close. Falls back to cancelling the dialog.</summary>
+    [Parameter] public EventCallback OnClose { get; set; }
+
     private bool _cancelling;
+
+    /// <summary>True when the dialog is in its failed state.</summary>
+    private bool HasError => !string.IsNullOrEmpty(Error);
 
     /// <summary>True when a real total was supplied, so the bar can show percentage progress.</summary>
     private bool IsDeterminate => Max > 0;
@@ -68,5 +90,18 @@
     {
         _cancelling = true;
         await OnCancel.InvokeAsync();
+    }
+
+    /// <summary>Dismisses the error state: lets the caller handle it, else cancels the dialog itself.</summary>
+    private async Task CloseAsync()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+        else
+        {
+            MudDialog.Cancel();
+        }
     }
 }

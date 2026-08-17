@@ -115,9 +115,11 @@ around its content. Reuse the shared dialog assets rather than hand-rolling opti
   - `TedwrenDialog.Small()` — confirmations, warnings, simple choices, short messages.
   - `TedwrenDialog.Medium()` — normal forms, editing screens, moderate interaction.
   - `TedwrenDialog.Large()` — complex/multi-section forms, detailed viewers, workflows.
-  Each returns `FullWidth = true` (so the dialog fills its max width and stays responsive down to
-  tablet/mobile) with a header close button. Do not construct `DialogOptions`/`MaxWidth` inline at
-  call sites, and do not size a dialog via a `min-width` in its scoped CSS.
+  - `TedwrenDialog.Progress()` — for `ProgressDialog` only: Medium, but **no** header close button and
+    no backdrop/escape dismiss, so a running operation can't be closed out from under itself.
+  The `Small/Medium/Large` presets return `FullWidth = true` (so the dialog fills its max width and stays
+  responsive down to tablet/mobile) with a header close button. Do not construct `DialogOptions`/`MaxWidth`
+  inline at call sites, and do not size a dialog via a `min-width` in its scoped CSS.
 - **Content spacing.** Wrap `<DialogContent>` markup in the global `.tw-dialog-body` helper (add
   `.tw-dialog-body--grid` for a two-column body). Group related fields with the existing
   `FormSection` (titled, bordered, already two-column, collapses to one column at 720px) rather than
@@ -135,10 +137,11 @@ around its content. Reuse the shared dialog assets rather than hand-rolling opti
   visually distinct** — filled/outlined `Color.Error`. Keep this ordering consistent across the app.
 - **Titles & descriptions.** Every non-trivial dialog communicates what it is for, what the user must
   do, and what the primary action will do — in concise human wording, not internal/technical terms.
-- **Progress dialogs.** Never a bare spinner in a tiny box. Use `ProgressDialog` (rendered at
-  `Medium`): a clear title, a short description of what is happening, the progress indicator, and
-  status text (e.g. "Processing 24 of 87 vehicles…"). Offer cancellation only when the underlying
-  operation genuinely supports it.
+- **Progress dialogs.** Never a bare spinner in a tiny box. Use `ProgressDialog` shown with
+  `TedwrenDialog.Progress()`: a clear title, a short description of what is happening, the progress
+  indicator (determinate when `Max > 0`, else indeterminate), and status text (e.g. "Processing 24 of
+  87 vehicles…"). Set `Error` to show a failed state (red bar + message + Close); offer cancellation
+  (`OnCancel`) only when the underlying operation genuinely supports it.
 - **Dark mode — critical.** `MudDialogProvider` renders dialogs in an overlay that is **not** a
   descendant of the `.theme-dark` shell element, so the project's `--color-*` tokens (which only flip
   under `.theme-dark`) resolve to their **light** values inside a dialog. For any colour in

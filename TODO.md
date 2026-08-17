@@ -33,9 +33,17 @@ standard*; new reusable assets catalogued in `docs/component-catalogue.md`.
   panel), `FormAssignDialog`, `QualificationCardsDialog` (raw table → `MudSimpleTable`),
   `FormSubmissionDialog` (reject-reason moved out of the cramped action bar), `TimesheetDetailDialog`,
   and the shared `ConfirmDialog` (+ its 6 call sites).
+- ✅ **`ProgressDialog` wired into demo-data seeding.** Added an `Error`/`OnClose` state to the shared
+  `ProgressDialog` and a `TedwrenDialog.Progress()` preset (Medium, no header close / backdrop / escape
+  dismiss while running). Refactored `Admin/DemoDataProgressDialog` to render the shared `ProgressDialog`
+  (mapping the polled `DemoDataProgress` → determinate bar + "N of M stages · <stage>" status; server
+  error → red error state), replacing its bespoke `MudProgressLinear` markup. `AdminDemoData` now shows
+  it via `TedwrenDialog.Progress()` and its `ConfirmDialog`s via `Small()`. Seed/recreate/delete flow,
+  polling and `Close(Ok(status))` unchanged.
+- ✅ **New Admin dialogs migrated** to the standard: `EditLeadDialog`, `EditAffiliateDialog` (sectioned
+  two-column + guidance) and `AddLaunchSubscriberDialog` (Small); plus their call sites and the
+  `Remove subscriber` confirm.
 - ✅ Whole solution builds (no new warnings); all test projects pass.
-- ⏳ **`ProgressDialog` awaiting a consumer.** The component exists and is documented; no long-running
-  flow (e.g. a bulk import) uses it yet — wire it in when the first such flow lands.
 - ⏳ **Manual light/dark + responsive QA.** Verify each dialog at desktop/tablet/mobile widths in both
   themes when the app is next run (structure and breakpoints follow the existing 720px form convention).
 

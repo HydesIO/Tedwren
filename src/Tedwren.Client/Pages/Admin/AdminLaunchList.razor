@@ -144,7 +144,7 @@
 
     private async Task AddSubscriber()
     {
-        var dialog = await DialogService.ShowAsync<AddLaunchSubscriberDialog>("Add subscriber");
+        var dialog = await DialogService.ShowAsync<AddLaunchSubscriberDialog>("Add subscriber", TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled == false)
         {
@@ -179,7 +179,7 @@
             { x => x.ConfirmText, "Remove" },
             { x => x.Destructive, true },
         };
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Remove subscriber", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Remove subscriber", parameters, TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled != false)
         {

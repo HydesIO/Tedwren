@@ -87,7 +87,7 @@
                 { x => x.ContentText, "Recreate the demo dataset? The existing demo data is cleared and rebuilt from scratch." },
                 { x => x.ConfirmText, "Recreate" },
             };
-            var confirm = await DialogService.ShowAsync<ConfirmDialog>("Recreate demo data", parameters);
+            var confirm = await DialogService.ShowAsync<ConfirmDialog>("Recreate demo data", parameters, TedwrenDialog.Small());
             if ((await confirm.Result)?.Canceled != false)
             {
                 return;
@@ -105,7 +105,7 @@
             { x => x.ConfirmText, "Delete" },
             { x => x.Destructive, true },
         };
-        var confirm = await DialogService.ShowAsync<ConfirmDialog>("Delete demo data", parameters);
+        var confirm = await DialogService.ShowAsync<ConfirmDialog>("Delete demo data", parameters, TedwrenDialog.Small());
         if ((await confirm.Result)?.Canceled != false)
         {
             return;
@@ -120,13 +120,12 @@
         _message = _error = null;
         try
         {
-            var options = new DialogOptions { CloseOnEscapeKey = false, BackdropClick = false };
             var parameters = new DialogParameters<DemoDataProgressDialog>
             {
                 { x => x.Operation, operation },
             };
             var title = operation == "delete" ? "Deleting demo data" : "Creating demo data";
-            var dialog = await DialogService.ShowAsync<DemoDataProgressDialog>(title, parameters, options);
+            var dialog = await DialogService.ShowAsync<DemoDataProgressDialog>(title, parameters, TedwrenDialog.Progress());
             var result = await dialog.Result;
 
             if (result?.Canceled == false)

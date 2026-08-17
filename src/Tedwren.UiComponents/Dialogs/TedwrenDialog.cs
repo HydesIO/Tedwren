@@ -20,6 +20,20 @@ public static class TedwrenDialog
     /// <summary>Large dialog: complex/multi-section forms, detailed viewers and workflows.</summary>
     public static DialogOptions Large() => Build(MaxWidth.Large);
 
+    /// <summary>
+    /// Progress dialog: Medium width, but with no header close button and no backdrop dismiss — a
+    /// progress dialog must not offer a way to close it while the operation is still running. Use with
+    /// <c>ProgressDialog</c>.
+    /// </summary>
+    public static DialogOptions Progress() => new()
+    {
+        MaxWidth = MaxWidth.Medium,
+        FullWidth = true,
+        CloseButton = false,
+        BackdropClick = false,
+        CloseOnEscapeKey = false,
+    };
+
     /// <summary>Builds the shared option profile for the given standard width.</summary>
     private static DialogOptions Build(MaxWidth maxWidth) => new()
     {

@@ -442,8 +442,9 @@ and take theme-adaptive colour from `--mud-palette-*` (the dialog overlay render
 `Tedwren.UiComponents.Dialogs.TedwrenDialog` — standard `DialogOptions` presets so a dialog's width
 is chosen deliberately, not dictated by its content. `Small()` (confirmations / warnings / short
 messages), `Medium()` (normal forms / editing), `Large()` (complex or multi-section forms, detailed
-viewers, workflows). All are `FullWidth` with a header close button and a non-dismissing backdrop.
-Pass at the call site: `DialogService.ShowAsync<T>(title, parameters, TedwrenDialog.Medium())`.
+viewers, workflows), and `Progress()` (Medium, but no header close / backdrop / escape dismiss — for
+`ProgressDialog`). The size presets are `FullWidth` with a header close button and a non-dismissing
+backdrop. Pass at the call site: `DialogService.ShowAsync<T>(title, parameters, TedwrenDialog.Medium())`.
 
 ### `DialogGuidance`
 Contextual guidance panel for the top of an interactive dialog — a short, persistent explanation of
@@ -452,10 +453,12 @@ or blue (`StatusKind.Info`) panel, readable in light and dark. `Text` or `ChildC
 `Title`. Omit where the purpose is already obvious (e.g. a plain `ConfirmDialog`).
 
 ### `ProgressDialog`
-Standard progress / loading dialog (shown at `TedwrenDialog.Medium()`): a titled, spacious panel —
+Standard progress / loading dialog (shown at `TedwrenDialog.Progress()`): a titled, spacious panel —
 never a bare spinner. `Description`, `StatusText` (e.g. "Processing 24 of 87…"), `Value`/`Max`
 (a determinate linear bar when `Max > 0`, otherwise indeterminate), and `OnCancel` (a Cancel button
-appears only when set — offer cancellation only where the operation supports it).
+appears only when set — offer cancellation only where the operation supports it). `Error` switches it
+to a failed state (red bar + message + a Close button that invokes `OnClose`). Used by the Admin
+demo-data seed/delete flow (`DemoDataProgressDialog`).
 
 ---
 
