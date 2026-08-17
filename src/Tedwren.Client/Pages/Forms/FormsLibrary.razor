@@ -117,7 +117,7 @@
             { x => x.FamilyId, template.FamilyId },
             { x => x.FormName, template.Name },
         };
-        var dialog = await Dialogs.ShowAsync<FormAssignDialog>("Assign form", parameters);
+        var dialog = await Dialogs.ShowAsync<FormAssignDialog>("Assign form", parameters, TedwrenDialog.Medium());
         if (await dialog.Result is { Canceled: false })
         {
             await LoadAsync();
@@ -180,7 +180,7 @@
             { x => x.ContentText, $"Archive \"{template.Name}\"? It will be removed from the library (history is kept)." },
             { x => x.ConfirmText, "Archive" },
         };
-        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Archive form", parameters);
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Archive form", parameters, TedwrenDialog.Small());
         if (await dialog.Result is { Canceled: false })
         {
             await Forms.ArchiveAsync(template.Id);

@@ -7,19 +7,38 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="edit-site">
-            <TedwrenTextField Label="Site name" @bind-Value="_name" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Site name is required." />
-            <TedwrenTextField Label="Client" @bind-Value="_client" />
-            <TedwrenTextField Label="Region" @bind-Value="_region" />
-            <TedwrenTextField Label="Address" @bind-Value="_address" />
-            <TedwrenToggle Label="Fixed point of presence"
-                           Description="A compound, gate or cabin where operatives sign in. Turn off for a phone-only site (SF-25)."
-                           @bind-Value="_hasCompound" />
-            @if (_hasBoundary)
-            {
-                <MudNumericField T="double" Label="Boundary radius (m)" @bind-Value="_radius" Min="1" />
-            }
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Update the site's details and where operatives sign in. Changes take effect immediately across the platform." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Site details</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Site name" @bind-Value="_name" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Site name is required." />
+                    </div>
+                    <TedwrenTextField Label="Client" @bind-Value="_client" />
+                    <TedwrenTextField Label="Region" @bind-Value="_region" />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Address" @bind-Value="_address" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Location &amp; sign-in</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenToggle Label="Fixed point of presence"
+                                       Description="A compound, gate or cabin where operatives sign in. Turn off for a phone-only site (SF-25)."
+                                       @bind-Value="_hasCompound" />
+                    </div>
+                    @if (_hasBoundary)
+                    {
+                        <MudNumericField T="double" Label="Boundary radius (m)" @bind-Value="_radius" Min="1" />
+                    }
+                </div>
+            </section>
         </div>
     </DialogContent>
     <DialogActions>

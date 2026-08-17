@@ -424,8 +424,38 @@ that depends on loaded data; drive `Loading` from the page's load flag.
 
 ### `ConfirmDialog`
 Wrapped `MudDialog` for destructive / irreversible actions. Shown via `IDialogService`
-with `DialogParameters` (`ContentText`, `ConfirmText`, `CancelText`, `Destructive`);
-returns `DialogResult.Ok(true)` on confirm. See the usage snippet in the component source.
+with `DialogParameters` (`ContentText`, `ConfirmText`, `CancelText`, `Destructive`) and
+`TedwrenDialog.Small()` options; returns `DialogResult.Ok(true)` on confirm. See the usage
+snippet in the component source.
+
+---
+
+## Dialogs
+
+The shared dialog standard (see CLAUDE.md → *MudDialog design standard*). Every MudBlazor dialog
+in the Client uses a `TedwrenDialog` size preset; interactive dialogs add a `DialogGuidance` panel,
+group fields with the `.tw-dialog-body*` / `.tw-dialog-section*` helpers in `wwwroot/css/dialogs.css`,
+and take theme-adaptive colour from `--mud-palette-*` (the dialog overlay renders outside the
+`.theme-dark` shell, so the `--color-*` tokens would resolve to their light values there).
+
+### `TedwrenDialog` (static)
+`Tedwren.UiComponents.Dialogs.TedwrenDialog` — standard `DialogOptions` presets so a dialog's width
+is chosen deliberately, not dictated by its content. `Small()` (confirmations / warnings / short
+messages), `Medium()` (normal forms / editing), `Large()` (complex or multi-section forms, detailed
+viewers, workflows). All are `FullWidth` with a header close button and a non-dismissing backdrop.
+Pass at the call site: `DialogService.ShowAsync<T>(title, parameters, TedwrenDialog.Medium())`.
+
+### `DialogGuidance`
+Contextual guidance panel for the top of an interactive dialog — a short, persistent explanation of
+what the user should do (not a tooltip). Subtle rounded amber (`Severity=StatusKind.Warning`, default)
+or blue (`StatusKind.Info`) panel, readable in light and dark. `Text` or `ChildContent`, optional
+`Title`. Omit where the purpose is already obvious (e.g. a plain `ConfirmDialog`).
+
+### `ProgressDialog`
+Standard progress / loading dialog (shown at `TedwrenDialog.Medium()`): a titled, spacious panel —
+never a bare spinner. `Description`, `StatusText` (e.g. "Processing 24 of 87…"), `Value`/`Max`
+(a determinate linear bar when `Max > 0`, otherwise indeterminate), and `OnCancel` (a Cancel button
+appears only when set — offer cancellation only where the operation supports it).
 
 ---
 

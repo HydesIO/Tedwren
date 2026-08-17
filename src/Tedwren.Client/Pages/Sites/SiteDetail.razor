@@ -132,8 +132,7 @@ else
     private async Task EditAsync()
     {
         var parameters = new DialogParameters<EditSiteDialog> { { x => x.Site, _site! } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await Dialogs.ShowAsync<EditSiteDialog>("Edit site", parameters, options);
+        var dialog = await Dialogs.ShowAsync<EditSiteDialog>("Edit site", parameters, TedwrenDialog.Medium());
         if (await dialog.Result is { Canceled: false, Data: string newName })
         {
             var newSlug = Tedwren.Abstractions.Slug.From(newName);

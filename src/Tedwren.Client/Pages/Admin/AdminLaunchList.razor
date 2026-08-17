@@ -86,7 +86,7 @@
             { x => x.ContentText, $"Send the launch announcement to {pending} subscriber(s) who haven't been notified yet? Each is emailed individually." },
             { x => x.ConfirmText, "Send" },
         };
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Send launch email", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Send launch email", parameters, TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled != false)
         {

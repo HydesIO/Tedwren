@@ -62,8 +62,7 @@
     private async Task EditUser(UserDto user)
     {
         var parameters = new DialogParameters<EditUserDialog> { { x => x.User, user } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await Dialogs.ShowAsync<EditUserDialog>("Edit user", parameters, options);
+        var dialog = await Dialogs.ShowAsync<EditUserDialog>("Edit user", parameters, TedwrenDialog.Medium());
         if (await dialog.Result is { Canceled: false })
         {
             _users = await Admin.GetUsersAsync();

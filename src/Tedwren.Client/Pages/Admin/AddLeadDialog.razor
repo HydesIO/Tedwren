@@ -7,18 +7,41 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="add-lead">
-            <TedwrenTextField Label="Company name" @bind-Value="_companyName" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_companyName)" ErrorText="Company name is required." />
-            <TedwrenTextField Label="Contact name" @bind-Value="_contactName" />
-            <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail" />
-            <TedwrenTextField Label="Location" @bind-Value="_location" HelperText="A town, area or country — e.g. Oxford, Dubai." />
-            <TedwrenSelect T="string" Label="Model" @bind-Value="_model" Options="_models" />
-            <MudNumericField T="int?" Label="Number of sites" @bind-Value="_numberOfSites" Min="0"
-                             HelperText="Main contractor — a dispersed scheme counts as one site." />
-            <TedwrenNumericField Label="Estimated annual revenue (£)" @bind-Value="_estimatedRevenue" Min="0" />
-            <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
-            <TedwrenTextField Label="Company number" @bind-Value="_companyNumber" />
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Capture a new lead. Only the company name is required — add whatever else you know now and refine it later." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Company</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Company name" @bind-Value="_companyName" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_companyName)" ErrorText="Company name is required." />
+                    </div>
+                    <TedwrenTextField Label="Location" @bind-Value="_location" HelperText="A town, area or country — e.g. Oxford, Dubai." />
+                    <TedwrenSelect T="string" Label="Model" @bind-Value="_model" Options="_models" />
+                    <TedwrenTextField Label="Company number" @bind-Value="_companyNumber" />
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Opportunity</h3>
+                <div class="tw-dialog-section__grid">
+                    <MudNumericField T="int?" Label="Number of sites" @bind-Value="_numberOfSites" Min="0"
+                                     HelperText="Main contractor — a dispersed scheme counts as one site." />
+                    <TedwrenNumericField Label="Estimated annual revenue (£)" @bind-Value="_estimatedRevenue" Min="0" />
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Contact</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenTextField Label="Contact name" @bind-Value="_contactName" />
+                    <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail" />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
+                    </div>
+                </div>
+            </section>
         </div>
     </DialogContent>
     <DialogActions>

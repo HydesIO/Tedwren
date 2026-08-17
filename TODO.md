@@ -11,6 +11,34 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### MudDialog design standard (this change)
+Plan: `docs/plan-and-scope.md` (hardening). A consistent, spacious dialog standard across the whole
+Client (Admin portal + main/commercial portal). Standard written into `CLAUDE.md` → *MudDialog design
+standard*; new reusable assets catalogued in `docs/component-catalogue.md`.
+- ✅ **Standard documented.** New *MudDialog design standard* subsection in `CLAUDE.md`: sizing, guidance
+  panel, layout/grouping, actions, titles/descriptions, progress dialogs, and the dark-mode rule.
+- ✅ **Shared assets added (`Tedwren.UiComponents`).** `Dialogs/TedwrenDialog` (static `Small`/`Medium`/
+  `Large` `DialogOptions` presets — full-width, header close button, non-dismissing backdrop);
+  `Feedback/DialogGuidance` (amber/blue guidance panel); `Feedback/ProgressDialog` (titled progress
+  dialog with description + indicator + status text + optional cancel). Global `wwwroot/css/dialogs.css`
+  (`.tw-dialog-body` / `--grid` / `.tw-dialog-section*`) referenced from `index.html`.
+- ✅ **Dark-mode correctness.** Dialog-scoped colour switched from `--color-*` (which resolves to light
+  values in the dialog overlay, outside the `.theme-dark` shell) to MudBlazor `--mud-palette-*` in
+  `DialogGuidance`, `ConfirmDialog`, `FormSubmissionDialog` and `TimesheetDetailDialog` CSS. Also fixed
+  the non-existent `--font-size-*` references in `TimesheetDetailDialog.razor.css`.
+- ✅ **All 12 dialogs migrated** (sizing via `TedwrenDialog`, guidance panels, sectioned two-column
+  responsive bodies, standardised actions — business logic, validation, API calls and `Close(Ok(...))`
+  return contracts unchanged): `EditCompanyDialog`, `EditSiteDialog`, `EditOperativeDialog`,
+  `EditUserDialog`, `AddLeadDialog`, `AddAffiliateDialog` (ad-hoc `MudAlert` example → themed Info
+  panel), `FormAssignDialog`, `QualificationCardsDialog` (raw table → `MudSimpleTable`),
+  `FormSubmissionDialog` (reject-reason moved out of the cramped action bar), `TimesheetDetailDialog`,
+  and the shared `ConfirmDialog` (+ its 6 call sites).
+- ✅ Whole solution builds (no new warnings); all test projects pass.
+- ⏳ **`ProgressDialog` awaiting a consumer.** The component exists and is documented; no long-running
+  flow (e.g. a bulk import) uses it yet — wire it in when the first such flow lands.
+- ⏳ **Manual light/dark + responsive QA.** Verify each dialog at desktop/tablet/mobile widths in both
+  themes when the app is next run (structure and breakpoints follow the existing 720px form convention).
+
 ### Compliance page & admin-portal fixes (this change)
 Plan: `docs/plan-and-scope.md` (hardening). Cross-cutting demo-hardening + admin-portal fixes.
 - ✅ **Compliance page no longer throws (D-series).** `Compliance.razor` initialised `_overview` to a non-null

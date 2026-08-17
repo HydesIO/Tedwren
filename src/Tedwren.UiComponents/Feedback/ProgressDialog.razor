@@ -1,0 +1,72 @@
+@* Standard progress / loading dialog: a titled, spacious panel (not a bare spinner) with a short
+   description, a progress indicator and status text. Show at Medium size via TedwrenDialog.Medium().
+   Determinate when Max > 0 (Value / Max drive a linear bar); otherwise an indeterminate bar. A Cancel
+   button appears only when OnCancel is set — offer cancellation only where the operation supports it. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="progress-dialog tw-dialog-body">
+            @if (!string.IsNullOrEmpty(Description))
+            {
+                <p class="progress-dialog__description">@Description</p>
+            }
+
+            @if (IsDeterminate)
+            {
+                <MudProgressLinear Color="Color.Primary" Value="@Percentage" Rounded="true" Size="Size.Large" />
+            }
+            else
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" Rounded="true" Size="Size.Large" />
+            }
+
+            @if (!string.IsNullOrEmpty(StatusText))
+            {
+                <p class="progress-dialog__status">@StatusText</p>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (OnCancel.HasDelegate)
+        {
+            <MudButton Variant="Variant.Text" Disabled="_cancelling" OnClick="CancelAsync">@CancelText</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>Short sentence describing what is happening (e.g. "We're importing your vehicle information…").</summary>
+    [Parameter] public string? Description { get; set; }
+
+    /// <summary>Live status/progress text (e.g. "Processing 24 of 87 vehicles…").</summary>
+    [Parameter] public string? StatusText { get; set; }
+
+    /// <summary>Current progress. Only used when <see cref="Max"/> is greater than zero.</summary>
+    [Parameter] public double Value { get; set; }
+
+    /// <summary>Total for a determinate bar. Leave at zero (default) for an indeterminate bar.</summary>
+    [Parameter] public double Max { get; set; }
+
+    /// <summary>Label for the cancel button. The button only shows when <see cref="OnCancel"/> is set.</summary>
+    [Parameter] public string CancelText { get; set; } = "Cancel";
+
+    /// <summary>Invoked when the user cancels. Wire this only when the operation genuinely supports cancellation.</summary>
+    [Parameter] public EventCallback OnCancel { get; set; }
+
+    private bool _cancelling;
+
+    /// <summary>True when a real total was supplied, so the bar can show percentage progress.</summary>
+    private bool IsDeterminate => Max > 0;
+
+    /// <summary>Progress as a 0–100 percentage, clamped, for the determinate bar.</summary>
+    private double Percentage => Max > 0 ? Math.Clamp(Value / Max * 100d, 0d, 100d) : 0d;
+
+    /// <summary>Signals cancellation to the caller; the caller closes the dialog when the operation stops.</summary>
+    private async Task CancelAsync()
+    {
+        _cancelling = true;
+        await OnCancel.InvokeAsync();
+    }
+}

@@ -104,6 +104,48 @@ been removed. Static shell chrome (nav/route inventory, platform switcher, envir
   to serve unauthenticated. When adding a public-facing flow, verify each endpoint it calls is
   reachable unauthenticated; when adding a sensitive endpoint, verify it is **not**.
 
+### MudDialog design standard
+
+**Every MudBlazor dialog in the Client (Admin portal and main/commercial portal alike) follows this
+standard.** Dialogs must feel deliberate, professional and spacious — never a box that wraps tightly
+around its content. Reuse the shared dialog assets rather than hand-rolling options and markup.
+
+- **Sizing — never let content dictate width.** Pick a standard size and pass options built by
+  `Tedwren.UiComponents.Dialogs.TedwrenDialog`:
+  - `TedwrenDialog.Small()` — confirmations, warnings, simple choices, short messages.
+  - `TedwrenDialog.Medium()` — normal forms, editing screens, moderate interaction.
+  - `TedwrenDialog.Large()` — complex/multi-section forms, detailed viewers, workflows.
+  Each returns `FullWidth = true` (so the dialog fills its max width and stays responsive down to
+  tablet/mobile) with a header close button. Do not construct `DialogOptions`/`MaxWidth` inline at
+  call sites, and do not size a dialog via a `min-width` in its scoped CSS.
+- **Content spacing.** Wrap `<DialogContent>` markup in the global `.tw-dialog-body` helper (add
+  `.tw-dialog-body--grid` for a two-column body). Group related fields with the existing
+  `FormSection` (titled, bordered, already two-column, collapses to one column at 720px) rather than
+  one long vertical list. Prefer two-column on wide screens where it improves readability; let it
+  collapse on small screens. Keep spacing/alignment/padding consistent; don't over-decorate with
+  excess cards or borders.
+- **Guidance panel.** Where a dialog asks the user to decide or enter information, put a short
+  `DialogGuidance` panel near the top: it explains what to do in a subtle rounded panel with a light
+  amber (`Severity.Warning`, the default) or blue (`Severity.Info`) information style that stays
+  readable in both themes. It is an informational panel, not a tooltip. **Skip it** where the purpose
+  is already obvious (e.g. a plain confirmation via `ConfirmDialog`).
+- **Actions.** Give a clear primary verb for the purpose (`Save`, `Submit`, `Continue`, `Confirm`,
+  `Delete`, `Retry`) and, where appropriate, a secondary `Cancel`/`Close`. Primary is a filled
+  `Color.Primary` button on the right; secondary sits to its left. **Destructive actions must be
+  visually distinct** — filled/outlined `Color.Error`. Keep this ordering consistent across the app.
+- **Titles & descriptions.** Every non-trivial dialog communicates what it is for, what the user must
+  do, and what the primary action will do — in concise human wording, not internal/technical terms.
+- **Progress dialogs.** Never a bare spinner in a tiny box. Use `ProgressDialog` (rendered at
+  `Medium`): a clear title, a short description of what is happening, the progress indicator, and
+  status text (e.g. "Processing 24 of 87 vehicles…"). Offer cancellation only when the underlying
+  operation genuinely supports it.
+- **Dark mode — critical.** `MudDialogProvider` renders dialogs in an overlay that is **not** a
+  descendant of the `.theme-dark` shell element, so the project's `--color-*` tokens (which only flip
+  under `.theme-dark`) resolve to their **light** values inside a dialog. For any colour in
+  dialog-scoped CSS that must adapt to theme, use MudBlazor's `--mud-palette-*` variables (emitted
+  globally by `MudThemeProvider` and flipped by `IsDarkMode`), **not** `--color-*`. Theme-independent
+  values (`--spacing-*`, `--radius-card`) may still use tokens.
+
 ## Build & run
 
 ```bash

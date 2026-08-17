@@ -6,7 +6,7 @@
          { x => x.ConfirmText, "Delete" },
          { x => x.Destructive, true },
      };
-     var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete company", parameters);
+     var dialog = await DialogService.ShowAsync<ConfirmDialog>("Delete company", parameters, TedwrenDialog.Small());
      var result = await dialog.Result;
      if (!result.Canceled) { ... }
 *@

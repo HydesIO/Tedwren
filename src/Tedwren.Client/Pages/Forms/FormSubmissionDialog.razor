@@ -15,7 +15,12 @@
         }
         else
         {
-            <div class="submission-detail">
+            <div class="submission-detail tw-dialog-body">
+                @if (_detail.Status is "Submitted")
+                {
+                    <DialogGuidance Text="Review this submission. Approve it, or reject it with a reason — either outcome is recorded against the submission." />
+                }
+
                 <div class="submission-detail__meta">
                     <StatusPill Label="@_detail.Status" Status="@ToStatusKind(_detail.Status)" />
                     <span>Version @_detail.FormTemplateVersion · @_detail.Scope</span>
@@ -28,28 +33,43 @@
                                  Title="Review note" Message="@_detail.ReviewNote" />
                 }
 
-                <MudSimpleTable Dense="true" Hover="true" Class="submission-detail__answers">
-                    <tbody>
-                        @foreach (var answer in _detail.Answers)
-                        {
-                            <tr>
-                                <td class="submission-detail__label">@Label(answer.FieldId)</td>
-                                <td>@RenderAnswer(answer)</td>
-                            </tr>
-                        }
-                    </tbody>
-                </MudSimpleTable>
+                <section class="tw-dialog-section">
+                    <h3 class="tw-dialog-section__title">Responses</h3>
+                    <MudSimpleTable Dense="true" Hover="true" Class="submission-detail__answers">
+                        <tbody>
+                            @foreach (var answer in _detail.Answers)
+                            {
+                                <tr>
+                                    <td class="submission-detail__label">@Label(answer.FieldId)</td>
+                                    <td>@RenderAnswer(answer)</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </section>
 
                 @if (_detail.Files.Count > 0)
                 {
-                    <div class="submission-detail__files">
-                        <h4>Attachments</h4>
-                        @foreach (var file in _detail.Files)
-                        {
-                            <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
-                                       OnClick="@(() => DownloadAsync(file))">@file.FileName</MudButton>
-                        }
-                    </div>
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Attachments</h3>
+                        <div class="submission-detail__files">
+                            @foreach (var file in _detail.Files)
+                            {
+                                <MudButton Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
+                                           OnClick="@(() => DownloadAsync(file))">@file.FileName</MudButton>
+                            }
+                        </div>
+                    </section>
+                }
+
+                @if (_detail.Status is "Submitted")
+                {
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Review decision</h3>
+                        <MudTextField @bind-Value="_reason" Label="Reason"
+                                      Placeholder="Required to reject; optional when approving"
+                                      Variant="Variant.Outlined" Lines="2" />
+                    </section>
                 }
             </div>
         }
@@ -63,7 +83,6 @@
         }
         @if (_detail is not null && _detail.Status is "Submitted")
         {
-            <MudTextField @bind-Value="_reason" Placeholder="Reason (required to reject)" Variant="Variant.Outlined" Margin="Margin.Dense" Class="submission-detail__reason" />
             <MudButton Color="Color.Error" Variant="Variant.Outlined" Disabled="_busy" OnClick="RejectAsync">Reject</MudButton>
             <MudButton Color="Color.Primary" Variant="Variant.Filled" Disabled="_busy" OnClick="ApproveAsync">Approve</MudButton>
         }

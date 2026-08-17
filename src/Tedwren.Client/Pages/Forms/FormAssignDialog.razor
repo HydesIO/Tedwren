@@ -9,17 +9,23 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="form-assign">
-            <MudText Typo="Typo.body2" Class="mud-text-secondary mb-2">Assign <b>@FormName</b> to where it should be completed.</MudText>
+        <div class="tw-dialog-body">
+            <DialogGuidance>
+                Choose where <b>@FormName</b> must be completed and how often. A failed check can email a nominated address with the completed report attached.
+            </DialogGuidance>
 
-            <TedwrenSelect T="string" Label="Assign to" @bind-Value="_scope" Options="_scopes" />
-            @if (_scope == "Site")
-            {
-                <TedwrenSelect T="string" Label="Site" @bind-Value="_siteName" Options="_siteNames" Placeholder="Select a site" />
-            }
-            <TedwrenSelect T="string" Label="How often" @bind-Value="_schedule" Options="_schedules" />
-            <TedwrenTextField Label="Failed-check alert email (optional)" @bind-Value="_alertEmail"
-                              HelperText="A red check emails this address with the completed report attached." />
+            <div class="tw-dialog-body--grid">
+                <TedwrenSelect T="string" Label="Assign to" @bind-Value="_scope" Options="_scopes" />
+                @if (_scope == "Site")
+                {
+                    <TedwrenSelect T="string" Label="Site" @bind-Value="_siteName" Options="_siteNames" Placeholder="Select a site" />
+                }
+                <TedwrenSelect T="string" Label="How often" @bind-Value="_schedule" Options="_schedules" />
+                <div class="tw-dialog-body__full">
+                    <TedwrenTextField Label="Failed-check alert email (optional)" @bind-Value="_alertEmail"
+                                      HelperText="A red check emails this address with the completed report attached." />
+                </div>
+            </div>
         </div>
     </DialogContent>
     <DialogActions>
