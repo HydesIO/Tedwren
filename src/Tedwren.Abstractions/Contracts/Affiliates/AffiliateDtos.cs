@@ -14,13 +14,22 @@ public sealed record AffiliateDto(
     DateTimeOffset CreatedUtc,
     DateTimeOffset UpdatedUtc);
 
-/// <summary>An account (converted lead) associated with an affiliate, with the commission it earns.</summary>
+/// <summary>
+/// An account (converted lead) associated with an affiliate. <see cref="EstimatedCommission"/> is the
+/// admin-entered estimate; <see cref="EarnedCommission"/> is computed from the account's actual cleared
+/// direct-debit payments (net of chargebacks), so it's the real amount owed once money has moved.
+/// </summary>
 public sealed record AssociatedAccountDto(
     Guid LeadId,
     string CompanyName,
     string Status,
     decimal? EstimatedRevenue,
-    decimal Commission);
+    decimal EstimatedCommission,
+    decimal ClearedRevenue,
+    decimal EarnedCommission);
+
+/// <summary>An affiliate's commission position: earned (from cleared revenue), paid out, and still outstanding.</summary>
+public sealed record CommissionSummaryDto(decimal Earned, decimal Paid, decimal Outstanding);
 
 /// <summary>A commission payout to an affiliate.</summary>
 public sealed record AffiliatePayoutDto(
@@ -42,11 +51,12 @@ public sealed record AffiliateAgreementSummaryDto(
     DateTimeOffset? SignedUtc,
     string? SignedByName);
 
-/// <summary>An affiliate with its associated accounts, payouts and agreement, for the detail page.</summary>
+/// <summary>An affiliate with its associated accounts, payouts, commission position and agreement, for the detail page.</summary>
 public sealed record AffiliateDetailDto(
     AffiliateDto Affiliate,
     IReadOnlyList<AssociatedAccountDto> AssociatedAccounts,
     IReadOnlyList<AffiliatePayoutDto> Payouts,
+    CommissionSummaryDto Commission,
     AffiliateAgreementSummaryDto? Agreement);
 
 /// <summary>Admin request to create an affiliate on a commission plan. Rates are fractions (0.20 = 20%).</summary>

@@ -16,4 +16,7 @@ public interface IBillingSubscriptionRepository
 
     /// <summary>Updates an existing subscription.</summary>
     Task UpdateAsync(BillingSubscription subscription, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a subscription by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

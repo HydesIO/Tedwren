@@ -26,6 +26,13 @@ public sealed class InMemoryBillingSubscriptionRepository : IBillingSubscription
         return Task.CompletedTask;
     }
 
+    /// <summary>Removes a subscription from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _subscriptions.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Updates a subscription.</summary>
     public Task UpdateAsync(BillingSubscription subscription, CancellationToken cancellationToken = default)
     {

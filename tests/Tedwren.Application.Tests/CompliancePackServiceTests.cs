@@ -155,5 +155,6 @@ public sealed class CompliancePackServiceTests
         public Task<int> CountActiveByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task AddAsync(Engagement engagement, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task UpdateAsync(Engagement engagement, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

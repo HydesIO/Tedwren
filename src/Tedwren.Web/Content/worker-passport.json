@@ -4,10 +4,10 @@
   "HeroCopy": "Keep your cards, qualifications and inductions in one place and share them the moment a site asks. Your Worker Passport belongs to you and moves with you from job to job.",
   "PricingPlanKey": "WorkerPassport",
   "Benefits": [
-    { "Heading": "Never locked out for non-payment", "Copy": "Your record stays visible and usable even if a payment is missed — you are never shut out of your own passport." },
-    { "Heading": "Yours to keep", "Copy": "The passport is yours. It follows you between employers and sites instead of being rebuilt each time." },
-    { "Heading": "Share in one tap", "Copy": "Show a site your current cards and inductions without digging through emails or photos." },
-    { "Heading": "Stay ahead of expiry", "Copy": "See what's due to expire before it does, so you're never turned away at short notice." }
+    { "Heading": "Never locked out for non-payment", "Copy": "Your record stays visible and usable even if a payment is missed — you are never shut out of your own passport.", "Icon": "shield-check" },
+    { "Heading": "Yours to keep", "Copy": "The passport is yours. It follows you between employers and sites instead of being rebuilt each time.", "Icon": "passport" },
+    { "Heading": "Share in one tap", "Copy": "Show a site your current cards and inductions without digging through emails or photos.", "Icon": "tap" },
+    { "Heading": "Stay ahead of expiry", "Copy": "See what's due to expire before it does, so you're never turned away at short notice.", "Icon": "bell" }
   ],
   "ConsumerTerms": [
     "Your Worker Passport is an annual subscription, billed once a year.",

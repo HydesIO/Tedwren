@@ -25,4 +25,7 @@ public interface IMandateRepository
 
     /// <summary>Updates an existing mandate.</summary>
     Task UpdateAsync(Mandate mandate, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a mandate by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

@@ -19,4 +19,7 @@ public interface IPayoutRepository
 
     /// <summary>Updates an existing payout.</summary>
     Task UpdateAsync(Payout payout, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a payout by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

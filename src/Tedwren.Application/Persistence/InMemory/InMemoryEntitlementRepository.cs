@@ -36,4 +36,14 @@ public sealed class InMemoryEntitlementRepository : IEntitlementRepository
         _overrides[(companyId, moduleKey)] = enabled;
         return Task.CompletedTask;
     }
+
+    /// <summary>Removes all overrides for a company (demo-data teardown).</summary>
+    public Task ClearForCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
+    {
+        foreach (var key in _overrides.Keys.Where(k => k.CompanyId == companyId).ToList())
+        {
+            _overrides.TryRemove(key, out _);
+        }
+        return Task.CompletedTask;
+    }
 }

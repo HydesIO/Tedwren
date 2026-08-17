@@ -97,6 +97,11 @@ app.UseStatusCodePagesWithReExecute("/error");
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
+
+// Pre-launch gate: when Site:IsLanding is on, funnel the whole site to the landing page. Placed after
+// static files (so assets load) and before routing (so the rewritten path is routed to the landing).
+app.UseMiddleware<Tedwren.Web.Configuration.LandingGateMiddleware>();
+
 app.UseRouting();
 app.UseRateLimiter();
 

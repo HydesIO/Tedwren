@@ -28,4 +28,7 @@ public interface IQualificationCardRepository
 
     /// <summary>Persists confirmation/supersession changes to an existing card.</summary>
     Task UpdateAsync(QualificationCard card, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a qualification card by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

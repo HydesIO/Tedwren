@@ -18,6 +18,7 @@
     <ProjectReference Include="..\Tedwren.Abstractions\Tedwren.Abstractions.csproj" />
     <ProjectReference Include="..\Tedwren.Application\Tedwren.Application.csproj" />
     <ProjectReference Include="..\Tedwren.DataAccess\Tedwren.DataAccess.csproj" />
+    <ProjectReference Include="..\Tedwren.DataAccess.Commercial\Tedwren.DataAccess.Commercial.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -27,6 +27,9 @@
                       Status="StatusPillKind(lead.Status)"
                       Breadcrumbs="_crumbs">
             <Actions>
+                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Edit" Disabled="_busy" OnClick="EditLead">
+                    Edit
+                </MudButton>
                 <MudMenu Label="Change status" Variant="Variant.Outlined" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowDropDown" Disabled="_busy">
                     @foreach (var status in _statuses)
                     {
@@ -111,6 +114,22 @@
             }
 
             BuildView(_detail);
+        }
+    }
+
+    private async Task EditLead()
+    {
+        if (_detail is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<EditLeadDialog> { { x => x.Lead, _detail.Lead } };
+        var dialog = await DialogService.ShowAsync<EditLeadDialog>("Edit lead", parameters);
+        var result = await dialog.Result;
+        if (result?.Canceled == false)
+        {
+            await ReloadAsync();
         }
     }
 

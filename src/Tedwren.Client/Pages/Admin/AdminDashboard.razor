@@ -1,6 +1,9 @@
 @page "/admin"
 @using Tedwren.Abstractions.Services
 @inject IPlatformAdminService Admin
+@inject ILaunchListService LaunchList
+@inject ILeadService Leads
+@inject IAffiliateService Affiliates
 
 <PageTitle>Admin · Tedwren</PageTitle>
 
@@ -30,6 +33,50 @@
                 </div>
             </Body>
         </DashboardCard>
+        <DashboardCard>
+            <Body>
+                <div class="admin-stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.Campaign" />
+                    <div>
+                        <div class="admin-stat__value">@(_loading ? "—" : _launchCount.ToString())</div>
+                        <div class="admin-stat__label">Launch subscribers</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
+        <DashboardCard>
+            <Body>
+                <div class="admin-stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.ContactPage" />
+                    <div>
+                        <div class="admin-stat__value">@(_loading ? "—" : _openLeads.ToString())</div>
+                        <div class="admin-stat__label">Open leads</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
+        <DashboardCard>
+            <Body>
+                <div class="admin-stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.TrendingUp" />
+                    <div>
+                        <div class="admin-stat__value">@(_loading ? "—" : $"£{_pipelineValue:N0}")</div>
+                        <div class="admin-stat__label">Pipeline value</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
+        <DashboardCard>
+            <Body>
+                <div class="admin-stat">
+                    <MudIcon Icon="@Icons.Material.Outlined.Handshake" />
+                    <div>
+                        <div class="admin-stat__value">@(_loading ? "—" : _activeAffiliates.ToString())</div>
+                        <div class="admin-stat__label">Active affiliates</div>
+                    </div>
+                </div>
+            </Body>
+        </DashboardCard>
     </div>
 
     <DashboardCard>
@@ -44,10 +91,14 @@
 @code {
     private int _companyCount;
     private int _userCount;
+    private int _launchCount;
+    private int _openLeads;
+    private decimal _pipelineValue;
+    private int _activeAffiliates;
     private bool _loading = true;
 
-    // Loads headline counts across the whole platform (all companies/users). The API gates these reads to
-    // platform admins; the AdminGuard prevents non-admins reaching this page at all.
+    // Loads headline counts across the whole platform. The API gates these reads to platform admins; the
+    // AdminGuard prevents non-admins reaching this page at all.
     protected override async Task OnInitializedAsync()
     {
         try
@@ -56,6 +107,17 @@
             var users = await Admin.GetUsersAsync();
             _companyCount = companies.Count;
             _userCount = users.Count;
+
+            var launch = await LaunchList.ListAsync();
+            _launchCount = launch.Count;
+
+            var leads = await Leads.ListAsync();
+            var open = leads.Where(l => l.Status != "Converted" && l.Status != "Lost").ToList();
+            _openLeads = open.Count;
+            _pipelineValue = open.Sum(l => l.EstimatedRevenue ?? 0m);
+
+            var affiliates = await Affiliates.ListAsync();
+            _activeAffiliates = affiliates.Count(a => a.Status == "Active");
         }
         finally
         {

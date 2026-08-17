@@ -102,6 +102,7 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddUserCore(this IServiceCollection services)
     {
         services.AddScoped<IUserService, UserService>();
+        services.AddScoped<IProfileService, Account.ProfileService>();
         return services;
     }
 
@@ -388,6 +389,18 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<GoCardlessWebhookProcessor>();
         services.AddScoped<BillingReconciliationService>();
         services.AddScoped<PayoutSyncService>();
+        return services;
+    }
+
+    /// <summary>
+    /// Registers the demo-data service (Product Admin seed/recreate/delete) and its shared progress tracker.
+    /// The service consumes the ordinary repositories, so it works over either data source; the progress
+    /// tracker is a singleton because seeding and polling happen on different requests.
+    /// </summary>
+    public static IServiceCollection AddDemoDataCore(this IServiceCollection services)
+    {
+        services.AddSingleton<Tedwren.Application.DemoData.DemoDataProgressState>();
+        services.AddScoped<IDemoDataService, Tedwren.Application.DemoData.DemoDataService>();
         return services;
     }
 
