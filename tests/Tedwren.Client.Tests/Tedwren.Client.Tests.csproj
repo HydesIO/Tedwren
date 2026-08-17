@@ -24,6 +24,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Tedwren.UiComponents\Tedwren.UiComponents.csproj" />
+    <ProjectReference Include="..\..\src\Tedwren.Client\Tedwren.Client.csproj" />
   </ItemGroup>
 
 </Project>

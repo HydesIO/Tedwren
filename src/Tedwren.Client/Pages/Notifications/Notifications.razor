@@ -9,16 +9,17 @@
 
 <DashboardCard>
     <Body>
-        @if (!_loading && _items.Count == 0)
-        {
-            <EmptyState Icon="@Icons.Material.Outlined.NotificationsNone"
-                        Title="You're all caught up"
-                        Description="No qualifications are due to expire in the next 60 days." />
-        }
-        else
-        {
-            <ActivityFeed Items="_items" />
-        }
+        <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="4"
+                      IsEmpty="@(_items.Count == 0)">
+            <EmptyContent>
+                <EmptyState Icon="@Icons.Material.Outlined.NotificationsNone"
+                            Title="You're all caught up"
+                            Description="No qualifications are due to expire in the next 60 days." />
+            </EmptyContent>
+            <ChildContent>
+                <ActivityFeed Items="_items" />
+            </ChildContent>
+        </AsyncContent>
     </Body>
 </DashboardCard>
 

@@ -1,0 +1,99 @@
+.gate__hint {
+    margin-top: var(--spacing-4);
+    margin-bottom: var(--spacing-16);
+}
+
+/* Responsive grid of operative entry blocks, clearly separated with a real gap. */
+.gate__operatives {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: var(--spacing-12);
+}
+
+.gate__op {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12);
+    width: 100%;
+    padding: var(--spacing-16);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-family);
+    font-size: .9375rem;
+    font-weight: 600;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color .12s ease, box-shadow .12s ease, background .12s ease;
+}
+
+.gate__op:hover {
+    border-color: var(--color-brand);
+    box-shadow: var(--shadow-card);
+}
+
+.gate__op--active {
+    border-color: var(--color-brand);
+    background: var(--color-brand-pale);
+    box-shadow: 0 0 0 1px var(--color-brand);
+}
+
+.gate__op-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    flex: 0 0 auto;
+    border-radius: 50%;
+    background: var(--color-bg);
+    color: var(--color-text-secondary);
+}
+
+.gate__op--active .gate__op-icon {
+    background: var(--color-surface);
+    color: var(--color-brand);
+}
+
+.gate__op-name {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Decision result — clearly separated from the operative grid above. */
+.gate__result {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16);
+    margin-top: var(--spacing-32);
+    padding-top: var(--spacing-24);
+    border-top: 1px solid var(--color-border);
+}
+
+.gate__checks {
+    width: 100%;
+}
+
+/* Manager override sits in its own right-aligned action row. */
+.gate__override-row {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.gate__muster-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--spacing-12);
+    margin-bottom: var(--spacing-12);
+}
+
+.gate__cover {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-8);
+    margin-bottom: var(--spacing-16);
+}

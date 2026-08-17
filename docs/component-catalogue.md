@@ -419,6 +419,25 @@ Skeleton placeholders (the default loading pattern — not spinners). Respects
 `DataTable<TItem>` renders the `Table` variant automatically when its `Loading`
 parameter is set, and a `BannerAlert` with a Retry button when `ErrorMessage` is set.
 
+### `AsyncContent`
+Loading / error / empty / content switch for any async region — so a page never paints a
+blank screen while an API call is in flight. Generalises the pattern proven in
+`DataTable`, reusing `LoadingSkeleton`, `BannerAlert` and `EmptyState`. Wrap the region
+that depends on loaded data; drive `Loading` from the page's load flag.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Loading` | `bool` | Shows the skeleton while true. |
+| `Variant` | `LoadingSkeleton.SkeletonVariant` | Skeleton shape (`Card` default / `Table` / `List` / `Kpi`). |
+| `Rows` | `int` | Skeleton placeholder count. |
+| `Error` | `string?` | When set (and not loading), shows an error banner instead of the content. |
+| `ErrorTitle` | `string` | Error banner title. |
+| `OnRetry` | `EventCallback` | Adds a Retry button to the error banner when provided. |
+| `IsEmpty` | `bool` | When true (and not loading/errored), shows the empty state. |
+| `EmptyContent` | `RenderFragment?` | Custom empty markup; falls back to a default `EmptyState`. |
+| `EmptyIcon` / `EmptyTitle` / `EmptyDescription` | — | Default empty-state copy. |
+| `ChildContent` | `RenderFragment?` | The loaded content. |
+
 ### `ConfirmDialog`
 Wrapped `MudDialog` for destructive / irreversible actions. Shown via `IDialogService`
 with `DialogParameters` (`ContentText`, `ConfirmText`, `CancelText`, `Destructive`);
@@ -456,15 +475,35 @@ A canvas signature pad; strokes are captured as a PNG data URL surfaced through 
 Interop lives in `wwwroot/js/tedwren.js` (`tedwren.signature.*`). `Label`, `@bind-Value`,
 `Required`. `IAsyncDisposable` — disposes the canvas handlers and the DotNet reference.
 
+### `ChipInput`
+Editable list of option chips — replaces the old "comma separated" option entry for choice
+fields (Forms) and quiz answers (Inductions). Each chip shows the option text, its assigned
+id badge and a remove control; the text box appends a new chip on Enter or Add (duplicates
+are ignored). Binds two-way over a mutable `List<ChipOption>` (`Id`, `Text`) edited in place.
+
+| Parameter | Type | Notes |
+|---|---|---|
+| `Value` | `List<ChipOption>` | The option list, mutated in place; pair with `ValueChanged`. |
+| `ValueChanged` | `EventCallback<List<ChipOption>>` | Raised on add / remove. |
+| `Label` / `Placeholder` / `HelperText` | `string?` | Field chrome. |
+| `Error` / `ErrorText` | — | Validation state. |
+
+`ChipOption` (in `Tedwren.UiComponents.Forms`) carries a stable `Id` assigned on creation
+(`ChipOption.Create(text)`) and the display `Text`.
+
 ## Forms Library components (client, Phase 21–22)
 
 Client-side components (in `Tedwren.Client/Pages/Forms`) that compose the field wrappers
 into the builder and fill experiences.
 
 ### `FormBuilder`
-The authoring surface: add/remove sections and fields, choose each field's kind, toggle
-`Required`, and supply options for choice fields. Edits a `List<FormEditModel.SectionEdit>`
-in place (`Sections` parameter). `FormEditModel` maps to/from the `FormSectionDto` contracts.
+The authoring surface: questions are grouped into named **panels**, each a collapsible card
+with an editable name, its own question list, an "Add question to this panel" action and
+per-question reorder controls; a top-level action adds a new panel. Choose each question's
+answer type, toggle `Required`, and enter choice-field options as `ChipInput` chips. Edits a
+`List<FormEditModel.SectionEdit>` in place (`Sections` parameter). `FormEditModel` maps
+to/from the `FormSectionDto` contracts and persists option chips into `OptionsJson` as
+`{id,text}` objects (reading legacy plain-string arrays back for compatibility).
 
 ### `DynamicFormRenderer`
 Renders a published form's sections/fields as the matching `Tedwren*` input per

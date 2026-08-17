@@ -14,7 +14,7 @@
 <MudPaper Class="pa-8 mx-auto mt-6" MaxWidth="520px" Elevation="0" Outlined="true">
     @if (_loading)
     {
-        <MudText>Loading…</MudText>
+        <AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="5" />
     }
     else if (_view is null)
     {

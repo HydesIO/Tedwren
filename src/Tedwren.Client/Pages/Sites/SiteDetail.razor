@@ -11,7 +11,12 @@
 
 @if (_loading)
 {
-    <PageHeader Title="Loading…" />
+    <PageHeader Title="Loading…" Subtitle="Fetching site details" />
+    <DashboardCard>
+        <Body>
+            <AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="6" />
+        </Body>
+    </DashboardCard>
 }
 else if (_site is null)
 {

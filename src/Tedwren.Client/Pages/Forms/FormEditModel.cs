@@ -1,13 +1,15 @@
 using System.Text.Json;
 using Tedwren.Abstractions.Contracts.Forms;
+using Tedwren.UiComponents.Forms;
 
 namespace Tedwren.Client.Pages.Forms;
 
 /// <summary>
 /// Client-side editable model for the form builder (PRD-Phase 2). Mirrors the <see cref="FormSectionDto"/> /
 /// <see cref="FormFieldDto"/> contracts as mutable classes the UI can bind to, with mapping to/from the DTOs and
-/// the small set of authorable field kinds. Options for choice fields are edited as a comma-separated string and
-/// stored as a JSON array in <c>OptionsJson</c>.
+/// the small set of authorable field kinds. Options for choice fields are edited as <see cref="ChipOption"/>
+/// chips and persisted into <c>OptionsJson</c> as <c>{id,text}</c> objects (older plain-string arrays are read
+/// back for compatibility).
 /// </summary>
 public static class FormEditModel
 {
@@ -54,7 +56,7 @@ public static class FormEditModel
                     Label = f.Label,
                     HelpText = f.HelpText,
                     Required = f.Required,
-                    OptionsCsv = OptionsToCsv(f.OptionsJson),
+                    Options = ParseOptions(f.OptionsJson),
                 }).ToList(),
             })
             .ToList();
@@ -72,47 +74,63 @@ public static class FormEditModel
                 string.IsNullOrWhiteSpace(f.HelpText) ? null : f.HelpText.Trim(),
                 f.Required,
                 null,
-                UsesOptions(f.Kind) ? CsvToOptionsJson(f.OptionsCsv) : null,
+                UsesOptions(f.Kind) ? OptionsToJson(f.Options) : null,
                 fi)).ToList(),
             si)).ToList();
 
-    /// <summary>Reads a JSON option array into a comma-separated string for editing.</summary>
-    private static string OptionsToCsv(string? optionsJson)
+    /// <summary>
+    /// Reads a field's <c>OptionsJson</c> into editable chips. Accepts both the current <c>[{id,text}]</c> shape
+    /// and the legacy plain-string array <c>["Pass","Fail"]</c> (each legacy value gets a freshly-assigned id).
+    /// </summary>
+    public static List<ChipOption> ParseOptions(string? optionsJson)
     {
-        if (string.IsNullOrWhiteSpace(optionsJson)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(optionsJson)) return new List<ChipOption>();
         try
         {
-            var options = JsonSerializer.Deserialize<List<string>>(optionsJson);
-            return options is null ? string.Empty : string.Join(", ", options);
+            using var doc = JsonDocument.Parse(optionsJson);
+            if (doc.RootElement.ValueKind != JsonValueKind.Array) return new List<ChipOption>();
+
+            var chips = new List<ChipOption>();
+            foreach (var element in doc.RootElement.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.String)
+                {
+                    var text = element.GetString();
+                    if (!string.IsNullOrWhiteSpace(text)) chips.Add(ChipOption.Create(text));
+                }
+                else if (element.ValueKind == JsonValueKind.Object)
+                {
+                    var text = element.TryGetProperty("text", out var t) ? t.GetString() : null;
+                    if (string.IsNullOrWhiteSpace(text)) continue;
+                    var id = element.TryGetProperty("id", out var i) ? i.GetString() : null;
+                    chips.Add(new ChipOption { Id = string.IsNullOrWhiteSpace(id) ? ChipOption.NewId() : id!, Text = text.Trim() });
+                }
+            }
+
+            return chips;
         }
         catch (JsonException)
         {
-            return string.Empty;
+            return new List<ChipOption>();
         }
     }
 
-    /// <summary>Serialises a comma-separated option string to a JSON array.</summary>
-    private static string CsvToOptionsJson(string? csv)
+    /// <summary>Serialises option chips to the persisted <c>[{id,text}]</c> JSON array (assigning ids where missing).</summary>
+    public static string OptionsToJson(IReadOnlyList<ChipOption> options)
     {
-        var options = (csv ?? string.Empty)
-            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        var payload = options
+            .Where(o => !string.IsNullOrWhiteSpace(o.Text))
+            .Select(o => new OptionJson(string.IsNullOrWhiteSpace(o.Id) ? ChipOption.NewId() : o.Id, o.Text.Trim()))
             .ToList();
-        return JsonSerializer.Serialize(options);
+        return JsonSerializer.Serialize(payload);
     }
 
-    /// <summary>Reads a field's options (for the renderer / preview) from its OptionsJson.</summary>
-    public static IReadOnlyList<string> ReadOptions(string? optionsJson)
-    {
-        if (string.IsNullOrWhiteSpace(optionsJson)) return Array.Empty<string>();
-        try
-        {
-            return JsonSerializer.Deserialize<List<string>>(optionsJson) ?? new List<string>();
-        }
-        catch (JsonException)
-        {
-            return Array.Empty<string>();
-        }
-    }
+    /// <summary>Reads a field's option <em>labels</em> (for the renderer / preview) from its OptionsJson, both shapes.</summary>
+    public static IReadOnlyList<string> ReadOptions(string? optionsJson) =>
+        ParseOptions(optionsJson).Select(o => o.Text).ToList();
+
+    /// <summary>The persisted option shape: a stable id plus its display text.</summary>
+    private sealed record OptionJson(string id, string text);
 
     /// <summary>An editable section.</summary>
     public sealed class SectionEdit
@@ -120,6 +138,9 @@ public static class FormEditModel
         public string Id { get; set; } = Guid.NewGuid().ToString("N");
         public string Title { get; set; } = string.Empty;
         public List<FieldEdit> Fields { get; set; } = new();
+
+        /// <summary>UI-only collapse state for the builder panel (not persisted).</summary>
+        public bool Collapsed { get; set; }
     }
 
     /// <summary>An editable field.</summary>
@@ -130,6 +151,6 @@ public static class FormEditModel
         public string Label { get; set; } = string.Empty;
         public string? HelpText { get; set; }
         public bool Required { get; set; } = true;
-        public string OptionsCsv { get; set; } = string.Empty;
+        public List<ChipOption> Options { get; set; } = new();
     }
 }
