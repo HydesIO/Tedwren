@@ -1183,6 +1183,26 @@ Phase M1 delivers the shared foundations and the first page migrations:
   cover & muster). *Product saleable.*
 - ⏳ Phase 18 — Hardening + PostgreSQL launch gate.
 - ⏳ Phases 19+ — PRD commercial modules (CSCS, HSE, QA, Pay, Identity, Sharing, Integrations).
+- 📋 **Worker Passport — a third product (planning only; not started).** Worker-owned credential record
+  (PRD `docs/TedwrenWorkerPassportPRDv0_1.docx`, mirror `docs/TedwrenWorkerPassportPRDv0_1.md`; folds into
+  PRD v6.4 §5.4 after Leigh & James comment). Phased plan of works in
+  [`docs/worker-passport-plan.md`](docs/worker-passport-plan.md): **WP-A** foundation data (personal details,
+  emergency contacts, ownership, recovery) → **WP-B** worker passport (mobile-web) → **WP-C** sharing &
+  consent → **WP-D** expiry & reminders → **WP-E** Stripe consumer checkout (GoCardless template) → **WP-F**
+  induction pre-fill → **WP-G** verified write-back (behind an interface, ships nothing until CSCS §7.3) →
+  **WP-H** QR/wallet pass (P1). Reuses `Person`/`Engagement`/`QualificationCard`/`QualificationService`.
+  New backend numeric phases (26+) + W-track (W9+) for the marketing checkout.
+  - ⏸️ **Gated (blocks the build, not the plan):** PRD open questions **Q1** (data controller) and **Q2**
+    (identity collision) block the schema — held for Leigh's sign-off; plus **Q3/Q4**, a **DPIA**, **consumer
+    contract terms**, and (for WP-G only) the **CSCS §7.3 letter**. Reminders (WP-D) also need the outstanding
+    **SMS provider**.
+  - ⏳ **WP-Admin — admin "Worker Passports" section (operational metrics only, Rule W5).** Platform-operator
+    oversight of passport health — counts/states/activity (passports, active-paid vs lapsed, credential
+    expiry, share/reminder engagement per G3/G4, renewals due, recovery requests). **No** passport content
+    (no names/DOB/NI/addresses/emergency contacts/images) — no administrative override. Standard 7-layer
+    admin slice (nav in `ShellChrome.AdminNavItems`, `PlatformAdmin`-gated `/api/admin/worker-passports`,
+    `DataTable` list + `AdminLeadDetail`-style detail). Earliest slice (counts + credential-expiry over
+    existing `Person`/`QualificationCard`) needs no new schema.
 - 📋 **Forms Library (Phases 19–25).** Customer-built, per-tenant form engine. Detailed plan of works
   in [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Clones the `InductionTemplate`
   pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**

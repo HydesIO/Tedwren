@@ -288,6 +288,28 @@ boundary. Phased, each independently shippable:
 > Stripe card checkout only for the separate Worker Passport product. GoCardless as the SaaS billing rail
 > is confirmed with the product owner and should be reconciled into §9 in a future PRD revision.
 
+### Worker Passport — a third product (planning only)
+
+A worker-owned credential record — the individual worker's side of the platform, sold to the worker
+(£10/yr, Stripe consumer checkout), mobile-web-first, and explicitly **not** a rival to the CSCS Digital
+Skills Passport. Source: `docs/TedwrenWorkerPassportPRDv0_1.docx` (mirror
+`docs/TedwrenWorkerPassportPRDv0_1.md`); it folds into PRD v6.4 as **§5.4** after Leigh & James comment, so
+the PRD is not edited until then. Requirements **WP-1…WP-18**, rules **W1–W7**, CSCS constraint (§7).
+
+Its own self-contained track (like the Admin/GoCardless billing track above), **not started** — full plan
+of works in [`worker-passport-plan.md`](worker-passport-plan.md). It reuses the shared foundation
+(`Person`/SF-1, `Engagement`/SF-2, `QualificationCard`/`QualificationService`, SF-5 photo capture) and adds
+only genuinely new pieces. Phases: **WP-A** foundation data → **WP-B** worker passport (mobile-web) →
+**WP-C** sharing & consent → **WP-D** expiry & reminders → **WP-E** Stripe checkout → **WP-F** induction
+pre-fill → **WP-G** verified write-back (behind an interface; ships nothing until CSCS §7.3) → **WP-H**
+QR/wallet pass (P1), plus **WP-Admin** the platform-operator oversight section. New backend numeric phases
+continue at **26+**; the marketing checkout continues on the **W-track (W9+)**.
+
+> **Gated (blocks the build, not the plan).** PRD open questions **Q1** (data controller) and **Q2**
+> (identity collision) block the schema and are held for legal/product sign-off; **Q3/Q4**, a **DPIA**, and
+> **consumer contract terms** gate delivery; the **CSCS §7.3 letter** gates WP-G only. The **admin section
+> is operational-metrics-only** (Rule W5 — no administrative override on passport content).
+
 ---
 
 ## Cross-cutting engineering standards (apply every phase)
