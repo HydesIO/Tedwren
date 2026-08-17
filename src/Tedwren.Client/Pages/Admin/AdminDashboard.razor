@@ -1,21 +1,26 @@
 @page "/admin"
 @using Tedwren.Abstractions.Services
+@using Tedwren.Abstractions.Contracts.Leads
 @inject IPlatformAdminService Admin
 @inject ILaunchListService LaunchList
 @inject ILeadService Leads
 @inject IAffiliateService Affiliates
+@inject IBillingService Billing
 
 <PageTitle>Admin · Tedwren</PageTitle>
 
 <AdminGuard>
     <PageHeader Title="Admin Dashboard" Subtitle="Tedwren platform administration" />
 
+    @* Headline platform counts. Each tile drills through to the matching admin area. *@
     <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.Kpi" Rows="6">
     <div class="admin-stat-grid">
-        <DashboardCard>
+        <DashboardCard Href="/admin/companies">
             <Body>
                 <div class="admin-stat">
-                    <MudIcon Icon="@Icons.Material.Outlined.Business" />
+                    <span class="admin-stat__icon" style="--stat-accent:var(--color-brand)">
+                        <MudIcon Icon="@Icons.Material.Outlined.Business" />
+                    </span>
                     <div>
                         <div class="admin-stat__value">@_companyCount</div>
                         <div class="admin-stat__label">Companies</div>
@@ -23,10 +28,12 @@
                 </div>
             </Body>
         </DashboardCard>
-        <DashboardCard>
+        <DashboardCard Href="/admin/users">
             <Body>
                 <div class="admin-stat">
-                    <MudIcon Icon="@Icons.Material.Outlined.PeopleOutline" />
+                    <span class="admin-stat__icon" style="--stat-accent:var(--color-info)">
+                        <MudIcon Icon="@Icons.Material.Outlined.PeopleOutline" />
+                    </span>
                     <div>
                         <div class="admin-stat__value">@_userCount</div>
                         <div class="admin-stat__label">Users</div>
@@ -34,10 +41,12 @@
                 </div>
             </Body>
         </DashboardCard>
-        <DashboardCard>
+        <DashboardCard Href="/admin/launch-list">
             <Body>
                 <div class="admin-stat">
-                    <MudIcon Icon="@Icons.Material.Outlined.Campaign" />
+                    <span class="admin-stat__icon" style="--stat-accent:var(--color-permit)">
+                        <MudIcon Icon="@Icons.Material.Outlined.Campaign" />
+                    </span>
                     <div>
                         <div class="admin-stat__value">@_launchCount</div>
                         <div class="admin-stat__label">Launch subscribers</div>
@@ -45,10 +54,12 @@
                 </div>
             </Body>
         </DashboardCard>
-        <DashboardCard>
+        <DashboardCard Href="/admin/leads">
             <Body>
                 <div class="admin-stat">
-                    <MudIcon Icon="@Icons.Material.Outlined.ContactPage" />
+                    <span class="admin-stat__icon" style="--stat-accent:var(--color-warning)">
+                        <MudIcon Icon="@Icons.Material.Outlined.ContactPage" />
+                    </span>
                     <div>
                         <div class="admin-stat__value">@_openLeads</div>
                         <div class="admin-stat__label">Open leads</div>
@@ -56,10 +67,12 @@
                 </div>
             </Body>
         </DashboardCard>
-        <DashboardCard>
+        <DashboardCard Href="/admin/leads">
             <Body>
                 <div class="admin-stat">
-                    <MudIcon Icon="@Icons.Material.Outlined.TrendingUp" />
+                    <span class="admin-stat__icon" style="--stat-accent:var(--color-success)">
+                        <MudIcon Icon="@Icons.Material.Outlined.TrendingUp" />
+                    </span>
                     <div>
                         <div class="admin-stat__value">@($"£{_pipelineValue:N0}")</div>
                         <div class="admin-stat__label">Pipeline value</div>
@@ -67,10 +80,12 @@
                 </div>
             </Body>
         </DashboardCard>
-        <DashboardCard>
+        <DashboardCard Href="/admin/affiliates">
             <Body>
                 <div class="admin-stat">
-                    <MudIcon Icon="@Icons.Material.Outlined.Handshake" />
+                    <span class="admin-stat__icon" style="--stat-accent:var(--color-brand-dark)">
+                        <MudIcon Icon="@Icons.Material.Outlined.Handshake" />
+                    </span>
                     <div>
                         <div class="admin-stat__value">@_activeAffiliates</div>
                         <div class="admin-stat__label">Active affiliates</div>
@@ -81,11 +96,92 @@
     </div>
     </AsyncContent>
 
-    <DashboardCard>
+    @* Leads overview: the open pipeline (newest first) with a status pill per row. *@
+    <DashboardCard Title="Leads overview" Subtitle="Open pipeline, newest first"
+                   FooterLinkText="View all leads" FooterLinkHref="/admin/leads">
         <Body>
-            <EmptyState Icon="@Icons.Material.Outlined.Insights"
-                        Title="Billing overview coming soon"
-                        Description="Direct-debit mandates, payments and payouts appear here once GoCardless billing (Phase B) lands." />
+            <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="5"
+                          IsEmpty="@(_recentLeads.Count == 0)" EmptyIcon="@Icons.Material.Outlined.ContactPage"
+                          EmptyTitle="No open leads"
+                          EmptyDescription="New leads awaiting action appear here.">
+                <ul class="admin-lead-list">
+                    @foreach (var lead in _recentLeads)
+                    {
+                        <li class="admin-lead-row">
+                            <span class="admin-lead-row__icon" aria-hidden="true">
+                                <MudIcon Icon="@ModelIcon(lead.Model)" Size="Size.Small" />
+                            </span>
+                            <div class="admin-lead-row__text">
+                                <span class="admin-lead-row__name">@lead.CompanyName</span>
+                                <span class="admin-lead-row__meta">@ModelLabel(lead.Model)@(string.IsNullOrWhiteSpace(lead.Location) ? "" : $" · {lead.Location}")</span>
+                            </div>
+                            <StatusPill Label="@StatusLabel(lead.Status)" Status="StatusPillKind(lead.Status)" />
+                        </li>
+                    }
+                </ul>
+            </AsyncContent>
+        </Body>
+    </DashboardCard>
+
+    @* Billing overview: live direct-debit summary, each tile drilling into its admin billing area. *@
+    <DashboardCard Title="Billing overview" Subtitle="Direct-debit mandates, payments and payouts">
+        <Body>
+            <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.Kpi" Rows="4">
+                <div class="admin-stat-grid">
+                    <DashboardCard Href="/admin/billing">
+                        <Body>
+                            <div class="admin-stat">
+                                <span class="admin-stat__icon" style="--stat-accent:var(--color-success)">
+                                    <MudIcon Icon="@Icons.Material.Outlined.AccountBalance" />
+                                </span>
+                                <div>
+                                    <div class="admin-stat__value">@_activeMandates</div>
+                                    <div class="admin-stat__label">Active mandates</div>
+                                </div>
+                            </div>
+                        </Body>
+                    </DashboardCard>
+                    <DashboardCard Href="/admin/payments">
+                        <Body>
+                            <div class="admin-stat">
+                                <span class="admin-stat__icon" style="--stat-accent:var(--color-brand)">
+                                    <MudIcon Icon="@Icons.Material.Outlined.Payments" />
+                                </span>
+                                <div>
+                                    <div class="admin-stat__value">@($"£{PoundsFromPence(_paymentsThisMonthPence):N0}")</div>
+                                    <div class="admin-stat__label">Payments this month</div>
+                                </div>
+                            </div>
+                        </Body>
+                    </DashboardCard>
+                    <DashboardCard Href="/admin/payments">
+                        <Body>
+                            <div class="admin-stat">
+                                <span class="admin-stat__icon" style="--stat-accent:var(--color-danger)">
+                                    <MudIcon Icon="@Icons.Material.Outlined.ErrorOutline" />
+                                </span>
+                                <div>
+                                    <div class="admin-stat__value">@_failedPayments</div>
+                                    <div class="admin-stat__label">Failed payments</div>
+                                </div>
+                            </div>
+                        </Body>
+                    </DashboardCard>
+                    <DashboardCard Href="/admin/payouts">
+                        <Body>
+                            <div class="admin-stat">
+                                <span class="admin-stat__icon" style="--stat-accent:var(--color-info)">
+                                    <MudIcon Icon="@Icons.Material.Outlined.AccountBalanceWallet" />
+                                </span>
+                                <div>
+                                    <div class="admin-stat__value">@($"£{PoundsFromPence(_recentPayoutsPence):N0}")</div>
+                                    <div class="admin-stat__label">Payouts (30 days)</div>
+                                </div>
+                            </div>
+                        </Body>
+                    </DashboardCard>
+                </div>
+            </AsyncContent>
         </Body>
     </DashboardCard>
 </AdminGuard>
@@ -97,10 +193,23 @@
     private int _openLeads;
     private decimal _pipelineValue;
     private int _activeAffiliates;
+
+    // Billing overview headline figures (amounts held in pence, formatted to pounds for display).
+    private int _activeMandates;
+    private long _paymentsThisMonthPence;
+    private int _failedPayments;
+    private long _recentPayoutsPence;
+
+    // The open leads shown in the leads overview list (newest first, capped).
+    private IReadOnlyList<LeadDto> _recentLeads = Array.Empty<LeadDto>();
+
     private bool _loading = true;
 
+    private const int LeadsPreviewCount = 6;
+
     // Loads headline counts across the whole platform. The API gates these reads to platform admins; the
-    // AdminGuard prevents non-admins reaching this page at all.
+    // AdminGuard prevents non-admins reaching this page at all. Billing reads work from the local database
+    // even when GoCardless is unconfigured, and are isolated so a billing failure can't blank the dashboard.
     protected override async Task OnInitializedAsync()
     {
         try
@@ -117,13 +226,85 @@
             var open = leads.Where(l => l.Status != "Converted" && l.Status != "Lost").ToList();
             _openLeads = open.Count;
             _pipelineValue = open.Sum(l => l.EstimatedRevenue ?? 0m);
+            _recentLeads = open.OrderByDescending(l => l.CreatedUtc).Take(LeadsPreviewCount).ToList();
 
             var affiliates = await Affiliates.ListAsync();
             _activeAffiliates = affiliates.Count(a => a.Status == "Active");
+
+            await LoadBillingAsync();
         }
         finally
         {
             _loading = false;
         }
     }
+
+    // Aggregates the platform-wide billing state into the four overview figures. Failures degrade to zeros
+    // (e.g. GoCardless not configured) rather than breaking the whole dashboard.
+    private async Task LoadBillingAsync()
+    {
+        try
+        {
+            var mandates = await Billing.GetMandatesAsync();
+            var payments = await Billing.GetPaymentsAsync();
+            var payouts = await Billing.GetPayoutsAsync();
+
+            _activeMandates = mandates.Count(m => m.Status == "Active");
+
+            var now = DateTime.UtcNow;
+            _paymentsThisMonthPence = payments
+                .Where(p => p.Status != "Failed" && p.Status != "Cancelled" && IsInMonth(p, now))
+                .Sum(p => (long)p.AmountPence);
+            _failedPayments = payments.Count(p => p.Status == "Failed");
+
+            var cutoff = DateTimeOffset.UtcNow.AddDays(-30);
+            _recentPayoutsPence = payouts.Where(p => p.CreatedUtc >= cutoff).Sum(p => (long)p.AmountPence);
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            _activeMandates = 0;
+            _paymentsThisMonthPence = 0;
+            _failedPayments = 0;
+            _recentPayoutsPence = 0;
+        }
+    }
+
+    // A payment counts toward "this month" by its charge date, falling back to when it was created.
+    private static bool IsInMonth(Abstractions.Contracts.Billing.PaymentDto p, DateTime reference)
+    {
+        var date = p.ChargeDate?.ToDateTime(TimeOnly.MinValue) ?? p.CreatedUtc.UtcDateTime;
+        return date.Year == reference.Year && date.Month == reference.Month;
+    }
+
+    // Converts a minor-unit (pence) amount to whole pounds for display.
+    private static decimal PoundsFromPence(long pence) => pence / 100m;
+
+    // Lead status → pill kind (kept in step with AdminLeads.razor).
+    private static StatusKind StatusPillKind(string status) => status switch
+    {
+        "Converted" => StatusKind.Success,
+        "Proposal" => StatusKind.Info,
+        "Qualified" => StatusKind.Info,
+        "Contacted" => StatusKind.Warning,
+        "Lost" => StatusKind.Danger,
+        _ => StatusKind.Neutral,
+    };
+
+    // Human label for a lead status.
+    private static string StatusLabel(string status) => status;
+
+    // Lead delivery-model label and icon (mirrors AdminLeads.razor).
+    private static string ModelLabel(string model) => model switch
+    {
+        "MainContractor" => "Main contractor",
+        "Subcontractor" => "Subcontractor",
+        _ => "Model TBC",
+    };
+
+    private static string ModelIcon(string model) => model switch
+    {
+        "MainContractor" => Icons.Material.Outlined.Domain,
+        "Subcontractor" => Icons.Material.Outlined.Engineering,
+        _ => Icons.Material.Outlined.HelpOutline,
+    };
 }

@@ -49,7 +49,8 @@
                      TrendValue="@kpi.TrendValue"
                      TrendDirection="kpi.TrendDirection"
                      Sparkline="kpi.Sparkline"
-                     AccentColour="@kpi.AccentColour" />
+                     AccentColour="@kpi.AccentColour"
+                     Href="@kpi.Href" />
         }
     </div>
 </AsyncContent>
@@ -196,15 +197,15 @@
         return new List<KpiTile>
         {
             new("Companies", k.Companies.ToString(), Icons.Material.Outlined.Business,
-                null, TrendDirection.None, empty, "var(--color-brand)"),
+                null, TrendDirection.None, empty, "var(--color-brand)", "/organisation"),
             new("Active operatives", k.Operatives.ToString(), Icons.Material.Outlined.Engineering,
-                null, TrendDirection.None, empty, "var(--color-info)"),
+                null, TrendDirection.None, empty, "var(--color-info)", "/workforce"),
             new("Compliant workforce", k.CompliancePercent is null ? "—" : $"{k.CompliancePercent.Value:0}%",
-                Icons.Material.Outlined.VerifiedUser, null, TrendDirection.None, empty, "var(--color-success)"),
+                Icons.Material.Outlined.VerifiedUser, null, TrendDirection.None, empty, "var(--color-success)", "/compliance"),
             new("Active sites", k.Sites.ToString(), Icons.Material.Outlined.Apartment,
-                null, TrendDirection.None, empty, "var(--color-info)"),
+                null, TrendDirection.None, empty, "var(--color-info)", "/sites"),
             new("Expiring in 30 days", k.UpcomingExpiries.ToString(), Icons.Material.Outlined.Schedule,
-                null, TrendDirection.None, empty, "var(--color-warning)"),
+                null, TrendDirection.None, empty, "var(--color-warning)", "/compliance"),
         };
     }
 
