@@ -1,0 +1,93 @@
+@using Tedwren.Abstractions.Contracts.Users
+@using Tedwren.Abstractions.Services
+@inject IPlatformAdminService Admin
+@inject IUserService Users
+@inject ISnackbar Snackbar
+
+@* Admin edit of a console user: name, role, suspend state and an optional password reset. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="edit-user">
+            <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
+            <TedwrenTextField Label="Email" Value="@User.Email" ReadOnly="true" Disabled="true" />
+            <TedwrenSelect T="string" Label="Role" @bind-Value="_role" Required="true"
+                           Options="_roleValues" Placeholder="Select a role"
+                           HelperText="The auditor role is read-only (SF-23)." />
+            <TedwrenTextField Label="New password" @bind-Value="_newPassword" InputType="InputType.Password"
+                              HelperText="Leave blank to keep the current password. Minimum 8 characters." />
+            <TedwrenToggle Label="Suspended"
+                           Description="A suspended user keeps their account and history but cannot sign in."
+                           @bind-Value="_suspended" />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">Save changes</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The user being edited (from the admin Users list).</summary>
+    [Parameter] public UserDto User { get; set; } = default!;
+
+    private string? _name;
+    private string? _role;
+    private string? _newPassword;
+    private bool _suspended;
+    private bool _submitted;
+    private bool _busy;
+
+    private IReadOnlyList<string> _roleValues = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _roleValues = (await Users.GetRolesAsync()).Select(r => r.Value).ToList();
+        _name = User.Name;
+        _role = User.Role;
+        _suspended = string.Equals(User.Status, "Suspended", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_role))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_newPassword) && _newPassword!.Length < 8)
+        {
+            Snackbar.Add("A new password must be at least 8 characters.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var updated = await Admin.UpdateUserAsync(User.Id, new AdminUpdateUserRequest(
+                _name!, _role!, _suspended, string.IsNullOrWhiteSpace(_newPassword) ? null : _newPassword));
+
+            if (updated is null)
+            {
+                Snackbar.Add("That user no longer exists.", Severity.Error);
+                return;
+            }
+
+            Snackbar.Add("User updated.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(updated));
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

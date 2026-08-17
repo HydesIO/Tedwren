@@ -25,6 +25,12 @@ public interface IUserService
     /// <summary>Updates a user's name and role. Null when the user is not found.</summary>
     Task<UserDto?> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Sets (resets) a user's password. An invited account is activated and its invite token consumed, since
+    /// the password now makes it usable. Null when the user is not found.
+    /// </summary>
+    Task<UserDto?> SetPasswordAsync(Guid id, string newPassword, CancellationToken cancellationToken = default);
+
     /// <summary>Suspends a user (withdraws access without deleting). Null when the user is not found.</summary>
     Task<UserDto?> SuspendUserAsync(Guid id, CancellationToken cancellationToken = default);
 

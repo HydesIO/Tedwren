@@ -10,11 +10,11 @@
     white-space: nowrap;
 }
 
-.status-pill__dot {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: currentColor;
+.status-pill ::deep .status-pill__icon {
+    width: 14px;
+    height: 14px;
+    font-size: 14px;
+    color: currentColor;
     flex: 0 0 auto;
 }
 

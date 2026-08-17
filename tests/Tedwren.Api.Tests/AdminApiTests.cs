@@ -57,4 +57,62 @@ public sealed class AdminApiTests : IClassFixture<WebApplicationFactory<Program>
         Assert.NotNull(user);
         Assert.True(user!.IsPlatformAdmin);
     }
+
+    [Fact]
+    public async Task AdminUpdateUser_ChangesNameRoleStatusAndPassword()
+    {
+        var client = CreateClient();
+        var userId = await InviteUserAsync(client);
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/admin/users/{userId}",
+            new AdminUpdateUserRequest("Renamed Person", "ComplianceManager", Suspended: true, NewPassword: "NewPass123"));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var updated = await response.Content.ReadFromJsonAsync<UserDto>();
+        Assert.NotNull(updated);
+        Assert.Equal("Renamed Person", updated!.Name);
+        Assert.Equal("ComplianceManager", updated.Role);
+        Assert.Equal("Suspended", updated.Status);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_WithShortPassword_ReturnsBadRequest()
+    {
+        var client = CreateClient();
+        var userId = await InviteUserAsync(client);
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/admin/users/{userId}",
+            new AdminUpdateUserRequest("Kept Name", "Auditor", Suspended: false, NewPassword: "short"));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminUpdateUser_UnknownUser_ReturnsNotFound()
+    {
+        var client = CreateClient();
+
+        var response = await client.PutAsJsonAsync(
+            $"/api/admin/users/{Guid.NewGuid()}",
+            new AdminUpdateUserRequest("Nobody", "Auditor", Suspended: false, NewPassword: null));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    /// <summary>Invites a fresh user (unique email) against the first platform company and returns its id.</summary>
+    private static async Task<Guid> InviteUserAsync(HttpClient client)
+    {
+        var companies = await client.GetFromJsonAsync<List<CompanySummary>>("/api/admin/companies");
+        Assert.NotNull(companies);
+        Assert.NotEmpty(companies!);
+
+        var invite = new InviteUserRequest(companies![0].Id, "Test User", $"test-{Guid.NewGuid():N}@example.com", "Auditor");
+        var response = await client.PostAsJsonAsync("/api/users", invite);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<InviteUserResult>();
+        Assert.NotNull(result);
+        return result!.UserId;
+    }
 }

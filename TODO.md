@@ -11,6 +11,38 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Compliance page & admin-portal fixes (this change)
+Plan: `docs/plan-and-scope.md` (hardening). Cross-cutting demo-hardening + admin-portal fixes.
+- ✅ **Compliance page no longer throws (D-series).** `Compliance.razor` initialised `_overview` to a non-null
+  empty VM, wrapped the overview card in `AsyncContent` (loading/error/retry) and moved the loads into a
+  `try/catch/finally` — the null-deref that surfaced Blazor's bottom error bar on every load is gone.
+- ✅ **Removed the pre-demo platform switcher.** Deleted the Main Contractor/Subcontractor dropdown
+  (`PlatformSelector` component + `ShellChrome.Platforms`/`DefaultPlatform` + `AppSidebar`/`MainLayout`
+  wiring); it drove no routing or data. Component catalogue updated.
+- ✅ **Modules & entitlements moved to an admin, company-scoped screen (SF-22, Q2).** Removed the
+  entitlements section from `SystemConfiguration.razor`; new `Pages/Admin/AdminCompanyModules.razor`
+  (`/admin/companies/{id}/modules`) reached by clicking a company row in `AdminCompanies` — reuses the
+  company-scoped `IEntitlementService`.
+- ✅ **Admin portal lands on the admin dashboard.** `MainLayout` now redirects a platform admin from `/` to
+  `/admin` instead of rendering the tenant dashboard.
+- ✅ **Two separate demo accounts, no cross-contamination (R15).** New `AdminUserSeeder.SubcontractorSeedCompanyId`;
+  Apex is its own tenant with its own operatives (`InMemoryOrganisationStore`) and site (`InMemorySiteStore`);
+  removed the person shared between Meridian and Apex. Two password-bearing demo logins seeded in the
+  in-memory data double only (`demo.main@tedwren.example`, `demo.sub@tedwren.example`, password `Demo12345!`).
+- ✅ **Landing-page email reaches the Launch List.** `Tedwren.Web` launch-signup sink now falls back to
+  `Api:BaseUrl` when `LaunchSignup:ApiBaseUrl` is unset, so signups deliver wherever leads already do instead
+  of being silently dropped.
+- ✅ **Statuses render spaced, not joined.** New idempotent `DisplayText.Humanize` (UiComponents) applied in
+  `StatusPill` (and the few plain-text status renders) — "Paid Out"/"Not Run"/"In Progress".
+- ✅ **Admin user edit dialog with password reset (SF-20).** `Pages/Admin/EditUserDialog.razor` opened from a
+  row click in `AdminUsers`; new `IUserService.SetPasswordAsync` (+ `PUT /api/users/{id}/password`) and an
+  admin `PUT /api/admin/users/{id}` (via `IPlatformAdminService.UpdateUserAsync` / `AdminUpdateUserRequest`)
+  covering name, role, suspend state and an optional password. Passwords are hashed, never returned to the
+  client. Tests added in `AdminApiTests`.
+- ✅ **Status bullets → icons.** `StatusPill` renders a per-`StatusKind` `MudIcon` (check/warning/cancel/info/
+  badge) instead of a dot — deliberately distinct from the sidebar navigation icons.
+- Whole solution builds (no new warnings); all test projects pass (LocalDB integration tests skipped).
+
 ### Site Gate, Forms, Permits, Inductions & loading-state redesign (this change)
 Plan: `docs/site-gate-forms-redesign-plan.md`. Client + UiComponents only (no domain/DTO/API changes).
 - ✅ **Never a blank screen (WS1).** New `AsyncContent` wrapper (`UiComponents/Feedback`) — a

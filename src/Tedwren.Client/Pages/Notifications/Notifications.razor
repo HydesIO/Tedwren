@@ -37,7 +37,7 @@
 
     private static ActivityItem ToActivity(UpcomingExpiryDto e) => new(
         Icon: Icons.Material.Outlined.WarningAmber,
-        Primary: $"{e.QualificationName} — {e.StatusLabel}",
+        Primary: $"{e.QualificationName} — {DisplayText.Humanize(e.StatusLabel)}",
         Secondary: e.ExpiresOn is { } on ? $"Expires {on:dd MMM yyyy}" : "No expiry date recorded",
         RelativeTime: RelativeLabel(e.DaysUntilExpiry),
         Accent: Accent(e.DaysUntilExpiry));

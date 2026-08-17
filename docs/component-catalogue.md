@@ -27,8 +27,7 @@ The single `MudTheme` instance, generated from `tokens.css`. Applied once at
 ## Navigation & shell
 
 ### `AppSidebar`
-Renders the brand mark, platform selector, nav list, environment panel and collapse
-control.
+Renders the brand mark, nav list, environment panel and collapse control.
 
 | Parameter | Type | Notes |
 |---|---|---|
@@ -37,9 +36,6 @@ control.
 | `LogoUrl` | `string?` | Brand mark image (e.g. `images/logo-icon.svg`); falls back to the first letter of `BrandName`. Shown in both expanded and collapsed states. |
 | `ActiveRoute` | `string?` | Current route; drives the active nav highlight. |
 | `NavItems` | `IReadOnlyList<NavItem>` | Sidebar entries. |
-| `Platforms` | `IReadOnlyList<string>` | Platform selector options. |
-| `SelectedPlatform` | `string` | Currently selected platform label. |
-| `OnPlatformSelected` | `EventCallback<string>` | Raised on platform change. |
 | `Environment` | `AppSidebar.EnvironmentInfo?` | Environment panel data. |
 | `OnNavigate` | `EventCallback<NavItem>` | Raised when a nav row is clicked. |
 
@@ -47,9 +43,6 @@ control.
 <AppSidebar NavItems="_navItems"
             ActiveRoute="@_activeRoute"
             @bind-IsCollapsed="_collapsed"
-            Platforms="_platforms"
-            SelectedPlatform="@_selected"
-            OnPlatformSelected="OnPlatformSelected"
             Environment="_environment"
             OnNavigate="OnNavigate" />
 ```
@@ -65,15 +58,6 @@ One nav row with active / hover / expandable states.
 | `IsCollapsed` | `bool` | Icon-only when collapsed. |
 | `HasChildren` | `bool` | Shows an expand chevron. |
 | `OnClick` | `EventCallback` | Click / Enter / Space. |
-
-### `PlatformSelector`
-Bordered dropdown for the active platform / tenant.
-
-| Parameter | Type | Notes |
-|---|---|---|
-| `SelectedLabel` | `string` | Required. |
-| `Options` | `IReadOnlyList<string>` | |
-| `OnSelected` | `EventCallback<string>` | |
 
 ### `EnvironmentPanel`
 Status dot + version / build info block.

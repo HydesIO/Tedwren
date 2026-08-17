@@ -126,7 +126,7 @@ else
             new("Email", u.Email),
             new("Role", u.RoleLabel),
             new("Access", u.CanWrite ? "Can view and change data" : "Read-only"),
-            new("Status", u.StatusLabel),
+            new("Status", DisplayText.Humanize(u.StatusLabel)),
             new("Invited", u.CreatedUtc.LocalDateTime.ToString("dd MMM yyyy")),
             new("Last active", u.LastActiveUtc is { } t ? t.LocalDateTime.ToString("dd MMM yyyy") : "—"),
         };
