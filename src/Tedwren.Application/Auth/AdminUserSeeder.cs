@@ -19,6 +19,13 @@ public sealed class AdminUserSeeder
     public static readonly Guid SeedCompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
 
     /// <summary>
+    /// The fixed tenant id for the seeded Subcontractor demo company (Apex). Kept wholly separate from the
+    /// Main Contractor tenant (<see cref="SeedCompanyId"/>) so the two demo accounts share no data and neither
+    /// can surface the other's records (R15) — the demos are independent, not linked in any way.
+    /// </summary>
+    public static readonly Guid SubcontractorSeedCompanyId = Guid.Parse("22222222-2222-4222-8222-000000000002");
+
+    /// <summary>
     /// The named Tedwren master administrators, seeded on every environment. These are the platform operators;
     /// each is created as a full <see cref="AccessRole.Administrator"/> in the Tedwren tenant.
     /// </summary>

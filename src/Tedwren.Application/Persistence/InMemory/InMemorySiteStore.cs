@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using Tedwren.Application.Auth;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.ValueObjects;
 
@@ -34,7 +35,7 @@ public sealed class InMemorySiteStore
     /// <summary>Loads a small, deterministic demo dataset (a boundaried site and a dispersed no-compound scheme).</summary>
     private void Seed()
     {
-        var ownerCompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
+        var ownerCompanyId = AdminUserSeeder.SeedCompanyId;
 
         var tower = new Site
         {
@@ -62,6 +63,20 @@ public sealed class InMemorySiteStore
         Sites[retrofit.Id] = retrofit;
         AddProperty(retrofit.Id, "1–12 Riverside Gardens", 12, new Geofence(52.4862, -1.8904, 60));
         AddProperty(retrofit.Id, "13–28 Riverside Gardens", 16, new Geofence(52.4870, -1.8890, 60));
+
+        // A site owned by the separate Subcontractor demo tenant (Apex), so its console has its own data and
+        // stays fully independent of the Main Contractor's sites (R15).
+        var apexYard = new Site
+        {
+            CompanyId = AdminUserSeeder.SubcontractorSeedCompanyId,
+            Name = "Apex Yard",
+            Client = "Apex Groundworks",
+            Region = "Manchester",
+            Address = "Apex Yard, Manchester",
+            HasCompound = true,
+            Boundary = new Geofence(53.4808, -2.2426, 120),
+        };
+        Sites[apexYard.Id] = apexYard;
     }
 
     /// <summary>Adds a seed property.</summary>

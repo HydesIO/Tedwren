@@ -1,4 +1,4 @@
-@* Application sidebar: brand mark, platform selector, nav list, environment panel, collapse control. *@
+@* Application sidebar: brand mark, nav list, environment panel, collapse control. *@
 
 <nav class="sidebar @(IsCollapsed ? "sidebar--collapsed" : null)" aria-label="Primary">
     <div class="sidebar__brand">
@@ -20,13 +20,6 @@
                            OnClick="ToggleCollapse" />
         }
     </div>
-
-    @if (!IsCollapsed && Platforms.Count > 0)
-    {
-        <PlatformSelector SelectedLabel="@SelectedPlatform"
-                          Options="Platforms"
-                          OnSelected="OnPlatformSelected" />
-    }
 
     <div class="sidebar__nav">
         @foreach (var item in NavItems)
@@ -56,9 +49,6 @@
     [Parameter] public string? LogoUrl { get; set; }
     [Parameter] public string? ActiveRoute { get; set; }
     [Parameter] public IReadOnlyList<NavItem> NavItems { get; set; } = Array.Empty<NavItem>();
-    [Parameter] public IReadOnlyList<string> Platforms { get; set; } = Array.Empty<string>();
-    [Parameter] public string SelectedPlatform { get; set; } = string.Empty;
-    [Parameter] public EventCallback<string> OnPlatformSelected { get; set; }
     [Parameter] public EnvironmentInfo? Environment { get; set; }
     [Parameter] public EventCallback<NavItem> OnNavigate { get; set; }
 

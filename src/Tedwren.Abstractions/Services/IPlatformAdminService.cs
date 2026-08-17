@@ -16,4 +16,10 @@ public interface IPlatformAdminService
 
     /// <summary>Returns every console user on the platform (operational fields only).</summary>
     Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Edits any console user (name, role, suspend state and an optional password reset) from the admin area.
+    /// Returns the updated user, or null when no user matches the id.
+    /// </summary>
+    Task<UserDto?> UpdateUserAsync(Guid id, AdminUpdateUserRequest request, CancellationToken cancellationToken = default);
 }

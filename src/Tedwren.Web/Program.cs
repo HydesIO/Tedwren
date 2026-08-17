@@ -49,12 +49,19 @@ builder.Services.AddHttpClient<ILeadRouter, ApiLeadRouter>((sp, client) =>
 });
 
 // Launch-list capture (Web Content Spec §6.9): options + a typed HttpClient sink that forwards a captured
-// email to the API's anonymous /api/launch-signups endpoint. With no ApiBaseUrl set, the sink logs and
-// no-ops so the marketing site still runs standalone.
+// email to the API's anonymous /api/launch-signups endpoint. The launch list lives on the same API as the
+// lead pipeline, so when LaunchSignup:ApiBaseUrl is not set we fall back to the shared Api:BaseUrl — this
+// stops landing-page signups being silently dropped whenever leads are already being delivered. With
+// neither set the sink logs and no-ops so the marketing site still runs standalone.
 builder.Services.Configure<LaunchSignupOptions>(builder.Configuration.GetSection(LaunchSignupOptions.SectionName));
 builder.Services.AddHttpClient<ILaunchSignupSink, ApiLaunchSignupSink>((sp, client) =>
 {
     var baseUrl = sp.GetRequiredService<IOptions<LaunchSignupOptions>>().Value.ApiBaseUrl;
+    if (string.IsNullOrWhiteSpace(baseUrl))
+    {
+        baseUrl = sp.GetRequiredService<IOptions<WebApiOptions>>().Value.BaseUrl;
+    }
+
     if (!string.IsNullOrWhiteSpace(baseUrl))
     {
         client.BaseAddress = new Uri(baseUrl.TrimEnd('/') + "/");

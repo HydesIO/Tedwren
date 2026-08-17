@@ -4,9 +4,9 @@ using Tedwren.UiComponents.Navigation;
 namespace Tedwren.Client.Services;
 
 /// <summary>
-/// Static application shell chrome — the navigation/route inventory, the platform switcher list and the
-/// environment badge. This is fixed app configuration (not tenant data), so it lives in the client rather
-/// than behind the API. Replaces the shell parts of the former sample-data service.
+/// Static application shell chrome — the navigation/route inventory and the environment badge. This is
+/// fixed app configuration (not tenant data), so it lives in the client rather than behind the API.
+/// Replaces the shell parts of the former sample-data service.
 /// </summary>
 public static class ShellChrome
 {
@@ -56,12 +56,6 @@ public static class ShellChrome
         new("Demo Data",           Icons.Material.Outlined.Dataset,            "/admin/demo-data"),
         new("Admin Settings",      Icons.Material.Outlined.Settings,           "/admin/settings"),
     };
-
-    /// <summary>The platform-switcher options.</summary>
-    public static IReadOnlyList<string> Platforms { get; } = new[] { "Main Contractor", "Subcontractor" };
-
-    /// <summary>The default selected platform.</summary>
-    public static string DefaultPlatform => Platforms[0];
 
     /// <summary>The environment badge shown in the sidebar footer.</summary>
     public static (string Name, string Version, string Build, bool IsHealthy) Environment { get; }
