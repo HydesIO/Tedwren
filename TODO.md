@@ -11,6 +11,33 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Dashboard drill-down, leads & billing overview (this change)
+Plan: `docs/plan-and-scope.md` (hardening). Client + UiComponents only — no domain/DTO/API changes; the
+billing stack (`IBillingService` + endpoints) already existed and is now surfaced on the dashboard.
+- ✅ **Clickable drill-down cards.** Optional `Href` parameter added to the reusable `KpiCard` and
+  `DashboardCard` (renders the whole tile/card as an `<a>` with a subtle hover lift + focus ring; null =
+  unchanged, non-interactive). New `--shadow-card-hover` token (light + dark) in `tokens.css`.
+  - Client Dashboard KPIs now drill through: Companies→`/organisation`, Active operatives→`/workforce`,
+    Compliant workforce→`/compliance`, Active sites→`/sites`, Expiring in 30 days→`/compliance`
+    (`KpiTile` gains a nullable `Href`).
+  - Admin Dashboard stat cards drill through: Companies→`/admin/companies`, Users→`/admin/users`, Launch
+    subscribers→`/admin/launch-list`, Open leads / Pipeline value→`/admin/leads`,
+    Active affiliates→`/admin/affiliates`.
+- ✅ **Leads overview list (Admin Dashboard).** New card above the billing overview listing the open
+  pipeline (excludes Converted/Lost, newest first, top 6) — one row per lead with model icon, company,
+  model/location and a `StatusPill` (status→kind mapping mirrors `AdminLeads.razor`). Footer links to
+  `/admin/leads`; `AsyncContent` skeleton + empty state.
+- ✅ **Billing overview populated (Admin Dashboard).** Replaced the stale "coming soon" `EmptyState` with a
+  live four-tile summary computed from `IBillingService` (`GetMandatesAsync`/`GetPaymentsAsync`/
+  `GetPayoutsAsync`): Active mandates→`/admin/billing`, Payments this month (£)→`/admin/payments`, Failed
+  payments→`/admin/payments`, Payouts (30 days, £)→`/admin/payouts`. Billing reads are isolated so a
+  failure/unconfigured GoCardless degrades to zeros rather than blanking the dashboard.
+- ✅ **A dash of colour.** Admin stat icons now sit in accent-tinted chips (`--stat-accent` per tile,
+  from `tokens.css` brand/status tokens); Client KPIs already carried accent colours.
+- ✅ Whole solution builds (no new warnings); all test projects pass.
+- ⏳ **Manual QA.** Verify card navigation, the leads list and the billing tiles at desktop/tablet/mobile in
+  both themes when the app is next run against a database.
+
 ### MudDialog design standard (this change)
 Plan: `docs/plan-and-scope.md` (hardening). A consistent, spacious dialog standard across the whole
 Client (Admin portal + main/commercial portal). Standard written into `CLAUDE.md` → *MudDialog design

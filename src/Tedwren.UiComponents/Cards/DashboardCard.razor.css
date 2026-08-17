@@ -8,6 +8,25 @@
     overflow: hidden;
 }
 
+/* Drill-down variant: the whole card is a link. Reset anchor styling and add a subtle hover lift. */
+.dash-card--link {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.dash-card--link:hover {
+    border-color: var(--color-brand, #E8590C);
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+}
+
+.dash-card--link:focus-visible {
+    outline: 2px solid var(--color-brand, #E8590C);
+    outline-offset: 2px;
+}
+
 .dash-card__header {
     display: flex;
     align-items: flex-start;

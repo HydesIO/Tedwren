@@ -1,40 +1,19 @@
-@* Generic bordered / shadowed card shell with a title row and optional footer link. *@
+@* Generic bordered / shadowed card shell with a title row and optional footer link. When Href is set
+   the whole card becomes a drill-down link (used for clickable stat cards); such cards should not also
+   use a footer link, to avoid nesting anchors. *@
 
-<section class="dash-card @Class">
-    @if (!string.IsNullOrEmpty(Title) || HeaderActions is not null)
-    {
-        <header class="dash-card__header">
-            <div class="dash-card__titles">
-                @if (!string.IsNullOrEmpty(Title))
-                {
-                    <h3 class="dash-card__title">@Title</h3>
-                }
-                @if (!string.IsNullOrEmpty(Subtitle))
-                {
-                    <p class="dash-card__subtitle">@Subtitle</p>
-                }
-            </div>
-            @if (HeaderActions is not null)
-            {
-                <div class="dash-card__actions">@HeaderActions</div>
-            }
-        </header>
-    }
-
-    <div class="dash-card__body @(_hasHeader ? null : "dash-card__body--no-header")">
-        @Body
-    </div>
-
-    @if (!string.IsNullOrEmpty(FooterLinkText))
-    {
-        <footer class="dash-card__footer">
-            <a href="@(FooterLinkHref ?? "#")" class="dash-card__footer-link">
-                @FooterLinkText
-                <MudIcon Icon="@Icons.Material.Outlined.ArrowForward" Size="Size.Small" />
-            </a>
-        </footer>
-    }
-</section>
+@if (string.IsNullOrEmpty(Href))
+{
+    <section class="dash-card @Class">
+        @Inner
+    </section>
+}
+else
+{
+    <a class="dash-card dash-card--link @Class" href="@Href">
+        @Inner
+    </a>
+}
 
 @code {
     [Parameter] public string? Title { get; set; }
@@ -45,5 +24,46 @@
     [Parameter] public string? FooterLinkText { get; set; }
     [Parameter] public string? FooterLinkHref { get; set; }
 
+    /// <summary>Optional drill-down route; when set the whole card renders as a link to this URL.</summary>
+    [Parameter] public string? Href { get; set; }
+
     private bool _hasHeader => !string.IsNullOrEmpty(Title) || HeaderActions is not null;
+
+    /// <summary>The card's inner content, rendered once inside either the section or the link wrapper.</summary>
+    private RenderFragment Inner => __builder =>
+    {
+        @if (_hasHeader)
+        {
+            <header class="dash-card__header">
+                <div class="dash-card__titles">
+                    @if (!string.IsNullOrEmpty(Title))
+                    {
+                        <h3 class="dash-card__title">@Title</h3>
+                    }
+                    @if (!string.IsNullOrEmpty(Subtitle))
+                    {
+                        <p class="dash-card__subtitle">@Subtitle</p>
+                    }
+                </div>
+                @if (HeaderActions is not null)
+                {
+                    <div class="dash-card__actions">@HeaderActions</div>
+                }
+            </header>
+        }
+
+        <div class="dash-card__body @(_hasHeader ? null : "dash-card__body--no-header")">
+            @Body
+        </div>
+
+        @if (!string.IsNullOrEmpty(FooterLinkText))
+        {
+            <footer class="dash-card__footer">
+                <a href="@(FooterLinkHref ?? "#")" class="dash-card__footer-link">
+                    @FooterLinkText
+                    <MudIcon Icon="@Icons.Material.Outlined.ArrowForward" Size="Size.Small" />
+                </a>
+            </footer>
+        }
+    };
 }
