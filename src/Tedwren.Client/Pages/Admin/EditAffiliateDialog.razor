@@ -7,18 +7,33 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="edit-affiliate">
-            <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="A name is required." />
-            <TedwrenTextField Label="Contact email" @bind-Value="_email" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="A contact email is required." />
-            <TedwrenTextField Label="Company" @bind-Value="_company" />
-            <TedwrenSelect T="string" Label="Status" @bind-Value="_status" Options="_statuses" />
-            <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
-            <TedwrenTextField Label="Payee reference" @bind-Value="_payeeReference"
-                              HelperText="A non-sensitive reference for payouts — never a sort code or account number." />
-            <MudNumericField T="decimal" Label="Affiliate rate (%)" @bind-Value="_ratePercent" Min="0" Max="100" />
-            <MudNumericField T="decimal" Label="Profit margin (%)" @bind-Value="_marginPercent" Min="0" Max="100" />
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Update this affiliate's details, status and commission plan. Changes apply to future commission calculations." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Affiliate</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="A name is required." />
+                    <TedwrenTextField Label="Contact email" @bind-Value="_email" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="A contact email is required." />
+                    <TedwrenTextField Label="Company" @bind-Value="_company" />
+                    <TedwrenSelect T="string" Label="Status" @bind-Value="_status" Options="_statuses" />
+                    <TedwrenTextField Label="Account manager" @bind-Value="_accountManager" />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Payee reference" @bind-Value="_payeeReference"
+                                          HelperText="A non-sensitive reference for payouts — never a sort code or account number." />
+                    </div>
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Commission</h3>
+                <div class="tw-dialog-section__grid">
+                    <MudNumericField T="decimal" Label="Affiliate rate (%)" @bind-Value="_ratePercent" Min="0" Max="100" />
+                    <MudNumericField T="decimal" Label="Profit margin (%)" @bind-Value="_marginPercent" Min="0" Max="100" />
+                </div>
+            </section>
         </div>
     </DialogContent>
     <DialogActions>

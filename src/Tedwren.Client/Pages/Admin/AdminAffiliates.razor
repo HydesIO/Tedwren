@@ -53,7 +53,7 @@
 
     private async Task AddAffiliate()
     {
-        var dialog = await DialogService.ShowAsync<AddAffiliateDialog>("Add affiliate");
+        var dialog = await DialogService.ShowAsync<AddAffiliateDialog>("Add affiliate", TedwrenDialog.Medium());
         var result = await dialog.Result;
         if (result?.Canceled == false && result.Data is Guid id)
         {

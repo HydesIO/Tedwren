@@ -7,8 +7,10 @@
 
 <MudDialog>
     <DialogContent>
-        <TedwrenTextField Label="Email address" @bind-Value="_email" Required="true"
-                          Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="An email address is required." />
+        <div class="tw-dialog-body">
+            <TedwrenTextField Label="Email address" @bind-Value="_email" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_email)" ErrorText="An email address is required." />
+        </div>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>

@@ -3,37 +3,16 @@
 @using Tedwren.Client.Services
 @inject IDemoDataService DemoData
 
-@* Runs a demo-data seed or delete and shows live progress. Started via IDialogService with the Operation
-   parameter set to "seed" or "delete"; closes itself with DialogResult.Ok(DemoDataStatus) on success. *@
+@* Runs a demo-data seed or delete and shows live progress via the shared ProgressDialog. Started via
+   IDialogService with the Operation parameter set to "seed" or "delete"; closes itself with
+   DialogResult.Ok(DemoDataStatus) on success. *@
 
-<MudDialog>
-    <DialogContent>
-        <div class="demo-progress">
-            <p class="demo-progress__stage">@(_progress.Stage ?? "Working…")</p>
-            <MudProgressLinear Color="@(_error is null ? Color.Primary : Color.Error)"
-                               Value="@_progress.Percent"
-                               Buffer="false"
-                               Indeterminate="@(_progress.Total == 0 && _error is null)"
-                               Class="my-3" />
-            <p class="demo-progress__count">
-                @if (_error is not null)
-                {
-                    <span class="demo-progress__error">@_error</span>
-                }
-                else
-                {
-                    @($"{_progress.Completed} / {_progress.Total} steps · {_progress.Percent}%")
-                }
-            </p>
-        </div>
-    </DialogContent>
-    <DialogActions>
-        @if (_error is not null)
-        {
-            <MudButton Variant="Variant.Outlined" OnClick="Close">Close</MudButton>
-        }
-    </DialogActions>
-</MudDialog>
+<ProgressDialog Description="@Description"
+                StatusText="@StatusLine"
+                Value="_progress.Completed"
+                Max="_progress.Total"
+                Error="@_error"
+                OnClose="Close" />
 
 @code {
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
@@ -42,7 +21,19 @@
     [Parameter] public string Operation { get; set; } = "seed";
 
     private DemoDataProgress _progress = new(true, null, "Starting…", 0, 0, 0, null);
+    private DemoDataStatus? _result;
     private string? _error;
+    private bool _done;
+
+    /// <summary>What the dialog is doing, shown as the ProgressDialog description.</summary>
+    private string Description => Operation == "delete"
+        ? "We're removing the demonstration dataset. This may take a few moments."
+        : "We're building the demonstration dataset. This may take a few moments.";
+
+    /// <summary>Live status line: the current stage plus the completed/total stage count.</summary>
+    private string StatusLine => _progress.Total > 0
+        ? $"{_progress.Stage} — {_progress.Completed} of {_progress.Total} stages"
+        : _progress.Stage ?? "Starting…";
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,9 +42,6 @@
         var poller = PollAsync();
         await Task.WhenAll(work, poller);
     }
-
-    private DemoDataStatus? _result;
-    private bool _done;
 
     private async Task RunSeedAsync()
     {
@@ -98,6 +86,10 @@
                 try
                 {
                     _progress = await api.GetProgressAsync();
+                    if (!string.IsNullOrEmpty(_progress.Error))
+                    {
+                        _error = _progress.Error;
+                    }
                 }
                 catch
                 {
@@ -125,5 +117,6 @@
         }
     }
 
+    /// <summary>Dismisses the dialog after a failure (the error Close button).</summary>
     private void Close() => MudDialog.Cancel();
 }

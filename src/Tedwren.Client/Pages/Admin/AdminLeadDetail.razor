@@ -125,7 +125,7 @@
         }
 
         var parameters = new DialogParameters<EditLeadDialog> { { x => x.Lead, _detail.Lead } };
-        var dialog = await DialogService.ShowAsync<EditLeadDialog>("Edit lead", parameters);
+        var dialog = await DialogService.ShowAsync<EditLeadDialog>("Edit lead", parameters, TedwrenDialog.Medium());
         var result = await dialog.Result;
         if (result?.Canceled == false)
         {
@@ -241,7 +241,7 @@
             { x => x.ContentText, "Convert this lead into an account? It will be marked Converted." },
             { x => x.ConfirmText, "Convert" },
         };
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Convert lead", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Convert lead", parameters, TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled != false)
         {

@@ -86,7 +86,7 @@
             { x => x.ContentText, $"Send the launch announcement to {pending} subscriber(s) who haven't been notified yet? Each is emailed individually." },
             { x => x.ConfirmText, "Send" },
         };
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Send launch email", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Send launch email", parameters, TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled != false)
         {
@@ -144,7 +144,7 @@
 
     private async Task AddSubscriber()
     {
-        var dialog = await DialogService.ShowAsync<AddLaunchSubscriberDialog>("Add subscriber");
+        var dialog = await DialogService.ShowAsync<AddLaunchSubscriberDialog>("Add subscriber", TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled == false)
         {
@@ -179,7 +179,7 @@
             { x => x.ConfirmText, "Remove" },
             { x => x.Destructive, true },
         };
-        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Remove subscriber", parameters);
+        var dialog = await DialogService.ShowAsync<ConfirmDialog>("Remove subscriber", parameters, TedwrenDialog.Small());
         var result = await dialog.Result;
         if (result?.Canceled != false)
         {

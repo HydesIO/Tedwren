@@ -140,7 +140,7 @@
         }
 
         var parameters = new DialogParameters<EditAffiliateDialog> { { x => x.Affiliate, _detail.Affiliate } };
-        var dialog = await DialogService.ShowAsync<EditAffiliateDialog>("Edit affiliate", parameters);
+        var dialog = await DialogService.ShowAsync<EditAffiliateDialog>("Edit affiliate", parameters, TedwrenDialog.Medium());
         var result = await dialog.Result;
         if (result?.Canceled == false)
         {

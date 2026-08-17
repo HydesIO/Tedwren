@@ -11,6 +11,42 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### MudDialog design standard (this change)
+Plan: `docs/plan-and-scope.md` (hardening). A consistent, spacious dialog standard across the whole
+Client (Admin portal + main/commercial portal). Standard written into `CLAUDE.md` → *MudDialog design
+standard*; new reusable assets catalogued in `docs/component-catalogue.md`.
+- ✅ **Standard documented.** New *MudDialog design standard* subsection in `CLAUDE.md`: sizing, guidance
+  panel, layout/grouping, actions, titles/descriptions, progress dialogs, and the dark-mode rule.
+- ✅ **Shared assets added (`Tedwren.UiComponents`).** `Dialogs/TedwrenDialog` (static `Small`/`Medium`/
+  `Large` `DialogOptions` presets — full-width, header close button, non-dismissing backdrop);
+  `Feedback/DialogGuidance` (amber/blue guidance panel); `Feedback/ProgressDialog` (titled progress
+  dialog with description + indicator + status text + optional cancel). Global `wwwroot/css/dialogs.css`
+  (`.tw-dialog-body` / `--grid` / `.tw-dialog-section*`) referenced from `index.html`.
+- ✅ **Dark-mode correctness.** Dialog-scoped colour switched from `--color-*` (which resolves to light
+  values in the dialog overlay, outside the `.theme-dark` shell) to MudBlazor `--mud-palette-*` in
+  `DialogGuidance`, `ConfirmDialog`, `FormSubmissionDialog` and `TimesheetDetailDialog` CSS. Also fixed
+  the non-existent `--font-size-*` references in `TimesheetDetailDialog.razor.css`.
+- ✅ **All 12 dialogs migrated** (sizing via `TedwrenDialog`, guidance panels, sectioned two-column
+  responsive bodies, standardised actions — business logic, validation, API calls and `Close(Ok(...))`
+  return contracts unchanged): `EditCompanyDialog`, `EditSiteDialog`, `EditOperativeDialog`,
+  `EditUserDialog`, `AddLeadDialog`, `AddAffiliateDialog` (ad-hoc `MudAlert` example → themed Info
+  panel), `FormAssignDialog`, `QualificationCardsDialog` (raw table → `MudSimpleTable`),
+  `FormSubmissionDialog` (reject-reason moved out of the cramped action bar), `TimesheetDetailDialog`,
+  and the shared `ConfirmDialog` (+ its 6 call sites).
+- ✅ **`ProgressDialog` wired into demo-data seeding.** Added an `Error`/`OnClose` state to the shared
+  `ProgressDialog` and a `TedwrenDialog.Progress()` preset (Medium, no header close / backdrop / escape
+  dismiss while running). Refactored `Admin/DemoDataProgressDialog` to render the shared `ProgressDialog`
+  (mapping the polled `DemoDataProgress` → determinate bar + "N of M stages · <stage>" status; server
+  error → red error state), replacing its bespoke `MudProgressLinear` markup. `AdminDemoData` now shows
+  it via `TedwrenDialog.Progress()` and its `ConfirmDialog`s via `Small()`. Seed/recreate/delete flow,
+  polling and `Close(Ok(status))` unchanged.
+- ✅ **New Admin dialogs migrated** to the standard: `EditLeadDialog`, `EditAffiliateDialog` (sectioned
+  two-column + guidance) and `AddLaunchSubscriberDialog` (Small); plus their call sites and the
+  `Remove subscriber` confirm.
+- ✅ Whole solution builds (no new warnings); all test projects pass.
+- ⏳ **Manual light/dark + responsive QA.** Verify each dialog at desktop/tablet/mobile widths in both
+  themes when the app is next run (structure and breakpoints follow the existing 720px form convention).
+
 ### Compliance page & admin-portal fixes (this change)
 Plan: `docs/plan-and-scope.md` (hardening). Cross-cutting demo-hardening + admin-portal fixes.
 - ✅ **Compliance page no longer throws (D-series).** `Compliance.razor` initialised `_overview` to a non-null

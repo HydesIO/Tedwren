@@ -170,8 +170,7 @@ else
     private async Task EditAsync()
     {
         var parameters = new DialogParameters<EditOperativeDialog> { { x => x.Operative, _op! } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await Dialogs.ShowAsync<EditOperativeDialog>("Edit operative", parameters, options);
+        var dialog = await Dialogs.ShowAsync<EditOperativeDialog>("Edit operative", parameters, TedwrenDialog.Medium());
         if (await dialog.Result is { Canceled: false, Data: string newName })
         {
             var newSlug = Tedwren.Abstractions.Slug.From(newName);
