@@ -42,19 +42,25 @@ public sealed class InMemoryOrganisationStore
     /// <summary>Loads a small, deterministic demo dataset (a few companies with operatives).</summary>
     private void Seed()
     {
-        // The lead main contractor is the bootstrap admin's tenant (R15): it owns the seeded sites and
-        // operatives so tenant-scoped queries return data for the signed-in seed administrator.
+        // The two demo tenants are deliberately independent (R15): the Main Contractor (Meridian) is the
+        // bootstrap admin's tenant, and the Subcontractor (Apex) is its own separate tenant. They own their
+        // own operatives and share no people, so neither demo account can surface the other's data.
         var meridian = AddCompany("Meridian Construction Ltd", "Main Contractor", "General Build", AdminUserSeeder.SeedCompanyId);
-        var apex = AddCompany("Apex Groundworks", "Subcontractor", "Groundworks");
+        var apex = AddCompany("Apex Groundworks", "Subcontractor", "Groundworks", AdminUserSeeder.SubcontractorSeedCompanyId);
         AddCompany("Kingsway M&E", "Subcontractor", "Mechanical & Electrical");
 
-        // One person engaged by two companies demonstrates SF-1/SF-2 in the seeded data.
-        var shared = AddPerson("+447700900001");
-        AddEngagement(meridian.Id, shared.Id, "James Fletcher", "Bricklayer");
-        AddEngagement(apex.Id, shared.Id, "J. Fletcher", "Labourer");
+        // Main Contractor (Meridian) operatives — engaged only by Meridian.
+        var fletcher = AddPerson("+447700900001");
+        AddEngagement(meridian.Id, fletcher.Id, "James Fletcher", "Bricklayer");
+        var marsh = AddPerson("+447700900002");
+        AddEngagement(meridian.Id, marsh.Id, "Daniel Marsh", "Site Supervisor");
 
-        var second = AddPerson("+447700900002");
-        AddEngagement(meridian.Id, second.Id, "Daniel Marsh", "Site Supervisor");
+        // Subcontractor (Apex) operatives — a wholly separate set of people, so there is no cross-contamination
+        // between the two demo accounts.
+        var okafor = AddPerson("+447700900101");
+        AddEngagement(apex.Id, okafor.Id, "Samuel Okafor", "Groundworker");
+        var reyes = AddPerson("+447700900102");
+        AddEngagement(apex.Id, reyes.Id, "Carlos Reyes", "Plant Operator");
     }
 
     /// <summary>Adds a seed company (optionally with a fixed id, for tenant alignment) and returns it.</summary>

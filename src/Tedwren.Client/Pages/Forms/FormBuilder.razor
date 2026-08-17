@@ -1,50 +1,81 @@
 @using Tedwren.Client.Pages.Forms
-@* The Forms Library authoring surface (PRD-Phase 2): add/remove sections and fields, choose each field's
-   kind, toggle whether it is required, and supply options for choice fields. Edits the passed section list
-   in place. *@
+@using Tedwren.UiComponents.Forms
+@* The Forms Library authoring surface (PRD-Phase 2). Questions are grouped into named panels: each panel is a
+   collapsible card with an editable name, its own question list, an "Add question to this panel" action and
+   reorder controls; a top-level action adds a new panel. Choice-field options are edited as chips. Edits the
+   passed section list in place. *@
 
 <div class="form-builder">
     @foreach (var section in Sections)
     {
-        <MudPaper Class="pa-4 mb-4" Outlined="true">
-            <div class="form-builder__section-head">
-                <TedwrenTextField Label="Section title" @bind-Value="section.Title" Placeholder="e.g. Welfare" />
+        <div class="form-builder__panel" @key="section">
+            <div class="form-builder__panel-head">
+                <button type="button" class="form-builder__collapse"
+                        aria-label="@(section.Collapsed ? "Expand panel" : "Collapse panel")"
+                        @onclick="@(() => section.Collapsed = !section.Collapsed)">
+                    <MudIcon Icon="@(section.Collapsed ? Icons.Material.Outlined.ChevronRight : Icons.Material.Outlined.ExpandMore)"
+                             Size="Size.Small" />
+                </button>
+                <div class="form-builder__panel-name">
+                    <TedwrenTextField Label="Panel name" @bind-Value="section.Title" Placeholder="e.g. Welfare" />
+                </div>
+                <span class="form-builder__panel-count">@(section.Fields.Count) @(section.Fields.Count == 1 ? "question" : "questions")</span>
                 <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
-                           Disabled="@(Sections.Count <= 1)" OnClick="@(() => RemoveSection(section))">Remove section</MudButton>
+                           Disabled="@(Sections.Count <= 1)" OnClick="@(() => RemoveSection(section))">Remove panel</MudButton>
             </div>
 
-            @foreach (var field in section.Fields)
+            @if (!section.Collapsed)
             {
-                <MudPaper Class="pa-3 mb-3" Outlined="true">
-                    <div class="form-builder__field-grid">
-                        <TedwrenTextField Label="Field label" @bind-Value="field.Label" Placeholder="e.g. Toilets clean and stocked" />
-                        <TedwrenSelect T="string" Label="Field type" Value="@field.Kind"
-                                       ValueChanged="@(v => OnKindChanged(field, v))"
-                                       Options="_kindKeys" OptionText="@KindLabel" />
-                        <TedwrenTextField Label="Help text (optional)" @bind-Value="field.HelpText" />
-                        @if (FormEditModel.UsesOptions(field.Kind))
-                        {
-                            <TedwrenTextField Label="Options (comma separated)" @bind-Value="field.OptionsCsv"
-                                              Placeholder="e.g. Pass, Fail, N/A" />
-                        }
-                    </div>
-                    <div class="form-builder__field-foot">
-                        <TedwrenToggle Label="Required" @bind-Value="field.Required"
-                                       Description="An answer must be given before the form can be submitted." />
-                        <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
-                                   StartIcon="@Icons.Material.Outlined.Delete"
-                                   OnClick="@(() => section.Fields.Remove(field))">Remove field</MudButton>
-                    </div>
-                </MudPaper>
-            }
+                <div class="form-builder__questions">
+                    @foreach (var field in section.Fields)
+                    {
+                        <div class="form-builder__question" @key="field">
+                            <div class="form-builder__reorder">
+                                <MudIconButton Icon="@Icons.Material.Outlined.KeyboardArrowUp" Size="Size.Small"
+                                               aria-label="Move question up"
+                                               Disabled="@(section.Fields.IndexOf(field) == 0)"
+                                               OnClick="@(() => MoveField(section, field, -1))" />
+                                <MudIconButton Icon="@Icons.Material.Outlined.KeyboardArrowDown" Size="Size.Small"
+                                               aria-label="Move question down"
+                                               Disabled="@(section.Fields.IndexOf(field) == section.Fields.Count - 1)"
+                                               OnClick="@(() => MoveField(section, field, 1))" />
+                            </div>
+                            <div class="form-builder__question-body">
+                                <div class="form-builder__field-grid">
+                                    <TedwrenTextField Label="Question label" @bind-Value="field.Label" Placeholder="e.g. Toilets clean and stocked" />
+                                    <TedwrenSelect T="string" Label="Answer type" Value="@field.Kind"
+                                                   ValueChanged="@(v => OnKindChanged(field, v))"
+                                                   Options="_kindKeys" OptionText="@KindLabel" />
+                                    <TedwrenTextField Label="Help text (optional)" @bind-Value="field.HelpText" />
+                                    @if (FormEditModel.UsesOptions(field.Kind))
+                                    {
+                                        <div class="form-builder__options">
+                                            <ChipInput Label="Options" @bind-Value="field.Options"
+                                                       Placeholder="Type an option, then Enter"
+                                                       HelperText="Each option is assigned a stable id." />
+                                        </div>
+                                    }
+                                </div>
+                                <div class="form-builder__field-foot">
+                                    <TedwrenToggle Label="Required" @bind-Value="field.Required"
+                                                   Description="An answer must be given before the form can be submitted." />
+                                    <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
+                                               StartIcon="@Icons.Material.Outlined.Delete"
+                                               OnClick="@(() => section.Fields.Remove(field))">Remove question</MudButton>
+                                </div>
+                            </div>
+                        </div>
+                    }
 
-            <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Add"
-                       OnClick="@(() => AddField(section))">Add field</MudButton>
-        </MudPaper>
+                    <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Add"
+                               OnClick="@(() => AddField(section))">Add question to this panel</MudButton>
+                </div>
+            }
+        </div>
     }
 
     <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PlaylistAdd"
-               OnClick="AddSection">Add section</MudButton>
+               OnClick="AddSection">Add panel / group</MudButton>
 </div>
 
 @code {
@@ -66,4 +97,14 @@
         section.Fields.Add(new FormEditModel.FieldEdit { Label = string.Empty, Kind = "ShortText", Required = true });
 
     private static void OnKindChanged(FormEditModel.FieldEdit field, string kind) => field.Kind = kind;
+
+    // Moves a question up (-1) or down (+1) within its panel, clamped to the list bounds.
+    private static void MoveField(FormEditModel.SectionEdit section, FormEditModel.FieldEdit field, int delta)
+    {
+        var index = section.Fields.IndexOf(field);
+        var target = index + delta;
+        if (index < 0 || target < 0 || target >= section.Fields.Count) return;
+        section.Fields.RemoveAt(index);
+        section.Fields.Insert(target, field);
+    }
 }

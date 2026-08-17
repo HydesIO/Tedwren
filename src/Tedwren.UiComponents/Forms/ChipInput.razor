@@ -1,0 +1,78 @@
+@using Tedwren.UiComponents.Forms
+@* Editable list of option chips (replaces the old "comma separated" text entry). Each chip shows the option
+   text, its assigned id badge and a remove control; the text box appends a new chip on Enter or Add. Binds
+   two-way over a mutable List<ChipOption> that is edited in place. *@
+
+<FormField Label="@Label" For="@_id" HelperText="@HelperText" Error="@Error" ErrorText="@ErrorText">
+    <div class="chip-input">
+        @if (Value.Count > 0)
+        {
+            <div class="chip-input__chips">
+                @foreach (var option in Value)
+                {
+                    <span class="chip-input__chip" @key="option">
+                        <span class="chip-input__text">@option.Text</span>
+                        <span class="chip-input__badge" title="Option id">@option.Id</span>
+                        <button type="button" class="chip-input__remove" aria-label="@($"Remove {option.Text}")"
+                                @onclick="@(() => Remove(option))">×</button>
+                    </span>
+                }
+            </div>
+        }
+
+        <div class="chip-input__entry">
+            <input class="chip-input__field"
+                   id="@_id"
+                   type="text"
+                   placeholder="@Placeholder"
+                   aria-label="@(Label ?? "Add option")"
+                   value="@_draft"
+                   @oninput="OnDraftInput"
+                   @onkeydown="OnKeyDown" />
+            <MudButton Variant="Variant.Outlined" Size="Size.Small" StartIcon="@Icons.Material.Outlined.Add"
+                       Disabled="@string.IsNullOrWhiteSpace(_draft)" OnClick="AddDraft">Add</MudButton>
+        </div>
+    </div>
+</FormField>
+
+@code {
+    /// <summary>The option list being edited (mutated in place); pair with <see cref="ValueChanged"/> for two-way binding.</summary>
+    [Parameter] public List<ChipOption> Value { get; set; } = new();
+
+    /// <summary>Raised whenever an option is added or removed.</summary>
+    [Parameter] public EventCallback<List<ChipOption>> ValueChanged { get; set; }
+
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public string? Placeholder { get; set; } = "Type an option, then Enter";
+    [Parameter] public string? HelperText { get; set; }
+    [Parameter] public bool Error { get; set; }
+    [Parameter] public string? ErrorText { get; set; }
+
+    private readonly string _id = "chip-" + Guid.NewGuid().ToString("N")[..8];
+    private string _draft = string.Empty;
+
+    private void OnDraftInput(ChangeEventArgs e) => _draft = e.Value?.ToString() ?? string.Empty;
+
+    private Task OnKeyDown(KeyboardEventArgs e) => e.Key is "Enter" ? AddDraft() : Task.CompletedTask;
+
+    private async Task AddDraft()
+    {
+        var text = _draft.Trim();
+        if (text.Length == 0) return;
+
+        // Ignore a case-insensitive duplicate rather than adding a second identical option.
+        if (!Value.Any(o => string.Equals(o.Text, text, StringComparison.OrdinalIgnoreCase)))
+        {
+            Value.Add(ChipOption.Create(text));
+            await ValueChanged.InvokeAsync(Value);
+        }
+
+        _draft = string.Empty;
+    }
+
+    private async Task Remove(ChipOption option)
+    {
+        Value.Remove(option);
+        await ValueChanged.InvokeAsync(Value);
+    }
+}

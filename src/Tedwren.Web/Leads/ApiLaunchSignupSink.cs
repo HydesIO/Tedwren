@@ -1,5 +1,4 @@
 using System.Net.Http.Json;
-using Microsoft.Extensions.Options;
 
 namespace Tedwren.Web.Leads;
 
@@ -12,21 +11,21 @@ namespace Tedwren.Web.Leads;
 public sealed class ApiLaunchSignupSink : ILaunchSignupSink
 {
     private readonly HttpClient _http;
-    private readonly LaunchSignupOptions _options;
     private readonly ILogger<ApiLaunchSignupSink> _logger;
 
-    /// <summary>Injects the typed HttpClient, options and logger.</summary>
-    public ApiLaunchSignupSink(HttpClient http, IOptions<LaunchSignupOptions> options, ILogger<ApiLaunchSignupSink> logger)
+    /// <summary>Injects the typed HttpClient (its base address is resolved at registration) and logger.</summary>
+    public ApiLaunchSignupSink(HttpClient http, ILogger<ApiLaunchSignupSink> logger)
     {
         _http = http;
-        _options = options.Value;
         _logger = logger;
     }
 
     /// <inheritdoc />
     public async Task SubmitAsync(string email, string source, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiBaseUrl))
+        // The base address is resolved at registration from LaunchSignup:ApiBaseUrl, falling back to
+        // Api:BaseUrl. When neither is configured there is nowhere to forward to, so we log and no-op.
+        if (_http.BaseAddress is null)
         {
             _logger.LogInformation("Launch signup captured (no API base URL configured, not forwarded): {Source}", source);
             return;

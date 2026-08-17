@@ -1,210 +1,72 @@
 @page "/inductions"
-@using Tedwren.Abstractions.Contracts.Forms
 @using Tedwren.Abstractions.Contracts.Inductions
 @using Tedwren.Abstractions.Services
 @inject IInductionService InductionSvc
-@inject ISiteService Sites
-@inject IFormTemplateService Forms
 @inject ITenantState Tenant
-@inject ISnackbar Snackbar
+@inject NavigationManager Nav
 
-<PageTitle>Induction builder · Tedwren</PageTitle>
+<PageTitle>Inductions · Tedwren</PageTitle>
 
-<PageHeader Title="Induction builder" Subtitle="Configure the site induction — content, quiz, pass mark and attempts (MC-15)" />
+<PageHeader Title="Inductions" Subtitle="Site inductions — different content and quizzes per site type (MC-3, MC-15)">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   Href="/inductions/new">Add induction</MudButton>
+    </Actions>
+</PageHeader>
 
-<div class="form-page">
-    @if (_template is null)
-    {
-        <DashboardCard><Body><MudText>Loading…</MudText></Body></DashboardCard>
-    }
-    else
-    {
-        <FormSection Title="Induction details" Description="Name, media and how long a completion stays valid.">
-            <TedwrenTextField Label="Induction name" @bind-Value="_name" />
-            <TedwrenSelect T="string" Label="Applies to site" @bind-Value="_site" Options="_siteNames" Placeholder="All sites" />
-            <TedwrenTextField Label="Video / document URL" @bind-Value="_mediaUrl" Placeholder="https://…" />
-            <MudNumericField T="int" Label="Valid for (days)" @bind-Value="_validityDays" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            <div class="form-page__full">
-                <TedwrenToggle Label="Mandatory before first site entry" @bind-Value="_mandatory"
-                               Description="A valid induction is a condition of site entry (MC-8)." />
-            </div>
-        </FormSection>
-
-        <FormSection Title="Quiz" Description="Scored on the server; answers never reach the worker's device (R5).">
-            <MudNumericField T="int" Label="Pass mark (correct answers)" @bind-Value="_passMark" Min="0" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            <MudNumericField T="int" Label="Attempts allowed" @bind-Value="_attemptLimit" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" />
-            <div class="form-page__full">
-                @foreach (var q in _questions)
-                {
-                    <MudPaper Class="pa-4 mb-3" Outlined="true">
-                        <TedwrenTextField Label="Question" @bind-Value="q.Prompt" />
-                        <TedwrenTextField Label="Options (comma separated)" @bind-Value="q.OptionsCsv" />
-                        <MudNumericField T="int" Label="Correct option number (1-based)" @bind-Value="q.CorrectDisplay" Min="1" Variant="Variant.Outlined" Margin="Margin.Dense" />
-                        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete"
-                                   OnClick="@(() => _questions.Remove(q))">Remove question</MudButton>
-                    </MudPaper>
-                }
-                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.Add" OnClick="AddQuestion">Add question</MudButton>
-            </div>
-        </FormSection>
-
-        <FormSection Title="Forms" Description="Attach Forms Library forms to this induction — a worker completes them as induction steps (requirement 5).">
-            <TedwrenSelect T="string" Label="Add a published form" Value="@_selectedForm"
-                           ValueChanged="AddFormStep" Options="_publishedFormNames" Placeholder="Select a form to add" />
-            <div class="form-page__full">
-                @if (_formSteps.Count == 0)
-                {
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No forms attached yet.</MudText>
-                }
-                else
-                {
-                    @foreach (var step in _formSteps)
-                    {
-                        <MudPaper Class="pa-3 mb-2 d-flex align-center justify-space-between" Outlined="true">
-                            <MudText><MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Class="mr-2" />@step.Label</MudText>
-                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
-                                       StartIcon="@Icons.Material.Outlined.Delete" OnClick="@(() => _formSteps.Remove(step))">Remove</MudButton>
-                        </MudPaper>
-                    }
-                }
-            </div>
-        </FormSection>
-
-        <FormActions>
-            <Secondary>
-                <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="LoadAsync">Reset</MudButton>
-            </Secondary>
-            <Primary>
-                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy"
-                           StartIcon="@Icons.Material.Outlined.Publish" OnClick="Publish">Publish induction</MudButton>
-            </Primary>
-        </FormActions>
-    }
-</div>
+<DashboardCard>
+    <Body>
+        <DataTable TItem="InductionTemplateDto"
+                   Items="_templates"
+                   Columns="_columns"
+                   Loading="_loading"
+                   OnRowClick="EditTemplate"
+                   SearchPlaceholder="Search inductions…"
+                   EmptyTitle="No inductions yet"
+                   EmptyDescription="Add an induction to configure its content, quiz and pass mark."
+                   EmptyIcon="@Icons.Material.Outlined.PlayCircle" />
+    </Body>
+</DashboardCard>
 
 @code {
-    private InductionTemplateAuthoringDto? _template;
-    private IReadOnlyList<string> _siteNames = Array.Empty<string>();
-    private bool _busy;
-
-    private string _name = string.Empty;
-    private string? _site;
-    private string? _mediaUrl;
-    private int _validityDays = 365;
-    private bool _mandatory = true;
-    private int _passMark;
-    private int _attemptLimit = 3;
-    private readonly List<QuestionEdit> _questions = new();
-
-    private IReadOnlyList<FormTemplateSummaryDto> _publishedForms = Array.Empty<FormTemplateSummaryDto>();
-    private IReadOnlyList<string> _publishedFormNames = Array.Empty<string>();
-    private readonly List<InductionStepDto> _formSteps = new();
-    private string? _selectedForm;
+    private bool _loading = true;
+    private IReadOnlyList<InductionTemplateDto> _templates = Array.Empty<InductionTemplateDto>();
+    private List<DataColumn<InductionTemplateDto>> _columns = new();
 
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
-        var sites = await Sites.GetSitesAsync();
-        _siteNames = sites.Select(s => s.Name).ToList();
-        _publishedForms = (await Forms.GetTemplatesAsync()).Where(f => f.Status == "Published").ToList();
-        _publishedFormNames = _publishedForms.Select(f => f.Name).ToList();
+        BuildColumns();
         await LoadAsync();
-    }
-
-    // Adds the chosen published form as a Form step (its family id is the step reference).
-    private void AddFormStep(string? formName)
-    {
-        _selectedForm = null;
-        var form = _publishedForms.FirstOrDefault(f => f.Name == formName);
-        if (form is null || _formSteps.Any(s => s.Reference == form.FamilyId.ToString()))
-        {
-            return;
-        }
-
-        _formSteps.Add(new InductionStepDto(Guid.NewGuid().ToString("N"), "Form", form.Name, true, form.FamilyId.ToString()));
     }
 
     private async Task LoadAsync()
     {
-        var templates = await InductionSvc.GetTemplatesAsync(Tenant.CurrentCompanyId);
-        Guid templateId;
-        if (templates.Count == 0)
-        {
-            templateId = await InductionSvc.CreateDefaultTemplateAsync(
-                new CreateInductionTemplateRequest(Tenant.CurrentCompanyId, "Site induction", 365, 1));
-        }
-        else
-        {
-            templateId = templates[0].Id;
-        }
-
-        _template = await InductionSvc.GetTemplateForEditAsync(templateId);
-        if (_template is null) return;
-
-        _name = _template.Name;
-        _mediaUrl = _template.MediaUrl;
-        _validityDays = _template.ValidityDays;
-        _mandatory = _template.Mandatory;
-        _passMark = _template.PassMark;
-        _attemptLimit = _template.AttemptLimit;
-        _questions.Clear();
-        _questions.AddRange(_template.Questions.Select(q => new QuestionEdit
-        {
-            Id = q.Id,
-            Prompt = q.Prompt,
-            OptionsCsv = string.Join(", ", q.Options),
-            CorrectDisplay = q.CorrectOptionIndex + 1,
-        }));
-
-        _formSteps.Clear();
-        _formSteps.AddRange(_template.Steps.Where(s => s.Kind == "Form"));
+        _loading = true;
+        _templates = await InductionSvc.GetTemplatesAsync(Tenant.CurrentCompanyId);
+        _loading = false;
     }
 
-    private void AddQuestion() => _questions.Add(new QuestionEdit { OptionsCsv = "Yes, No", CorrectDisplay = 1 });
-
-    private async Task Publish()
+    private void BuildColumns()
     {
-        if (_template is null) return;
-
-        var questions = _questions
-            .Where(q => !string.IsNullOrWhiteSpace(q.Prompt))
-            .Select(q =>
+        _columns = new()
+        {
+            new() { Title = "Name", Value = t => t.Name },
+            new() { Title = "Validity", Value = t => t.ValidityDays, Searchable = false, AlignRight = true,
+                    CellTemplate = t => @<span>@t.ValidityDays days</span> },
+            new() { Title = "Pass mark", Value = t => t.PassMark, Searchable = false, AlignRight = true },
+            new() { Title = "Steps", Value = t => t.Steps.Count, Searchable = false, AlignRight = true },
+            new() { Title = "Questions", Value = t => t.QuestionCount, Searchable = false, AlignRight = true },
+            new()
             {
-                var options = q.OptionsCsv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
-                var correct = Math.Clamp(q.CorrectDisplay - 1, 0, Math.Max(0, options.Count - 1));
-                return new InductionQuizAuthoringDto(q.Id, q.Prompt.Trim(), options, correct);
-            })
-            .ToList();
-
-        _busy = true;
-        try
-        {
-            var siteId = _template.SiteId; // site scoping edited elsewhere; preserved here
-            // Preserve the template's non-form steps and replace the Form steps with the current selection.
-            var steps = _template.Steps.Where(s => s.Kind != "Form").Concat(_formSteps).ToList();
-            var updated = await InductionSvc.UpdateTemplateAsync(_template.Id, new UpdateInductionTemplateRequest(
-                _name, _validityDays, _passMark, _attemptLimit, _mandatory, _mediaUrl, siteId, steps, questions));
-            if (updated is not null)
-            {
-                _template = updated;
-                Snackbar.Add("Induction published.", Severity.Success);
-            }
-        }
-        catch (InvalidOperationException ex)
-        {
-            Snackbar.Add(ex.Message, Severity.Error);
-        }
-        finally
-        {
-            _busy = false;
-        }
+                Title = "", Sortable = false, Searchable = false, AlignRight = true,
+                CellTemplate = t =>
+                    @<MudButton Variant="Variant.Text" Color="Color.Primary" Size="Size.Small"
+                                StartIcon="@Icons.Material.Outlined.Edit"
+                                OnClick="@(() => EditTemplate(t))">Edit</MudButton>
+            },
+        };
     }
 
-    private sealed class QuestionEdit
-    {
-        public string Id { get; set; } = string.Empty;
-        public string Prompt { get; set; } = string.Empty;
-        public string OptionsCsv { get; set; } = string.Empty;
-        public int CorrectDisplay { get; set; } = 1;
-    }
+    private void EditTemplate(InductionTemplateDto template) => Nav.NavigateTo($"/inductions/{template.Id}/edit");
 }

@@ -1,0 +1,106 @@
+@page "/admin/companies/{Id:guid}/modules"
+@using Tedwren.Abstractions.Contracts.Entitlements
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@inject IPlatformAdminService Admin
+@inject IEntitlementService Entitlements
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Modules & Entitlements · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Modules & entitlements"
+                Subtitle="@($"Product modules for {_companyName}")">
+        <Actions>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Default"
+                       StartIcon="@Icons.Material.Outlined.ArrowBack"
+                       OnClick="@(() => Nav.NavigateTo("/admin/companies"))">
+                Back to companies
+            </MudButton>
+        </Actions>
+    </PageHeader>
+
+    <div class="form-page">
+        <FormSection Title="Modules & entitlements"
+                     Description="Turn product modules on or off for this company. Disabled modules disappear from its navigation (SF-22).">
+            <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="6"
+                          IsEmpty="@(_modules.Count == 0)" EmptyTitle="No modules"
+                          EmptyDescription="No catalogue modules are available.">
+                <div class="form-page__full form-page__toggles">
+                    @foreach (var module in _modules)
+                    {
+                        <TedwrenToggle Label="@module.Name"
+                                       Description="@module.Description"
+                                       Value="_entitlements[module.Key]"
+                                       ValueChanged="@(v => _entitlements[module.Key] = v)" />
+                        <MudDivider />
+                    }
+                </div>
+            </AsyncContent>
+        </FormSection>
+
+        <FormActions>
+            <Secondary>
+                <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="_busy" OnClick="LoadAsync">Reset</MudButton>
+            </Secondary>
+            <Primary>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="Save">Save changes</MudButton>
+            </Primary>
+        </FormActions>
+    </div>
+</AdminGuard>
+
+@code {
+    /// <summary>The company whose module entitlements are being edited (from the admin Companies list).</summary>
+    [Parameter] public Guid Id { get; set; }
+
+    private string _companyName = "this company";
+    private IReadOnlyList<ModuleEntitlementDto> _modules = Array.Empty<ModuleEntitlementDto>();
+    private readonly Dictionary<string, bool> _entitlements = new();
+    private bool _loading = true;
+    private bool _busy;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    // Loads the company's display name and its module entitlements. This is a platform-admin, cross-tenant
+    // view keyed by the route company id (the entitlement service is company-scoped, SF-22 / Q2).
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            var company = (await Admin.GetCompaniesAsync()).FirstOrDefault(c => c.Id == Id);
+            _companyName = company?.Name ?? "this company";
+
+            _modules = await Entitlements.GetForCompanyAsync(Id);
+            _entitlements.Clear();
+            foreach (var module in _modules)
+            {
+                _entitlements[module.Key] = module.Enabled;
+            }
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    // Persists any changed module entitlements for this company.
+    private async Task Save()
+    {
+        _busy = true;
+        foreach (var module in _modules)
+        {
+            if (_entitlements[module.Key] != module.Enabled)
+            {
+                await Entitlements.SetEnabledAsync(Id, module.Key, _entitlements[module.Key]);
+            }
+        }
+
+        await LoadAsync();
+        _busy = false;
+        Snackbar.Add("Module entitlements saved.", Severity.Success);
+    }
+}

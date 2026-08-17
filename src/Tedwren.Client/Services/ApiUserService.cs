@@ -67,6 +67,19 @@ public sealed class ApiUserService : IUserService
         return await response.Content.ReadFromJsonAsync<UserDto>(cancellationToken);
     }
 
+    /// <summary>Sets (resets) a user's password via the API, or null when not found.</summary>
+    public async Task<UserDto?> SetPasswordAsync(Guid id, string newPassword, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/users/{id}/password", new { newPassword }, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<UserDto>(cancellationToken);
+    }
+
     /// <summary>Suspends a user via the API, or null when not found.</summary>
     public Task<UserDto?> SuspendUserAsync(Guid id, CancellationToken cancellationToken = default) =>
         PostStatusAsync($"api/users/{id}/suspend", cancellationToken);

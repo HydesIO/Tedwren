@@ -38,18 +38,21 @@
 </PageHeader>
 
 @* KPI row — reflows 5 / 3 / 2 / 1 across breakpoints. *@
-<div class="dash-kpis">
-    @foreach (var kpi in _kpis)
-    {
-        <KpiCard Title="@kpi.Title"
-                 Value="@kpi.Value"
-                 Icon="@kpi.Icon"
-                 TrendValue="@kpi.TrendValue"
-                 TrendDirection="kpi.TrendDirection"
-                 Sparkline="kpi.Sparkline"
-                 AccentColour="@kpi.AccentColour" />
-    }
-</div>
+<AsyncContent Loading="_loading" Error="@_error" ErrorTitle="Couldn't load the dashboard"
+              OnRetry="LoadAsync" Variant="LoadingSkeleton.SkeletonVariant.Kpi" Rows="5">
+    <div class="dash-kpis">
+        @foreach (var kpi in _kpis)
+        {
+            <KpiCard Title="@kpi.Title"
+                     Value="@kpi.Value"
+                     Icon="@kpi.Icon"
+                     TrendValue="@kpi.TrendValue"
+                     TrendDirection="kpi.TrendDirection"
+                     Sparkline="kpi.Sparkline"
+                     AccentColour="@kpi.AccentColour" />
+        }
+    </div>
+</AsyncContent>
 
 <div class="dash-grid">
     <div class="dash-grid__col dash-grid__col--wide">
@@ -58,6 +61,9 @@
                        FooterLinkText="View all sites"
                        FooterLinkHref="/sites">
             <Body>
+                <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.Table" Rows="5"
+                              IsEmpty="@(_sites.Count == 0)" EmptyTitle="No active sites"
+                              EmptyDescription="Site compliance appears here once sites are set up.">
                 <div class="dash-table-wrap">
                     <table class="dash-table">
                         <thead>
@@ -81,6 +87,7 @@
                         </tbody>
                     </table>
                 </div>
+                </AsyncContent>
             </Body>
         </DashboardCard>
     </div>
@@ -90,12 +97,14 @@
                        FooterLinkText="Open compliance"
                        FooterLinkHref="/compliance">
             <Body>
+                <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="3">
                 <div class="dash-compliance">
                     <DonutStat Segments="_compliance.Segments"
                                CentreValue="@_compliance.HeadlinePercent"
                                CentreLabel="@_compliance.HeadlineLabel" />
                     <LegendList Items="_compliance.Legend" />
                 </div>
+                </AsyncContent>
             </Body>
         </DashboardCard>
     </div>
@@ -106,7 +115,9 @@
                        FooterLinkText="View all expiries"
                        FooterLinkHref="/compliance">
             <Body>
-                <ExpiryList Items="_expiries" />
+                <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="4">
+                    <ExpiryList Items="_expiries" />
+                </AsyncContent>
             </Body>
         </DashboardCard>
     </div>
@@ -116,7 +127,9 @@
                        FooterLinkText="View audit log"
                        FooterLinkHref="/audit-log">
             <Body>
-                <ActivityFeed Items="_activity" />
+                <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="4">
+                    <ActivityFeed Items="_activity" />
+                </AsyncContent>
             </Body>
         </DashboardCard>
     </div>
@@ -132,31 +145,49 @@
     private static readonly string[] _ranges = { "This week", "Last 30 days", "Last 90 days", "Year to date" };
     private string _rangeLabel = "This week";
 
+    private bool _loading = true;
+    private string? _error;
+
     private const int ExpiryWindowDays = 30;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
 
     // Loads the dashboard entirely from the Web API: KPIs / compliance / site risk from the aggregation
     // service, upcoming expiries from the expiry engine (SF-9) and recent activity from the audit trail (SF-20).
-    protected override async Task OnInitializedAsync()
+    private async Task LoadAsync()
     {
-        var summary = await DashboardSvc.GetSummaryAsync();
-        _kpis = BuildKpis(summary.Kpis);
-        _compliance = ComplianceOverviewView.From(summary.Compliance);
-        _sites = summary.SiteRisk;
+        _loading = true;
+        _error = null;
+        try
+        {
+            var summary = await DashboardSvc.GetSummaryAsync();
+            _kpis = BuildKpis(summary.Kpis);
+            _compliance = ComplianceOverviewView.From(summary.Compliance);
+            _sites = summary.SiteRisk;
 
-        var upcoming = await Expiry.GetUpcomingAsync(ExpiryWindowDays);
-        _expiries = upcoming
-            .Select(e => new ExpiryItem(
-                e.QualificationName, "—", e.ExpiresOn ?? DateOnly.MaxValue, e.DaysUntilExpiry, ExpiryStatus(e.DaysUntilExpiry)))
-            .ToList();
+            var upcoming = await Expiry.GetUpcomingAsync(ExpiryWindowDays);
+            _expiries = upcoming
+                .Select(e => new ExpiryItem(
+                    e.QualificationName, "—", e.ExpiresOn ?? DateOnly.MaxValue, e.DaysUntilExpiry, ExpiryStatus(e.DaysUntilExpiry)))
+                .ToList();
 
-        var audit = await Audit.SearchAsync(null, null, null, null);
-        _activity = audit
-            .OrderByDescending(a => a.OccurredUtc)
-            .Take(6)
-            .Select(a => new ActivityItem(
-                Icons.Material.Outlined.History, a.Action, $"{a.Entity} · {a.Actor}",
-                a.OccurredUtc.LocalDateTime.ToString("dd MMM HH:mm"), StatusKind.Neutral))
-            .ToList();
+            var audit = await Audit.SearchAsync(null, null, null, null);
+            _activity = audit
+                .OrderByDescending(a => a.OccurredUtc)
+                .Take(6)
+                .Select(a => new ActivityItem(
+                    Icons.Material.Outlined.History, a.Action, $"{a.Entity} · {a.Actor}",
+                    a.OccurredUtc.LocalDateTime.ToString("dd MMM HH:mm"), StatusKind.Neutral))
+                .ToList();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            _error = "The dashboard couldn't be loaded. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private static IReadOnlyList<KpiTile> BuildKpis(DashboardKpisDto k)

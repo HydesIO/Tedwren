@@ -1,0 +1,87 @@
+.chip-input {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
+}
+
+.chip-input__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-8, 8px);
+}
+
+.chip-input__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    padding: var(--spacing-4, 4px) var(--spacing-8, 8px) var(--spacing-4, 4px) var(--spacing-12, 12px);
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-control, 8px);
+    background: var(--color-surface, #FFFFFF);
+    font-size: .8125rem;
+    line-height: 1.4;
+}
+
+.chip-input__text {
+    color: var(--color-text-primary, #101828);
+    font-weight: 500;
+}
+
+.chip-input__badge {
+    padding: 1px var(--spacing-8, 8px);
+    border-radius: 999px;
+    background: var(--color-bg, #F7F8FA);
+    color: var(--color-text-secondary, #667085);
+    font-size: .6875rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    letter-spacing: .02em;
+}
+
+.chip-input__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--color-text-secondary, #667085);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.chip-input__remove:hover {
+    background: var(--color-danger-pale, #FEF3F2);
+    color: var(--color-danger, #F04438);
+}
+
+.chip-input__entry {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+}
+
+.chip-input__field {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: var(--spacing-8, 8px) var(--spacing-12, 12px);
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-control, 8px);
+    background: var(--color-surface, #FFFFFF);
+    color: var(--color-text-primary, #101828);
+    font-family: var(--font-family);
+    font-size: .875rem;
+}
+
+.chip-input__field:focus {
+    outline: none;
+    border-color: var(--color-brand, #E8590C);
+    box-shadow: 0 0 0 3px var(--color-brand-pale, #FFF1E8);
+}
+
+.chip-input__field::placeholder {
+    color: var(--color-text-muted, #98A2B3);
+}

@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Contracts.Organisation
 @using Tedwren.Abstractions.Services
 @inject IPlatformAdminService Admin
+@inject NavigationManager Nav
 
 <PageTitle>Companies · Admin · Tedwren</PageTitle>
 
@@ -15,6 +16,7 @@
                        Items="_companies"
                        Columns="_columns"
                        Loading="_loading"
+                       OnRowClick="OpenModules"
                        SearchPlaceholder="Search companies…"
                        EmptyTitle="No companies yet"
                        EmptyDescription="Organisations appear here as they are onboarded."
@@ -52,6 +54,9 @@
             },
         };
     }
+
+    // Opens the company's modules & entitlements screen (admin-only, company-scoped).
+    private void OpenModules(CompanySummary company) => Nav.NavigateTo($"/admin/companies/{company.Id}/modules");
 
     // Maps the compliance state to the shared pill palette.
     private static StatusKind ToStatus(ComplianceState state) => state switch

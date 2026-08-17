@@ -1,60 +1,19 @@
 @page "/permits"
 @using Tedwren.Abstractions.Contracts.Permits
 @using Tedwren.Abstractions.Services
-@inject IReferenceDataService Reference
-@inject ISiteService Sites
-@inject IWorkforceService Workforce
 @inject IPermitService PermitSvc
 @inject ITenantState Tenant
-@inject ISnackbar Snackbar
 
 <PageTitle>Permits · Tedwren</PageTitle>
 
-<PageHeader Title="Issue permit" Subtitle="Raise a permit to work" />
+<PageHeader Title="Permits" Subtitle="Permits to work raised for this company">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Assignment"
+                   Href="/permits/new">Issue permit</MudButton>
+    </Actions>
+</PageHeader>
 
-<div class="form-page">
-    <FormSection Title="Permit details" Description="What is being permitted, where and when.">
-        <TedwrenSelect T="string" Label="Permit type" @bind-Value="_type" Required="true"
-                       Options="_permitTypes" Placeholder="Select a permit type"
-                       Error="_submitted && string.IsNullOrWhiteSpace(_type)"
-                       ErrorText="Select a permit type." />
-        <TedwrenAutocomplete T="string" Label="Site" @bind-Value="_site" Required="true"
-                             Options="_sites" Placeholder="Search sites"
-                             Error="_submitted && string.IsNullOrWhiteSpace(_site)"
-                             ErrorText="Select a site." />
-        <TedwrenAutocomplete T="string" Label="Responsible person" @bind-Value="_person" Required="true"
-                             Options="_operatives" Placeholder="Search operatives"
-                             Error="_submitted && string.IsNullOrWhiteSpace(_person)"
-                             ErrorText="Select a responsible person." />
-        <TedwrenDateRangePicker Label="Valid period" @bind-DateRange="_period"
-                                HelperText="Start and end dates the permit is valid for." />
-    </FormSection>
-
-    <FormSection Title="Scope & controls" Description="Describe the work and the controls in place.">
-        <div class="form-page__full">
-            <TedwrenTextField Label="Description of works" @bind-Value="_description" Lines="3"
-                              Placeholder="Describe the task, location and method." />
-        </div>
-        <TedwrenToggle Label="High-risk activity"
-                       Description="Flag if this permit covers a high-risk activity requiring additional sign-off."
-                       @bind-Value="_highRisk" />
-        <TedwrenToggle Label="RAMS attached"
-                       Description="Confirm risk assessment and method statement are in place."
-                       @bind-Value="_ramsAttached" />
-    </FormSection>
-
-    <FormActions>
-        <Secondary>
-            <MudButton Variant="Variant.Outlined" Color="Color.Default" Disabled="_busy" OnClick="SaveDraft">Save draft</MudButton>
-        </Secondary>
-        <Primary>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" StartIcon="@Icons.Material.Outlined.Assignment"
-                       OnClick="Issue">Issue permit</MudButton>
-        </Primary>
-    </FormActions>
-</div>
-
-<DashboardCard Title="Permits" Subtitle="Permits raised for this company">
+<DashboardCard>
     <Body>
         <DataTable TItem="PermitDto"
                    Items="_permits"
@@ -62,27 +21,14 @@
                    Loading="_loading"
                    SearchPlaceholder="Search permits…"
                    EmptyTitle="No permits yet"
-                   EmptyDescription="Raise a permit above to see it listed here."
+                   EmptyDescription="Issue a permit to see it listed here."
                    EmptyIcon="@Icons.Material.Outlined.Assignment" />
     </Body>
 </DashboardCard>
 
 @code {
-    private string? _type;
-    private string? _site;
-    private string? _person;
-    private DateRange? _period;
-    private string? _description;
-    private bool _highRisk;
-    private bool _ramsAttached = true;
-    private bool _submitted;
-
-    private bool _busy;
     private bool _loading = true;
 
-    private IReadOnlyList<string> _permitTypes = Array.Empty<string>();
-    private IReadOnlyList<string> _sites = Array.Empty<string>();
-    private IReadOnlyList<string> _operatives = Array.Empty<string>();
     private IReadOnlyList<PermitDto> _permits = Array.Empty<PermitDto>();
     private List<DataColumn<PermitDto>> _columns = new();
 
@@ -90,11 +36,6 @@
     {
         await Tenant.InitializeAsync();
         BuildColumns();
-        _permitTypes = await Reference.GetListAsync(ReferenceListKeys.PermitTypes);
-        var sites = await Sites.GetSitesAsync();
-        _sites = sites.Select(s => s.Name).ToList();
-        var operatives = await Workforce.ListOperativesAsync();
-        _operatives = operatives.Select(o => o.Name).Distinct().OrderBy(n => n).ToList();
         await LoadPermitsAsync();
     }
 
@@ -104,42 +45,6 @@
         _permits = await PermitSvc.ListForCompanyAsync(Tenant.CurrentCompanyId);
         _loading = false;
     }
-
-    private Task Issue() => CreateAsync(issue: true);
-
-    private Task SaveDraft() => CreateAsync(issue: false);
-
-    private async Task CreateAsync(bool issue)
-    {
-        _submitted = true;
-        if (string.IsNullOrWhiteSpace(_type) || string.IsNullOrWhiteSpace(_site) || string.IsNullOrWhiteSpace(_person))
-        {
-            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
-            return;
-        }
-
-        _busy = true;
-        await PermitSvc.CreateAsync(new CreatePermitRequest(
-            Tenant.CurrentCompanyId, _type!, _site, _person,
-            ToDateOnly(_period?.Start), ToDateOnly(_period?.End),
-            _description, _highRisk, _ramsAttached, issue));
-        _busy = false;
-
-        Snackbar.Add(issue ? $"{_type} permit issued for {_site}." : "Draft permit saved.", Severity.Success);
-        ResetForm();
-        await LoadPermitsAsync();
-    }
-
-    private void ResetForm()
-    {
-        _type = _site = _person = _description = null;
-        _period = null;
-        _highRisk = false;
-        _ramsAttached = true;
-        _submitted = false;
-    }
-
-    private static DateOnly? ToDateOnly(DateTime? value) => value is null ? null : DateOnly.FromDateTime(value.Value);
 
     private void BuildColumns()
     {

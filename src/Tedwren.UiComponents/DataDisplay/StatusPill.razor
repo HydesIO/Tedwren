@@ -1,12 +1,25 @@
+@using MudBlazor
 @using Tedwren.UiComponents.Models
-@* Rounded coloured pill (Healthy / Warning / Compliant / Expired / etc.). *@
+@* Rounded coloured pill with a semantic status icon (Healthy / Warning / Compliant / Expired / etc.). *@
 
 <span class="status-pill status-pill--@(Status.ToString().ToLowerInvariant())" role="status">
-    <span class="status-pill__dot" aria-hidden="true"></span>
-    @Label
+    <MudIcon Icon="@IconFor(Status)" Class="status-pill__icon" aria-hidden="true" />
+    @DisplayText.Humanize(Label)
 </span>
 
 @code {
     [Parameter, EditorRequired] public string Label { get; set; } = default!;
     [Parameter] public StatusKind Status { get; set; } = StatusKind.Neutral;
+
+    // Maps a semantic status to a status-meaning icon. These are deliberately distinct from the sidebar
+    // navigation icons (which are reserved for headings), per the design direction.
+    private static string IconFor(StatusKind status) => status switch
+    {
+        StatusKind.Success => Icons.Material.Filled.CheckCircle,
+        StatusKind.Warning => Icons.Material.Filled.WarningAmber,
+        StatusKind.Danger => Icons.Material.Filled.Cancel,
+        StatusKind.Info => Icons.Material.Filled.Info,
+        StatusKind.Permit => Icons.Material.Filled.Badge,
+        _ => Icons.Material.Filled.RemoveCircleOutline,
+    };
 }

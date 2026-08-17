@@ -3,6 +3,7 @@ using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Users;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Auth;
 using Tedwren.Application.Notifications.Email;
 using Tedwren.Application.Persistence;
 using Tedwren.Domain.Entities;
@@ -139,6 +140,41 @@ public sealed class UserService : IUserService
 
         user.Name = name;
         user.Role = ParseRole(request.Role);
+        await _users.UpdateAsync(user, cancellationToken);
+        return ToDto(user);
+    }
+
+    /// <summary>Minimum admin-set password length.</summary>
+    private const int MinPasswordLength = 8;
+
+    /// <summary>
+    /// Sets (resets) a user's password (SF-20). Hashes with the shared salted PBKDF2 hasher. An invited
+    /// account is activated and its invite token consumed, since a password now makes it usable. Null when
+    /// the user is not found.
+    /// </summary>
+    public async Task<UserDto?> SetPasswordAsync(Guid id, string newPassword, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(newPassword) || newPassword.Length < MinPasswordLength)
+        {
+            throw new ArgumentException($"A password of at least {MinPasswordLength} characters is required.", nameof(newPassword));
+        }
+
+        var user = await _users.GetByIdAsync(id, cancellationToken);
+        if (user is null)
+        {
+            return null;
+        }
+
+        user.PasswordHash = PasswordHasher.Hash(newPassword);
+        user.PasswordSetUtc = DateTimeOffset.UtcNow;
+
+        if (user.Status == UserStatus.Invited)
+        {
+            user.Status = UserStatus.Active;
+            user.InviteToken = null;
+            user.InviteTokenExpiresUtc = null;
+        }
+
         await _users.UpdateAsync(user, cancellationToken);
         return ToDto(user);
     }

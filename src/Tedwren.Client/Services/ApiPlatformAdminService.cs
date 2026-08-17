@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Abstractions.Contracts.Users;
@@ -26,4 +27,26 @@ public sealed class ApiPlatformAdminService : IPlatformAdminService
     public async Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<IReadOnlyList<UserDto>>("api/admin/users", cancellationToken)
         ?? Array.Empty<UserDto>();
+
+    /// <summary>Edits a console user via the admin API, or null when not found.</summary>
+    public async Task<UserDto?> UpdateUserAsync(Guid id, AdminUpdateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/admin/users/{id}", request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (response.StatusCode == HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorResponse>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? "The user could not be updated.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<UserDto>(cancellationToken);
+    }
+
+    /// <summary>Shape of an error response body.</summary>
+    private sealed record ErrorResponse(string Error);
 }
