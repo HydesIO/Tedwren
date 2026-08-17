@@ -11,6 +11,42 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## Completed
 
+### Site Gate, Forms, Permits, Inductions & loading-state redesign (this change)
+Plan: `docs/site-gate-forms-redesign-plan.md`. Client + UiComponents only (no domain/DTO/API changes).
+- ✅ **Never a blank screen (WS1).** New `AsyncContent` wrapper (`UiComponents/Feedback`) — a
+  loading/error/empty/content switch built on `LoadingSkeleton`/`BannerAlert`/`EmptyState`. Applied to the
+  Dashboard (KPI + card bodies, with retry), Site Gate, the Site/User/Operative detail pages (skeleton body
+  instead of header-only), `FormFill`, `FormBuilderPage`, `SelfOnboard`, `QualificationCardsDialog` and
+  `Notifications` (guarded the empty `ActivityFeed`).
+- ✅ **Site Gate redesign (WS2, MC-8/R10).** New `SiteGate.razor.css` (the `gate__*` classes were never
+  defined). Operatives render as a spaced responsive grid with an active/selected state; decision result is
+  clearly separated; manager override moved to a right-aligned action row; **On site now** is a sortable
+  `DataTable<MusterPersonDto>` with skeleton + empty state; page load via `AsyncContent`.
+- ✅ **Forms editor panels (WS3, PRD-Phase 2).** Questions group into named, collapsible **panels** (rename /
+  collapse / remove / "Add question to this panel" / reorder within a panel) via the existing
+  `FormSectionDef` model — no migration. Form details stack name-then-description (single column, taller
+  description). Choice options entered as chips.
+- ✅ **Permits split (WS4).** `/permits` is now list-only with an **Issue permit** header action → new
+  `/permits/new` (`IssuePermit.razor`); issuing returns to the list. Mirrors the Forms list/editor split.
+- ✅ **Inductions list + builder (WS5, MC-3/MC-15).** New `/inductions` list
+  (`DataTable<InductionTemplateDto>`, **Add induction** + per-row **Edit**) — supports different inductions
+  per site type, which the single-template UI couldn't. Builder renamed to `InductionBuilder.razor` with
+  `/inductions/new` (seeds via `CreateDefaultTemplateAsync`) and `/inductions/{id}/edit`; save returns to the
+  list. Quiz options entered as chips.
+- ✅ **Editable chip input (WS6).** New `ChipInput` component + `ChipOption` (`UiComponents/Forms`) — chips
+  with an assigned id badge and remove, add-on-Enter. `FormEditModel` now maps chips ⇄ `OptionsJson` as
+  `{id,text}` objects with back-compatible reads of legacy plain-string arrays; induction quiz options mapped
+  to `InductionQuizAuthoringDto.Options`.
+- ✅ Catalogued `AsyncContent` + `ChipInput` and refreshed the `FormBuilder` entry in
+  `docs/component-catalogue.md`. Tests: `FormEditModelTests` (chip⇄JSON round-trip incl. legacy read) and
+  `NewComponentRenderTests` (AsyncContent switch + ChipInput render/remove). Whole solution builds
+  (0 code warnings introduced); all test projects pass (LocalDB integration tests skipped).
+- ℹ️ **Plan deviations (noted).** `AsyncContent` composes already-styled children so needs no `.razor.css` of
+  its own (reduced-motion guard lives in `LoadingSkeleton`). The Inductions list columns use the fields the
+  `InductionTemplateDto` actually carries (name / validity / pass mark / steps / questions) rather than the
+  plan's suggested applies-to-site / mandatory / updated, which the DTO does not expose — avoiding an
+  out-of-scope contract change.
+
 ### Admin — Affiliates, payouts & e-sign agreements (Phase 3, this change)
 - ✅ **Affiliate slice (commercial DB).** `Affiliate` (embedded commission plan), `AffiliatePayout`,
   `AffiliateAgreement` entities + enums, DTOs, `IAffiliateService`/`AffiliateService`, `IAffiliateRepository`

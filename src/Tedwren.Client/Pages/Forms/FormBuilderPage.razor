@@ -16,13 +16,15 @@
 <div class="form-page">
     @if (_loading)
     {
-        <DashboardCard><Body><MudText>Loading…</MudText></Body></DashboardCard>
+        <DashboardCard><Body><AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="6" /></Body></DashboardCard>
     }
     else
     {
         <FormSection Title="Form details" Description="A name and an optional description for your library.">
-            <TedwrenTextField Label="Form name" @bind-Value="_name" Placeholder="e.g. Daily site diary" Required="true" />
-            <TedwrenTextField Label="Description" @bind-Value="_description" Lines="2" Placeholder="What is this form for?" />
+            <div class="form-page__stack">
+                <TedwrenTextField Label="Form name" @bind-Value="_name" Placeholder="e.g. Daily site diary" Required="true" />
+                <TedwrenTextField Label="Description" @bind-Value="_description" Lines="4" Placeholder="What is this form for?" />
+            </div>
         </FormSection>
 
         <FormSection Title="Build the form" Description="Add sections and fields. Choose each field's type and whether it is required.">

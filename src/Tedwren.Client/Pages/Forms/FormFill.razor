@@ -18,7 +18,7 @@
 <div class="form-page">
     @if (_loading)
     {
-        <DashboardCard><Body><MudText>Loading…</MudText></Body></DashboardCard>
+        <DashboardCard><Body><AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="6" /></Body></DashboardCard>
     }
     else if (_template is null)
     {

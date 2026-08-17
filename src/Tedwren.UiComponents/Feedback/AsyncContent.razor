@@ -1,0 +1,70 @@
+@using Tedwren.UiComponents.Models
+@* Loading / error / empty / content switch for any async region. Generalises the pattern proven in
+   DataTable so no page ever paints a blank screen while an API call is in flight: a skeleton shows first,
+   then an error banner (with optional retry), an empty state, or the loaded content. Reuses LoadingSkeleton,
+   BannerAlert and EmptyState. *@
+
+@if (Loading)
+{
+    <LoadingSkeleton Variant="@Variant" Rows="@Rows" />
+}
+else if (!string.IsNullOrEmpty(Error))
+{
+    <BannerAlert Severity="StatusKind.Danger" Title="@ErrorTitle" Message="@Error">
+        <Action>
+            @if (OnRetry.HasDelegate)
+            {
+                <MudButton Size="Size.Small" Variant="MudBlazor.Variant.Outlined"
+                           OnClick="@(() => OnRetry.InvokeAsync())">Retry</MudButton>
+            }
+        </Action>
+    </BannerAlert>
+}
+else if (IsEmpty)
+{
+    @if (EmptyContent is not null)
+    {
+        @EmptyContent
+    }
+    else
+    {
+        <EmptyState Icon="@EmptyIcon" Title="@EmptyTitle" Description="@EmptyDescription" />
+    }
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    /// <summary>Show the loading skeleton while true.</summary>
+    [Parameter] public bool Loading { get; set; }
+
+    /// <summary>Skeleton shape while loading (Card by default; Table / List / Kpi for those layouts).</summary>
+    [Parameter] public LoadingSkeleton.SkeletonVariant Variant { get; set; } = LoadingSkeleton.SkeletonVariant.Card;
+
+    /// <summary>Skeleton row/placeholder count.</summary>
+    [Parameter] public int Rows { get; set; } = 4;
+
+    /// <summary>When set (and not loading), an error banner is shown instead of the content.</summary>
+    [Parameter] public string? Error { get; set; }
+
+    /// <summary>Error banner title.</summary>
+    [Parameter] public string ErrorTitle { get; set; } = "Couldn't load";
+
+    /// <summary>Optional retry handler; a Retry button is shown on the error banner when provided.</summary>
+    [Parameter] public EventCallback OnRetry { get; set; }
+
+    /// <summary>When true (and not loading / errored), the empty state is shown instead of the content.</summary>
+    [Parameter] public bool IsEmpty { get; set; }
+
+    /// <summary>Custom empty-state markup; falls back to a default <see cref="EmptyState"/> when null.</summary>
+    [Parameter] public RenderFragment? EmptyContent { get; set; }
+
+    [Parameter] public string EmptyIcon { get; set; } = Icons.Material.Outlined.Inbox;
+    [Parameter] public string EmptyTitle { get; set; } = "Nothing here yet";
+    [Parameter] public string? EmptyDescription { get; set; }
+
+    /// <summary>The loaded content, shown once not loading / errored / empty.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

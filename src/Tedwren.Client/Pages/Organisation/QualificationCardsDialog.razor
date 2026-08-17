@@ -10,7 +10,7 @@
         <div class="qual-dialog">
             @if (_loading)
             {
-                <p>Loading…</p>
+                <AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="3" />
             }
             else if (_cards.Count == 0)
             {

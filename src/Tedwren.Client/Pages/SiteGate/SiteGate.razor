@@ -15,13 +15,26 @@
 <DashboardCard>
     <Body>
         <MudText Typo="Typo.h6">Check entry</MudText>
-        <div class="gate__operatives">
-            @foreach (var op in _operatives)
-            {
-                <MudButton Variant="Variant.Outlined" Color="Color.Primary" Class="gate__op"
-                           OnClick="@(() => DecideAsync(op.Id))">@op.Name</MudButton>
-            }
-        </div>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary gate__hint">Select an operative to run the five-check entry decision (MC-8, R10).</MudText>
+
+        <AsyncContent Loading="_loading" Error="@_error" ErrorTitle="Couldn't load the gate"
+                      OnRetry="LoadAsync" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="4"
+                      IsEmpty="@(_operatives.Count == 0)" EmptyIcon="@Icons.Material.Outlined.Engineering"
+                      EmptyTitle="No operatives" EmptyDescription="No operatives are registered for this company yet.">
+            <div class="gate__operatives">
+                @foreach (var op in _operatives)
+                {
+                    <button type="button"
+                            class="@($"gate__op{(op.Id == _lastPersonId ? " gate__op--active" : string.Empty)}")"
+                            @onclick="@(() => DecideAsync(op.Id))">
+                        <span class="gate__op-icon" aria-hidden="true">
+                            <MudIcon Icon="@Icons.Material.Outlined.Badge" Size="Size.Small" />
+                        </span>
+                        <span class="gate__op-name">@op.Name</span>
+                    </button>
+                }
+            </div>
+        </AsyncContent>
 
         @if (_result is { } r)
         {
@@ -46,8 +59,11 @@
 
                 @if (!r.Admitted)
                 {
-                    <MudButton Variant="Variant.Filled" Color="Color.Warning" Class="gate__override"
-                               OnClick="OverrideAsync">Manager override (today only)</MudButton>
+                    <div class="gate__override-row">
+                        <MudButton Variant="Variant.Filled" Color="Color.Warning"
+                                   StartIcon="@Icons.Material.Outlined.AdminPanelSettings"
+                                   OnClick="OverrideAsync">Manager override (today only)</MudButton>
+                    </div>
                 }
             </div>
         }
@@ -73,21 +89,17 @@
                                 Status="@(cover.Covered ? (cover.HoldersOnSite <= 1 ? StatusKind.Warning : StatusKind.Success) : StatusKind.Danger)" />
                 }
             </div>
-
-            <MudSimpleTable Dense="true">
-                <thead><tr><th>Operative</th><th>Property</th><th>On site since</th></tr></thead>
-                <tbody>
-                    @foreach (var p in muster.People)
-                    {
-                        <tr>
-                            <td>@p.Name</td>
-                            <td>@(p.PropertyName ?? "—")</td>
-                            <td>@p.SinceUtc.ToString("dd MMM HH:mm")</td>
-                        </tr>
-                    }
-                </tbody>
-            </MudSimpleTable>
         }
+
+        <DataTable TItem="MusterPersonDto"
+                   Items="_musterPeople"
+                   Columns="_musterColumns"
+                   Loading="_loading"
+                   Searchable="true"
+                   SearchPlaceholder="Search people on site…"
+                   EmptyTitle="Nobody on site"
+                   EmptyDescription="No operatives are signed in at this site right now."
+                   EmptyIcon="@Icons.Material.Outlined.Groups" />
     </Body>
 </DashboardCard>
 
@@ -99,26 +111,51 @@
     private EntryDecisionResultDto? _result;
     private Guid _lastPersonId;
     private MusterDto? _muster;
+    private IReadOnlyList<MusterPersonDto> _musterPeople = Array.Empty<MusterPersonDto>();
     private int _dataAgeSeconds;
 
-    protected override async Task OnInitializedAsync()
+    private bool _loading = true;
+    private string? _error;
+    private List<DataColumn<MusterPersonDto>> _musterColumns = new();
+
+    protected override Task OnInitializedAsync()
     {
-        await Tenant.InitializeAsync();
-        _companyId = Tenant.CurrentCompanyId;
+        BuildColumns();
+        return LoadAsync();
+    }
 
-        var sites = await Sites.GetSitesAsync();
-        _siteId = sites.Count > 0 ? sites[0].Id : Guid.Empty;
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            await Tenant.InitializeAsync();
+            _companyId = Tenant.CurrentCompanyId;
 
-        var operatives = await Workforce.ListOperativesAsync();
-        _operatives = operatives.Select(o => (o.PersonId, o.Name)).ToList();
+            var sites = await Sites.GetSitesAsync();
+            _siteId = sites.Count > 0 ? sites[0].Id : Guid.Empty;
 
-        await LoadMusterAsync();
+            var operatives = await Workforce.ListOperativesAsync();
+            _operatives = operatives.Select(o => (o.PersonId, o.Name)).ToList();
+
+            await LoadMusterAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            _error = "The site gate couldn't be loaded. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task LoadMusterAsync()
     {
         if (_siteId == Guid.Empty) return;
         _muster = await SiteEntry.GetMusterAsync(_siteId);
+        _musterPeople = _muster.People;
         _dataAgeSeconds = (int)(DateTimeOffset.UtcNow - _muster.GeneratedUtc).TotalSeconds;
     }
 
@@ -139,6 +176,20 @@
         {
             Snackbar.Add("Entry admitted by manager override (recorded for today).", Severity.Warning);
         }
+    }
+
+    private void BuildColumns()
+    {
+        _musterColumns = new()
+        {
+            new() { Title = "Operative", Value = p => p.Name },
+            new() { Title = "Property", Value = p => p.PropertyName ?? "—", Filterable = true },
+            new()
+            {
+                Title = "On site since", Value = p => p.SinceUtc, Searchable = false,
+                CellTemplate = p => @<span>@p.SinceUtc.ToString("dd MMM HH:mm")</span>
+            },
+        };
     }
 
     private static StatusKind ToStatusKind(string outcome) => outcome switch

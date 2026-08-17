@@ -12,7 +12,12 @@
 
 @if (_loading)
 {
-    <PageHeader Title="Loading…" />
+    <PageHeader Title="Loading…" Subtitle="Fetching user account" />
+    <DashboardCard>
+        <Body>
+            <AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="6" />
+        </Body>
+    </DashboardCard>
 }
 else if (_user is null)
 {
