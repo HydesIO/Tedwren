@@ -34,7 +34,7 @@ builder.Services.AddScoped(sp =>
 {
     var handler = sp.GetRequiredService<AuthTokenHandler>();
     handler.InnerHandler = new HttpClientHandler();
-    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl), Timeout = TimeSpan.FromMinutes(5) };
 });
 builder.Services.AddScoped<AuthState>();
 builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();

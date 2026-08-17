@@ -113,7 +113,8 @@ public sealed class DemoDataService : IDemoDataService
         {
             // Recreate semantics: clear any existing demo dataset first so ids never clash.
             _progress.Advance("Clearing any existing demo data");
-            await PurgeAsync(plan, cancellationToken);
+            
+            //await PurgeAsync(plan, cancellationToken);
 
             _progress.Advance("Companies");
             foreach (var company in plan.Companies)
