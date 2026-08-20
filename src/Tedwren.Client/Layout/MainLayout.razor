@@ -141,6 +141,11 @@
                 return;
             }
 
+            // Resolve the active company's product (SUB vs MC) once and cache it, so the dashboard, the
+            // site-gate wording (R18) and any product-aware page can branch without re-fetching. Resolved
+            // before the routed page renders (the _ready gate below), so pages can rely on it being set.
+            await ResolveOrgTypeAsync();
+
             _navItems = await GatedNavItemsAsync(ShellChrome.NavItems);
         }
 
@@ -306,6 +311,23 @@
         catch
         {
             return all;
+        }
+    }
+
+    // Resolves the active company's product from the authoritative company record and caches it on
+    // ITenantState. Fails open (leaves the product null) on a lookup error, so a transient failure never
+    // blocks the shell — pages that branch on the product treat null as "no product-specific treatment".
+    private async Task ResolveOrgTypeAsync()
+    {
+        try
+        {
+            var companies = await Org.GetCompaniesAsync();
+            var current = companies.FirstOrDefault(c => c.Id == Tenant.CurrentCompanyId);
+            await Tenant.SetCurrentOrgTypeAsync(current?.OrgType);
+        }
+        catch
+        {
+            await Tenant.SetCurrentOrgTypeAsync(null);
         }
     }
 

@@ -55,7 +55,7 @@ public sealed class OrganisationService : IOrganisationService
             var (state, percent) = await ComputeCompanyComplianceAsync(engagements, cancellationToken);
             summaries.Add(new CompanySummary(
                 company.Id, Slug.From(company.Name), company.Name, company.Type, company.Trade,
-                engagements.Count, percent, state, ComplianceRollup.Label(state)));
+                engagements.Count, percent, state, ComplianceRollup.Label(state), ToDtoOrgType(company.OrgType)));
         }
 
         return summaries;
@@ -103,7 +103,8 @@ public sealed class OrganisationService : IOrganisationService
             company.ContactEmail,
             company.ContactPhone,
             Documents: documentDtos,
-            Operatives: operatives);
+            Operatives: operatives,
+            OrgType: ToDtoOrgType(company.OrgType));
     }
 
     /// <summary>Creates a company and returns its new identifier.</summary>
@@ -119,11 +120,28 @@ public sealed class OrganisationService : IOrganisationService
             ContactName = request.ContactName,
             ContactEmail = request.ContactEmail,
             ContactPhone = request.ContactPhone,
+            OrgType = ToDomainOrgType(request.OrgType),
         };
 
         await _companies.AddAsync(company, cancellationToken);
         return company.Id;
     }
+
+    /// <summary>Maps the domain product enum to the DTO/boundary enum (the client references only Abstractions).</summary>
+    private static Abstractions.Common.OrgType? ToDtoOrgType(Domain.Enums.OrgType? orgType) => orgType switch
+    {
+        Domain.Enums.OrgType.Subcontractor => Abstractions.Common.OrgType.Subcontractor,
+        Domain.Enums.OrgType.MainContractor => Abstractions.Common.OrgType.MainContractor,
+        _ => null,
+    };
+
+    /// <summary>Maps the DTO/boundary product enum back to the domain enum for persistence.</summary>
+    private static Domain.Enums.OrgType? ToDomainOrgType(Abstractions.Common.OrgType? orgType) => orgType switch
+    {
+        Abstractions.Common.OrgType.Subcontractor => Domain.Enums.OrgType.Subcontractor,
+        Abstractions.Common.OrgType.MainContractor => Domain.Enums.OrgType.MainContractor,
+        _ => null,
+    };
 
     /// <summary>Adds a company-held document (insurance, accreditation or policy) and returns its new id (SUB-4).</summary>
     public async Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default)

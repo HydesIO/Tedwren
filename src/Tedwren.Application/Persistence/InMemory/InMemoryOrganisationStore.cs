@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Tedwren.Application.Auth;
 using Tedwren.Domain.Entities;
+using Tedwren.Domain.Enums;
 using Tedwren.Domain.ValueObjects;
 
 namespace Tedwren.Application.Persistence.InMemory;
@@ -63,12 +64,17 @@ public sealed class InMemoryOrganisationStore
         AddEngagement(apex.Id, reyes.Id, "Carlos Reyes", "Plant Operator");
     }
 
-    /// <summary>Adds a seed company (optionally with a fixed id, for tenant alignment) and returns it.</summary>
+    /// <summary>Adds a seed company (optionally with a fixed id, for tenant alignment) and returns it. The
+    /// typed product (SF-22/SUB-24/MC-23) is derived from the free-text <paramref name="type"/> so the two
+    /// demo tenants render as their real products.</summary>
     private Company AddCompany(string name, string type, string trade, Guid? id = null)
     {
+        var orgType = type.Replace(" ", string.Empty).Equals("MainContractor", StringComparison.OrdinalIgnoreCase)
+            ? OrgType.MainContractor
+            : OrgType.Subcontractor;
         var company = id is null
-            ? new Company { Name = name, Type = type, Trade = trade }
-            : new Company { Id = id.Value, Name = name, Type = type, Trade = trade };
+            ? new Company { Name = name, Type = type, Trade = trade, OrgType = orgType }
+            : new Company { Id = id.Value, Name = name, Type = type, Trade = trade, OrgType = orgType };
         Companies[company.Id] = company;
         return company;
     }
