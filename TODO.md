@@ -33,11 +33,23 @@ product per company (no switcher).
   a per-company override still wins (`AdminCompanyModules`), and a product-less company falls back to the
   catalogue default. Drives the client nav split via the existing `GatedNavItemsAsync` — no change to
   `MainLayout`'s gating logic. Compliance Packs send-vs-receive content handled in Phase D.
-- ⏳ **Phase C — product-aware dashboards.** `Dashboard.razor` branches on `OrgType`: SUB-24 dense
-  admin view vs MC-23 phone/cabin exceptions view. Reuse existing MudBlazor kit; `tokens.css` only.
-- ⏳ **Phase D — R18 wording + per-product pages.** Site Gate / sign-in reads "recorded / site-ready"
-  for subcontractor (R18, SUB-12) vs a permit/block decision for main contractor (MC-8/9); timesheet
-  audience divergence (SUB-8 vs MC-24); no MC-only route leaks into the subcontractor experience.
+- ✅ **Phase C — product-aware dashboard.** `Dashboard.razor` branches on `Tenant.CurrentOrgType`: a
+  main contractor sees a "Site operations" view (MC-23 — leads with site status → site gate, competency
+  expiries, induction management; KPI row leads with sites/on-site headcount); a subcontractor sees the
+  time-&-attendance / compliance admin framing (SUB-24 — compliance/expiry digest → compliance packs,
+  operative-register KPIs). Same loaded data + component kit; a product-less company falls back to the
+  subcontractor framing.
+- ✅ **Phase D — R18 wording + per-product pages.** Site Gate is now product-aware: a subcontractor sees
+  "Site Attendance" that only ever reads "recorded / site-ready" or "recorded — action needed" and never
+  "permitted/denied/blocked", with no manager-override (R18, SUB-12); a main contractor keeps the
+  five-check entry decision + override (MC-8/9/11). Compliance Packs reframes send (SUB) vs receive
+  (MC-19). No MC-only route leaks into the subcontractor experience (Inductions gated off by the SUB
+  bundle).
+- ❗ **Follow-ups (raised, not silently worked around).** Two PRD surfaces are framed but not fully
+  built here — a dedicated main-contractor **received-packs inbox** (MC-19) needs a receive-side data
+  source, and the **commercial reconciliation timesheet** (MC-24, per-site/per-company for a QS) is a
+  distinct view over the shared timesheet object. Both are backend features beyond this UI-differentiation
+  change; track as PRD-Phase work.
 
 ---
 
