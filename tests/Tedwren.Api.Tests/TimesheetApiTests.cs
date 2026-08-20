@@ -3,19 +3,20 @@ using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Tedwren.Abstractions.Common;
 using Tedwren.Abstractions.Contracts.Timesheets;
+using Tedwren.Application.Auth;
 using Xunit;
 
 namespace Tedwren.Api.Tests;
 
 /// <summary>
-/// End-to-end HTTP tests for the timesheet endpoints in the API's default (mock) mode. Exercises the
-/// valuation-period list (MC-24), the approval lifecycle (SUB-9/SUB-12) and CSV/Excel export (SUB-10) over the
-/// seeded demo week.
+/// End-to-end HTTP tests for the timesheet endpoints in the API's default (mock) mode. Exercises the weekly
+/// timesheet list (SUB-8), the approval lifecycle (SUB-9/SUB-12) and CSV/Excel export (SUB-10) over the seeded
+/// demo week, which belongs to the subcontractor demo tenant (Apex).
 /// </summary>
 public sealed class TimesheetApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    // Matches InMemoryTimesheetStore's demo seed.
-    private static readonly Guid CompanyId = Guid.Parse("44444444-4444-4444-8444-000000000001");
+    // Matches InMemoryTimesheetStore's demo seed — the subcontractor tenant (Apex, SUB-8).
+    private static readonly Guid CompanyId = AdminUserSeeder.SubcontractorSeedCompanyId;
     private const string Week = "2026-08-03";
 
     private readonly WebApplicationFactory<Program> _factory;
@@ -34,7 +35,7 @@ public sealed class TimesheetApiTests : IClassFixture<WebApplicationFactory<Prog
         var list = await client.GetFromJsonAsync<List<TimesheetSummaryDto>>($"/api/timesheets/company/{CompanyId}?week={Week}");
 
         Assert.Equal(3, list!.Count);
-        Assert.Contains(list, t => t.OperativeName == "M. Adeyemi" && t.Status == TimesheetState.Submitted);
+        Assert.Contains(list, t => t.OperativeName == "Samuel Okafor" && t.Status == TimesheetState.Submitted);
     }
 
     [Fact] // SUB-9 + SUB-12 — approve a submitted timesheet, and returning it is guarded once approved

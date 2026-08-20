@@ -45,6 +45,22 @@ product per company (no switcher).
   five-check entry decision + override (MC-8/9/11). Compliance Packs reframes send (SUB) vs receive
   (MC-19). No MC-only route leaks into the subcontractor experience (Inductions gated off by the SUB
   bundle).
+- ✅ **Demo seed data reflects the product rules (full showcase).** Re-homed the mis-owned demo data and
+  filled each product's signature gaps so the two demo logins show their real products. New shared fixed-id
+  holder `DemoSeed` joins the stores up (persons ↔ sites ↔ attendance/decisions/cards/inductions).
+  - **Subcontractor (Apex/Kingsway):** weekly timesheets re-homed to Apex operatives at Apex Yard (SUB-8);
+    company insurances/accreditations with a valid/expiring/lapsed spread (SUB-4); one sent compliance pack
+    + an "opened" access event (SUB-13/SUB-20); Kingsway given an operative + documents (no longer an empty
+    shell). Apex holds a purchased **Permits** add-on to demo the override path.
+  - **Main contractor (Meridian):** the induction template now belongs to Meridian (MC-3) with a completed
+    induction record (MC-7); two operatives on site via open sign-ins so the live muster has data
+    (MC-12/14); a recorded five-check site-entry decision (MC-8/R10). Meridian keeps the Forms add-on.
+  - **Shared:** confirmed qualification cards per operative, one expiring inside the warning window, so
+    compliance roll-ups (SF-8) and the expiry digest (SF-9/SUB-5) are non-empty. Demo cards live behind the
+    parameterless store ctor (the mock host) so they never pollute unit tests' global card scans.
+  - Retired the orphan demo company ids (`44444444…`/`66666666…`) in favour of the `AdminUserSeeder` tenant
+    constants; updated `TimesheetApiTests`/`InductionApiTests` accordingly and set the newly-seeded stores'
+    unit-test constructions to `seed: false`. Whole solution builds; all tests green.
 - ❗ **Follow-ups (raised, not silently worked around).** Two PRD surfaces are framed but not fully
   built here — a dedicated main-contractor **received-packs inbox** (MC-19) needs a receive-side data
   source, and the **commercial reconciliation timesheet** (MC-24, per-site/per-company for a QS) is a
