@@ -19,15 +19,20 @@ identity carries no product; nav is gated only by module entitlements (SF-22, co
 company gets the same default bundle, and no page branches on product. Agreed decisions: strict PRD
 module→product split; a new typed `OrgType` enum stored *beside* the free-text `Company.Type`; one
 product per company (no switcher).
-- 🔄 **Phase 0 — analysis persisted.** New `docs/subcontractor-vs-maincontractor-differentiation.md`
+- ✅ **Phase 0 — analysis persisted.** New `docs/subcontractor-vs-maincontractor-differentiation.md`
   (diagnosis, PRD→gap map, resolved decisions) and this checklist entry.
-- ⏳ **Phase A — product discriminator.** `OrgType` enum (Domain) on `Company` beside `Type`; mapped
-  from `OnboardingOrgType` at wizard submit; surfaced on `CurrentUserDto` + `/api/me` (server-computed,
-  never client-trusted) and via `ITenantState`; additive EF migration + backfill.
-- ⏳ **Phase B — product entitlement bundles.** Product→module bundle map (SUB: workforce, compliance
-  [pack send], time, reports; MC: workforce, compliance [pack receive, MC-19], inductions, site-entry,
-  reports) granted at onboarding; drives the nav split via existing `GatedNavItemsAsync`. Compliance
-  Packs made send-vs-receive aware. `AdminCompanyModules` override preserved.
+- ✅ **Phase A — product discriminator.** `OrgType` enum (Domain) on `Company` beside `Type`; mirror
+  enum in `Abstractions.Common` (client references only Abstractions), mapped in the Application layer;
+  carried on `CompanySummary`/`CompanyDetailDto`/`CreateCompanyRequest`; mapped from `OnboardingOrgType`
+  at wizard submit; cached on `ITenantState.CurrentOrgType`, resolved by `MainLayout` before pages
+  render; Dapper column + idempotent `022_company_orgtype.sql` (both engines, backfill) + EF
+  `AddCompanyOrgType` migration; demo tenants seeded with their product.
+- ✅ **Phase B — product entitlement bundles.** `ProductModuleBundles` (strict split — SUB: workforce,
+  compliance, time, reports; MC: workforce, compliance, inductions, reports; permits/forms/integrations
+  off for both). `EntitlementService` defaults are now product-aware (looks up the company's `OrgType`);
+  a per-company override still wins (`AdminCompanyModules`), and a product-less company falls back to the
+  catalogue default. Drives the client nav split via the existing `GatedNavItemsAsync` — no change to
+  `MainLayout`'s gating logic. Compliance Packs send-vs-receive content handled in Phase D.
 - ⏳ **Phase C — product-aware dashboards.** `Dashboard.razor` branches on `OrgType`: SUB-24 dense
   admin view vs MC-23 phone/cabin exceptions view. Reuse existing MudBlazor kit; `tokens.css` only.
 - ⏳ **Phase D — R18 wording + per-product pages.** Site Gate / sign-in reads "recorded / site-ready"
