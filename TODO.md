@@ -9,6 +9,50 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+## In progress
+
+### Subcontractor vs Main Contractor portal differentiation (SF-22, SUB-24, MC-23, R18)
+Analysis + plan: `docs/subcontractor-vs-maincontractor-differentiation.md`. Feedback: the two
+products render an identical portal after login. Root cause: the onboarding product choice
+(`OnboardingOrgType`) is flattened to free-text `Company.Type` and never read back; the session
+identity carries no product; nav is gated only by module entitlements (SF-22, correct) but every
+company gets the same default bundle, and no page branches on product. Agreed decisions: strict PRD
+module→product split; a new typed `OrgType` enum stored *beside* the free-text `Company.Type`; one
+product per company (no switcher).
+- ✅ **Phase 0 — analysis persisted.** New `docs/subcontractor-vs-maincontractor-differentiation.md`
+  (diagnosis, PRD→gap map, resolved decisions) and this checklist entry.
+- ✅ **Phase A — product discriminator.** `OrgType` enum (Domain) on `Company` beside `Type`; mirror
+  enum in `Abstractions.Common` (client references only Abstractions), mapped in the Application layer;
+  carried on `CompanySummary`/`CompanyDetailDto`/`CreateCompanyRequest`; mapped from `OnboardingOrgType`
+  at wizard submit; cached on `ITenantState.CurrentOrgType`, resolved by `MainLayout` before pages
+  render; Dapper column + idempotent `022_company_orgtype.sql` (both engines, backfill) + EF
+  `AddCompanyOrgType` migration; demo tenants seeded with their product.
+- ✅ **Phase B — product entitlement bundles.** `ProductModuleBundles` (strict split — SUB: workforce,
+  compliance, time, reports; MC: workforce, compliance, inductions, reports; permits/forms/integrations
+  off for both). `EntitlementService` defaults are now product-aware (looks up the company's `OrgType`);
+  a per-company override still wins (`AdminCompanyModules`), and a product-less company falls back to the
+  catalogue default. Drives the client nav split via the existing `GatedNavItemsAsync` — no change to
+  `MainLayout`'s gating logic. Compliance Packs send-vs-receive content handled in Phase D.
+- ✅ **Phase C — product-aware dashboard.** `Dashboard.razor` branches on `Tenant.CurrentOrgType`: a
+  main contractor sees a "Site operations" view (MC-23 — leads with site status → site gate, competency
+  expiries, induction management; KPI row leads with sites/on-site headcount); a subcontractor sees the
+  time-&-attendance / compliance admin framing (SUB-24 — compliance/expiry digest → compliance packs,
+  operative-register KPIs). Same loaded data + component kit; a product-less company falls back to the
+  subcontractor framing.
+- ✅ **Phase D — R18 wording + per-product pages.** Site Gate is now product-aware: a subcontractor sees
+  "Site Attendance" that only ever reads "recorded / site-ready" or "recorded — action needed" and never
+  "permitted/denied/blocked", with no manager-override (R18, SUB-12); a main contractor keeps the
+  five-check entry decision + override (MC-8/9/11). Compliance Packs reframes send (SUB) vs receive
+  (MC-19). No MC-only route leaks into the subcontractor experience (Inductions gated off by the SUB
+  bundle).
+- ❗ **Follow-ups (raised, not silently worked around).** Two PRD surfaces are framed but not fully
+  built here — a dedicated main-contractor **received-packs inbox** (MC-19) needs a receive-side data
+  source, and the **commercial reconciliation timesheet** (MC-24, per-site/per-company for a QS) is a
+  distinct view over the shared timesheet object. Both are backend features beyond this UI-differentiation
+  change; track as PRD-Phase work.
+
+---
+
 ## Completed
 
 ### Compliance page & admin-portal fixes (this change)

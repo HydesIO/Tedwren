@@ -1,3 +1,5 @@
+using Tedwren.Domain.Enums;
+
 namespace Tedwren.Domain.Entities;
 
 /// <summary>
@@ -15,6 +17,13 @@ public sealed class Company
 
     /// <summary>Free-text company type (e.g. "Main Contractor", "Subcontractor"). Left open per the PRD.</summary>
     public string? Type { get; set; }
+
+    /// <summary>
+    /// Which product this company is on (PRD §2). The typed discriminator that drives the default module
+    /// bundle (SF-22), the console shape (SUB-24 vs MC-23) and the sign-in semantics (R18). Nullable so
+    /// companies created before this field existed simply have no product until backfilled/edited.
+    /// </summary>
+    public OrgType? OrgType { get; set; }
 
     /// <summary>Primary trade (free text).</summary>
     public string? Trade { get; set; }

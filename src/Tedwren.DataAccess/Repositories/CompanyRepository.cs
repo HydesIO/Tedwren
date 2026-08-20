@@ -1,6 +1,7 @@
 using Tedwren.Application.Persistence;
 using Tedwren.DataAccess.Connections;
 using Tedwren.Domain.Entities;
+using Tedwren.Domain.Enums;
 
 namespace Tedwren.DataAccess.Repositories;
 
@@ -8,7 +9,7 @@ namespace Tedwren.DataAccess.Repositories;
 public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
 {
     private const string Columns =
-        "Id, Name, Type, Trade, RegistrationNumber, Address, ContactName, ContactEmail, ContactPhone, CreatedUtc";
+        "Id, Name, Type, OrgType, Trade, RegistrationNumber, Address, ContactName, ContactEmail, ContactPhone, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public CompanyRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -33,11 +34,11 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
     /// <summary>Inserts a new company.</summary>
     public Task AddAsync(Company company, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "INSERT INTO Companies (Id, Name, Type, Trade, RegistrationNumber, Address, ContactName, ContactEmail, ContactPhone, CreatedUtc) " +
-            "VALUES (@Id, @Name, @Type, @Trade, @RegistrationNumber, @Address, @ContactName, @ContactEmail, @ContactPhone, @CreatedUtc)",
+            "INSERT INTO Companies (Id, Name, Type, OrgType, Trade, RegistrationNumber, Address, ContactName, ContactEmail, ContactPhone, CreatedUtc) " +
+            "VALUES (@Id, @Name, @Type, @OrgType, @Trade, @RegistrationNumber, @Address, @ContactName, @ContactEmail, @ContactPhone, @CreatedUtc)",
             new
             {
-                company.Id, company.Name, company.Type, company.Trade, company.RegistrationNumber,
+                company.Id, company.Name, company.Type, OrgType = (int?)company.OrgType, company.Trade, company.RegistrationNumber,
                 company.Address, company.ContactName, company.ContactEmail, company.ContactPhone, company.CreatedUtc,
             },
             cancellationToken);
@@ -45,12 +46,12 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
     /// <summary>Updates an existing company's editable fields.</summary>
     public Task UpdateAsync(Company company, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "UPDATE Companies SET Name = @Name, Type = @Type, Trade = @Trade, RegistrationNumber = @RegistrationNumber, " +
+            "UPDATE Companies SET Name = @Name, Type = @Type, OrgType = @OrgType, Trade = @Trade, RegistrationNumber = @RegistrationNumber, " +
             "Address = @Address, ContactName = @ContactName, ContactEmail = @ContactEmail, ContactPhone = @ContactPhone " +
             "WHERE Id = @Id",
             new
             {
-                company.Id, company.Name, company.Type, company.Trade, company.RegistrationNumber,
+                company.Id, company.Name, company.Type, OrgType = (int?)company.OrgType, company.Trade, company.RegistrationNumber,
                 company.Address, company.ContactName, company.ContactEmail, company.ContactPhone,
             },
             cancellationToken);
@@ -61,6 +62,7 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
         Id = r.Id,
         Name = r.Name,
         Type = r.Type,
+        OrgType = r.OrgType is null ? null : (OrgType)r.OrgType,
         Trade = r.Trade,
         RegistrationNumber = r.RegistrationNumber,
         Address = r.Address,
@@ -70,8 +72,8 @@ public sealed class CompanyRepository : RepositoryBase, ICompanyRepository
         CreatedUtc = r.CreatedUtc,
     };
 
-    /// <summary>Flat row shape Dapper maps query results into.</summary>
+    /// <summary>Flat row shape Dapper maps query results into. <c>OrgType</c> is stored as its int value.</summary>
     private sealed record CompanyRow(
-        Guid Id, string Name, string? Type, string? Trade, string? RegistrationNumber,
+        Guid Id, string Name, string? Type, int? OrgType, string? Trade, string? RegistrationNumber,
         string? Address, string? ContactName, string? ContactEmail, string? ContactPhone, DateTimeOffset CreatedUtc);
 }

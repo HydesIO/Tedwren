@@ -1,4 +1,5 @@
 using Microsoft.JSInterop;
+using Tedwren.Abstractions.Common;
 
 namespace Tedwren.Client.Services;
 
@@ -15,6 +16,7 @@ public sealed class TenantState : ITenantState
 
     private readonly IJSRuntime _js;
     private Guid _currentCompanyId = DefaultCompanyId;
+    private OrgType? _currentOrgType;
     private bool _initialised;
 
     /// <summary>Creates the service over the JS runtime used to reach localStorage.</summary>
@@ -22,6 +24,9 @@ public sealed class TenantState : ITenantState
 
     /// <inheritdoc />
     public Guid CurrentCompanyId => _currentCompanyId;
+
+    /// <inheritdoc />
+    public OrgType? CurrentOrgType => _currentOrgType;
 
     /// <inheritdoc />
     public async Task InitializeAsync()
@@ -65,5 +70,14 @@ public sealed class TenantState : ITenantState
         {
             // Persistence is best-effort; the value still applies for this session.
         }
+    }
+
+    /// <inheritdoc />
+    public Task SetCurrentOrgTypeAsync(OrgType? orgType)
+    {
+        // Held in memory for the app's lifetime. The shell re-resolves it from the authoritative company
+        // record on every load (before any page renders), so it does not need to survive a full reload.
+        _currentOrgType = orgType;
+        return Task.CompletedTask;
     }
 }

@@ -82,6 +82,17 @@ public sealed class OnboardingModel
 
     /// <summary>The company's type string as stored (mirrors the org type choice).</summary>
     public string TypeLabel => OrgType == OnboardingOrgType.MainContractor ? "Main Contractor" : "Subcontractor";
+
+    /// <summary>
+    /// The wizard's org-type choice as the typed product discriminator persisted on the company
+    /// (<see cref="Tedwren.Abstractions.Common.OrgType"/>). This is what drives the post-login divergence
+    /// (SF-22 default bundle, SUB-24 vs MC-23 console, R18 wording) — the free-text <see cref="TypeLabel"/>
+    /// stays for display only.
+    /// </summary>
+    public Tedwren.Abstractions.Common.OrgType ProductType =>
+        OrgType == OnboardingOrgType.MainContractor
+            ? Tedwren.Abstractions.Common.OrgType.MainContractor
+            : Tedwren.Abstractions.Common.OrgType.Subcontractor;
 }
 
 /// <summary>A site captured during onboarding (SF-14/SF-6).</summary>
