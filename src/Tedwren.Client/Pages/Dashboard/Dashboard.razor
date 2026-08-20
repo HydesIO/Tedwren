@@ -1,16 +1,22 @@
 @page "/"
 @using System.Text
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Dashboard
 @using Tedwren.Abstractions.Services
+@using Tedwren.Client.Services
 @inject IDashboardService DashboardSvc
 @inject IExpiryQueryService Expiry
 @inject IAuditService Audit
+@inject ITenantState Tenant
 @inject IJSRuntime JS
 @inject ISnackbar Snackbar
 
 <PageTitle>Dashboard · Tedwren</PageTitle>
 
-<PageHeader Title="Dashboard" Subtitle="Compliance and workforce overview">
+@* The dashboard is product-specific (PRD §2): a main contractor sees a site-operations view (MC-23 —
+   who's on site, exceptions, inductions), a subcontractor sees a time-&-attendance / compliance admin view
+   (SUB-24 — expiries, timesheets, packs). Both are built from the same loaded data and component kit. *@
+<PageHeader Title="@_headerTitle" Subtitle="@_headerSubtitle">
     <Actions>
         <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
             <ActivatorContent>
@@ -55,11 +61,13 @@
 </AsyncContent>
 
 <div class="dash-grid">
+    @* Primary wide card. Main contractor leads with live site status (MC-12/23); subcontractor leads with
+       the compliance/expiry digest at the heart of the pack (SUB-5/24). Same site-risk data either way. *@
     <div class="dash-grid__col dash-grid__col--wide">
-        <DashboardCard Title="Site risk heatmap"
-                       Subtitle="Workforce compliance by active site"
-                       FooterLinkText="View all sites"
-                       FooterLinkHref="/sites">
+        <DashboardCard Title="@(_isMainContractor ? "Site status" : "Site risk heatmap")"
+                       Subtitle="@(_isMainContractor ? "Workforce on your active sites" : "Workforce compliance by site")"
+                       FooterLinkText="@(_isMainContractor ? "Open site gate" : "View all sites")"
+                       FooterLinkHref="@(_isMainContractor ? "/site-gate" : "/sites")">
             <Body>
                 <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.Table" Rows="5"
                               IsEmpty="@(_sites.Count == 0)" EmptyTitle="No active sites"
@@ -110,8 +118,8 @@
     </div>
 
     <div class="dash-grid__col dash-grid__col--wide">
-        <DashboardCard Title="Upcoming expiries"
-                       Subtitle="Qualifications due in the next 30 days"
+        <DashboardCard Title="@(_isMainContractor ? "Competency expiries" : "Expiring soon")"
+                       Subtitle="@(_isMainContractor ? "Cards due in the next 30 days" : "Cards, insurances & accreditations due soon")"
                        FooterLinkText="View all expiries"
                        FooterLinkHref="/compliance">
             <Body>
@@ -122,10 +130,12 @@
         </DashboardCard>
     </div>
 
+    @* Product-specific secondary card: a main contractor tracks induction progress (MC-1/23); a
+       subcontractor works the compliance pack + timesheet queue (SUB-8/13/24). Recent activity backs both. *@
     <div class="dash-grid__col">
         <DashboardCard Title="Recent activity"
-                       FooterLinkText="View audit log"
-                       FooterLinkHref="/audit-log">
+                       FooterLinkText="@(_isMainContractor ? "Manage inductions" : "Compliance packs")"
+                       FooterLinkHref="@(_isMainContractor ? "/inductions" : "/compliance-packs")">
             <Body>
                 <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="4">
                     <ActivityFeed Items="_activity" />
@@ -150,7 +160,21 @@
 
     private const int ExpiryWindowDays = 30;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    // The active company's product (PRD §2), resolved by the shell before this page renders. Drives the
+    // SUB-24 vs MC-23 framing; a null product (unknown) falls back to the subcontractor/compliance view.
+    private OrgType? _product;
+    private bool _isMainContractor => _product == OrgType.MainContractor;
+
+    private string _headerTitle => _isMainContractor ? "Site operations" : "Dashboard";
+    private string _headerSubtitle => _isMainContractor
+        ? "Who is on site, what needs attention today"
+        : "Time, attendance and compliance overview";
+
+    protected override Task OnInitializedAsync()
+    {
+        _product = Tenant.CurrentOrgType;
+        return LoadAsync();
+    }
 
     // Loads the dashboard entirely from the Web API: KPIs / compliance / site risk from the aggregation
     // service, upcoming expiries from the expiry engine (SF-9) and recent activity from the audit trail (SF-20).
@@ -161,7 +185,7 @@
         try
         {
             var summary = await DashboardSvc.GetSummaryAsync();
-            _kpis = BuildKpis(summary.Kpis);
+            _kpis = BuildKpis(summary.Kpis, _isMainContractor);
             _compliance = ComplianceOverviewView.From(summary.Compliance);
             _sites = summary.SiteRisk;
 
@@ -190,22 +214,26 @@
         }
     }
 
-    private static IReadOnlyList<KpiTile> BuildKpis(DashboardKpisDto k)
+    // Product-specific KPI row from the same summary. A main contractor (MC-23) leads with site + on-site
+    // headcount; a subcontractor (SUB-24) leads with its operative register and compliance. Same data, framed
+    // for each product's daily user.
+    private static IReadOnlyList<KpiTile> BuildKpis(DashboardKpisDto k, bool isMainContractor)
     {
         var empty = Array.Empty<double>();
-        return new List<KpiTile>
-        {
-            new("Companies", k.Companies.ToString(), Icons.Material.Outlined.Business,
-                null, TrendDirection.None, empty, "var(--color-brand)"),
-            new("Active operatives", k.Operatives.ToString(), Icons.Material.Outlined.Engineering,
-                null, TrendDirection.None, empty, "var(--color-info)"),
-            new("Compliant workforce", k.CompliancePercent is null ? "—" : $"{k.CompliancePercent.Value:0}%",
-                Icons.Material.Outlined.VerifiedUser, null, TrendDirection.None, empty, "var(--color-success)"),
-            new("Active sites", k.Sites.ToString(), Icons.Material.Outlined.Apartment,
-                null, TrendDirection.None, empty, "var(--color-info)"),
-            new("Expiring in 30 days", k.UpcomingExpiries.ToString(), Icons.Material.Outlined.Schedule,
-                null, TrendDirection.None, empty, "var(--color-warning)"),
-        };
+        var operatives = new KpiTile("Active operatives", k.Operatives.ToString(), Icons.Material.Outlined.Engineering,
+            null, TrendDirection.None, empty, "var(--color-info)");
+        var compliant = new KpiTile("Compliant workforce", k.CompliancePercent is null ? "—" : $"{k.CompliancePercent.Value:0}%",
+            Icons.Material.Outlined.VerifiedUser, null, TrendDirection.None, empty, "var(--color-success)");
+        var sites = new KpiTile("Active sites", k.Sites.ToString(), Icons.Material.Outlined.Apartment,
+            null, TrendDirection.None, empty, "var(--color-info)");
+        var expiring = new KpiTile("Expiring in 30 days", k.UpcomingExpiries.ToString(), Icons.Material.Outlined.Schedule,
+            null, TrendDirection.None, empty, "var(--color-warning)");
+        var companies = new KpiTile("Companies", k.Companies.ToString(), Icons.Material.Outlined.Business,
+            null, TrendDirection.None, empty, "var(--color-brand)");
+
+        return isMainContractor
+            ? new List<KpiTile> { sites, operatives, compliant, expiring, companies }
+            : new List<KpiTile> { operatives, compliant, expiring, companies, sites };
     }
 
     private static StatusKind ExpiryStatus(int daysUntilExpiry) => daysUntilExpiry switch
