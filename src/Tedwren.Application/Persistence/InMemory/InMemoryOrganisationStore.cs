@@ -48,20 +48,37 @@ public sealed class InMemoryOrganisationStore
         // own operatives and share no people, so neither demo account can surface the other's data.
         var meridian = AddCompany("Meridian Construction Ltd", "Main Contractor", "General Build", AdminUserSeeder.SeedCompanyId);
         var apex = AddCompany("Apex Groundworks", "Subcontractor", "Groundworks", AdminUserSeeder.SubcontractorSeedCompanyId);
-        AddCompany("Kingsway M&E", "Subcontractor", "Mechanical & Electrical");
+        var kingsway = AddCompany("Kingsway M&E", "Subcontractor", "Mechanical & Electrical");
 
-        // Main Contractor (Meridian) operatives — engaged only by Meridian.
-        var fletcher = AddPerson("+447700900001");
+        // Main Contractor (Meridian) operatives — engaged only by Meridian. People carry fixed demo ids so the
+        // attendance/decision/induction/card seeds in the other stores line up to these same operatives.
+        var fletcher = AddPerson("+447700900001", DemoSeed.FletcherPersonId);
         AddEngagement(meridian.Id, fletcher.Id, "James Fletcher", "Bricklayer");
-        var marsh = AddPerson("+447700900002");
+        var marsh = AddPerson("+447700900002", DemoSeed.MarshPersonId);
         AddEngagement(meridian.Id, marsh.Id, "Daniel Marsh", "Site Supervisor");
 
         // Subcontractor (Apex) operatives — a wholly separate set of people, so there is no cross-contamination
         // between the two demo accounts.
-        var okafor = AddPerson("+447700900101");
+        var okafor = AddPerson("+447700900101", DemoSeed.OkaforPersonId);
         AddEngagement(apex.Id, okafor.Id, "Samuel Okafor", "Groundworker");
-        var reyes = AddPerson("+447700900102");
+        var reyes = AddPerson("+447700900102", DemoSeed.ReyesPersonId);
         AddEngagement(apex.Id, reyes.Id, "Carlos Reyes", "Plant Operator");
+
+        // Second subcontractor (Kingsway) — a live tenant, not an empty shell.
+        var pearce = AddPerson("+447700900201", DemoSeed.PearcePersonId);
+        AddEngagement(kingsway.Id, pearce.Id, "Owen Pearce", "Electrician");
+
+        // Company documents — insurances / accreditations (SUB-4). These are a subcontractor feature (they
+        // populate the compliance pack), so the subcontractor tenants carry them, with a spread of expiries so
+        // the roll-up shows valid / expiring-soon / lapsed states. Dates are relative to "today" so the demo
+        // stays fresh regardless of when it runs.
+        var today = DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime);
+        AddDocument(apex.Id, "Employer's Liability Insurance", "Insurance", today.AddMonths(8), "ELI-2291043");
+        AddDocument(apex.Id, "Public Liability Insurance", "Insurance", today.AddDays(21), "PLI-771208");   // expiring soon
+        AddDocument(apex.Id, "CHAS Accreditation", "Accreditation", today.AddMonths(4), "CHAS-55120");
+        AddDocument(apex.Id, "Constructionline Gold", "Accreditation", today.AddDays(-9), "CL-338841");     // lapsed
+        AddDocument(kingsway.Id, "Employer's Liability Insurance", "Insurance", today.AddMonths(5), "ELI-6640021");
+        AddDocument(kingsway.Id, "SafeContractor", "Accreditation", today.AddMonths(2), "SC-20981");
     }
 
     /// <summary>Adds a seed company (optionally with a fixed id, for tenant alignment) and returns it. The
@@ -79,10 +96,12 @@ public sealed class InMemoryOrganisationStore
         return company;
     }
 
-    /// <summary>Adds a seed person and returns it.</summary>
-    private Person AddPerson(string mobile)
+    /// <summary>Adds a seed person (optionally with a fixed id, so other stores' seeds can reference it) and returns it.</summary>
+    private Person AddPerson(string mobile, Guid? id = null)
     {
-        var person = new Person { PhoneNumber = PhoneNumber.Parse(mobile) };
+        var person = id is null
+            ? new Person { PhoneNumber = PhoneNumber.Parse(mobile) }
+            : new Person { Id = id.Value, PhoneNumber = PhoneNumber.Parse(mobile) };
         People[person.Id] = person;
         return person;
     }
@@ -93,5 +112,19 @@ public sealed class InMemoryOrganisationStore
         var engagement = new Engagement { CompanyId = companyId, PersonId = personId, Name = name, Trade = trade };
         Engagements[engagement.Id] = engagement;
         return engagement;
+    }
+
+    /// <summary>Adds a seed company document — an insurance/accreditation/policy (SUB-4).</summary>
+    private void AddDocument(Guid companyId, string name, string type, DateOnly expiresOn, string reference)
+    {
+        var document = new CompanyDocument
+        {
+            CompanyId = companyId,
+            Name = name,
+            Type = type,
+            ExpiresOn = expiresOn,
+            Reference = reference,
+        };
+        CompanyDocuments[document.Id] = document;
     }
 }

@@ -28,7 +28,7 @@ public sealed class CompliancePackServiceTests
         quals.SetCard(ValidPerson, ComplianceState.Compliant, "Valid", new DateOnly(2028, 1, 1));
 
         return new CompliancePackService(
-            new InMemoryCompliancePackRepository(new InMemoryCompliancePackStore()),
+            new InMemoryCompliancePackRepository(new InMemoryCompliancePackStore(seed: false)),
             quals,
             new FakeEngagements(),
             new InMemoryPackAccessThrottle());

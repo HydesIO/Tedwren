@@ -22,7 +22,7 @@ public sealed class AttendanceServiceTests
     private static (AttendanceService Service, InMemorySiteStore Sites, InMemoryAttendanceStore Attendance) CreateSut()
     {
         var siteStore = new InMemorySiteStore(seed: false);
-        var attendanceStore = new InMemoryAttendanceStore();
+        var attendanceStore = new InMemoryAttendanceStore(seed: false);
         var service = new AttendanceService(
             new InMemorySiteRepository(siteStore),
             new InMemorySitePropertyRepository(siteStore),
