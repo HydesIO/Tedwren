@@ -11,6 +11,14 @@ public sealed class SiteConfig
     /// <summary>Configuration section name this options type binds from.</summary>
     public const string SectionName = "Site";
 
+    /// <summary>
+    /// Pre-launch landing gate. When true, the whole marketing site is replaced by a single inviting
+    /// landing page (logo, marketing hooks and email capture); every other route funnels to it. Static
+    /// assets, the landing form POST and the consent/health endpoints stay reachable so the page works.
+    /// Defaults to false — the full site is served.
+    /// </summary>
+    public bool IsLanding { get; set; }
+
     /// <summary>Primary navigation items rendered by the header, in order.</summary>
     public List<NavLink> PrimaryNav { get; set; } = new();
 

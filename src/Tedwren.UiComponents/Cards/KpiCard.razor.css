@@ -9,6 +9,25 @@
     box-shadow: var(--shadow-card);
 }
 
+/* Drill-down variant: the whole tile is a link. Reset anchor styling and add a subtle hover lift. */
+.kpi-card--link {
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow .15s ease, border-color .15s ease, transform .15s ease;
+}
+
+.kpi-card--link:hover {
+    border-color: var(--kpi-accent, var(--color-brand));
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+}
+
+.kpi-card--link:focus-visible {
+    outline: 2px solid var(--kpi-accent, var(--color-brand));
+    outline-offset: 2px;
+}
+
 .kpi-card__top {
     display: flex;
     align-items: center;

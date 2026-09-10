@@ -10,4 +10,5 @@ public sealed record KpiTile(
     string? TrendValue,
     TrendDirection TrendDirection,
     IReadOnlyList<double> Sparkline,
-    string AccentColour);
+    string AccentColour,
+    string? Href = null);

@@ -41,6 +41,13 @@ public sealed class InMemoryPaymentRepository : IPaymentRepository
         return Task.CompletedTask;
     }
 
+    /// <summary>Removes a payment from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _payments.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Updates a payment.</summary>
     public Task UpdateAsync(Payment payment, CancellationToken cancellationToken = default)
     {

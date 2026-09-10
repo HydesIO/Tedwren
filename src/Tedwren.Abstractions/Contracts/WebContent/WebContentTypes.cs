@@ -60,7 +60,8 @@ public sealed record ProductProfile(
 /// <summary>A single feature: a heading and its supporting copy (Plan §3).</summary>
 /// <param name="Heading">Short feature heading.</param>
 /// <param name="Copy">Supporting sentence.</param>
-public sealed record FeatureCard(string Heading, string Copy);
+/// <param name="Icon">Optional bespoke-icon key (see the site's <c>_Icon</c> set); null renders no icon.</param>
+public sealed record FeatureCard(string Heading, string Copy, string? Icon = null);
 
 /// <summary>
 /// A titled narrative section on a product page (Plan §6.2, §6.3) — e.g. the understated CSCS add-on
@@ -103,13 +104,15 @@ public sealed record HomeContent(
 /// <param name="Heading">Card heading.</param>
 /// <param name="Body">Card copy.</param>
 /// <param name="Highlight">When true, render as the highlighted differentiator.</param>
-public sealed record Differentiator(string Heading, string Body, bool Highlight = false);
+/// <param name="Icon">Optional bespoke-icon key (see the site's <c>_Icon</c> set); null renders no icon.</param>
+public sealed record Differentiator(string Heading, string Body, bool Highlight = false, string? Icon = null);
 
 /// <summary>One step in the home page's five-step "how it works" sequence (Plan §6.1).</summary>
 /// <param name="Order">1-based step number.</param>
 /// <param name="Heading">Step heading.</param>
 /// <param name="Body">Step copy.</param>
-public sealed record HowItWorksStep(int Order, string Heading, string Body);
+/// <param name="Icon">Optional bespoke-icon key (see the site's <c>_Icon</c> set); null renders no icon.</param>
+public sealed record HowItWorksStep(int Order, string Heading, string Body, string? Icon = null);
 
 /// <summary>
 /// The Worker Passport page content (Plan §6.4) — the individual-buyer register. Carries the "never

@@ -13,6 +13,10 @@ public sealed class PersonRepository : RepositoryBase, IPersonRepository
     {
     }
 
+    /// <summary>Deletes a person by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Persons WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns the person holding this mobile number, or null (SF-1).</summary>
     public async Task<Person?> GetByPhoneAsync(PhoneNumber phoneNumber, CancellationToken cancellationToken = default)
     {

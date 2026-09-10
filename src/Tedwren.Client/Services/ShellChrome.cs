@@ -53,6 +53,7 @@ public static class ShellChrome
         new("Payments",            Icons.Material.Outlined.Payments,           "/admin/payments"),
         new("Webhook Events",      Icons.Material.Outlined.Webhook,            "/admin/events"),
         new("Payouts",             Icons.Material.Outlined.AccountBalanceWallet, "/admin/payouts"),
+        new("Demo Data",           Icons.Material.Outlined.Dataset,            "/admin/demo-data"),
         new("Admin Settings",      Icons.Material.Outlined.Settings,           "/admin/settings"),
     };
 

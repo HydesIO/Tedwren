@@ -22,6 +22,15 @@ public sealed class User
     /// <summary>Email address — the invitation is sent here and it is the sign-in identity.</summary>
     public required string Email { get; set; }
 
+    /// <summary>Optional mobile contact number, set by the user from their own profile page. Free text.</summary>
+    public string? Mobile { get; set; }
+
+    /// <summary>
+    /// Optional avatar image reference (an <see cref="Tedwren.Domain"/>-agnostic <c>IImageStore</c> id), served
+    /// via the authorised <c>GET /api/images/{id}</c> endpoint like other private assets (R9). Null when unset.
+    /// </summary>
+    public string? AvatarImageReference { get; set; }
+
     /// <summary>The console access role, which sets what the user may do (SF-23).</summary>
     public AccessRole Role { get; set; } = AccessRole.Auditor;
 

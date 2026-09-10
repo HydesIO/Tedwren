@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Tedwren.Abstractions.Services;
 using Tedwren.Api.Auth;
 using Tedwren.Application.Auth;
+using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Domain.Enums;
 using Xunit;
 
@@ -20,7 +21,10 @@ public sealed class ClaimsCurrentUserServiceTests
     {
         var identity = new ClaimsIdentity(claims, authenticationType: claims.Length > 0 ? "Test" : null);
         var context = new DefaultHttpContext { User = new ClaimsPrincipal(identity) };
-        return new ClaimsCurrentUserService(new HttpContextAccessor { HttpContext = context });
+        // An empty in-memory user repository is enough here: these tests only assert the platform-admin
+        // computation, which is derived from claims and never touches the stored user record.
+        var users = new InMemoryUserRepository(new InMemoryUserStore(seed: false));
+        return new ClaimsCurrentUserService(new HttpContextAccessor { HttpContext = context }, users);
     }
 
     [Fact]

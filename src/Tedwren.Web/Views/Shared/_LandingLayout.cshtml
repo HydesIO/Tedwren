@@ -1,0 +1,32 @@
+@using Tedwren.Abstractions.Services
+@inject IContentProvider Content
+@{
+    var brand = Content.Site.BrandName;
+    var pageTitle = ViewData["Title"] as string;
+    var fullTitle = string.IsNullOrEmpty(pageTitle) ? brand : $"{pageTitle} — {brand}";
+    var metaDescription = ViewData["MetaDescription"] as string;
+}
+@* Minimal standalone shell for the pre-launch landing page — no site nav or footer, just the brand,
+   the hooks and the email-capture form. Shares tokens.css + site.css so it stays on-brand. *@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>@fullTitle</title>
+    @if (!string.IsNullOrEmpty(metaDescription))
+    {
+        <meta name="description" content="@metaDescription" />
+    }
+    <link rel="stylesheet" href="~/css/tokens.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <main id="main">
+        @RenderBody()
+    </main>
+    @await Component.InvokeAsync("ConsentBanner")
+</body>
+</html>

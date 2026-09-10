@@ -1,0 +1,44 @@
+@using Tedwren.UiComponents.Models
+@* Contextual guidance panel for the top of an interactive dialog: a short, persistent explanation of
+   what the user should do. Not a tooltip. Subtle rounded amber (Warning, default) or blue (Info) panel,
+   readable in light and dark. Colours come from MudBlazor's --mud-palette-* so they adapt to the theme
+   even though the dialog overlay renders outside the .theme-dark shell (see CLAUDE.md dialog standard). *@
+
+<div class="dialog-guidance dialog-guidance--@(Severity.ToString().ToLowerInvariant())" role="note">
+    <MudIcon Icon="@IconFor(Severity)" Size="Size.Small" Class="dialog-guidance__icon" />
+    <div class="dialog-guidance__body">
+        @if (!string.IsNullOrEmpty(Title))
+        {
+            <span class="dialog-guidance__title">@Title</span>
+        }
+        @if (ChildContent is not null)
+        {
+            <span class="dialog-guidance__text">@ChildContent</span>
+        }
+        else if (!string.IsNullOrEmpty(Text))
+        {
+            <span class="dialog-guidance__text">@Text</span>
+        }
+    </div>
+</div>
+
+@code {
+    /// <summary>The guidance message. Ignored when <see cref="ChildContent"/> is supplied.</summary>
+    [Parameter] public string? Text { get; set; }
+
+    /// <summary>Optional bold lead-in above the message.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    /// <summary>Panel style: Warning (amber, default) or Info (blue). Other kinds fall back to Info.</summary>
+    [Parameter] public StatusKind Severity { get; set; } = StatusKind.Warning;
+
+    /// <summary>Rich guidance content, used in place of <see cref="Text"/> when supplied.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Maps the panel severity to its leading icon.</summary>
+    private static string IconFor(StatusKind s) => s switch
+    {
+        StatusKind.Warning => Icons.Material.Outlined.TipsAndUpdates,
+        _ => Icons.Material.Outlined.Info,
+    };
+}

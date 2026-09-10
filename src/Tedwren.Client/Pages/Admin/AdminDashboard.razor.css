@@ -11,6 +11,19 @@
     gap: var(--spacing-16, 16px);
 }
 
+/* Accent-tinted icon chip — a soft pale square behind the stat's icon, coloured per --stat-accent. */
+.admin-stat__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-control, 8px);
+    background: color-mix(in srgb, var(--stat-accent, var(--color-brand)) 14%, transparent);
+    color: var(--stat-accent, var(--color-brand));
+}
+
 .admin-stat__value {
     font-size: var(--font-size-28, 28px);
     font-weight: 600;
@@ -20,4 +33,60 @@
 .admin-stat__label {
     color: var(--color-text-muted, #64748b);
     font-size: var(--font-size-14, 14px);
+}
+
+/* Leads overview list: a row per open lead with a status pill on the right. */
+.admin-lead-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-lead-row {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) 0;
+    border-bottom: 1px solid var(--color-border, #E4E7EC);
+}
+
+.admin-lead-row:last-child {
+    border-bottom: none;
+}
+
+.admin-lead-row__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-control, 8px);
+    background: color-mix(in srgb, var(--color-brand) 12%, transparent);
+    color: var(--color-brand, #E8590C);
+}
+
+.admin-lead-row__text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    flex: 1 1 auto;
+}
+
+.admin-lead-row__name {
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.admin-lead-row__meta {
+    font-size: var(--font-size-14, 14px);
+    color: var(--color-text-secondary, #667085);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }

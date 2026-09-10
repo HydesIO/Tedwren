@@ -1,0 +1,392 @@
+@page "/profile"
+@using Tedwren.Abstractions.Contracts.Account
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.Feedback
+@inject IProfileService ProfileSvc
+@inject IOrganisationService Org
+@inject ISnackbar Snackbar
+
+<PageTitle>Your profile · Tedwren</PageTitle>
+
+<PageHeader Title="Your profile" Subtitle="Your details, security and organisation" />
+
+@if (_loading)
+{
+    <DashboardCard>
+        <Body><LoadingSkeleton /></Body>
+    </DashboardCard>
+}
+else if (_profile is null)
+{
+    <DashboardCard>
+        <Body>
+            <EmptyState Icon="@Icons.Material.Outlined.PersonOff"
+                        Title="Profile unavailable"
+                        Description="We couldn't load your account. Please sign in again." />
+        </Body>
+    </DashboardCard>
+}
+else
+{
+    <div class="form-page">
+        @* 1. Personal details *@
+        <FormSection Title="Personal details" Description="Your name, sign-in email and contact number.">
+            <TedwrenTextField Label="Full name" @bind-Value="_details.Name" Required="true"
+                              Error="_detailsSubmitted && string.IsNullOrWhiteSpace(_details.Name)"
+                              ErrorText="Name is required." />
+            <TedwrenTextField Label="Email" @bind-Value="_details.Email" Required="true"
+                              HelperText="This is your sign-in identity."
+                              Error="_detailsSubmitted && string.IsNullOrWhiteSpace(_details.Email)"
+                              ErrorText="A valid email is required." />
+            <TedwrenTextField Label="Mobile" @bind-Value="_details.Mobile" Placeholder="Optional" />
+            <div class="form-page__full">
+                <FormActions>
+                    <Primary>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="SaveDetails">
+                            Save details
+                        </MudButton>
+                    </Primary>
+                </FormActions>
+            </div>
+        </FormSection>
+
+        @* 2. Avatar *@
+        <FormSection Title="Avatar" Description="A picture shown next to your name across the console.">
+            <div class="profile-avatar">
+                <span class="profile-avatar__preview" aria-hidden="true">
+                    @if (!string.IsNullOrEmpty(_avatarPreview))
+                    {
+                        <img src="@_avatarPreview" alt="" />
+                    }
+                    else
+                    {
+                        <span>@Initials(_profile.Name)</span>
+                    }
+                </span>
+                <div class="profile-avatar__upload">
+                    <TedwrenFileUpload Label="Upload a new picture"
+                                       Accept=".png,.jpg,.jpeg"
+                                       HintText="PNG or JPG up to 5MB"
+                                       MaxFiles="1"
+                                       FilesChanged="OnAvatarSelected" />
+                </div>
+            </div>
+            <div class="form-page__full">
+                <FormActions>
+                    <Primary>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy || _avatarBase64 is null"
+                                   OnClick="SaveAvatar">Save picture</MudButton>
+                    </Primary>
+                </FormActions>
+            </div>
+        </FormSection>
+
+        @* 3. Security *@
+        <FormSection Title="Security" Description="Change the password you use to sign in.">
+            <TedwrenTextField Label="Current password" @bind-Value="_password.Current" InputType="InputType.Password" Required="true" />
+            <TedwrenTextField Label="New password" @bind-Value="_password.New" InputType="InputType.Password" Required="true"
+                              HelperText="At least 8 characters."
+                              Error="_passwordSubmitted && _password.New.Length is > 0 and < 8"
+                              ErrorText="Use at least 8 characters." />
+            <TedwrenTextField Label="Confirm new password" @bind-Value="_password.Confirm" InputType="InputType.Password" Required="true"
+                              Error="_passwordSubmitted && _password.Confirm != _password.New"
+                              ErrorText="The passwords do not match." />
+            <div class="form-page__full">
+                <FormActions>
+                    <Primary>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="ChangePassword">
+                            Change password
+                        </MudButton>
+                    </Primary>
+                </FormActions>
+            </div>
+        </FormSection>
+
+        @* 4. Company / organisation *@
+        <FormSection Title="Company" Description="@(_profile.IsAdministrator ? "Your organisation's details. Editable by administrators." : "Your organisation's details.")">
+            @if (_profile.IsAdministrator && _company is not null)
+            {
+                <TedwrenTextField Label="Company name" @bind-Value="_companyEdit.Name" Required="true" />
+                <TedwrenTextField Label="Trade" @bind-Value="_companyEdit.Trade" />
+                <TedwrenTextField Label="Registration number" @bind-Value="_companyEdit.RegistrationNumber" />
+                <TedwrenTextField Label="Address" @bind-Value="_companyEdit.Address" Lines="2" />
+                <TedwrenTextField Label="Contact name" @bind-Value="_companyEdit.ContactName" />
+                <TedwrenTextField Label="Contact email" @bind-Value="_companyEdit.ContactEmail" />
+                <TedwrenTextField Label="Contact phone" @bind-Value="_companyEdit.ContactPhone" />
+                <div class="form-page__full">
+                    <FormActions>
+                        <Primary>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="SaveCompany">
+                                Save company
+                            </MudButton>
+                        </Primary>
+                    </FormActions>
+                </div>
+            }
+            else
+            {
+                <div class="form-page__full">
+                    <KeyValueList Items="_companyOverview" />
+                </div>
+            }
+        </FormSection>
+    </div>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _busy;
+    private MyProfileDto? _profile;
+
+    private readonly DetailsState _details = new();
+    private bool _detailsSubmitted;
+
+    private readonly PasswordState _password = new();
+    private bool _passwordSubmitted;
+
+    private string? _avatarPreview;
+    private string? _avatarBase64;
+    private string? _avatarContentType;
+
+    private CompanyDetailDto? _company;
+    private readonly CompanyState _companyEdit = new();
+    private IReadOnlyList<KeyValueList.Pair> _companyOverview = Array.Empty<KeyValueList.Pair>();
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _profile = await ProfileSvc.GetMyProfileAsync();
+        if (_profile is not null)
+        {
+            _details.Name = _profile.Name;
+            _details.Email = _profile.Email;
+            _details.Mobile = _profile.Mobile ?? string.Empty;
+            _avatarPreview = _profile.AvatarUrl;
+            await LoadCompanyAsync(_profile.CompanyId);
+        }
+
+        _loading = false;
+    }
+
+    // Resolves the caller's own company detail from its id (via the companies list → slug), so administrators
+    // can edit it and everyone else sees it read-only.
+    private async Task LoadCompanyAsync(Guid companyId)
+    {
+        try
+        {
+            var summary = (await Org.GetCompaniesAsync()).FirstOrDefault(c => c.Id == companyId);
+            _company = summary is null ? null : await Org.GetCompanyAsync(summary.Slug);
+        }
+        catch
+        {
+            _company = null;
+        }
+
+        if (_company is not null)
+        {
+            _companyEdit.Name = _company.Name;
+            _companyEdit.Trade = _company.Trade ?? string.Empty;
+            _companyEdit.RegistrationNumber = _company.RegistrationNumber ?? string.Empty;
+            _companyEdit.Address = _company.Address ?? string.Empty;
+            _companyEdit.ContactName = _company.ContactName ?? string.Empty;
+            _companyEdit.ContactEmail = _company.ContactEmail ?? string.Empty;
+            _companyEdit.ContactPhone = _company.ContactPhone ?? string.Empty;
+        }
+
+        BuildCompanyOverview();
+    }
+
+    private void BuildCompanyOverview()
+    {
+        _companyOverview = new List<KeyValueList.Pair>
+        {
+            new("Name", _company?.Name ?? _profile?.CompanyName ?? "—"),
+            new("Trade", string.IsNullOrWhiteSpace(_company?.Trade) ? "—" : _company!.Trade),
+            new("Registration number", string.IsNullOrWhiteSpace(_company?.RegistrationNumber) ? "—" : _company!.RegistrationNumber),
+            new("Address", string.IsNullOrWhiteSpace(_company?.Address) ? "—" : _company!.Address),
+            new("Contact", string.IsNullOrWhiteSpace(_company?.ContactName) ? "—" : _company!.ContactName),
+        };
+    }
+
+    private async Task SaveDetails()
+    {
+        _detailsSubmitted = true;
+        if (string.IsNullOrWhiteSpace(_details.Name) || string.IsNullOrWhiteSpace(_details.Email))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var mobile = string.IsNullOrWhiteSpace(_details.Mobile) ? null : _details.Mobile;
+            var updated = await ProfileSvc.UpdateMyProfileAsync(new UpdateMyProfileRequest(_details.Name, _details.Email, mobile));
+            if (updated is not null)
+            {
+                _profile = updated;
+                Snackbar.Add("Details saved.", Severity.Success);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OnAvatarSelected(IReadOnlyList<IBrowserFile> files)
+    {
+        var file = files.FirstOrDefault();
+        if (file is null)
+        {
+            return;
+        }
+
+        using var ms = new MemoryStream();
+        await file.OpenReadStream(5 * 1024 * 1024).CopyToAsync(ms);
+        var bytes = ms.ToArray();
+        _avatarBase64 = Convert.ToBase64String(bytes);
+        _avatarContentType = string.IsNullOrEmpty(file.ContentType) ? "image/jpeg" : file.ContentType;
+        _avatarPreview = $"data:{_avatarContentType};base64,{_avatarBase64}";
+    }
+
+    private async Task SaveAvatar()
+    {
+        if (_avatarBase64 is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var updated = await ProfileSvc.UpdateAvatarAsync(new UpdateAvatarRequest(_avatarBase64, _avatarContentType));
+            if (updated is not null)
+            {
+                _profile = updated;
+                _avatarPreview = updated.AvatarUrl;
+                _avatarBase64 = null;
+                _avatarContentType = null;
+                Snackbar.Add("Picture updated.", Severity.Success);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ChangePassword()
+    {
+        _passwordSubmitted = true;
+        if (_password.New.Length < 8 || _password.Confirm != _password.New || string.IsNullOrEmpty(_password.Current))
+        {
+            Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            await ProfileSvc.ChangePasswordAsync(new ChangePasswordRequest(_password.Current, _password.New));
+            _password.Current = _password.New = _password.Confirm = string.Empty;
+            _passwordSubmitted = false;
+            Snackbar.Add("Password changed.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SaveCompany()
+    {
+        if (_company is null || string.IsNullOrWhiteSpace(_companyEdit.Name))
+        {
+            Snackbar.Add("Company name is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var request = new UpdateCompanyRequest(
+                _companyEdit.Name,
+                _company.Type,
+                Empty(_companyEdit.Trade),
+                Empty(_companyEdit.RegistrationNumber),
+                Empty(_companyEdit.Address),
+                Empty(_companyEdit.ContactName),
+                Empty(_companyEdit.ContactEmail),
+                Empty(_companyEdit.ContactPhone));
+
+            var saved = await Org.UpdateCompanyAsync(_company.Id, request);
+            if (saved)
+            {
+                await LoadCompanyAsync(_company.Id);
+                Snackbar.Add("Company saved.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("The company could not be saved.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string? Empty(string? value) => string.IsNullOrWhiteSpace(value) ? null : value;
+
+    private static string Initials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length switch
+        {
+            0 => "?",
+            1 => parts[0][..1].ToUpperInvariant(),
+            _ => (parts[0][..1] + parts[^1][..1]).ToUpperInvariant(),
+        };
+    }
+
+    private sealed class DetailsState
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Mobile { get; set; } = string.Empty;
+    }
+
+    private sealed class PasswordState
+    {
+        public string Current { get; set; } = string.Empty;
+        public string New { get; set; } = string.Empty;
+        public string Confirm { get; set; } = string.Empty;
+    }
+
+    private sealed class CompanyState
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Trade { get; set; } = string.Empty;
+        public string RegistrationNumber { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+        public string ContactName { get; set; } = string.Empty;
+        public string ContactEmail { get; set; } = string.Empty;
+        public string ContactPhone { get; set; } = string.Empty;
+    }
+}

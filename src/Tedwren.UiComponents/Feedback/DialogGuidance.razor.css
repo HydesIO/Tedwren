@@ -1,0 +1,55 @@
+/* Guidance panel shown at the top of interactive dialogs. Theme-aware via --mud-palette-* (the dialog
+   overlay renders outside the .theme-dark shell, so --color-* tokens would resolve to light values). */
+.dialog-guidance {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) var(--spacing-16, 16px);
+    border: 1px solid transparent;
+    border-radius: var(--radius-card, 10px);
+}
+
+.dialog-guidance__icon {
+    flex: 0 0 auto;
+    margin-top: 1px;
+}
+
+.dialog-guidance__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.dialog-guidance__title {
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
+.dialog-guidance__text {
+    font-size: .8125rem;
+    line-height: 1.45;
+    color: var(--mud-palette-text-primary);
+}
+
+/* Light amber in light mode; a muted amber-on-dark in dark mode — both driven by the palette so the
+   text stays readable. mix % kept low so the tint is subtle, not a solid alert. */
+.dialog-guidance--warning {
+    background: color-mix(in srgb, var(--mud-palette-warning) 12%, var(--mud-palette-surface));
+    border-color: color-mix(in srgb, var(--mud-palette-warning) 30%, transparent);
+}
+
+.dialog-guidance--warning .dialog-guidance__icon {
+    color: var(--mud-palette-warning);
+}
+
+.dialog-guidance--info {
+    background: color-mix(in srgb, var(--mud-palette-info) 12%, var(--mud-palette-surface));
+    border-color: color-mix(in srgb, var(--mud-palette-info) 30%, transparent);
+}
+
+.dialog-guidance--info .dialog-guidance__icon {
+    color: var(--mud-palette-info);
+}

@@ -18,6 +18,10 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
     {
     }
 
+    /// <summary>Deletes a qualification card by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM QualificationCards WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns all cards held by a person (including superseded), newest first.</summary>
     public async Task<IReadOnlyList<QualificationCard>> GetByPersonAsync(Guid personId, CancellationToken cancellationToken = default)
     {

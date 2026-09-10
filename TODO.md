@@ -11,7 +11,23 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## In progress
 
-### Subcontractor vs Main Contractor portal differentiation (SF-22, SUB-24, MC-23, R18)
+_Nothing currently in progress._
+
+---
+
+## Completed
+
+### Subcontractor vs Main Contractor portal differentiation — merged to `main` (SF-22, SUB-24, MC-23, R18)
+**Integration note.** Brought into `main` from `claude/client-portal-ui-diff-g41xnr` via the working
+branch. The single merge conflict — `Dashboard.razor` `BuildKpis` — was resolved to keep **both** changes:
+this feature's product-aware KPI ordering **and** `main`'s per-tile drill-through `Href` links
+(Companies→`/organisation`, Active operatives→`/workforce`, Compliant workforce→`/compliance`, Active
+sites→`/sites`, Expiring→`/compliance`). `AddCompanyOrgType` remains the latest EF migration (model
+snapshot carries the `OrgType` column). Whole solution builds; all product-affected suites green (Api 111
+· Application 227 · Client 26 · Domain 71 · DataAccess 4, +18 LocalDB-skipped). The only red is the
+pre-existing `Tedwren.Web.Tests` SEO baseline — 52 failures identical on clean `main`, unrelated to this
+change. The redundant `claude/phase-1-implementation-c0exms` (identical tree) and the obsolete/empty
+`claude/phase-2-implementation-c0exms` can be retired.
 Analysis + plan: `docs/subcontractor-vs-maincontractor-differentiation.md`. Feedback: the two
 products render an identical portal after login. Root cause: the onboarding product choice
 (`OnboardingOrgType`) is flattened to free-text `Company.Type` and never read back; the session
@@ -67,9 +83,68 @@ product per company (no switcher).
   distinct view over the shared timesheet object. Both are backend features beyond this UI-differentiation
   change; track as PRD-Phase work.
 
----
+### Dashboard drill-down, leads & billing overview (this change)
+Plan: `docs/plan-and-scope.md` (hardening). Client + UiComponents only — no domain/DTO/API changes; the
+billing stack (`IBillingService` + endpoints) already existed and is now surfaced on the dashboard.
+- ✅ **Clickable drill-down cards.** Optional `Href` parameter added to the reusable `KpiCard` and
+  `DashboardCard` (renders the whole tile/card as an `<a>` with a subtle hover lift + focus ring; null =
+  unchanged, non-interactive). New `--shadow-card-hover` token (light + dark) in `tokens.css`.
+  - Client Dashboard KPIs now drill through: Companies→`/organisation`, Active operatives→`/workforce`,
+    Compliant workforce→`/compliance`, Active sites→`/sites`, Expiring in 30 days→`/compliance`
+    (`KpiTile` gains a nullable `Href`).
+  - Admin Dashboard stat cards drill through: Companies→`/admin/companies`, Users→`/admin/users`, Launch
+    subscribers→`/admin/launch-list`, Open leads / Pipeline value→`/admin/leads`,
+    Active affiliates→`/admin/affiliates`.
+- ✅ **Leads overview list (Admin Dashboard).** New card above the billing overview listing the open
+  pipeline (excludes Converted/Lost, newest first, top 6) — one row per lead with model icon, company,
+  model/location and a `StatusPill` (status→kind mapping mirrors `AdminLeads.razor`). Footer links to
+  `/admin/leads`; `AsyncContent` skeleton + empty state.
+- ✅ **Billing overview populated (Admin Dashboard).** Replaced the stale "coming soon" `EmptyState` with a
+  live four-tile summary computed from `IBillingService` (`GetMandatesAsync`/`GetPaymentsAsync`/
+  `GetPayoutsAsync`): Active mandates→`/admin/billing`, Payments this month (£)→`/admin/payments`, Failed
+  payments→`/admin/payments`, Payouts (30 days, £)→`/admin/payouts`. Billing reads are isolated so a
+  failure/unconfigured GoCardless degrades to zeros rather than blanking the dashboard.
+- ✅ **A dash of colour.** Admin stat icons now sit in accent-tinted chips (`--stat-accent` per tile,
+  from `tokens.css` brand/status tokens); Client KPIs already carried accent colours.
+- ✅ Whole solution builds (no new warnings); all test projects pass.
+- ⏳ **Manual QA.** Verify card navigation, the leads list and the billing tiles at desktop/tablet/mobile in
+  both themes when the app is next run against a database.
 
-## Completed
+### MudDialog design standard (this change)
+Plan: `docs/plan-and-scope.md` (hardening). A consistent, spacious dialog standard across the whole
+Client (Admin portal + main/commercial portal). Standard written into `CLAUDE.md` → *MudDialog design
+standard*; new reusable assets catalogued in `docs/component-catalogue.md`.
+- ✅ **Standard documented.** New *MudDialog design standard* subsection in `CLAUDE.md`: sizing, guidance
+  panel, layout/grouping, actions, titles/descriptions, progress dialogs, and the dark-mode rule.
+- ✅ **Shared assets added (`Tedwren.UiComponents`).** `Dialogs/TedwrenDialog` (static `Small`/`Medium`/
+  `Large` `DialogOptions` presets — full-width, header close button, non-dismissing backdrop);
+  `Feedback/DialogGuidance` (amber/blue guidance panel); `Feedback/ProgressDialog` (titled progress
+  dialog with description + indicator + status text + optional cancel). Global `wwwroot/css/dialogs.css`
+  (`.tw-dialog-body` / `--grid` / `.tw-dialog-section*`) referenced from `index.html`.
+- ✅ **Dark-mode correctness.** Dialog-scoped colour switched from `--color-*` (which resolves to light
+  values in the dialog overlay, outside the `.theme-dark` shell) to MudBlazor `--mud-palette-*` in
+  `DialogGuidance`, `ConfirmDialog`, `FormSubmissionDialog` and `TimesheetDetailDialog` CSS. Also fixed
+  the non-existent `--font-size-*` references in `TimesheetDetailDialog.razor.css`.
+- ✅ **All 12 dialogs migrated** (sizing via `TedwrenDialog`, guidance panels, sectioned two-column
+  responsive bodies, standardised actions — business logic, validation, API calls and `Close(Ok(...))`
+  return contracts unchanged): `EditCompanyDialog`, `EditSiteDialog`, `EditOperativeDialog`,
+  `EditUserDialog`, `AddLeadDialog`, `AddAffiliateDialog` (ad-hoc `MudAlert` example → themed Info
+  panel), `FormAssignDialog`, `QualificationCardsDialog` (raw table → `MudSimpleTable`),
+  `FormSubmissionDialog` (reject-reason moved out of the cramped action bar), `TimesheetDetailDialog`,
+  and the shared `ConfirmDialog` (+ its 6 call sites).
+- ✅ **`ProgressDialog` wired into demo-data seeding.** Added an `Error`/`OnClose` state to the shared
+  `ProgressDialog` and a `TedwrenDialog.Progress()` preset (Medium, no header close / backdrop / escape
+  dismiss while running). Refactored `Admin/DemoDataProgressDialog` to render the shared `ProgressDialog`
+  (mapping the polled `DemoDataProgress` → determinate bar + "N of M stages · <stage>" status; server
+  error → red error state), replacing its bespoke `MudProgressLinear` markup. `AdminDemoData` now shows
+  it via `TedwrenDialog.Progress()` and its `ConfirmDialog`s via `Small()`. Seed/recreate/delete flow,
+  polling and `Close(Ok(status))` unchanged.
+- ✅ **New Admin dialogs migrated** to the standard: `EditLeadDialog`, `EditAffiliateDialog` (sectioned
+  two-column + guidance) and `AddLaunchSubscriberDialog` (Small); plus their call sites and the
+  `Remove subscriber` confirm.
+- ✅ Whole solution builds (no new warnings); all test projects pass.
+- ⏳ **Manual light/dark + responsive QA.** Verify each dialog at desktop/tablet/mobile widths in both
+  themes when the app is next run (structure and breakpoints follow the existing 720px form convention).
 
 ### Compliance page & admin-portal fixes (this change)
 Plan: `docs/plan-and-scope.md` (hardening). Cross-cutting demo-hardening + admin-portal fixes.
@@ -138,6 +213,161 @@ Plan: `docs/site-gate-forms-redesign-plan.md`. Client + UiComponents only (no do
   `InductionTemplateDto` actually carries (name / validity / pass mark / steps / questions) rather than the
   plan's suggested applies-to-site / mandatory / updated, which the DTO does not expose — avoiding an
   out-of-scope contract change.
+
+### Admin — Demo Data Service (this change)
+- ✅ **Demo Data Service (`IDemoDataService`/`DemoDataService`, `src/Tedwren.Application/DemoData`).** Seeds,
+  recreates and deletes a deterministic demonstration dataset across the **product and commercial** databases
+  for the Product Admin portal. Two tenants: **Demo Contractors Ltd** (main contractor, admin
+  `contractor@tedwren.com`) with 10 gated sites + 25 uniquely-named operatives, and **Demo Sub Contractors Ltd**
+  (subcontractor, admin `subcontractor@tedwren.com`) with its own **distinct** sites — deliberately including
+  dispersed **retrofit sites with no gate** (`HasCompound=false`, `IsDispersed=true`, attendance flagged, MC
+  retrofit path) — plus 5 contractors. Both admins use password `Demo123!`. Comprehensive history: module
+  entitlements, qualification cards (valid/expiring/expired mix), 10 working days of sign-in/out attendance,
+  and a full commercial history — mandate + metered subscription + 12 months of payments (incl. a
+  failed-then-re-taken month and an in-flight latest) + BACS payouts per company, so `/admin/payments`,
+  `/admin/billing`, `/admin/subscriptions` and `/admin/payouts` all show live reporting data.
+- ✅ **Deterministic, precise teardown.** Every record's id derives from a fixed namespace + stable key
+  (`DemoDataIds.Derive`, SHA-1 name-based), so a single `DemoDataPlanBuilder.Build()` drives both seed (insert)
+  and delete (remove by id, reverse dependency order). Recreate = clear + rebuild with the same ids. Nothing
+  outside the two demo companies is ever touched. Added a uniform `DeleteAsync(id)` (and entitlement
+  `ClearForCompanyAsync`) to the touched repositories — Dapper (dual-engine, parameterised `DELETE`) and the
+  in-memory doubles — so teardown runs identically on either data source.
+- ✅ **API + Product Admin UI.** `DemoDataEndpoints` (`/api/admin/demo-data` `status`/`progress`/`seed`/`delete`)
+  gated by the `PlatformAdmin` policy; client `ApiDemoDataService`. New page `/admin/demo-data` (nav item added)
+  with status KPIs and Create/Recreate/Delete buttons; the action runs inside a **`MudDialog`
+  (`DemoDataProgressDialog`)** driven by a **`MudProgressLinear`** that polls the server's staged progress
+  (`DemoDataProgressState` singleton). Delete/Recreate are confirm-gated (`ConfirmDialog`).
+- ✅ Tests: `DemoDataServiceTests` (seed counts, complete delete, idempotent reseed) + `DemoDataApiTests`
+  (platform-admin seed→status→delete round-trip). Whole solution builds (0 warnings); all tests pass
+  (Application 194, Api 100; LocalDB integration skipped).
+
+### Self-service Profile page (Phase 7, this change) — SF-20, R9, R15
+Implements the plan recorded in `docs/profile-page-plan.md`. The avatar dropdown's "Profile" link was a dead
+link (`ProfileHref` defaulted to `"#"`); a signed-in console user now has a real `/profile` page.
+- ✅ **Domain/persistence.** Added `Mobile` + `AvatarImageReference` to `User` (`Tedwren.Domain`). Dapper
+  `UserRepository` round-trips both columns and gains an `UpdateProfileAsync` that writes only
+  name/email/mobile/avatar/credentials and **never** role/status, so a user cannot escalate their own access
+  (R15). In-memory double mirrors that guard. EF migration `AddUserMobileAndAvatar` + additive idempotent SQL
+  scripts `022_user_profile.sql` (SQL Server + Postgres) so the runtime `MigrationRunner` schema matches.
+- ✅ **Contracts.** New `Account/AccountDtos` (`MyProfileDto`, `UpdateMyProfileRequest`, `ChangePasswordRequest`,
+  `UpdateAvatarRequest`); `CurrentUserDto` extended with `AvatarUrl` + `UserId` so `/api/me` renders the top-bar
+  avatar without a second call and resolves "the caller" server-side.
+- ✅ **Application.** `IProfileService`/`ProfileService` resolves the caller from `ICurrentUserService` (never a
+  client id), reuses `PasswordHasher` for change-password (verifies current → rehashes) and `IImageStore` for the
+  base64 avatar (R9). `ClaimsCurrentUserService` now surfaces the caller's id (from the JWT subject) + avatar.
+- ✅ **API.** Authenticated (secure-by-default, no `AllowAnonymous`) `/api/me/*`: `GET`/`PUT profile`,
+  `POST password`, `POST avatar`. Avatar served via the existing `GET /api/images/{id}`.
+- ✅ **Client/UI.** `ApiProfileService` + DI. New `Pages/Profile/Profile.razor` (`/profile`) reusing the kit only
+  (`FormSection`/`FormActions`/`Tedwren*`/`KeyValueList`/snackbar) with personal-details, avatar, security and
+  company sections; company editable by Administrators only, read-only otherwise. Shell wiring: `MainLayout`
+  passes the real avatar URL, wires sign-out and `ProfileHref="/profile"`. Removed the redundant "Settings" item
+  (and unused `SettingsHref`) from `ProfileMenu`; sidebar "System Configuration" and admin "Admin Settings" left
+  untouched.
+- ✅ **Tests.** `ProfileServiceTests` (11) + `ProfileApiTests` (6): read/update own record, change-password
+  (wrong→rejected, correct→rehashed), avatar round-trip, role/status not self-changeable, and 401 for every
+  anonymous `/api/me/*`. Whole solution builds (0 errors, no new warnings); all suites green (LocalDB integration
+  tests skipped as usual).
+- ❗ **Self-service billing deferred — PRD discrepancy raised (not built).** The plan's billing section was
+  **not** implemented. Per `CLAUDE.md`, PRD v6.4 was checked: §9 (Commercial model) treats which-meter/which-band
+  as configuration and §8.4 (Phase 4 — Pay and cost) is worker payment release, not a customer-facing
+  subscription/direct-debit surface. No SF/SUB/MC/R id sanctions self-service billing; the existing GoCardless
+  surface is deliberately `PlatformAdmin`-only. Rather than invent the requirement, the customer-facing billing
+  section was omitted and this discrepancy is raised for a product decision. The open **email-as-identity**
+  question was handled conservatively: name/mobile edit freely; an email change is allowed but guarded against
+  colliding with another account (no re-verification flow yet).
+
+### Bugfix — Dapper DateOnly/TimeOnly materialisation against SQL Server (this change)
+- ✅ **DateOnly/TimeOnly Dapper type handlers.** Microsoft.Data.SqlClient returns `date`/`time` columns as
+  `DateTime`/`TimeSpan`, which Dapper could not bind to record-constructor parameters typed `DateOnly`/`TimeOnly`,
+  throwing `InvalidOperationException: A parameterless default constructor or one matching signature ... is
+  required` at runtime (first surfaced from `QualificationCardRepository.GetCurrentWithExpiryAsync` via the
+  expiry query). Added `DateOnlyTypeHandler`/`TimeOnlyTypeHandler` + idempotent, process-wide
+  `DapperTypeHandlers.EnsureRegistered()` (`src/Tedwren.DataAccess/TypeHandlers/`), registered from both
+  `AddSqlDataAccess` and `AddCommercialSqlDataAccess`. Fixes every DateOnly-bearing repository (qualification
+  cards, permits, compliance packs, company documents, timesheets, payments/payouts). DB-free regression tests
+  in `DapperTypeHandlerTests`.
+
+### Commercial data plane — separate project + EF migrations (this change)
+- ✅ **New `src/Tedwren.DataAccess.Commercial` project.** The commercial/admin Dapper plane is extracted from
+  `Tedwren.DataAccess` into its own project: `AdminRepositoryBase`, `IAdminDbConnectionFactory`/
+  `AdminDbConnectionFactory`, `AdminSqlDataAccessOptions`, the 8 commercial repositories (billing plane +
+  go-to-market slices), and `AddCommercialSqlDataAccess` (moved to `CommercialDataAccessServiceCollectionExtensions`).
+  It references `Tedwren.DataAccess` to reuse `RepositoryBase`, the connection abstraction, dialects and the
+  area-aware `MigrationRunner` (no duplication). `Tedwren.Api` and `Tedwren.DataAccess.Tests` now reference it;
+  `Program.cs` is unchanged (same `AddCommercialSqlDataAccess` + `MigrationArea.Commercial` run).
+- ✅ **Commercial EF `DbContext` mirror (SQL Server).** `Ef/CommercialDbContext` + `CommercialSchemaRecords` +
+  design-time `CommercialDbContextFactory` (reads `ConnectionStrings:SqlServerCommercial`, falls back to the
+  product string, `TEDWREN_EF_COMMERCIAL_CONNECTION` override). Mirrors scripts `022`–`032` 1:1 (table/column
+  names, lengths, precision, defaults, the persisted `EmailLower` computed column, and index names) so the
+  idempotent startup scripts stay a no-op over EF-created tables. `InitialCommercialCreate` migration generated
+  under `Ef/Migrations`. EF is now authoritative for the commercial schema; the idempotent scripts remain valid
+  (belt-and-braces), exactly as on the product side.
+- ✅ Scope: SQL Server only now — Postgres commercial EF stays deferred with the Postgres launch gate
+  (`docs/ef-migrations.md §7`); the commercial SQL scripts keep covering Postgres. Whole solution builds
+  (0 errors, no new warnings); all tests pass (LocalDB integration tests skipped). `docs/ef-migrations.md §8`
+  and `CLAUDE.md` updated.
+
+### Admin — Operational readiness (Phase 7, this change)
+- ✅ **Commercial-DB topology visibility.** Startup log states whether the commercial plane is SEPARATE from or
+  SHARED (fallback) with the product database, so a missing `*Commercial` connection string is obvious.
+- ✅ **Runbook.** `docs/operations.md` — provisioning the commercial catalogue, the one-off billing-data
+  relocation, and enabling outbound email (Resend). `docs/migrations/relocate-billing-to-commercial.sql` is the
+  idempotent SQL-Server copy script (product→commercial); the doc gives the PostgreSQL `pg_dump`/`psql` recipe.
+- ✅ **Email-provider guidance.** Documented that launch/affiliate emails don't dispatch until
+  `Email:Provider=Resend` + `ApiKey` are set (outbox no-op default), incl. the `PublicBaseUrl`/`ConsoleBaseUrl`
+  roles for unsubscribe/agreement links.
+- ✅ **Commercial-repo integration tests.** `CommercialRepositoryTests` — LocalDB round-trips for
+  `LaunchSignupRepository`, `LeadRepository`, `AffiliateRepository` via the **admin** factory +
+  `MigrationArea.Commercial` (SkippableFact; skipped without `TEDWREN_TEST_SQLSERVER`). The Postgres parity gate
+  for the commercial slice. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
+- ❗ Follow-ups still open: a pending-payouts dashboard tile (needs an aggregate endpoint to avoid N+1), and
+  reconciling the profit-vs-revenue commission models with `Tedwren.Web.Partners`. (The commercial EF
+  `DbContext` mirror is now delivered — see the separate-project entry below.)
+
+### Admin — Real commission & company matching (Phase 6, this change)
+- ✅ **Commission from cleared revenue.** `AffiliateService` now reads the account's actual direct-debit
+  payments (`IPaymentRepository`, commercial DB) and computes **earned** commission = net cleared first-year
+  revenue (Confirmed/PaidOut less ChargedBack, within 12 months of the first payment) × profit margin ×
+  affiliate rate. Associated-accounts show estimated *and* earned; the detail page surfaces
+  **earned / paid / outstanding** KPI tiles (`CommissionSummaryDto`). The admin-entered estimate is kept
+  alongside as `EstimatedCommission`.
+- ✅ **Company-number matching.** `ICompanyRepository.GetByRegistrationNumberAsync` (space/case-tolerant, Dapper
+  + in-memory). `LeadService.ConvertAsync` auto-links the account by the lead's company number when no account
+  is passed (manual assignment still wins); the conversion note records the auto-match. Cross-DB soft match
+  (lead in commercial DB, company in product DB), resolved in the Application layer.
+- ✅ Tests: earned-commission net-of-chargebacks math; convert auto-match by registration number; no-match
+  leaves the account unset. Whole solution builds (no new code warnings); all tests pass (LocalDB skipped).
+
+### Admin — CRUD/UX completion (Phase 5, this change)
+- ✅ **Edit dialogs.** `EditLeadDialog` (Edit action on `AdminLeadDetail`) and `EditAffiliateDialog` (Edit
+  action on `AdminAffiliateDetail`, includes status), both persisting via the existing `Update` endpoints.
+- ✅ **Launch List management.** CSV export (`GET /api/launch-signups/export` → `CsvWriter`/`TabularSheet`,
+  downloaded via the existing `tedwrenDownload` JS helper); manual-add dialog (`AddLaunchSubscriberDialog`);
+  per-row delete (`DELETE /api/launch-signups/{id}`, confirm-gated).
+- ✅ **Resend agreement.** `POST /api/affiliates/{id}/resend-agreement` refreshes the signing-link expiry and
+  re-sends the setup email (refused once signed); "Resend setup email" button on the affiliate Agreement tab.
+- ✅ **Admin dashboard tiles.** `/admin` gains live tiles: launch subscribers, open leads, pipeline value
+  (Σ open estimated revenue), active affiliates — reusing the existing `admin-stat` tile style.
+- ✅ Tests: `LaunchList` export/delete API, affiliate resend service (refresh + refuse-when-signed). Whole
+  solution builds (no new code warnings); all tests pass (LocalDB skipped).
+
+### Admin — Compliance & security hardening (Phase 4, this change)
+- ✅ **Marketing-email unsubscribe (PECR/GDPR).** `LaunchSignup` gains `Unsubscribed`/`UnsubscribeToken`
+  (ALTER script `031_launch_unsubscribe.sql`, both engines); `LaunchListService.NotifyAsync` skips opted-out
+  addresses and includes a per-recipient one-click unsubscribe link; anonymous
+  `GET /api/launch-signups/unsubscribe?token=…` opts out and returns a friendly HTML page. The email shell
+  already carries the legal-name/address footer.
+- ✅ **API-side rate limiting.** Fixed-window (60/min per IP) `"public"` policy applied to every anonymous
+  group — launch signup, `/api/leads/capture`, `/api/affiliate-agreements` — via `AddRateLimiter` +
+  `UseRateLimiter` in `Program.cs`. Signature payload capped (~1 MB) in `AffiliateService.SignAgreementAsync`.
+- ✅ **Server-side email validation.** Shared `EmailValidation.IsValid` (`Application/Common`) enforced in
+  launch signup, lead create/update/capture, and affiliate create/update → `ArgumentException` (400).
+- ✅ **Agreement-link expiry.** `AffiliateAgreement` gains `ExpiresUtc` (default +30 days, ALTER
+  `032_agreement_expiry.sql`); `GetAgreementAsync`/`SignAgreementAsync` reject an expired link (view shows
+  "Expired", not signable). Already-signed agreements ignore expiry.
+- ✅ Tests: unsubscribe skips a subscriber + unknown-token no-op; malformed email → reject; expired agreement
+  can't be signed; oversized signature rejected; unsubscribe endpoint anonymous+HTML. Whole solution builds
+  (no new code warnings); all tests pass (LocalDB skipped).
 
 ### Admin — Affiliates, payouts & e-sign agreements (Phase 3, this change)
 - ✅ **Affiliate slice (commercial DB).** `Affiliate` (embedded commission plan), `AffiliatePayout`,
@@ -213,9 +443,9 @@ Plan: `docs/site-gate-forms-redesign-plan.md`. Client + UiComponents only (no do
   integration tests skipped). Existing DataAccess integration tests updated to the new `MigrationRunner`
   signature (Product area).
 - ⏳ Next: Phase 2 Lead management (card-grid admin UI + notes + convert), Phase 3 Affiliates (profit-after-
-  margin commission plans, payouts, e-sign agreement + PDF). A commercial-DB EF `DbContext` mirror is
-  deferred — the idempotent SQL scripts are authoritative for the commercial DB for now (as with the deferred
-  Postgres EF path, `docs/ef-migrations.md §7`).
+  margin commission plans, payouts, e-sign agreement + PDF). The commercial-DB EF `DbContext` mirror is now
+  delivered in the separate `Tedwren.DataAccess.Commercial` project (SQL Server; Postgres commercial EF stays
+  deferred with the Postgres launch gate, `docs/ef-migrations.md §7`).
 
 ### Admin area — Phase D: GoCardless BACS payouts (previous change)
 - ✅ **Payout settlement reads.** `IGoCardlessClient.ListPayoutsAsync` (`GET /payouts`) + `Payout` entity /
@@ -309,6 +539,62 @@ Plan: `docs/site-gate-forms-redesign-plan.md`. Client + UiComponents only (no do
   card checkout for the separate Worker Passport product. Confirmed with the product owner that GoCardless
   is the intended SaaS billing rail; this should be reconciled into PRD §9 in a future revision. Tracked in
   `docs/plan-and-scope.md` (Admin-area phases).
+### Tedwren.Web — Landing gate, pricing ticks, diagram logo (this change)
+- ✅ **Pre-launch landing gate.** New `Site:IsLanding` flag (`SiteConfig`, default false). When on,
+  `LandingGateMiddleware` (registered after static files, before routing in `Program.cs`) funnels the whole
+  site to a single inviting landing page — `LandingController` (`/landing`) + `Views/Landing/Index.cshtml`
+  on a minimal `_LandingLayout`, with an email-capture "notify me" form routed through the existing
+  `ILeadRouter` pipeline (antiforgery + honeypot + fill-time + rate-limit reused via `LandingNotifyRequest`).
+  Static assets, the form POST and consent/health/robots stay reachable. Landing CSS block in `site.css`.
+- ✅ **Pricing ticks unified.** The "Pricing you can trust" ticks now use the circular green-badge tick
+  (matching `.ticklist` on the product/home feature lists) — CSS-only in `site.css`.
+- ✅ **Diagram centre = real logo.** The retrofit hub now embeds `logo-icon.svg` (orange tile + white T)
+  at its centre with no wordmark beneath; removed the drawn "T"/`.diagram__wordmark`.
+- ✅ **Tests + build.** Whole solution builds clean; `Tedwren.Web.Tests` 174 → 178 (new `LandingGateTests`:
+  home + deep route funnel to landing, static assets still served, notify form routes a sign-up).
+
+### Tedwren.Web — Marketing polish: bespoke icons, legal, nav, address (this change)
+- ✅ **Bespoke SVG icon set.** New reusable `Views/Shared/_Icon.cshtml` renders a hand-drawn 24×24
+  `currentColor` icon by key (theme-aware, decorative). Optional `Icon` key added to `FeatureCard`,
+  `Differentiator`, `HowItWorksStep` (`WebContentTypes.cs`) and populated in `home.json`,
+  `products.json`, `worker-passport.json`; consumed by the FeatureGrid, Differentiators and HowItWorks
+  components (replacing the letter-monogram placeholder).
+- ✅ **Retrofit diagram redrawn.** The home hub-and-spoke SVG now centres a Tedwren mark (brand disc +
+  white "T" + wordmark) with bespoke property/worker icon nodes (house, flats, van, hard-hat, wrench,
+  clipboard) on the ink band — professional and legible, still `aria-hidden`.
+- ✅ **Persistent active nav (always exactly one).** Added a "Home" primary-nav item; `SiteHeaderViewComponent`
+  computes the active href by longest-prefix match with a Home fallback for off-nav pages; the header marks
+  it `is-active` + `aria-current="page"` with a clear brand treatment in `site.css`.
+- ✅ **Centred frame stamps.** "Evidence Logged" / "Fixed at Send" now sit as a centred, translucent
+  "stamped" watermark over the frame detail (never clipped) — CSS-only in `site.css`.
+- ✅ **Registered address.** `site.json` `RegisteredOffice` set to 5 Rectory Park Close, Sutton Coldfield,
+  B75 7BW, England (rendered by the existing footer).
+- ✅ **Comprehensive legal drafts.** `legal.json` expanded — Privacy, Cookies, Terms and Data Protection
+  are now full generic UK drafts (clearly "pending legal sign-off"), ContentLint-safe (no hardcoded price,
+  absolute-compliance or CSCS-rivalry wording).
+- ✅ **Tests + build.** Whole solution builds clean; `Tedwren.Web.Tests` 167 → 174 (nav-active per route,
+  comprehensive-legal render); `ContentLint` gate still green.
+
+### Tedwren.Web — Marketing site SaaS redesign (this change)
+- ✅ **Refined design language (tokens-only).** Rebuilt `wwwroot/css/site.css` as a full SaaS design
+  system: full-bleed alternating bands (`.band`, `--surface`/`--tint`/`--ink` derived via `color-mix`
+  from existing tokens — no new colour/spacing literals), section-header primitives (`.kicker`,
+  `.section-title`), refined buttons (`--lg`, ink-band variants), sticky translucent header, dark
+  multi-column footer, and a CSS-only load entrance (`.js .reveal`; content stays visible with JS off).
+- ✅ **Product "screenshots" as token-driven frames.** New `ProductFrame` ViewComponent + templates
+  (`SiteRegister`, `Dashboard`, `CompliancePack`, `Induction`) render browser/phone-chromed product
+  snapshots — theme-aware, no raster assets, each exposed to AT as a single labelled image. Live clock +
+  pulse dot on the register. Used across home, product pages and Worker Passport.
+- ✅ **Rebuilt pages.** Home (hero + audience toggle + tabbed two-product section mirrored by the toggle,
+  differentiators, ink retrofit band, numbered how-it-works, trust strip, ink CTA), both product pages
+  (`ProductDetail`: split hero + feature monograms + alternating copy/frame split + emphasis sections),
+  Pricing (elevated cards, featured Main Contractor band with per-plan CTAs), Worker Passport, Trust,
+  About — all still content-driven via `IContentProvider`; no copy or price typed into a view.
+- ✅ **Progressive enhancement.** `wwwroot/js/site.js` (deferred, dependency-free) drives the audience
+  toggle/product tabs and the live clock; every page is fully usable with JS disabled.
+- ✅ **Tests + build.** Whole solution builds clean (no new warnings); all tests green
+  (`Tedwren.Web.Tests` 167). Updated one home assertion to the new tabbed panels; `ContentLint`
+  gate still passes over the new views (no hardcoded price / absolute-compliance / CSCS-rivalry copy).
 
 ### Tedwren.Web — Phase W8 Hardening & pre-launch QA (previous change)
 - ✅ **Content lint as a build/CI gate (Web Plan §8, §14).** `Tedwren.Web.Qa.ContentLint` scans the
@@ -1243,6 +1529,26 @@ Phase M1 delivers the shared foundations and the first page migrations:
   cover & muster). *Product saleable.*
 - ⏳ Phase 18 — Hardening + PostgreSQL launch gate.
 - ⏳ Phases 19+ — PRD commercial modules (CSCS, HSE, QA, Pay, Identity, Sharing, Integrations).
+- 📋 **Worker Passport — a third product (planning only; not started).** Worker-owned credential record
+  (PRD `docs/TedwrenWorkerPassportPRDv0_1.docx`, mirror `docs/TedwrenWorkerPassportPRDv0_1.md`; folds into
+  PRD v6.4 §5.4 after Leigh & James comment). Phased plan of works in
+  [`docs/worker-passport-plan.md`](docs/worker-passport-plan.md): **WP-A** foundation data (personal details,
+  emergency contacts, ownership, recovery) → **WP-B** worker passport (mobile-web) → **WP-C** sharing &
+  consent → **WP-D** expiry & reminders → **WP-E** Stripe consumer checkout (GoCardless template) → **WP-F**
+  induction pre-fill → **WP-G** verified write-back (behind an interface, ships nothing until CSCS §7.3) →
+  **WP-H** QR/wallet pass (P1). Reuses `Person`/`Engagement`/`QualificationCard`/`QualificationService`.
+  New backend numeric phases (26+) + W-track (W9+) for the marketing checkout.
+  - ⏸️ **Gated (blocks the build, not the plan):** PRD open questions **Q1** (data controller) and **Q2**
+    (identity collision) block the schema — held for Leigh's sign-off; plus **Q3/Q4**, a **DPIA**, **consumer
+    contract terms**, and (for WP-G only) the **CSCS §7.3 letter**. Reminders (WP-D) also need the outstanding
+    **SMS provider**.
+  - ⏳ **WP-Admin — admin "Worker Passports" section (operational metrics only, Rule W5).** Platform-operator
+    oversight of passport health — counts/states/activity (passports, active-paid vs lapsed, credential
+    expiry, share/reminder engagement per G3/G4, renewals due, recovery requests). **No** passport content
+    (no names/DOB/NI/addresses/emergency contacts/images) — no administrative override. Standard 7-layer
+    admin slice (nav in `ShellChrome.AdminNavItems`, `PlatformAdmin`-gated `/api/admin/worker-passports`,
+    `DataTable` list + `AdminLeadDetail`-style detail). Earliest slice (counts + credential-expiry over
+    existing `Person`/`QualificationCard`) needs no new schema.
 - 📋 **Forms Library (Phases 19–25).** Customer-built, per-tenant form engine. Detailed plan of works
   in [`docs/forms-library-plan.md`](docs/forms-library-plan.md). Clones the `InductionTemplate`
   pattern; reuses the Forms suite + `DataTable`. **Not part of the MVP.**

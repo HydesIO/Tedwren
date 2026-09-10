@@ -75,7 +75,7 @@
 
     private async Task AddLead()
     {
-        var dialog = await DialogService.ShowAsync<AddLeadDialog>("Add lead");
+        var dialog = await DialogService.ShowAsync<AddLeadDialog>("Add lead", TedwrenDialog.Medium());
         var result = await dialog.Result;
         if (result?.Canceled == false && result.Data is Guid id)
         {

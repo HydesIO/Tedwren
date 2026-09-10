@@ -1,22 +1,17 @@
-.submission-detail {
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-16, 16px);
-    min-width: 320px;
-}
-
+/* Layout comes from .tw-dialog-body; this file styles the submission-specific bits. Colours use
+   --mud-palette-* so they read correctly in the dialog overlay's dark mode. */
 .submission-detail__meta {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: var(--spacing-12, 12px);
-    color: var(--color-text-secondary, #667085);
+    color: var(--mud-palette-text-secondary);
     font-size: 0.875rem;
 }
 
 .submission-detail__label {
     font-weight: 600;
-    color: var(--color-text-primary, #101828);
+    color: var(--mud-palette-text-primary);
     width: 40%;
 }
 
@@ -30,10 +25,6 @@
 .submission-detail__signature {
     max-width: 240px;
     max-height: 96px;
-    border: 1px solid var(--color-border, #E4E7EC);
+    border: 1px solid var(--mud-palette-lines-default);
     border-radius: var(--radius-control, 8px);
-}
-
-.submission-detail__reason {
-    min-width: 220px;
 }

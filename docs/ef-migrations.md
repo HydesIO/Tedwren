@@ -5,8 +5,8 @@ data access stays on **Dapper (DML)**. The two are deliberately separate:
 
 | Concern | Owner |
 |---|---|
-| Creating / evolving tables, columns, indexes | EF Core migrations (`Tedwren.DataAccess/Ef`) |
-| Reading / writing rows at runtime | Dapper repositories (`Tedwren.DataAccess/Repositories`) |
+| Creating / evolving tables, columns, indexes | EF Core migrations — product: `Tedwren.DataAccess/Ef`; commercial: `Tedwren.DataAccess.Commercial/Ef` (see §8) |
+| Reading / writing rows at runtime | Dapper repositories (`Tedwren.DataAccess/Repositories`, `Tedwren.DataAccess.Commercial/Repositories`) |
 
 The EF model lives in `src/Tedwren.DataAccess/Ef`:
 
@@ -174,15 +174,104 @@ dev setup still runs.
   `MigrationRunner.RunAsync(factory, area)` runs each area against its own database; `Program.cs` calls it once
   per database at startup. Add a new commercial table's script under `.../Commercial/` (continue the number
   sequence, e.g. `025_*`), and a new product table's script at the engine-folder root.
-- **EF migrations:** the EF `TedwrenDbContext` covers the product database. A commercial-database EF context is
-  **deferred** (like the PostgreSQL EF path in §7) — the idempotent commercial scripts are the source of truth
-  for the commercial schema for now.
+- **EF migrations:** the EF `TedwrenDbContext` (in `Tedwren.DataAccess`) covers the **product** database. The
+  **commercial** database has its own EF context, `CommercialDbContext`, in the separate
+  **`Tedwren.DataAccess.Commercial`** project (`Ef/CommercialDbContext.cs`, `Ef/CommercialSchemaRecords.cs`,
+  design-time `Ef/CommercialDbContextFactory.cs`). Its design-time factory reads
+  `ConnectionStrings:SqlServerCommercial` (falling back to `ConnectionStrings:SqlServer` when empty, mirroring the
+  runtime fallback); `TEDWREN_EF_COMMERCIAL_CONNECTION` overrides it. Because two contexts are now discoverable,
+  pass `--context` and point `-p/-s` at the commercial project:
+
+  ```bash
+  # create/evolve the commercial migration
+  dotnet ef migrations add <Name> --context CommercialDbContext \
+    -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial -o Ef/Migrations
+
+  # apply to the commercial database
+  dotnet ef database update --context CommercialDbContext \
+    -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial
+  ```
+
+  EF is authoritative for the commercial schema; the idempotent commercial scripts remain valid and the startup
+  `MigrationRunner` (Commercial area) stays a no-op over EF-created tables (the EF mappings reproduce the scripts'
+  table/column/index names). **PostgreSQL** commercial EF is still **deferred** with the Postgres launch gate
+  (§7) — the commercial SQL scripts cover Postgres in the meantime.
 - **Relocation of the billing tables:** scripts `022`–`024` (billing, webhook events, payouts) moved from the
   product set into the commercial set. Fresh environments get these created directly in the commercial
   database. **An already-populated product database** that predates this change still has those tables in the
   product database; migrate them with a one-off data copy into the commercial database (e.g. `SELECT INTO` /
   `INSERT … SELECT` across the two catalogues, or a scripted export/import), then drop the orphaned product
   copies once verified. There is no automatic data move — the scripts only create empty tables.
+
+---
+
+## 9. Rebuild both databases from scratch
+
+A clean-slate rebuild: drop **both** databases and recreate a single fresh `InitialCreate` migration per
+context. Use this when you want to squash a tangle of migrations back to one, or reset a dev/staging
+environment. There are two EF contexts — `TedwrenDbContext` (product, in `Tedwren.DataAccess`) and
+`CommercialDbContext` (commercial, in `Tedwren.DataAccess.Commercial`) — so every command names its `--context`
+and points `-p`/`-s` at the right project.
+
+> ⚠️ **DESTRUCTIVE.** `dotnet ef database drop` deletes the **entire database and all its data** (companies,
+> persons, compliance, users, billing — everything), not just the schema, and is **not reversible** without a
+> backup. Only run this against databases you intend to wipe. **Take a backup first.**
+>
+> ⚠️ **Commercial fallback trap.** If `ConnectionStrings:SqlServerCommercial` is empty, `CommercialDbContext`
+> falls back to the **product** connection string — so the commercial `database drop` would hit the *same*
+> database as the product one. Always run Step 0 first and confirm the two contexts resolve to **two distinct
+> databases** before dropping.
+
+**Prerequisite:** delete the existing migration files for both projects first (including each
+`*ModelSnapshot.cs`) — `src/Tedwren.DataAccess/Ef/Migrations/*` and
+`src/Tedwren.DataAccess.Commercial/Ef/Migrations/*`. Both projects still build with the folders empty.
+
+**Step 0 — verify the two targets (no changes made):**
+
+```bash
+dotnet ef dbcontext info --context TedwrenDbContext \
+  -p src/Tedwren.DataAccess -s src/Tedwren.DataAccess
+
+dotnet ef dbcontext info --context CommercialDbContext \
+  -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial
+```
+
+Stop unless the two `Data source` / `Database name` lines are the distinct databases you mean to drop.
+
+**Step 1 — drop both databases** (`-f` skips the interactive confirmation):
+
+```bash
+dotnet ef database drop -f --context TedwrenDbContext \
+  -p src/Tedwren.DataAccess -s src/Tedwren.DataAccess
+
+dotnet ef database drop -f --context CommercialDbContext \
+  -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial
+```
+
+**Step 2 — create a fresh initial migration for each context:**
+
+```bash
+dotnet ef migrations add InitialCreate --context TedwrenDbContext \
+  -p src/Tedwren.DataAccess -s src/Tedwren.DataAccess -o Ef/Migrations
+
+dotnet ef migrations add InitialCreate --context CommercialDbContext \
+  -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial -o Ef/Migrations
+```
+
+**Step 3 — recreate the schema by applying each migration:**
+
+```bash
+dotnet ef database update --context TedwrenDbContext \
+  -p src/Tedwren.DataAccess -s src/Tedwren.DataAccess
+
+dotnet ef database update --context CommercialDbContext \
+  -p src/Tedwren.DataAccess.Commercial -s src/Tedwren.DataAccess.Commercial
+```
+
+Each squashed `InitialCreate` captures the **current full model** (all product tables incl. the later Forms /
+CompanyDocuments slices; all 11 commercial tables), so the rebuilt schema is complete. The idempotent startup
+`MigrationRunner` scripts still run and stay a no-op over the EF-created tables (matching table/column/index
+names). Naming both migrations `InitialCreate` is fine — they live in separate assemblies.
 
 ---
 

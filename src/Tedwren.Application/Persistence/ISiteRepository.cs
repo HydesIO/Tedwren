@@ -16,4 +16,7 @@ public interface ISiteRepository
 
     /// <summary>Persists changes to an existing site (e.g. marking it dispersed once it gains a property).</summary>
     Task UpdateAsync(Site site, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes a site by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

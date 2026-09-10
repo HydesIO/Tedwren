@@ -47,6 +47,13 @@ public sealed class AffiliateAgreement
     /// <summary>When the agreement was created (UTC).</summary>
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;
 
+    /// <summary>When the signing link expires. Null means it never expires (legacy rows).</summary>
+    public DateTimeOffset? ExpiresUtc { get; set; }
+
     /// <summary>Whether the agreement can still be signed (issued and not already signed).</summary>
     public bool IsSignable => Status != AffiliateAgreementStatus.Signed;
+
+    /// <summary>Whether the signing link has expired as of <paramref name="asOf"/> (an already-signed agreement never counts as expired).</summary>
+    public bool IsExpired(DateTimeOffset asOf) =>
+        Status != AffiliateAgreementStatus.Signed && ExpiresUtc is { } expiry && expiry <= asOf;
 }

@@ -11,6 +11,10 @@ public sealed class EntitlementRepository : RepositoryBase, IEntitlementReposito
     {
     }
 
+    /// <summary>Removes all module-entitlement overrides for a company (demo-data teardown).</summary>
+    public Task ClearForCompanyAsync(Guid companyId, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM ModuleEntitlements WHERE CompanyId = @CompanyId", new { CompanyId = companyId }, cancellationToken);
+
     /// <summary>Returns the company's module overrides.</summary>
     public async Task<IReadOnlyDictionary<string, bool>> GetOverridesByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
     {

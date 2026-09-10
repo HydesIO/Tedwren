@@ -8,13 +8,16 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="edit-operative">
-            <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
-            <TedwrenTextField Label="Trade" @bind-Value="_trade" />
-            <MudText Typo="Typo.caption" Class="mud-text-secondary">
-                Name and trade are recorded per employer (@Operative.Company). The operative's mobile identity is unchanged (SF-1).
-            </MudText>
+        <div class="tw-dialog-body">
+            <DialogGuidance>
+                Name and trade are recorded per employer (<b>@Operative.Company</b>). The operative's mobile identity is unchanged (SF-1).
+            </DialogGuidance>
+
+            <div class="tw-dialog-body--grid">
+                <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
+                                  Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
+                <TedwrenTextField Label="Trade" @bind-Value="_trade" />
+            </div>
         </div>
     </DialogContent>
     <DialogActions>

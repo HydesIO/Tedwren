@@ -13,7 +13,15 @@ namespace Tedwren.Application.Tests;
 /// </summary>
 public sealed class LeadServiceTests
 {
-    private static LeadService CreateService() => new(new InMemoryLeadRepository());
+    private static LeadService CreateService() =>
+        new(new InMemoryLeadRepository(), new InMemoryCompanyRepository(new InMemoryOrganisationStore()));
+
+    /// <summary>Builds a service sharing a company store, so a company-number match can be seeded.</summary>
+    private static (LeadService Service, InMemoryOrganisationStore Companies) CreateWithCompanies()
+    {
+        var store = new InMemoryOrganisationStore();
+        return (new LeadService(new InMemoryLeadRepository(), new InMemoryCompanyRepository(store)), store);
+    }
 
     [Fact]
     public async Task Create_StoresLead_AndLogsCreationNote()
@@ -76,6 +84,34 @@ public sealed class LeadServiceTests
         Assert.Equal(account, converted.ConvertedAccountId);
         var detail = await service.GetAsync(lead.Id);
         Assert.Contains(detail!.Notes, n => n.StatusChange == "Converted");
+    }
+
+    [Fact]
+    public async Task Convert_AutoMatchesAccount_ByCompanyNumber()
+    {
+        var (service, companies) = CreateWithCompanies();
+        var company = new Tedwren.Domain.Entities.Company { Name = "ABC Construction Ltd", RegistrationNumber = "12345678" };
+        companies.Companies[company.Id] = company;
+
+        var lead = await service.CreateAsync(new CreateLeadRequest("ABC Construction Ltd", CompanyNumber: "1234 5678"), actor: null);
+
+        // Convert with no explicit account id → matches the company by its (space-tolerant) registration number.
+        var converted = await service.ConvertAsync(lead.Id, new ConvertLeadRequest(AccountId: null), actor: "Owner");
+
+        Assert.Equal("Converted", converted!.Status);
+        Assert.Equal(company.Id, converted.ConvertedAccountId);
+    }
+
+    [Fact]
+    public async Task Convert_NoMatch_LeavesAccountUnset()
+    {
+        var (service, _) = CreateWithCompanies();
+        var lead = await service.CreateAsync(new CreateLeadRequest("Nomatch Ltd", CompanyNumber: "99999999"), actor: null);
+
+        var converted = await service.ConvertAsync(lead.Id, new ConvertLeadRequest(AccountId: null), actor: null);
+
+        Assert.Equal("Converted", converted!.Status);
+        Assert.Null(converted.ConvertedAccountId);
     }
 
     [Fact]

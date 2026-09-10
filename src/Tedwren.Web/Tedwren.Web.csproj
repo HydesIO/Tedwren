@@ -27,4 +27,14 @@
           SkipUnchangedFiles="true" />
   </Target>
 
+  <!-- Same single-source discipline for the brand logo: the SVG lives in Tedwren.Client and is copied
+       into this project's wwwroot at build so the marketing header/footer serve the same mark as the
+       app. The copy is git-ignored (see .gitignore) — the client file remains the only source. -->
+  <Target Name="ShareBrandLogo" BeforeTargets="BeforeBuild;BeforeRebuild">
+    <MakeDir Directories="wwwroot\images" />
+    <Copy SourceFiles="..\Tedwren.Client\wwwroot\images\logo-icon.svg"
+          DestinationFiles="wwwroot\images\logo-icon.svg"
+          SkipUnchangedFiles="true" />
+  </Target>
+
 </Project>

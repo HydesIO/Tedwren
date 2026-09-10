@@ -3,6 +3,11 @@
     @foreach (var feature in Model)
     {
         <div class="feature-grid__card">
+            @* Bespoke icon (decorative) when the content supplies a key; otherwise no glyph. *@
+            @if (!string.IsNullOrWhiteSpace(feature.Icon))
+            {
+                <span class="feature-grid__icon" aria-hidden="true">@await Html.PartialAsync("_Icon", feature.Icon)</span>
+            }
             <h3 class="feature-grid__heading">@feature.Heading</h3>
             <p class="feature-grid__copy">@feature.Copy</p>
         </div>

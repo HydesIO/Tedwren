@@ -1,8 +1,10 @@
+/* Width is set by the dialog options (TedwrenDialog.Small), not the content. Colours use --mud-palette-*
+   so the icon swatch and text stay correct in dark mode — the dialog overlay renders outside the
+   .theme-dark shell, where --color-* tokens would resolve to their light values. */
 .confirm {
     display: flex;
     align-items: flex-start;
     gap: var(--spacing-16, 16px);
-    max-width: 420px;
 }
 
 .confirm__icon {
@@ -16,17 +18,17 @@
 }
 
 .confirm__icon--danger {
-    background: var(--color-danger-pale, #FEF3F2);
-    color: var(--color-danger, #F04438);
+    background: color-mix(in srgb, var(--mud-palette-error) 15%, var(--mud-palette-surface));
+    color: var(--mud-palette-error);
 }
 
 .confirm__icon--brand {
-    background: var(--color-brand-pale, #FFF1E8);
-    color: var(--color-brand, #E8590C);
+    background: color-mix(in srgb, var(--mud-palette-primary) 15%, var(--mud-palette-surface));
+    color: var(--mud-palette-primary);
 }
 
 .confirm__text {
     margin: var(--spacing-8, 8px) 0 0;
     font-size: .875rem;
-    color: var(--color-text-secondary, #667085);
+    color: var(--mud-palette-text-secondary);
 }

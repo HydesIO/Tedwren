@@ -2,6 +2,12 @@
 <footer class="site-footer">
     <div class="site-footer__inner">
         <div class="site-footer__col site-footer__company">
+            @* Shared brand mark (copied from Tedwren.Client at build). Paired with the wordmark, so the
+               image itself is decorative and carries an empty alt. *@
+            <div class="site-footer__brand">
+                <img class="site-footer__logo" src="~/images/logo-icon.svg" alt="" width="24" height="24" />
+                <span class="site-footer__wordmark">@Model.BrandName</span>
+            </div>
             <p class="site-footer__entity">@Model.LegalEntity</p>
             @if (!string.IsNullOrWhiteSpace(Model.CompanyNumber))
             {

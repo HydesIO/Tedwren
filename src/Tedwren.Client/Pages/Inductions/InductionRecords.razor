@@ -92,7 +92,7 @@
             { x => x.ContentText, $"Reset {record.PersonName}'s failed induction so it can be retaken?" },
             { x => x.ConfirmText, "Reset" },
         };
-        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Reset induction", parameters);
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Reset induction", parameters, TedwrenDialog.Small());
         if (await dialog.Result is { Canceled: false })
         {
             var result = await Inductions.ResetAsync(record.Id, new ResetInductionRequest("Reset by manager for retake"));

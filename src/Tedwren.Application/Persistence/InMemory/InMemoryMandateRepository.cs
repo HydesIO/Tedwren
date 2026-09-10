@@ -41,6 +41,13 @@ public sealed class InMemoryMandateRepository : IMandateRepository
         return Task.CompletedTask;
     }
 
+    /// <summary>Removes a mandate from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _mandates.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Updates a mandate.</summary>
     public Task UpdateAsync(Mandate mandate, CancellationToken cancellationToken = default)
     {

@@ -44,4 +44,8 @@
     <ProjectReference Include="..\Tedwren.Domain\Tedwren.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Ef\Migrations\" />
+  </ItemGroup>
+
 </Project>

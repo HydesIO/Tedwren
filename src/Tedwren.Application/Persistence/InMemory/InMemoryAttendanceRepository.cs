@@ -11,6 +11,13 @@ public sealed class InMemoryAttendanceRepository : IAttendanceRepository
     /// <summary>Creates the repository over the shared store.</summary>
     public InMemoryAttendanceRepository(InMemoryAttendanceStore store) => _store = store;
 
+    /// <summary>Removes an attendance record from the store (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Records.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
+
     /// <summary>Appends an attendance record.</summary>
     public Task AddAsync(AttendanceRecord record, CancellationToken cancellationToken = default)
     {

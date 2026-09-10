@@ -163,6 +163,7 @@ public sealed class TimesheetServiceTests
         public Task<int> CountActiveByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task AddAsync(Engagement engagement, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task UpdateAsync(Engagement engagement, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     /// <summary>Site repository fake returning a fixed site name for the roll-up.</summary>
@@ -177,5 +178,6 @@ public sealed class TimesheetServiceTests
         public Task<IReadOnlyList<Site>> GetAllAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task AddAsync(Site site, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task UpdateAsync(Site site, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

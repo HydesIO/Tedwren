@@ -5,24 +5,39 @@
     ViewData["MetaDescription"] = security.MetaDescription;
 }
 
-<section class="security-intro">
-    <h1 class="section-heading">@security.Heading</h1>
-    <p class="security-intro__body">@security.Intro</p>
-</section>
-
-<section class="security-claims">
-    @foreach (var claim in security.Claims)
-    {
-        <div class="security-claim">
-            <h2 class="security-claim__heading">@claim.Heading</h2>
-            <p class="security-claim__body">@claim.Body</p>
+@* ---- INTRO --------------------------------------------------------------------------------- *@
+<section class="band hero">
+    <span class="hero__blob" aria-hidden="true"></span>
+    <div class="band__inner">
+        <div class="section-head" style="max-width:56ch;">
+            <p class="kicker">Security &amp; Trust</p>
+            <h1 class="section-title">@security.Heading</h1>
+            <p class="section-lede">@security.Intro</p>
         </div>
-    }
+    </div>
 </section>
 
-<section class="closing">
-    <h2 class="closing__heading">Questions from your procurement or DPO team?</h2>
-    <div class="closing__actions">
-        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+@* ---- CLAIMS -------------------------------------------------------------------------------- *@
+<section class="band band--surface">
+    <div class="band__inner reveal">
+        <div class="section-claims security-claims">
+            @foreach (var claim in security.Claims)
+            {
+                <div class="security-claim">
+                    <h2 class="security-claim__heading">@claim.Heading</h2>
+                    <p class="security-claim__body">@claim.Body</p>
+                </div>
+            }
+        </div>
+    </div>
+</section>
+
+@* ---- CLOSING CTA --------------------------------------------------------------------------- *@
+<section class="band band--ink cta-band">
+    <div class="band__inner cta-band__inner reveal">
+        <h2 class="cta-band__title">Questions from your procurement or DPO team?</h2>
+        <div class="button-row">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+        </div>
     </div>
 </section>

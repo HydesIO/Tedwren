@@ -16,6 +16,10 @@ public sealed class EngagementRepository : RepositoryBase, IEngagementRepository
     {
     }
 
+    /// <summary>Deletes an engagement by id (demo-data teardown).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM Engagements WHERE Id = @Id", new { Id = id }, cancellationToken);
+
     /// <summary>Returns the active engagements for a company, ordered by name.</summary>
     public async Task<IReadOnlyList<Engagement>> GetActiveByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default)
     {

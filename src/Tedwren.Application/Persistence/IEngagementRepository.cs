@@ -28,4 +28,7 @@ public interface IEngagementRepository
 
     /// <summary>Persists status/field changes to an existing engagement (append-only history is Phase 9+).</summary>
     Task UpdateAsync(Engagement engagement, CancellationToken cancellationToken = default);
+
+    /// <summary>Permanently removes an engagement by id (used only by the demo-data teardown).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

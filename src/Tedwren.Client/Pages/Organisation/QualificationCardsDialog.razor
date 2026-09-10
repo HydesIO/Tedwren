@@ -7,7 +7,7 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="qual-dialog">
+        <div class="tw-dialog-body">
             @if (_loading)
             {
                 <AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="3" />
@@ -20,7 +20,7 @@
             }
             else
             {
-                <table class="qual-dialog__table">
+                <MudSimpleTable Dense="true" Hover="true" Class="qual-dialog__table">
                     <thead>
                         <tr><th>Qualification</th><th>Issuer</th><th>Expires</th><th>Verification</th><th>Status</th></tr>
                     </thead>
@@ -36,7 +36,7 @@
                             </tr>
                         }
                     </tbody>
-                </table>
+                </MudSimpleTable>
             }
         </div>
     </DialogContent>

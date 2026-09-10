@@ -168,7 +168,7 @@ else
             { x => x.ContentText, $"Suspend {_user!.Name}? They will lose console access. The account and its history are kept." },
             { x => x.ConfirmText, "Suspend" },
         };
-        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Suspend user", parameters);
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Suspend user", parameters, TedwrenDialog.Small());
         if (await dialog.Result is { Canceled: false })
         {
             var updated = await Users.SuspendUserAsync(Id);

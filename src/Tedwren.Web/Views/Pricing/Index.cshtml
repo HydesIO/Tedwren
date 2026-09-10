@@ -9,37 +9,64 @@
 @* SoftwareApplication schema on the pricing page (Web Plan §10); helper returns the whole <script> block. *@
 @Html.Raw(JsonLd.SoftwareApplication(Content.Site, baseUrl + "/pricing"))
 
-<section class="pricing-intro">
-    <h1 class="section-heading">@pricing.Heading</h1>
-    <p class="pricing-intro__body">@pricing.Intro</p>
+@* ---- INTRO --------------------------------------------------------------------------------- *@
+<section class="band hero">
+    <span class="hero__blob" aria-hidden="true"></span>
+    <div class="band__inner">
+        <div class="section-head" style="max-width:52ch;">
+            <p class="kicker">Pricing</p>
+            <h1 class="section-title">@pricing.Heading</h1>
+            <p class="section-lede">@pricing.Intro</p>
+        </div>
+    </div>
 </section>
 
-@await Component.InvokeAsync("PricingTable")
-
-<section class="pricing-clarifiers">
-    <h2 class="section-heading">The fine print, in plain English</h2>
-    <ul class="pricing-clarifiers__list">
-        @foreach (var clarifier in pricing.Clarifiers)
-        {
-            <li class="pricing-clarifiers__item">@clarifier</li>
-        }
-    </ul>
+@* ---- PLANS --------------------------------------------------------------------------------- *@
+<section class="band band--surface">
+    <div class="band__inner reveal">
+        @await Component.InvokeAsync("PricingTable")
+    </div>
 </section>
 
-@await Component.InvokeAsync("TrustStrip", new { })
-
-<section class="pricing-trust">
-    <ul class="pricing-trust__list">
-        @foreach (var note in pricing.TrustNotes)
-        {
-            <li class="pricing-trust__item">@note.Claim</li>
-        }
-    </ul>
+@* ---- CLARIFIERS ---------------------------------------------------------------------------- *@
+<section class="band">
+    <div class="band__inner reveal">
+        <div class="section-head">
+            <p class="kicker">The fine print</p>
+            <h2 class="section-title">In plain English</h2>
+        </div>
+        <ul class="pricing-clarifiers__list">
+            @foreach (var clarifier in pricing.Clarifiers)
+            {
+                <li class="pricing-clarifiers__item">@clarifier</li>
+            }
+        </ul>
+    </div>
 </section>
 
-<section class="closing">
-    <h2 class="closing__heading">Not sure which band you're in?</h2>
-    <div class="closing__actions">
-        @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+@* ---- TRUST --------------------------------------------------------------------------------- *@
+<section class="band band--surface">
+    <div class="band__inner reveal">
+        <div class="section-head">
+            <p class="kicker">No surprises</p>
+            <h2 class="section-title">Pricing you can trust</h2>
+        </div>
+        <ul class="pricing-trust__list">
+            @foreach (var note in pricing.TrustNotes)
+            {
+                <li class="pricing-trust__item">@note.Claim</li>
+            }
+        </ul>
+    </div>
+</section>
+
+@* ---- CLOSING CTA --------------------------------------------------------------------------- *@
+<section class="band band--ink cta-band">
+    <div class="band__inner cta-band__inner reveal">
+        <h2 class="cta-band__title">Not sure which band you're in?</h2>
+        <p class="section-lede" style="margin-bottom:var(--spacing-24);">Book a short demo and we'll map it to how you actually work.</p>
+        <div class="button-row">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+        </div>
     </div>
 </section>

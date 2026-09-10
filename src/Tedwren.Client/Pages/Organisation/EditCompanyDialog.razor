@@ -7,16 +7,35 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="edit-company">
-            <TedwrenTextField Label="Company name" @bind-Value="_name" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Company name is required." />
-            <TedwrenTextField Label="Company type" @bind-Value="_type" />
-            <TedwrenTextField Label="Primary trade" @bind-Value="_trade" />
-            <TedwrenTextField Label="Registration number" @bind-Value="_regNumber" />
-            <TedwrenTextField Label="Address" @bind-Value="_address" />
-            <TedwrenTextField Label="Contact name" @bind-Value="_contactName" />
-            <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail" InputType="InputType.Email" />
-            <TedwrenTextField Label="Contact phone" @bind-Value="_contactPhone" InputType="InputType.Telephone" />
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Update this company's details. Changes apply everywhere this company appears across the platform." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Company details</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Company name" @bind-Value="_name" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Company name is required." />
+                    </div>
+                    <TedwrenTextField Label="Company type" @bind-Value="_type" />
+                    <TedwrenTextField Label="Primary trade" @bind-Value="_trade" />
+                    <TedwrenTextField Label="Registration number" @bind-Value="_regNumber" />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Address" @bind-Value="_address" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Primary contact</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Contact name" @bind-Value="_contactName" />
+                    </div>
+                    <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail" InputType="InputType.Email" />
+                    <TedwrenTextField Label="Contact phone" @bind-Value="_contactPhone" InputType="InputType.Telephone" />
+                </div>
+            </section>
         </div>
     </DialogContent>
     <DialogActions>

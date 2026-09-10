@@ -41,7 +41,15 @@ public abstract class RepositoryBase
     /// <summary>Runs a non-query statement and returns the number of affected rows.</summary>
     protected async Task<int> ExecuteAsync(string sql, object? param, CancellationToken cancellationToken)
     {
-        using var connection = ConnectionFactory.Create();
-        return await connection.ExecuteAsync(new CommandDefinition(sql, param, cancellationToken: cancellationToken));
+
+        try
+        {
+            using var connection = ConnectionFactory.Create();
+            return await connection.ExecuteAsync(new CommandDefinition(sql, param, cancellationToken: cancellationToken));
+        }
+        catch (Exception)
+        {
+            throw;
+        }
     }
 }

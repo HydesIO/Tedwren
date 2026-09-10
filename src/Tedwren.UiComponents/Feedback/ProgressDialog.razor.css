@@ -1,0 +1,22 @@
+/* Progress dialog body — generous spacing so the indicator never reads as a cramped floating spinner. */
+.progress-dialog {
+    padding-block: var(--spacing-8, 8px);
+}
+
+.progress-dialog__description {
+    margin: 0;
+    font-size: .875rem;
+    color: var(--mud-palette-text-primary);
+}
+
+.progress-dialog__status {
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--mud-palette-text-secondary);
+}
+
+.progress-dialog__error {
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--mud-palette-error);
+}

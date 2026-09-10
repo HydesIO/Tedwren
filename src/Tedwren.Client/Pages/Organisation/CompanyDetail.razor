@@ -164,8 +164,7 @@ else
     private async Task EditAsync()
     {
         var parameters = new DialogParameters<EditCompanyDialog> { { x => x.Company, _company! } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
-        var dialog = await Dialogs.ShowAsync<EditCompanyDialog>("Edit company", parameters, options);
+        var dialog = await Dialogs.ShowAsync<EditCompanyDialog>("Edit company", parameters, TedwrenDialog.Medium());
         if (await dialog.Result is { Canceled: false, Data: string newName })
         {
             var newSlug = Tedwren.Abstractions.Slug.From(newName);
@@ -185,8 +184,7 @@ else
     private async Task ShowCardsAsync(CompanyOperativeDto op)
     {
         var parameters = new DialogParameters<QualificationCardsDialog> { { x => x.PersonId, op.PersonId } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
-        await Dialogs.ShowAsync<QualificationCardsDialog>($"{op.Name} — qualifications", parameters, options);
+        await Dialogs.ShowAsync<QualificationCardsDialog>($"{op.Name} — qualifications", parameters, TedwrenDialog.Large());
     }
 
     private static string Initials(string name)

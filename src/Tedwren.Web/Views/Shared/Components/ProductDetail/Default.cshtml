@@ -1,32 +1,87 @@
 @model ProductProfile
-<article class="product-detail">
-    <header class="product-detail__hero">
-        <h1 class="product-detail__title">@Model.DisplayName</h1>
-        <p class="product-detail__tagline">@Model.Tagline</p>
-        <p class="product-detail__hero-copy">@Model.HeroCopy</p>
-        <div class="product-detail__actions">
-            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
-            @await Component.InvokeAsync("Cta", new { action = CtaAction.StartPilot, secondary = true })
+@{
+    // Frame vocabulary per audience: subcontractors lead with the shareable compliance pack; main
+    // contractors lead with pre-arrival induction. Both show a live register in the second split.
+    var heroFrame = Model.ConfigKey == "MainContractor" ? ProductFrameVariant.Induction : ProductFrameVariant.CompliancePack;
+    var splitFrame = Model.ConfigKey == "MainContractor" ? ProductFrameVariant.Dashboard : ProductFrameVariant.SiteRegister;
+    var audienceWord = Model.ConfigKey == "MainContractor" ? "main contractors" : "subcontractors";
+}
+
+@* ---- HERO (split) -------------------------------------------------------------------------- *@
+<section class="band hero">
+    <span class="hero__blob" aria-hidden="true"></span>
+    <div class="band__inner product-hero__inner">
+        <div>
+            <p class="kicker">For @audienceWord</p>
+            <h1 class="product-hero__title">@Model.DisplayName</h1>
+            <p class="product-hero__tagline">@Model.Tagline</p>
+            <p class="product-hero__copy">@Model.HeroCopy</p>
+            <div class="button-row">
+                @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+                @await Component.InvokeAsync("Cta", new { action = CtaAction.StartPilot, secondary = true })
+            </div>
         </div>
-    </header>
+        <div class="frame-wrap">
+            @await Component.InvokeAsync("ProductFrame", new { variant = heroFrame })
+        </div>
+    </div>
+</section>
 
-    @await Component.InvokeAsync("FeatureGrid", new { features = Model.Features })
+@* ---- FEATURES ------------------------------------------------------------------------------ *@
+<section class="band band--surface">
+    <div class="band__inner reveal">
+        <div class="section-head">
+            <p class="kicker">What you get</p>
+            <h2 class="section-title">Everything the job actually needs</h2>
+        </div>
+        @await Component.InvokeAsync("FeatureGrid", new { features = Model.Features })
+    </div>
+</section>
 
-    @foreach (var part in Model.PageSections)
-    {
-        <section class="product-section @(part.Emphasis ? "product-section--emphasis" : null)">
-            <h2 class="product-section__heading">@part.Heading</h2>
-            <p class="product-section__body">@part.Body</p>
-        </section>
-    }
+@* ---- SPLIT (copy + frame) ------------------------------------------------------------------ *@
+<section class="band">
+    <div class="band__inner split split--reverse reveal">
+        <div class="split__media frame-wrap">
+            @await Component.InvokeAsync("ProductFrame", new { variant = splitFrame })
+        </div>
+        <div class="split__body">
+            <p class="kicker">See it in context</p>
+            <h3>One live record, shared without friction</h3>
+            <p>Attendance, qualification checks, inductions and decisions all land in the same place — searchable, current, and ready to prove when it matters. No rebuilding the picture for every new site or every request.</p>
+        </div>
+    </div>
+</section>
 
-    @await Component.InvokeAsync("TrustStrip")
-
-    <section class="closing">
-        <h2 class="closing__heading">Ready to see it on your sites?</h2>
-        <div class="closing__actions">
-            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
-            @await Component.InvokeAsync("Cta", new { action = CtaAction.StartPilot, secondary = true })
+@* ---- NARRATIVE SECTIONS -------------------------------------------------------------------- *@
+@if (Model.PageSections.Count > 0)
+{
+    <section class="band band--surface">
+        <div class="band__inner reveal">
+            @foreach (var part in Model.PageSections)
+            {
+                <div class="product-section @(part.Emphasis ? "product-section--emphasis" : null)" style="margin-bottom:var(--spacing-24);">
+                    <h2 class="product-section__heading">@part.Heading</h2>
+                    <p class="product-section__body">@part.Body</p>
+                </div>
+            }
         </div>
     </section>
-</article>
+}
+
+@* ---- TRUST STRIP --------------------------------------------------------------------------- *@
+<section class="band band--tight">
+    <div class="band__inner reveal">
+        @await Component.InvokeAsync("TrustStrip")
+    </div>
+</section>
+
+@* ---- CLOSING CTA (ink) --------------------------------------------------------------------- *@
+<section class="band band--ink cta-band">
+    <div class="band__inner cta-band__inner reveal">
+        <h2 class="cta-band__title">Ready to see it on your sites?</h2>
+        <div class="button-row">
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.BookDemo })
+            @await Component.InvokeAsync("Cta", new { action = CtaAction.StartPilot, secondary = true })
+        </div>
+    </div>
+</section>

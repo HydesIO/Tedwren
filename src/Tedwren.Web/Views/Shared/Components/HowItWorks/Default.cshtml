@@ -3,7 +3,13 @@
     @foreach (var step in Model)
     {
         <li class="how-it-works__step">
-            <span class="how-it-works__number" aria-hidden="true">@step.Order</span>
+            <div class="how-it-works__head">
+                <span class="how-it-works__number" aria-hidden="true">@step.Order</span>
+                @if (!string.IsNullOrWhiteSpace(step.Icon))
+                {
+                    <span class="how-it-works__icon" aria-hidden="true">@await Html.PartialAsync("_Icon", step.Icon)</span>
+                }
+            </div>
             <div class="how-it-works__body">
                 <h3 class="how-it-works__heading">@step.Heading</h3>
                 <p class="how-it-works__copy">@step.Body</p>

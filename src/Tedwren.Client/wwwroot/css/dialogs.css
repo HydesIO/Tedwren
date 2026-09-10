@@ -1,0 +1,68 @@
+/*
+ * Shared MudBlazor dialog helpers (see the "MudDialog design standard" in CLAUDE.md).
+ * Loaded globally (not scoped) so it reaches the dialog overlay, which MudBlazor renders outside the
+ * app shell. Spacing/radius come from the theme-independent design tokens; any colour that must adapt
+ * to light/dark uses MudBlazor's --mud-palette-* (the --color-* tokens only flip under .theme-dark,
+ * which does not wrap the overlay).
+ */
+
+/* Consistent vertical rhythm for a dialog's content, replacing per-dialog wrapper spacing. */
+.tw-dialog-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16, 16px);
+    padding-block: var(--spacing-4, 4px);
+}
+
+/* Two-column dialog body on wider screens; collapses to one column on tablet/mobile (matches
+   FormSection's 720px breakpoint). A child that should span the full width uses .tw-dialog-body__full. */
+.tw-dialog-body--grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-16, 16px) var(--spacing-20, 20px);
+}
+
+.tw-dialog-body__full {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+    .tw-dialog-body--grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Lightweight grouping of related fields inside a dialog: a small heading over the fields, no heavy
+   card/border (that would both clutter the dialog and, using --color-* tokens, break in the overlay's
+   dark mode). Sections are separated by generous spacing from .tw-dialog-body. */
+.tw-dialog-section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
+}
+
+.tw-dialog-section__title {
+    margin: 0;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--mud-palette-text-secondary);
+}
+
+/* Two-column field grid within a section; single column on tablet/mobile. */
+.tw-dialog-section__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--spacing-16, 16px) var(--spacing-20, 20px);
+}
+
+.tw-dialog-section__grid > .tw-dialog-body__full {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 720px) {
+    .tw-dialog-section__grid {
+        grid-template-columns: 1fr;
+    }
+}

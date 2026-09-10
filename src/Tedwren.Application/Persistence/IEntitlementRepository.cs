@@ -11,4 +11,7 @@ public interface IEntitlementRepository
 
     /// <summary>Sets (upserts) a company's entitlement for a module.</summary>
     Task SetAsync(Guid companyId, string moduleKey, bool enabled, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes all module-entitlement overrides for a company (used only by the demo-data teardown).</summary>
+    Task ClearForCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
 }

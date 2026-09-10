@@ -77,8 +77,7 @@
     private async Task OpenAsync(FormSubmissionSummaryDto submission)
     {
         var parameters = new DialogParameters<FormSubmissionDialog> { { x => x.SubmissionId, submission.Id } };
-        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
-        var dialog = await Dialogs.ShowAsync<FormSubmissionDialog>(submission.FormName, parameters, options);
+        var dialog = await Dialogs.ShowAsync<FormSubmissionDialog>(submission.FormName, parameters, TedwrenDialog.Large());
         if (await dialog.Result is { Canceled: false })
         {
             await LoadAsync();

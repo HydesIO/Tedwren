@@ -3,6 +3,14 @@
     @foreach (var item in Model)
     {
         <div class="differentiator @(item.Highlight ? "differentiator--highlight" : null)">
+            @if (!string.IsNullOrWhiteSpace(item.Icon))
+            {
+                <span class="differentiator__icon" aria-hidden="true">@await Html.PartialAsync("_Icon", item.Icon)</span>
+            }
+            @if (item.Highlight)
+            {
+                <span class="differentiator__tag">Strongest</span>
+            }
             <h3 class="differentiator__heading">@item.Heading</h3>
             <p class="differentiator__body">@item.Body</p>
         </div>

@@ -17,7 +17,17 @@ public interface ILaunchListService
 
     /// <summary>
     /// Sends the branded launch announcement to each subscriber individually (one email per address, never a
-    /// shared recipient list), marking each as notified. Returns how many were targeted, sent and failed.
+    /// shared recipient list), skipping opted-out addresses and marking each sent one as notified. Returns how
+    /// many were targeted, sent and failed.
     /// </summary>
     Task<NotifyLaunchResultDto> NotifyAsync(NotifyLaunchRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Opts a subscriber out via their unsubscribe token (PECR/GDPR). Returns true when a matching subscriber was found.</summary>
+    Task<bool> UnsubscribeAsync(string token, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes a subscriber (admin). Returns true when one was removed.</summary>
+    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Exports every subscriber as CSV bytes (admin).</summary>
+    Task<byte[]> ExportCsvAsync(CancellationToken cancellationToken = default);
 }

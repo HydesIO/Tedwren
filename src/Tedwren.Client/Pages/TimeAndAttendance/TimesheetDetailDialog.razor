@@ -15,7 +15,12 @@
         }
         else
         {
-            <div class="ts-detail">
+            <div class="ts-detail tw-dialog-body">
+                @if (_timesheet.Status == TimesheetState.Submitted)
+                {
+                    <DialogGuidance Text="Review the recorded hours. Correct any line with a reason, then approve — choosing how much of the timesheet your approval covers — or return it for the operative to amend." />
+                }
+
                 <div class="ts-detail__head">
                     <div>
                         <span class="ts-detail__name">@_timesheet.OperativeName</span>
@@ -73,15 +78,18 @@
 
                 @if (_timesheet.Status == TimesheetState.Submitted)
                 {
-                    <div class="ts-detail__approve">
-                        <MudSelect T="ApprovalScope" @bind-Value="_scope" Label="Approval scope (SUB-9)"
-                                   Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
-                            <MudSelectItem Value="ApprovalScope.All">Whole timesheet</MudSelectItem>
-                            <MudSelectItem Value="ApprovalScope.Project">Project</MudSelectItem>
-                            <MudSelectItem Value="ApprovalScope.Site">Site</MudSelectItem>
-                            <MudSelectItem Value="ApprovalScope.Line">Single line</MudSelectItem>
-                        </MudSelect>
-                    </div>
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Approval</h3>
+                        <div class="ts-detail__approve">
+                            <MudSelect T="ApprovalScope" @bind-Value="_scope" Label="Approval scope (SUB-9)"
+                                       Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                                <MudSelectItem Value="ApprovalScope.All">Whole timesheet</MudSelectItem>
+                                <MudSelectItem Value="ApprovalScope.Project">Project</MudSelectItem>
+                                <MudSelectItem Value="ApprovalScope.Site">Site</MudSelectItem>
+                                <MudSelectItem Value="ApprovalScope.Line">Single line</MudSelectItem>
+                            </MudSelect>
+                        </div>
+                    </section>
                 }
             </div>
         }

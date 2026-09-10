@@ -35,4 +35,10 @@ public sealed class LaunchSignup
 
     /// <summary>When the launch announcement was sent, if it has been.</summary>
     public DateTimeOffset? NotifiedUtc { get; set; }
+
+    /// <summary>Whether the subscriber has opted out of the launch announcement (PECR/GDPR). Opted-out addresses are never emailed.</summary>
+    public bool Unsubscribed { get; set; }
+
+    /// <summary>An unguessable token for the one-click unsubscribe link. Assigned lazily when first needed.</summary>
+    public string? UnsubscribeToken { get; set; }
 }

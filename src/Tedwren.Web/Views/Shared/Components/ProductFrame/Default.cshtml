@@ -1,0 +1,112 @@
+@model ProductFrameModel
+@*
+    Token-driven product snapshots used as marketing "screenshots". Illustrative chrome only — no
+    customer copy, no price literal. Each frame is exposed as a single labelled image to assistive tech.
+*@
+@{
+    string label = Model.Variant switch
+    {
+        ProductFrameVariant.SiteRegister => "Product screenshot: a live site register showing workers signed in with compliant, expiring and blocked status.",
+        ProductFrameVariant.Dashboard => "Product screenshot: a workforce dashboard showing compliance figures and an attendance trend.",
+        ProductFrameVariant.CompliancePack => "Product screenshot: a shareable compliance pack listing a worker's cards and expiry dates, marked verified.",
+        ProductFrameVariant.Induction => "Product screenshot: a phone completing a pre-arrival induction step.",
+        _ => "Product screenshot.",
+    };
+}
+
+<figure class="frame-wrap" style="margin:0;">
+  <div class="@(Model.Variant == ProductFrameVariant.Induction ? "frame frame--phone" : "frame")" role="img" aria-label="@label">
+
+    @if (Model.Variant == ProductFrameVariant.SiteRegister)
+    {
+      <div class="frame__bar">
+        <span class="frame__dots" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="frame__title">Site register · Riverside Block C</span>
+        <span class="frame__live"><span class="live-dot" aria-hidden="true"></span><span class="clock" data-clock>07:42:11</span></span>
+      </div>
+      <div class="frame__body">
+        <div class="reg-row">
+          <span class="reg-time">07:12</span>
+          <span><span class="reg-name">J. Ochoa</span><span class="reg-trade">Steel fixer · signed in</span></span>
+          <span class="chip chip--ok">Compliant</span>
+        </div>
+        <div class="reg-row">
+          <span class="reg-time">07:15</span>
+          <span><span class="reg-name">D. Whitfield</span><span class="reg-trade">Groundworker · CSCS 6 days left</span></span>
+          <span class="chip chip--warn">Expiring</span>
+        </div>
+        <div class="reg-row">
+          <span class="reg-time">07:20</span>
+          <span><span class="reg-name">R. Kowalski</span><span class="reg-trade">Electrician · induction incomplete</span></span>
+          <span class="chip chip--block">Blocked</span>
+        </div>
+        <div class="reg-row">
+          <span class="reg-time">07:24</span>
+          <span><span class="reg-name">A. Bello</span><span class="reg-trade">Labourer · signed in</span></span>
+          <span class="chip chip--ok">Compliant</span>
+        </div>
+      </div>
+      <span class="frame__stamp" aria-hidden="true">Evidence logged</span>
+    }
+
+    else if (Model.Variant == ProductFrameVariant.Dashboard)
+    {
+      <div class="frame__bar">
+        <span class="frame__dots" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="frame__title">Workforce · this week</span>
+        <span class="frame__live"><span class="live-dot" aria-hidden="true"></span> Live</span>
+      </div>
+      <div class="frame__body">
+        <div class="mini-stats">
+          <div class="mini-stat"><div class="mini-stat__value mini-stat__value--ok">128</div><div class="mini-stat__label">Site-ready</div></div>
+          <div class="mini-stat"><div class="mini-stat__value mini-stat__value--warn">7</div><div class="mini-stat__label">Expiring soon</div></div>
+          <div class="mini-stat"><div class="mini-stat__value">42</div><div class="mini-stat__label">On site now</div></div>
+        </div>
+        <div class="mini-bars" aria-hidden="true">
+          <span style="height:52%"></span><span style="height:64%"></span><span style="height:48%"></span>
+          <span style="height:78%"></span><span style="height:70%"></span><span style="height:88%"></span><span style="height:96%"></span>
+        </div>
+      </div>
+    }
+
+    else if (Model.Variant == ProductFrameVariant.CompliancePack)
+    {
+      <div class="frame__bar">
+        <span class="frame__dots" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span class="frame__title">Compliance pack · shared link</span>
+        <span class="frame__live">No account needed</span>
+      </div>
+      <div class="frame__body">
+        <div class="pack-doc">
+          <div class="pack-doc__head">
+            <div><div class="pack-doc__who">J. Ochoa — Steel fixer</div><div class="pack-doc__meta">Northgate Groundworks Ltd</div></div>
+            <span class="chip chip--ok">Verified</span>
+          </div>
+          <div class="pack-line"><span>CSCS card</span><span class="chip chip--ok">Valid</span></div>
+          <div class="pack-line"><span>Asbestos awareness</span><span class="chip chip--ok">Valid</span></div>
+          <div class="pack-line"><span>First aid at work</span><span class="chip chip--warn">Renews soon</span></div>
+          <div class="pack-line"><span>Public liability insurance</span><span class="chip chip--ok">On file</span></div>
+        </div>
+      </div>
+      <span class="frame__stamp" aria-hidden="true">Fixed at send</span>
+    }
+
+    else if (Model.Variant == ProductFrameVariant.Induction)
+    {
+      <div class="frame__body">
+        <div class="phone-step">
+          <div class="phone-step__progress" aria-hidden="true"><i class="done"></i><i class="done"></i><i class="done"></i><i></i></div>
+          <div class="phone-step__pin" aria-hidden="true">📍</div>
+          <p class="phone-step__title">Induction complete</p>
+          <p class="phone-step__copy">Riverside Block C · signed off before your first day</p>
+          <span class="chip chip--ok">Ready for site</span>
+        </div>
+      </div>
+    }
+
+  </div>
+  @if (!string.IsNullOrWhiteSpace(Model.Caption))
+  {
+    <figcaption class="frame-caption">@Model.Caption</figcaption>
+  }
+</figure>

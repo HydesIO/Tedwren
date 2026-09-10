@@ -8,18 +8,41 @@
 
 <MudDialog>
     <DialogContent>
-        <div class="edit-user">
-            <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true"
-                              Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
-            <TedwrenTextField Label="Email" Value="@User.Email" ReadOnly="true" Disabled="true" />
-            <TedwrenSelect T="string" Label="Role" @bind-Value="_role" Required="true"
-                           Options="_roleValues" Placeholder="Select a role"
-                           HelperText="The auditor role is read-only (SF-23)." />
-            <TedwrenTextField Label="New password" @bind-Value="_newPassword" InputType="InputType.Password"
-                              HelperText="Leave blank to keep the current password. Minimum 8 characters." />
-            <TedwrenToggle Label="Suspended"
-                           Description="A suspended user keeps their account and history but cannot sign in."
-                           @bind-Value="_suspended" />
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Update the user's name, role and access. Leave the password blank to keep it — enter one only to reset it. Suspending blocks sign-in while keeping the account and its history." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Identity</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenTextField Label="Full name" @bind-Value="_name" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
+                    <TedwrenTextField Label="Email" Value="@User.Email" ReadOnly="true" Disabled="true" />
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Role &amp; access</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenSelect T="string" Label="Role" @bind-Value="_role" Required="true"
+                                   Options="_roleValues" Placeholder="Select a role"
+                                   HelperText="The auditor role is read-only (SF-23)." />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenToggle Label="Suspended"
+                                       Description="A suspended user keeps their account and history but cannot sign in."
+                                       @bind-Value="_suspended" />
+                    </div>
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Security</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="New password" @bind-Value="_newPassword" InputType="InputType.Password"
+                                          HelperText="Leave blank to keep the current password. Minimum 8 characters." />
+                    </div>
+                </div>
+            </section>
         </div>
     </DialogContent>
     <DialogActions>

@@ -27,6 +27,7 @@ public static class LeadEndpoints
                 }
             })
             .AllowAnonymous()
+            .RequireRateLimiting("public")
             .WithTags("Leads")
             .WithName("CaptureLead");
 

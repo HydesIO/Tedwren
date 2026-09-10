@@ -34,7 +34,7 @@ builder.Services.AddScoped(sp =>
 {
     var handler = sp.GetRequiredService<AuthTokenHandler>();
     handler.InnerHandler = new HttpClientHandler();
-    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl) };
+    return new HttpClient(handler) { BaseAddress = new Uri(apiBaseUrl), Timeout = TimeSpan.FromMinutes(5) };
 });
 builder.Services.AddScoped<AuthState>();
 builder.Services.AddScoped<IOrganisationService, ApiOrganisationService>();
@@ -55,11 +55,13 @@ builder.Services.AddScoped<ISiteEntryService, ApiSiteEntryService>();
 builder.Services.AddScoped<IDecisionService, ApiDecisionService>();
 builder.Services.AddScoped<IReferenceDataService, ApiReferenceDataService>();
 builder.Services.AddScoped<ICurrentUserService, ApiCurrentUserService>();
+builder.Services.AddScoped<IProfileService, ApiProfileService>();
 builder.Services.AddScoped<IWorkforceService, ApiWorkforceService>();
 builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
 builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
 builder.Services.AddScoped<IPermitService, ApiPermitService>();
 builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
+builder.Services.AddScoped<IDemoDataService, ApiDemoDataService>();
 builder.Services.AddScoped<IPlatformAdminService, ApiPlatformAdminService>();
 builder.Services.AddScoped<ILaunchListService, ApiLaunchListService>();
 builder.Services.AddScoped<ILeadService, ApiLeadService>();
