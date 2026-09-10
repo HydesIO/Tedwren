@@ -91,6 +91,21 @@ public sealed record FinalizeInductionRequest(string SignatureName, bool Consent
 /// <summary>Request for a manager to reset a failed induction, with a recorded reason (MC-6).</summary>
 public sealed record ResetInductionRequest(string Reason);
 
+/// <summary>Admin request to create a shareable, tokenised induction link for a company's template (UAT-018, MC-1/MC-2).</summary>
+public sealed record CreateInductionLinkRequest(Guid CompanyId, Guid TemplateId, string? Name, bool RequirePasscode);
+
+/// <summary>
+/// A created induction link as the admin needs to share it: the token, the plaintext passcode (shown once, if
+/// one was required) and the expiry. The admin sends these to the operative (UAT-018).
+/// </summary>
+public sealed record InductionLinkDto(string Token, string? Passcode, DateTimeOffset ExpiresUtc);
+
+/// <summary>What the operative sees when they open an induction link (before starting): who is inducting them and which induction (UAT-018).</summary>
+public sealed record InductionLinkViewDto(string CompanyName, string TemplateName, string? Name);
+
+/// <summary>Request to start (or resume) the induction behind a link, giving the operative's name (UAT-018).</summary>
+public sealed record StartInductionFromLinkRequest(string? Passcode, string PersonName);
+
 /// <summary>A completed or in-flight induction in the company view (MC-15).</summary>
 public sealed record InductionSummaryDto(
     Guid Id,

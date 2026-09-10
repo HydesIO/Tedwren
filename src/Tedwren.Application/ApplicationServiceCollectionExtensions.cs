@@ -182,6 +182,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemoryInductionStore>();
         services.AddScoped<IInductionTemplateRepository, InMemoryInductionTemplateRepository>();
         services.AddScoped<IInductionSessionRepository, InMemoryInductionSessionRepository>();
+        // Shareable induction links (UAT-018) — a singleton so a created link survives across test requests.
+        services.AddSingleton<InMemoryInductionLinkRepository>();
+        services.AddScoped<IInductionLinkRepository>(sp => sp.GetRequiredService<InMemoryInductionLinkRepository>());
         return services;
     }
 

@@ -11,6 +11,9 @@
 
 <PageHeader Title="Induction Records" Subtitle="Completions, validity, consent and manager resets">
     <Actions>
+        @* Create a link an operative can complete without a console account, and copy it to send (UAT-018). *@
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Share"
+                   OnClick="ShareAsync" Disabled="_templates.Count == 0">Share induction</MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.PlayCircle"
                    Href="/induct" Target="_blank">Preview induction</MudButton>
     </Actions>
@@ -31,6 +34,7 @@
 
 @code {
     private IReadOnlyList<InductionSummaryDto> _records = Array.Empty<InductionSummaryDto>();
+    private IReadOnlyList<InductionTemplateDto> _templates = Array.Empty<InductionTemplateDto>();
     private List<DataColumn<InductionSummaryDto>> _columns = new();
     private bool _loading = true;
 
@@ -38,6 +42,8 @@
     {
         await Tenant.InitializeAsync();
         BuildColumns();
+        // Templates power the "Share induction" picker (UAT-018).
+        _templates = await Inductions.GetTemplatesAsync(Tenant.CurrentCompanyId);
         await LoadAsync();
     }
 
@@ -46,6 +52,17 @@
         _loading = true;
         _records = await Inductions.GetForCompanyAsync(Tenant.CurrentCompanyId);
         _loading = false;
+    }
+
+    // Opens the share dialog to create a copyable, tokenised induction link (UAT-018).
+    private async Task ShareAsync()
+    {
+        var parameters = new DialogParameters<ShareInductionLinkDialog>
+        {
+            { x => x.CompanyId, Tenant.CurrentCompanyId },
+            { x => x.Templates, _templates },
+        };
+        await Dialogs.ShowAsync<ShareInductionLinkDialog>("Share induction", parameters, TedwrenDialog.Medium());
     }
 
     private void BuildColumns()

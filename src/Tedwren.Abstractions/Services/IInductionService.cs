@@ -24,6 +24,15 @@ public interface IInductionService
     /// <summary>Updates a template's content and configuration (MC-4/MC-5/MC-15). Null when not found.</summary>
     Task<InductionTemplateAuthoringDto?> UpdateTemplateAsync(Guid templateId, UpdateInductionTemplateRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Creates a shareable, tokenised induction link for a company's template and returns the token + (optional) passcode to share (UAT-018, MC-1/MC-2).</summary>
+    Task<InductionLinkDto> CreateLinkAsync(CreateInductionLinkRequest request, Guid? createdByUserId, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the operative-facing context for an induction link (company + induction names), or null when the link/passcode is invalid or expired (UAT-018).</summary>
+    Task<InductionLinkViewDto?> GetLinkAsync(string token, string? passcode, CancellationToken cancellationToken = default);
+
+    /// <summary>Starts (or resumes) the induction behind a link so an operative can complete it without an account. Null when the link/passcode is invalid or expired (UAT-018, R5).</summary>
+    Task<InductionSessionDto?> StartFromLinkAsync(string token, string? passcode, string personName, CancellationToken cancellationToken = default);
+
     /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
     Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default);
 

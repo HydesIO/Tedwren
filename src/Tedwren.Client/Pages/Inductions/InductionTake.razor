@@ -8,6 +8,7 @@
 @inject IInductionService Inductions
 @inject ITenantState Tenant
 @inject AuthState Auth
+@inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
 <PageTitle>Induction · Tedwren</PageTitle>
@@ -19,19 +20,26 @@
             <DashboardCard Title="Start your induction" Subtitle="Complete this on your phone before coming to site.">
                 <Body>
                     <div class="induct__form">
+                        @* Anonymous tokenised link (UAT-018): the induction is fixed by the link, so we name it rather than offer a picker. *@
+                        @if (_isLinkMode && _linkView is not null)
+                        {
+                            <p class="induct__intro">@($"{_linkView.CompanyName} has asked you to complete the “{_linkView.TemplateName}” induction. Enter your name to begin.")</p>
+                        }
                         <TedwrenTextField Label="Your full name" @bind-Value="_name" Required="true"
                                           Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Your name is required." />
-                        <TedwrenSelect T="string" Label="Induction" Value="_templateName"
-                                       Options="_templateNames" Placeholder="Select an induction"
-                                       ValueChanged="@(v => _templateName = v)" />
+                        @if (!_isLinkMode)
+                        {
+                            <TedwrenSelect T="string" Label="Induction" Value="_templateName"
+                                           Options="_templateNames" Placeholder="Select an induction"
+                                           ValueChanged="@(v => _templateName = v)" />
+                        }
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartAsync"
-                                   Disabled="_busy || _templates.Count == 0">Start</MudButton>
+                                   Disabled="@StartDisabled">Start</MudButton>
                         @if (_loadError)
                         {
-                            <BannerAlert Severity="StatusKind.Warning" Title="Couldn't load the induction"
-                                         Message="Make sure you're signed in to the console, then reload this page. To preview an induction, open it again from the Induction Records page." />
+                            <BannerAlert Severity="StatusKind.Warning" Title="Couldn't load the induction" Message="@_loadErrorMessage" />
                         }
-                        else if (_templates.Count == 0 && !_busy)
+                        else if (!_isLinkMode && _templates.Count == 0 && !_busy)
                         {
                             <BannerAlert Severity="StatusKind.Info" Title="No inductions available"
                                          Message="There are no inductions to complete for this company yet." />
@@ -167,6 +175,16 @@
     private string? _templateName;
     private string? _name;
 
+    // Shareable tokenised link (UAT-018): when a ?token= is present the induction runs anonymously, fixed by the link.
+    private bool _isLinkMode;
+    private string _token = string.Empty;
+    private string? _passcode;
+    private InductionLinkViewDto? _linkView;
+    private string _loadErrorMessage = string.Empty;
+
+    private bool StartDisabled =>
+        _busy || (_isLinkMode ? _linkView is null : _templates.Count == 0);
+
     private InductionSessionDto? _session;
     private readonly Dictionary<string, int> _answers = new();
     private QuizResultDto? _lastResult;
@@ -186,19 +204,41 @@
         _busy = true;
         try
         {
-            // Hydrate auth so a signed-in admin previewing the induction carries their bearer token. The
-            // recipient layout doesn't initialise auth, so without this the templates call returned 401 and the
-            // page crashed with an unhandled error and a redirect to /login (UAT-019). The anonymous, tokenised
-            // worker link (so an operative can complete this without an account) is a later change (UAT-018).
-            await Auth.InitializeAsync();
-            await Tenant.InitializeAsync();
-            _templates = await Inductions.GetTemplatesAsync(Tenant.CurrentCompanyId);
-            _templateNames = _templates.Select(t => t.Name).ToList();
-            _templateName = _templateNames.FirstOrDefault();
+            ParseQuery();
+            if (_isLinkMode)
+            {
+                // UAT-018: the worker reaches this from a shared token link with no console account. The induction is
+                // fixed by the link, resolved anonymously — no bearer token, no template listing, no tenant context.
+                _linkView = await Inductions.GetLinkAsync(_token, _passcode);
+                if (_linkView is null)
+                {
+                    _loadError = true;
+                    _loadErrorMessage = "This link cannot be opened. It may have expired, or the passcode is incorrect. Ask whoever sent it for a new link.";
+                }
+                else
+                {
+                    _name = _linkView.Name;
+                    _templateName = _linkView.TemplateName;
+                }
+            }
+            else
+            {
+                // Admin preview from the console: hydrate auth so the templates call carries the bearer token. The
+                // recipient layout doesn't initialise auth, so without this the templates call returned 401 and the
+                // page crashed with an unhandled error and a redirect to /login (UAT-019).
+                await Auth.InitializeAsync();
+                await Tenant.InitializeAsync();
+                _templates = await Inductions.GetTemplatesAsync(Tenant.CurrentCompanyId);
+                _templateNames = _templates.Select(t => t.Name).ToList();
+                _templateName = _templateNames.FirstOrDefault();
+            }
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
             _loadError = true;
+            _loadErrorMessage = _isLinkMode
+                ? "This link cannot be opened just now. Please reload the page, or ask whoever sent it for a new link."
+                : "Make sure you're signed in to the console, then reload this page. To preview an induction, open it again from the Induction Records page.";
         }
         finally
         {
@@ -209,18 +249,73 @@
     private async Task StartAsync()
     {
         _submitted = true;
-        var template = _templates.FirstOrDefault(t => t.Name == _templateName);
-        if (string.IsNullOrWhiteSpace(_name) || template is null)
+        if (string.IsNullOrWhiteSpace(_name))
         {
-            Snackbar.Add("Enter your name and choose an induction.", Severity.Error);
+            Snackbar.Add("Enter your name.", Severity.Error);
             return;
         }
 
         _busy = true;
-        _session = await Inductions.StartAsync(new StartInductionRequest(
-            Tenant.CurrentCompanyId, template.Id, Guid.NewGuid(), _name!.Trim()));
-        _busy = false;
-        _phase = Phase.Steps;
+        try
+        {
+            if (_isLinkMode)
+            {
+                _session = await Inductions.StartFromLinkAsync(_token, _passcode, _name!.Trim());
+                if (_session is null)
+                {
+                    Snackbar.Add("This link cannot be opened.", Severity.Error);
+                    return;
+                }
+            }
+            else
+            {
+                var template = _templates.FirstOrDefault(t => t.Name == _templateName);
+                if (template is null)
+                {
+                    Snackbar.Add("Choose an induction.", Severity.Error);
+                    return;
+                }
+
+                _session = await Inductions.StartAsync(new StartInductionRequest(
+                    Tenant.CurrentCompanyId, template.Id, Guid.NewGuid(), _name!.Trim()));
+            }
+
+            _phase = Phase.Steps;
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Reads the shareable-link token/passcode from the query string (UAT-018), mirroring the self-onboarding page.
+    private void ParseQuery()
+    {
+        var query = Nav.ToAbsoluteUri(Nav.Uri).Query.TrimStart('?');
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length != 2)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(parts[0]);
+            var value = Uri.UnescapeDataString(parts[1]);
+            if (key == "token")
+            {
+                _token = value;
+                _isLinkMode = !string.IsNullOrWhiteSpace(value);
+            }
+            else if (key == "passcode")
+            {
+                _passcode = value;
+            }
+        }
     }
 
     private async Task CompleteStepAsync(string stepId)

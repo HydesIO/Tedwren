@@ -35,6 +35,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<CompanySettingsRecord> CompanySettings => Set<CompanySettingsRecord>();
     public DbSet<PermitRecord> Permits => Set<PermitRecord>();
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
+    public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
     public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
@@ -172,6 +173,15 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.PasscodeHash).HasMaxLength(256);
             e.Property(x => x.Name).HasMaxLength(256);
             e.Property(x => x.Trade).HasMaxLength(128);
+            e.HasIndex(x => x.Token).IsUnique();
+        });
+
+        model.Entity<InductionLinkRecord>(e =>
+        {
+            e.ToTable("InductionLinks");
+            e.Property(x => x.Token).HasMaxLength(128);
+            e.Property(x => x.PasscodeHash).HasMaxLength(256);
+            e.Property(x => x.Name).HasMaxLength(256);
             e.HasIndex(x => x.Token).IsUnique();
         });
 

@@ -34,10 +34,19 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   migration `AddPersonEmergencyContact`); surfaced on `OperativeDetailDto` and the operative Overview, and
   captured via the operative edit dialog (`IOrganisationService.UpdatePersonContactAsync` +
   `/api/organisation/persons/{id}/contact`). (010b — qualification evidence photo — shipped in Phase 3.)
-- ⏳ **Remaining (infra-dependent / larger workflow — specced in `docs/uat-remaining-features.md`):** 018
-  shareable induction link + email delivery, 023 RAMS/trade self-service onboarding workflow, and the 016
-  per-site compliance filter. 018 and 023 both need the email-delivery provider that is deferred repo-wide
-  (PRD-Phase 7); 023 is a multi-step invite→upload→review workflow.
+- ✅ **UAT-018 (MC-1/MC-2) — shareable/tokenised induction link.** New `InductionLink` entity (token + optional
+  passcode + expiry, mirroring `OnboardingLink`) with in-memory + Dapper repositories and an EF migration
+  (`AddInductionLinks`); `IInductionService.CreateLinkAsync/GetLinkAsync/StartFromLinkAsync`. Authorised
+  `POST /api/inductions/links`; anonymous `GET /api/inductions/by-link/{token}` +
+  `POST /api/inductions/by-link/{token}/session` (all company/template resolution stays server-side; the
+  console template listing stays authenticated). A "Share induction" action on Induction Records opens a dialog
+  that creates the link and surfaces the copyable `/induct?token=…` URL + passcode (no email backend needed —
+  same pattern as the pack/onboarding links); `/induct` now runs anonymously in link mode and still falls back
+  to the authenticated admin preview when no token is present (keeps the UAT-019 fix).
+- ⏳ **Remaining (building now — "build everything" scope):** 023 RAMS/trade self-service onboarding workflow
+  (invite→upload→review, two slices) and the 016 per-site compliance filter (builds on UAT-011). Real email
+  delivery is stubbed to the outbox repo-wide (PRD-Phase 7), so the invite/share links are surfaced copyably and
+  the flow is testable without an email provider.
 
 ---
 

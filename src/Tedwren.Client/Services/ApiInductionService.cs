@@ -65,6 +65,55 @@ public sealed class ApiInductionService : IInductionService
 
     private sealed record TemplateError(string Error);
 
+    /// <summary>Creates a shareable induction link (admin) and returns the token + optional passcode (UAT-018).</summary>
+    public async Task<InductionLinkDto> CreateLinkAsync(CreateInductionLinkRequest request, Guid? createdByUserId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/inductions/links", request, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<TemplateError>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? "The induction link could not be created.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return (await response.Content.ReadFromJsonAsync<InductionLinkDto>(cancellationToken))!;
+    }
+
+    /// <summary>Returns the operative-facing context for an induction link, or null when the link/passcode is rejected (403) (UAT-018).</summary>
+    public async Task<InductionLinkViewDto?> GetLinkAsync(string token, string? passcode, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync(
+            $"api/inductions/by-link/{Uri.EscapeDataString(token)}?passcode={Uri.EscapeDataString(passcode ?? string.Empty)}", cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<InductionLinkViewDto>(cancellationToken);
+    }
+
+    /// <summary>Starts (or resumes) the induction behind a link. Null when the link/passcode is rejected (UAT-018).</summary>
+    public async Task<InductionSessionDto?> StartFromLinkAsync(string token, string? passcode, string personName, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync(
+            $"api/inductions/by-link/{Uri.EscapeDataString(token)}/session",
+            new StartInductionFromLinkRequest(passcode, personName), cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+        {
+            return null;
+        }
+
+        if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+        {
+            var error = await response.Content.ReadFromJsonAsync<TemplateError>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? "The induction could not be started.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<InductionSessionDto>(cancellationToken);
+    }
+
     /// <summary>Starts an induction (MC-1/MC-7).</summary>
     public async Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default) =>
         (await (await _http.PostAsJsonAsync("api/inductions/sessions", request, cancellationToken))

@@ -244,6 +244,22 @@ public sealed class OnboardingLinkRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>InductionLinks</c> table (shareable induction links, UAT-018/MC-1).</summary>
+public sealed class InductionLinkRecord
+{
+    public Guid Id { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public string? PasscodeHash { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid TemplateId { get; set; }
+    public string? Name { get; set; }
+    public DateTimeOffset ExpiresUtc { get; set; }
+    public int Status { get; set; }
+    public Guid? SessionId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>StoredImages</c> table (private card photos, R9).</summary>
 public sealed class StoredImageRecord
 {
