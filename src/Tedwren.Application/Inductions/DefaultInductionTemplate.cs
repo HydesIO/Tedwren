@@ -1,3 +1,4 @@
+using Tedwren.Application.Auth;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 
@@ -8,12 +9,13 @@ namespace Tedwren.Application.Inductions;
 /// induction immediately. Single source of truth used by both the in-memory store (mock mode) and the database
 /// seeder (database mode). Ids are fixed so sessions reference stable identifiers across engines and restarts.
 /// The quiz answers live here (server-side) and are never sent to the device (R5); the set is illustrative and
-/// the customer's to adjust (MC-3).
+/// the customer's to adjust (MC-3). Induction is a main-contractor feature (§6.1, SUB-11), so the demo template
+/// belongs to the main-contractor demo tenant (Meridian).
 /// </summary>
 public static class DefaultInductionTemplate
 {
-    /// <summary>The fixed demo company the default template belongs to.</summary>
-    public static readonly Guid DemoCompanyId = Guid.Parse("66666666-6666-4666-8666-000000000001");
+    /// <summary>The demo tenant the default template belongs to — the main contractor Meridian (MC-3).</summary>
+    public static readonly Guid DemoCompanyId = AdminUserSeeder.SeedCompanyId;
 
     /// <summary>The fixed default template id.</summary>
     public static readonly Guid TemplateId = Guid.Parse("66666666-6666-4666-8666-000000000010");

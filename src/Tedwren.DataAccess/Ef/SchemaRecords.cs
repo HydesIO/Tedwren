@@ -11,6 +11,7 @@ public sealed class CompanyRecord
     public Guid Id { get; set; }
     public string Name { get; set; } = string.Empty;
     public string? Type { get; set; }
+    public int? OrgType { get; set; }
     public string? Trade { get; set; }
     public string? RegistrationNumber { get; set; }
     public string? Address { get; set; }

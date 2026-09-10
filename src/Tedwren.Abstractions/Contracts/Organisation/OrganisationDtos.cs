@@ -12,7 +12,8 @@ public sealed record CompanySummary(
     int Operatives,
     double? CompliancePercent,
     ComplianceState State,
-    string StatusLabel);
+    string StatusLabel,
+    OrgType? OrgType = null);
 
 /// <summary>Full company record for the detail page.</summary>
 public sealed record CompanyDetailDto(
@@ -30,7 +31,8 @@ public sealed record CompanyDetailDto(
     string? ContactEmail,
     string? ContactPhone,
     IReadOnlyList<CompanyDocumentDto> Documents,
-    IReadOnlyList<CompanyOperativeDto> Operatives);
+    IReadOnlyList<CompanyOperativeDto> Operatives,
+    OrgType? OrgType = null);
 
 /// <summary>A company-held document (insurance, accreditation, policy) shown on the detail page.</summary>
 public sealed record CompanyDocumentDto(
@@ -58,7 +60,8 @@ public sealed record CompanyOperativeDto(
     ComplianceState State,
     string StatusLabel);
 
-/// <summary>Request to create a company (Organisation → Add company).</summary>
+/// <summary>Request to create a company (Organisation → Add company). <paramref name="OrgType"/> selects the
+/// product and its default module bundle (SF-22); null leaves the company product-less until edited.</summary>
 public sealed record CreateCompanyRequest(
     string Name,
     string? Type,
@@ -67,7 +70,8 @@ public sealed record CreateCompanyRequest(
     string? Address,
     string? ContactName,
     string? ContactEmail,
-    string? ContactPhone);
+    string? ContactPhone,
+    OrgType? OrgType = null);
 
 /// <summary>Request to update an existing company's editable fields.</summary>
 public sealed record UpdateCompanyRequest(

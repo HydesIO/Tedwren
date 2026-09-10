@@ -12,7 +12,7 @@ namespace Tedwren.Application.Tests;
 /// </summary>
 public sealed class DecisionServiceTests
 {
-    private static DecisionService CreateService() => new(new InMemoryDecisionRepository());
+    private static DecisionService CreateService() => new(new InMemoryDecisionRepository(seed: false));
 
     private static RecordDecisionRequest Decision(Guid personId, Guid siteId, bool admitted) =>
         new(personId, siteId, admitted, new[]
