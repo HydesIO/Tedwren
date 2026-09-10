@@ -39,12 +39,14 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IJobRunRepository, JobRunRepository>();
         services.AddScoped<ISiteRepository, SiteRepository>();
         services.AddScoped<ISitePropertyRepository, SitePropertyRepository>();
+        services.AddScoped<ISiteAssignmentRepository, SiteAssignmentRepository>();
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IAttendanceRepository, AttendanceRepository>();
         services.AddScoped<ITimesheetRepository, TimesheetRepository>();
         services.AddScoped<ICompliancePackRepository, CompliancePackRepository>();
         services.AddScoped<IInductionTemplateRepository, InductionTemplateRepository>();
         services.AddScoped<IInductionSessionRepository, InductionSessionRepository>();
+        services.AddScoped<IInductionLinkRepository, InductionLinkRepository>();
         services.AddScoped<IFormTemplateRepository, FormTemplateRepository>();
         services.AddScoped<IFormSubmissionRepository, FormSubmissionRepository>();
         services.AddScoped<IFormAssignmentRepository, FormAssignmentRepository>();
@@ -53,6 +55,7 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<IPermitRepository, PermitRepository>();
         services.AddScoped<IOnboardingLinkRepository, OnboardingLinkRepository>();
+        services.AddScoped<ITradeInviteRepository, TradeInviteRepository>();
         services.AddScoped<IImageStore, ImageStore>();
         services.AddScoped<IEntitlementRepository, EntitlementRepository>();
         services.AddScoped<IAuditRepository, AuditRepository>();

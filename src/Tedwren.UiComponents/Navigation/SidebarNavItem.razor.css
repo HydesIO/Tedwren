@@ -42,3 +42,8 @@
 .nav-item__chevron {
     color: var(--color-text-muted, #98A2B3);
 }
+
+/* Child rows sit indented one level under their expanded group header. */
+.nav-item--child {
+    padding-left: calc(var(--spacing-12, 12px) + 22px);
+}

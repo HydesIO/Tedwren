@@ -17,8 +17,9 @@ public static class DashboardEndpoints
                 Results.Ok(await service.GetSummaryAsync(cancellationToken)))
             .WithName("GetDashboardSummary");
 
-        group.MapGet("/compliance", async (IDashboardService service, CancellationToken cancellationToken) =>
-                Results.Ok(await service.GetComplianceAsync(cancellationToken)))
+        // Optional ?site={slug} scopes the breakdown to one site (UAT-016); the service resolves it role-aware.
+        group.MapGet("/compliance", async (string? site, IDashboardService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetComplianceAsync(site, cancellationToken)))
             .WithName("GetDashboardCompliance");
 
         return app;

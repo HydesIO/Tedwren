@@ -4,6 +4,7 @@
 @using Tedwren.Client.Services
 @inject IOrganisationService Org
 @inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 @inject NavigationManager Nav
 
 <PageTitle>@(_company?.Name ?? "Company") · Tedwren</PageTitle>
@@ -58,11 +59,16 @@ else
             <MudTabPanel Text="@($"Documents ({_company.Documents.Count})")">
                 <DashboardCard>
                     <Body>
+                        <div class="detail-actions-row">
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                                       OnClick="AddDocumentAsync">Add document</MudButton>
+                        </div>
                         <DataTable TItem="CompanyDocumentDto"
                                    Items="_company.Documents"
                                    Columns="_docColumns"
                                    SearchPlaceholder="Search documents…"
                                    EmptyTitle="No documents"
+                                   EmptyDescription="Add a company document — insurance, accreditation or policy — to track it."
                                    EmptyIcon="@Icons.Material.Outlined.Description" />
                     </Body>
                 </DashboardCard>
@@ -158,7 +164,32 @@ else
         };
     }
 
-    private void OpenOperative(CompanyOperativeDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
+    // Open by (company, engagement) id, not the name slug: this operative may belong to a company other than
+    // the signed-in tenant, which the slug lookup cannot resolve — the cause of "no operative found" (UAT-007).
+    private void OpenOperative(CompanyOperativeDto op)
+    {
+        if (_company is null) return;
+        Nav.NavigateTo($"/workforce/{_company.Id}/{op.EngagementId}");
+    }
+
+    // Records a company document via the add-document dialog (UAT-006): the Documents tab previously had no way
+    // to add one. Metadata only for now (file-binary upload is a later change).
+    private async Task AddDocumentAsync()
+    {
+        if (_company is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<AddCompanyDocumentDialog> { { x => x.CompanyId, _company.Id } };
+        var dialog = await Dialogs.ShowAsync<AddCompanyDocumentDialog>("Add document", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false, Data: CreateCompanyDocumentRequest request })
+        {
+            await Org.AddCompanyDocumentAsync(request);
+            Snackbar.Add($"Added \"{request.Name}\".", Severity.Success);
+            await OnParametersSetAsync();   // reload so the new document shows and the count updates
+        }
+    }
 
     // Opens the edit dialog and reloads on save (persists via IOrganisationService.UpdateCompanyAsync).
     private async Task EditAsync()

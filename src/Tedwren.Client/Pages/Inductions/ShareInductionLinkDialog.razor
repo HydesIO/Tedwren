@@ -1,0 +1,134 @@
+@using Tedwren.Abstractions.Contracts.Inductions
+@using Tedwren.Abstractions.Services
+@inject IInductionService Inductions
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+@* Create a shareable, tokenised induction link an operative can complete on their phone without a console
+   account (UAT-018). Mirrors the compliance-pack / self-onboarding link pattern: no email backend yet, so the
+   link (and optional passcode) is surfaced persistently for the admin to copy and send. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance>
+                Pick which induction to send and, optionally, who it's for. We'll create a private link you can copy
+                and send to the operative — they complete it on their phone, no account needed. Add a passcode for an
+                extra check.
+            </DialogGuidance>
+
+            @if (_link is null)
+            {
+                <FormSection Title="Induction to share" Description="The operative will complete exactly this induction.">
+                    <TedwrenSelect T="string" Label="Induction" Value="_templateName"
+                                   Options="_templateNames" Placeholder="Select an induction"
+                                   ValueChanged="@(v => _templateName = v)" />
+                    <TedwrenTextField Label="Operative name (optional)" @bind-Value="_name"
+                                      Placeholder="Prefilled on the link, e.g. Sam Taylor" />
+                </FormSection>
+                <TedwrenToggle Label="Require a passcode"
+                               Description="Adds a short passcode the operative must enter to open the link."
+                               Value="_requirePasscode" ValueChanged="@(v => _requirePasscode = v)" />
+            }
+            else
+            {
+                <div class="share-link">
+                    <div class="share-link__head">
+                        <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                        <span>Link ready — send it to the operative. It's valid until @_link.ExpiresUtc.LocalDateTime.ToString("dd MMM yyyy").</span>
+                    </div>
+                    <MudTextField Value="@_shareUrl" ReadOnly="true" Label="Induction link" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_shareUrl!))" />
+                    @if (_link.Passcode is not null)
+                    {
+                        <MudTextField Value="@_link.Passcode" ReadOnly="true" Label="Passcode" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" Adornment="Adornment.End"
+                                      AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_link.Passcode!))" />
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (_link is null)
+        {
+            <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync"
+                       Disabled="_busy || Templates.Count == 0">Create link</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Close())">Done</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The company whose induction is being shared (R15).</summary>
+    [Parameter] public Guid CompanyId { get; set; }
+
+    /// <summary>The company's induction templates to choose from.</summary>
+    [Parameter] public IReadOnlyList<InductionTemplateDto> Templates { get; set; } = Array.Empty<InductionTemplateDto>();
+
+    private IReadOnlyList<string> _templateNames = Array.Empty<string>();
+    private string? _templateName;
+    private string? _name;
+    private bool _requirePasscode;
+    private bool _busy;
+
+    private InductionLinkDto? _link;
+    private string? _shareUrl;
+
+    protected override void OnInitialized()
+    {
+        _templateNames = Templates.Select(t => t.Name).ToList();
+        _templateName = _templateNames.FirstOrDefault();
+    }
+
+    // Creates the link for the chosen template and surfaces the copyable URL + passcode (UAT-018).
+    private async Task CreateAsync()
+    {
+        var template = Templates.FirstOrDefault(t => t.Name == _templateName);
+        if (template is null)
+        {
+            Snackbar.Add("Choose an induction to share.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _link = await Inductions.CreateLinkAsync(
+                new CreateInductionLinkRequest(CompanyId, template.Id, _name, _requirePasscode), null);
+            var passcodePart = _link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(_link.Passcode)}";
+            _shareUrl = $"{Nav.BaseUri}induct?token={Uri.EscapeDataString(_link.Token)}{passcodePart}";
+            Snackbar.Add("Induction link created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Copies the link/passcode to the clipboard for sharing.
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch
+        {
+            // Clipboard unavailable (e.g. permissions) — the value is on screen to copy manually.
+        }
+    }
+}

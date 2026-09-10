@@ -50,6 +50,9 @@ public sealed record CreateCompanyDocumentRequest(
     DateOnly? ExpiresOn,
     string? Reference);
 
+/// <summary>Request to update a person's emergency contact (MC-2/UAT-010). Person-level, shared across engagements.</summary>
+public sealed record UpdatePersonContactRequest(string? EmergencyContactName, string? EmergencyContactPhone);
+
 /// <summary>An operative engaged by a company, shown on the company detail page.</summary>
 public sealed record CompanyOperativeDto(
     Guid EngagementId,

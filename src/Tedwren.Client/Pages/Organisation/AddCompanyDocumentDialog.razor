@@ -1,0 +1,66 @@
+@using Tedwren.Abstractions.Contracts.Organisation
+@using Tedwren.UiComponents.Forms
+
+@* Records a company document's details (name, type, expiry, reference) so it appears in the compliance
+   roll-up and pack (SUB-4, UAT-006). File-binary upload is a later change; this captures the metadata. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Add document</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Severity="StatusKind.Info"
+                            Text="Record a company document — insurance, accreditation, policy or certificate — with its expiry so it feeds the compliance roll-up and the compliance pack. Uploading the file itself is coming; for now this records the document's details." />
+            <FormSection Title="Document details">
+                <TedwrenTextField Label="Document name" @bind-Value="_name" Required="true"
+                                  Placeholder="e.g. Employer's Liability Insurance"
+                                  Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="A document name is required." />
+                <TedwrenSelect T="string" Label="Type" @bind-Value="_type" Options="_types" Placeholder="Select a type" />
+                <TedwrenTextField Label="Reference" @bind-Value="_reference" Placeholder="e.g. ELI-2291043" />
+                <MudDatePicker Label="Expires" @bind-Date="_expires" Variant="Variant.Outlined" Margin="Margin.Dense"
+                               Placeholder="Optional" />
+            </FormSection>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The company the document belongs to.</summary>
+    [Parameter] public Guid CompanyId { get; set; }
+
+    private string? _name;
+    private string _type = "Insurance";
+    private string? _reference;
+    private DateTime? _expires;
+    private bool _submitted;
+
+    private readonly IReadOnlyList<string> _types = new[] { "Insurance", "Accreditation", "Policy", "Certificate", "Document" };
+
+    private void Cancel() => MudDialog.Cancel();
+
+    // Returns the built request so the caller can persist it via IOrganisationService.AddCompanyDocumentAsync.
+    private void Save()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            return;
+        }
+
+        var request = new CreateCompanyDocumentRequest(
+            CompanyId,
+            _name!.Trim(),
+            string.IsNullOrWhiteSpace(_type) ? "Document" : _type,
+            _expires is { } d ? DateOnly.FromDateTime(d) : null,
+            string.IsNullOrWhiteSpace(_reference) ? null : _reference!.Trim());
+
+        MudDialog.Close(DialogResult.Ok(request));
+    }
+}

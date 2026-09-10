@@ -22,14 +22,51 @@
     </div>
 
     <div class="sidebar__nav">
-        @foreach (var item in NavItems)
+        @if (IsCollapsed)
         {
-            <SidebarNavItem Icon="@item.Icon"
-                            Label="@item.Label"
-                            IsCollapsed="IsCollapsed"
-                            HasChildren="item.HasChildren"
-                            IsActive="@IsActive(item)"
-                            OnClick="@(() => OnNavigate.InvokeAsync(item))" />
+            @* Collapsed rail has no room to expand groups, so render every destination as a flat icon row. *@
+            @foreach (var leaf in NavItems.SelectMany(n => n.Leaves()))
+            {
+                <SidebarNavItem Icon="@leaf.Icon"
+                                Label="@leaf.Label"
+                                IsCollapsed="true"
+                                IsActive="@IsActive(leaf)"
+                                OnClick="@(() => OnNavigate.InvokeAsync(leaf))" />
+            }
+        }
+        else
+        {
+            @foreach (var item in NavItems)
+            {
+                @if (item.HasChildren)
+                {
+                    <SidebarNavItem Icon="@item.Icon"
+                                    Label="@item.Label"
+                                    HasChildren="true"
+                                    IsExpanded="@IsExpanded(item)"
+                                    OnClick="@(() => ToggleGroup(item))" />
+                    @if (IsExpanded(item))
+                    {
+                        <div class="sidebar__group">
+                            @foreach (var child in item.Children!)
+                            {
+                                <SidebarNavItem Icon="@child.Icon"
+                                                Label="@child.Label"
+                                                IsChild="true"
+                                                IsActive="@IsActive(child)"
+                                                OnClick="@(() => OnNavigate.InvokeAsync(child))" />
+                            }
+                        </div>
+                    }
+                }
+                else
+                {
+                    <SidebarNavItem Icon="@item.Icon"
+                                    Label="@item.Label"
+                                    IsActive="@IsActive(item)"
+                                    OnClick="@(() => OnNavigate.InvokeAsync(item))" />
+                }
+            }
         }
     </div>
 
@@ -52,14 +89,40 @@
     [Parameter] public EnvironmentInfo? Environment { get; set; }
     [Parameter] public EventCallback<NavItem> OnNavigate { get; set; }
 
+    // Labels of expandable groups the user (or the active route) has opened. Only relevant when expanded.
+    private readonly HashSet<string> _expandedGroups = new(StringComparer.Ordinal);
+
+    protected override void OnParametersSet()
+    {
+        // Keep the group holding the current page open, so navigating to a child (e.g. Users) never hides it.
+        foreach (var group in NavItems.Where(n => n.HasChildren))
+        {
+            if (group.Children!.Any(IsActive))
+            {
+                _expandedGroups.Add(group.Label);
+            }
+        }
+    }
+
     private async Task ToggleCollapse()
     {
         IsCollapsed = !IsCollapsed;
         await IsCollapsedChanged.InvokeAsync(IsCollapsed);
     }
 
+    private bool IsExpanded(NavItem group) => _expandedGroups.Contains(group.Label);
+
+    private void ToggleGroup(NavItem group)
+    {
+        if (!_expandedGroups.Remove(group.Label))
+        {
+            _expandedGroups.Add(group.Label);
+        }
+    }
+
     private bool IsActive(NavItem item)
         => !string.IsNullOrEmpty(ActiveRoute)
+           && !string.IsNullOrEmpty(item.Href)
            && ActiveRoute!.TrimStart('/').Equals(item.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase);
 
     /// <summary>Lightweight view model for the environment panel.</summary>

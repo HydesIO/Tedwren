@@ -7,7 +7,7 @@ namespace Tedwren.DataAccess.Repositories;
 /// <summary>Dapper <see cref="ICompanyDocumentRepository"/> (SUB-4). SQL is ANSI-portable across SQL Server and PostgreSQL.</summary>
 public sealed class CompanyDocumentRepository : RepositoryBase, ICompanyDocumentRepository
 {
-    private const string Columns = "Id, CompanyId, Name, Type, ExpiresOn, Reference, CreatedUtc";
+    private const string Columns = "Id, CompanyId, Name, Type, ExpiresOn, Reference, FileReference, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public CompanyDocumentRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -26,12 +26,12 @@ public sealed class CompanyDocumentRepository : RepositoryBase, ICompanyDocument
     /// <summary>Inserts a new company document.</summary>
     public Task AddAsync(CompanyDocument document, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "INSERT INTO CompanyDocuments (Id, CompanyId, Name, Type, ExpiresOn, Reference, CreatedUtc) " +
-            "VALUES (@Id, @CompanyId, @Name, @Type, @ExpiresOn, @Reference, @CreatedUtc)",
+            "INSERT INTO CompanyDocuments (Id, CompanyId, Name, Type, ExpiresOn, Reference, FileReference, CreatedUtc) " +
+            "VALUES (@Id, @CompanyId, @Name, @Type, @ExpiresOn, @Reference, @FileReference, @CreatedUtc)",
             new
             {
                 document.Id, document.CompanyId, document.Name, document.Type,
-                document.ExpiresOn, document.Reference, document.CreatedUtc,
+                document.ExpiresOn, document.Reference, document.FileReference, document.CreatedUtc,
             },
             cancellationToken);
 
@@ -44,10 +44,11 @@ public sealed class CompanyDocumentRepository : RepositoryBase, ICompanyDocument
         Type = r.Type,
         ExpiresOn = r.ExpiresOn,
         Reference = r.Reference,
+        FileReference = r.FileReference,
         CreatedUtc = r.CreatedUtc,
     };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
     private sealed record CompanyDocumentRow(
-        Guid Id, Guid CompanyId, string Name, string Type, DateOnly? ExpiresOn, string? Reference, DateTimeOffset CreatedUtc);
+        Guid Id, Guid CompanyId, string Name, string Type, DateOnly? ExpiresOn, string? Reference, string? FileReference, DateTimeOffset CreatedUtc);
 }

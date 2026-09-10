@@ -22,27 +22,34 @@ public sealed class SiteService : ISiteService
     private readonly IAttendanceRepository _attendance;
     private readonly IQualificationCardRepository _cards;
     private readonly ICurrentUserService? _currentUser;
+    private readonly ISiteAssignmentRepository? _assignments;
 
     /// <summary>How many recent attendance records to scan when deriving a site's operatives.</summary>
     private const int AttendanceScanSize = 500;
 
+    /// <summary>The access role (by name) whose site visibility is scoped to assigned sites (MC-21).</summary>
+    private const string SiteManagerRole = "SiteManager";
+
     /// <summary>
     /// Creates the service over its repositories. <paramref name="currentUser"/> supplies the signed-in
-    /// tenant so site queries are scoped to the caller's company (R15/MC-21); it is optional so unit tests
-    /// that construct the service directly run unscoped.
+    /// tenant so site queries are scoped to the caller's company (R15/MC-21); <paramref name="assignments"/>
+    /// scopes a site manager to their assigned sites (UAT-011). Both are optional so unit tests that construct
+    /// the service directly run unscoped.
     /// </summary>
     public SiteService(
         ISiteRepository sites,
         ISitePropertyRepository properties,
         IAttendanceRepository attendance,
         IQualificationCardRepository cards,
-        ICurrentUserService? currentUser = null)
+        ICurrentUserService? currentUser = null,
+        ISiteAssignmentRepository? assignments = null)
     {
         _sites = sites;
         _properties = properties;
         _attendance = attendance;
         _cards = cards;
         _currentUser = currentUser;
+        _assignments = assignments;
     }
 
     /// <summary>Today's date for card-status evaluation (UTC; card expiry is date-only, R11).</summary>
@@ -62,12 +69,43 @@ public sealed class SiteService : ISiteService
         return user.CompanyId;
     }
 
+    /// <summary>
+    /// The set of site ids a site manager is restricted to (MC-21/UAT-011), or null when no restriction applies
+    /// — the caller is not a site manager, assignments are not wired (unit tests), or the site manager has no
+    /// assignments yet (fail-open, so an unconfigured manager is not left with an empty screen). Administrators,
+    /// compliance managers and auditors always see every site in the tenant.
+    /// </summary>
+    private async Task<IReadOnlySet<Guid>?> ManagerSiteScopeAsync(CancellationToken cancellationToken)
+    {
+        if (_currentUser is null || _assignments is null)
+        {
+            return null;
+        }
+
+        var user = await _currentUser.GetCurrentAsync(cancellationToken);
+        if (!string.Equals(user.Role, SiteManagerRole, StringComparison.OrdinalIgnoreCase) || user.UserId is not { } userId)
+        {
+            return null;
+        }
+
+        var assigned = await _assignments.GetSiteIdsForUserAsync(userId, cancellationToken);
+        return assigned.Count == 0 ? null : assigned.ToHashSet();
+    }
+
     /// <summary>Returns every site the caller's tenant owns as a list-row summary, with property count and derived compliance (R15).</summary>
     public async Task<IReadOnlyList<SiteSummary>> GetSitesAsync(CancellationToken cancellationToken = default)
     {
         var tenant = await ResolveTenantAsync(cancellationToken);
         var all = await _sites.GetAllAsync(cancellationToken);
         var sites = tenant is null ? all : all.Where(s => s.CompanyId == tenant).ToList();
+
+        // A site manager sees only their assigned sites (MC-21/UAT-011); other roles see the whole tenant.
+        var scope = await ManagerSiteScopeAsync(cancellationToken);
+        if (scope is not null)
+        {
+            sites = sites.Where(s => scope.Contains(s.Id)).ToList();
+        }
+
         var summaries = new List<SiteSummary>(sites.Count);
         foreach (var site in sites)
         {
@@ -81,6 +119,14 @@ public sealed class SiteService : ISiteService
 
         return summaries;
     }
+
+    /// <summary>Returns the site ids a console user is assigned to (MC-21/UAT-011).</summary>
+    public async Task<IReadOnlyList<Guid>> GetAssignedSiteIdsAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        _assignments is null ? Array.Empty<Guid>() : await _assignments.GetSiteIdsForUserAsync(userId, cancellationToken);
+
+    /// <summary>Sets the sites a console user is assigned to, replacing any existing assignments (MC-21/UAT-011).</summary>
+    public Task SetAssignedSitesAsync(Guid userId, IReadOnlyList<Guid> siteIds, CancellationToken cancellationToken = default) =>
+        _assignments is null ? Task.CompletedTask : _assignments.ReplaceForUserAsync(userId, siteIds, cancellationToken);
 
     /// <summary>
     /// Derives a site's distinct operatives (from the attendance log, MC-12) and their aggregate compliance
@@ -123,6 +169,13 @@ public sealed class SiteService : ISiteService
 
         // MC-21: a site outside the caller's tenant fails visibly (404), never leaks across companies (R15).
         if (tenant is not null && site.CompanyId != tenant)
+        {
+            return null;
+        }
+
+        // A site manager may only open a site they are assigned to (MC-21/UAT-011).
+        var scope = await ManagerSiteScopeAsync(cancellationToken);
+        if (scope is not null && !scope.Contains(site.Id))
         {
             return null;
         }

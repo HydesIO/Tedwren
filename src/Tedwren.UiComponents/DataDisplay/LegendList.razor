@@ -6,16 +6,30 @@
     @foreach (var item in Items)
     {
         <li class="legend__row">
-            <span class="legend__dot" style="background:@item.Colour" aria-hidden="true"></span>
-            <span class="legend__label">@item.Label</span>
-            <span class="legend__value">@item.Value.ToString("0.##", CultureInfo.InvariantCulture)</span>
-            @if (item.Percentage is { } pct)
+            @* When a target is supplied the row drills down (e.g. "5 at risk" → those operatives, UAT-016). *@
+            @if (!string.IsNullOrEmpty(item.Href))
             {
-                <span class="legend__pct">@pct.ToString("0.#", CultureInfo.InvariantCulture)%</span>
+                <a class="legend__link" href="@item.Href">@Row(item)</a>
+            }
+            else
+            {
+                @Row(item)
             }
         </li>
     }
 </ul>
+
+@code {
+    private RenderFragment Row(LegendItem item) =>@<text>
+        <span class="legend__dot" style="background:@item.Colour" aria-hidden="true"></span>
+        <span class="legend__label">@item.Label</span>
+        <span class="legend__value">@item.Value.ToString("0.##", CultureInfo.InvariantCulture)</span>
+        @if (item.Percentage is { } pct)
+        {
+            <span class="legend__pct">@pct.ToString("0.#", CultureInfo.InvariantCulture)%</span>
+        }
+    </text>;
+}
 
 @code {
     [Parameter] public IEnumerable<LegendItem> Items { get; set; } = Array.Empty<LegendItem>();

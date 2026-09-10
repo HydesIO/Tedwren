@@ -1,0 +1,16 @@
+/* Trade review dialog layout. Dialog-scoped, so any theme-dependent colour uses --mud-palette-* (not --color-*). */
+.trade-review__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-16, 16px);
+    color: var(--mud-palette-text-secondary);
+    font-size: 0.9rem;
+}
+
+.trade-review__doc {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    width: 100%;
+}

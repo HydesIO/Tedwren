@@ -11,11 +11,155 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## In progress
 
-_Nothing currently in progress._
+### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased
+Fixing the issues from the first end-user acceptance testing pass (`docs/` UAT log). Plan groups all 27
+distinct issues into four phases: 1 quick frontend/UX wins, 2 Critical/High correctness bugs, 3 Medium
+data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues delivered.** **Phase 4 items:**
+- ✅ **UAT-015 — geofenced clock-in surface.** A sign-in/sign-out panel on the Attendance page (operative
+  picker + browser geolocation) over the existing `IAttendanceService`; the tables now show operative names.
+- ✅ **UAT-029 (MC-24) — QS timesheet rollup.** `GetSiteRollupAsync` + endpoint + a "By site (QS reconciliation)"
+  view on the timesheet page, grouping the existing timesheets by site with per-operative hours.
+- ✅ **UAT-027/028 (MC-3) — editable induction capture steps.** The induction builder now shows all capture
+  steps (identity, cards, emergency contact, declaration, media, signature) plus attached forms in one ordered,
+  editable list (add / remove / reorder / required toggle), over the already-data-driven `Steps` round-trip —
+  answering "can capture fields be changed without a developer?".
+- ✅ **UAT-011 (MC-21) — site-manager site scoping.** New `SiteAssignment` entity (user↔site) with in-memory +
+  Dapper repositories and an EF migration (`AddSiteAssignments`); `SiteService.GetSitesAsync`/`GetSiteAsync` now
+  scope a **SiteManager** to their assigned sites (fail-open to all when none are assigned, so an unconfigured
+  manager is never left with an empty screen), while Administrators/ComplianceManagers/Auditors still see the
+  whole tenant. Assignment API (`/api/sites/assignments/{userId}`) + client + an "Assigned sites" section on the
+  user detail page. This also lays the site↔operative foundation for the 016 per-site compliance filter.
+- ✅ **UAT-010a (MC-2) — emergency contact on the operative profile.** New person-level `EmergencyContactName`/
+  `EmergencyContactPhone` (entity + `PersonRecord` + Dapper/in-memory repos with a new `UpdateAsync` + EF
+  migration `AddPersonEmergencyContact`); surfaced on `OperativeDetailDto` and the operative Overview, and
+  captured via the operative edit dialog (`IOrganisationService.UpdatePersonContactAsync` +
+  `/api/organisation/persons/{id}/contact`). (010b — qualification evidence photo — shipped in Phase 3.)
+- ✅ **UAT-018 (MC-1/MC-2) — shareable/tokenised induction link.** New `InductionLink` entity (token + optional
+  passcode + expiry, mirroring `OnboardingLink`) with in-memory + Dapper repositories and an EF migration
+  (`AddInductionLinks`); `IInductionService.CreateLinkAsync/GetLinkAsync/StartFromLinkAsync`. Authorised
+  `POST /api/inductions/links`; anonymous `GET /api/inductions/by-link/{token}` +
+  `POST /api/inductions/by-link/{token}/session` (all company/template resolution stays server-side; the
+  console template listing stays authenticated). A "Share induction" action on Induction Records opens a dialog
+  that creates the link and surfaces the copyable `/induct?token=…` URL + passcode (no email backend needed —
+  same pattern as the pack/onboarding links); `/induct` now runs anonymously in link mode and still falls back
+  to the authenticated admin preview when no token is present (keeps the UAT-019 fix).
+- ✅ **UAT-016 (per-site compliance filter) — completing 016.** `IDashboardService.GetComplianceAsync` now takes
+  an optional site: no site → the tenant-wide tally (unchanged); a site → that site's operatives (its
+  attendance-derived roster, as the site-risk heatmap uses) run through the same per-person `ComplianceRollup`
+  bucket loop. Resolution goes through the role-aware `ISiteService.GetSiteAsync`, so a Site Manager only sees
+  their assigned sites and an unknown/out-of-scope site yields an empty breakdown (R15). `GET /api/dashboard/compliance`
+  gains `?site={slug}`; the Compliance page shows a role-scoped site `MudSelect` driving a `?site=` query param.
+  (016a labels/library removal and 016b legend drill-down shipped earlier; per-site drill-down into the workforce
+  register is a deliberate follow-up — operatives associate to a site only via attendance, so it needs a
+  site-scoped workforce query rather than a client-side filter.)
+- ✅ **UAT-023a (SUB-4/MC-27) — trade invite + self-service upload.** New `TradeInvite` entity (company-level
+  tokenised invite + review state) with `TradeOnboardingStatus`/`TradeOnboardingWorkflow`, in-memory + Dapper
+  repositories and an EF migration (`AddTradeOnboarding`, which also adds `CompanyDocument.FileReference` for the
+  uploaded file bytes, stored via the existing `IImageStore`, R9). New `ITradeOnboardingService`: inviting a trade
+  creates its company (as a subcontractor, via `IOrganisationService`) plus the link; the trade opens
+  `/trade?token=…` anonymously and uploads its registration/RAMS/insurance/accreditations. Authorised
+  `POST /api/trades/invites`; anonymous `GET /api/trades/by-link/{token}` + `POST …/documents`. Client: an "Invite
+  trade" action + dialog on the Organisation page surfacing the copyable link + passcode, and the recipient
+  `TradeOnboard` page. (The manager review/approval loop is 023b.)
+- ✅ **UAT-023b (SUB-4/MC-27) — trade review / approval loop.** The trade submits its documents for review
+  (`SubmitForReviewAsync`, Invited/Returned → Submitted); a manager works the tenant-scoped review queue
+  (`GetReviewQueueAsync`) and **approves / rejects / returns-with-comments** (`Approve/Reject/ReturnAsync`, guarded
+  by `TradeOnboardingWorkflow`, reject/return require a note, R18 "returned" not "denied"). Each decision records
+  audit (`OrganisationService.AuditAsync` pattern) and best-effort notifies via `IEmailSender` (stub→outbox,
+  PRD-Phase 7). Authorised `POST /api/trades/by-link/{token}/submit`, `GET /api/trades/reviews`,
+  `POST /api/trades/reviews/{id}/approve|reject|return`. Client: a "Trade approvals" queue page + review dialog
+  (view uploaded files via the authenticated image endpoint, approve/reject/return); a returned trade re-opens
+  its link, sees the note, and resubmits.
+- ✅ **UAT remediation complete — all 27 issues delivered** across Phases 1–4 (1–3 fixes/UX; 4a–4h larger
+  features 015/029, 027/028, 011, 010a, 018, 016, 023a, 023b). Whole solution builds 0 warnings / 0 errors; all
+  suites green (Api 134). DB-layer code (Dapper + EF migrations) is build-validated; behaviour is covered by the
+  in-memory API/unit suites (the LocalDB integration suite is skipped in this sandbox).
 
 ---
 
 ## Completed
+
+### UAT remediation — Phase 3: Medium bugs & data-surfacing (this change)
+Whole solution builds **0 warnings / 0 errors**; suites green (Api 118 incl. new image-reference test, others
+unchanged). Site-scoped compliance (the site-filter half of UAT-016) folds into Phase 4 with UAT-011, which
+builds the site↔operative mapping it needs.
+- ✅ **UAT-025/026 — notifications not clickable.** `ActivityItem` gained an optional `Href` and `ActivityFeed`
+  renders linked rows; the notifications page names the operative and links each row to their profile (reusing
+  the tenant-scoped expiry name/slug).
+- ✅ **UAT-010b (SF-5) — qualification evidence photo.** `ImageReference` now flows onto `QualificationCardDto`
+  and `OperativeQualificationDto`; the operative Qualifications tab cards are clickable and open a new
+  `QualificationEvidenceDialog` showing the captured photo (or an empty state).
+- ✅ **UAT-006 (SUB-4) — no way to add a company document.** New `AddCompanyDocumentDialog` on the company's
+  Documents tab, wired to the existing `AddCompanyDocumentAsync` (metadata; file-binary upload is later).
+- ✅ **UAT-024 — add-company file picker discarded the file / "pending" confusion.** Removed the misleading
+  `TedwrenFileUpload` (no binary storage exists) and replaced it with guidance to add documents on the Documents
+  tab, clarifying that the "Pending" status is derived from compliance, not set by hand.
+- ✅ **UAT-008c — compliance-pack link/passcode only flashed in a snackbar.** After sending, the recipient link
+  and passcode are surfaced in a persistent, copyable panel. (Email delivery + the merge-into-compliance IA
+  question remain for Phase 4 / product confirmation.)
+- ✅ **UAT-016b — compliance drill-down.** `LegendItem` gained an optional `Href`; the compliance legend rows
+  link to the workforce filtered by that status (`/workforce?status=…`), and the workforce register honours the
+  `status` query with an active-filter banner. (Per-site compliance filter → Phase 4 with UAT-011.)
+
+### UAT remediation — Phase 2: Critical & High correctness bugs (previous change)
+Whole solution builds **0 warnings / 0 errors**; suites green (Domain 71, Application 228, Web 178, Api 117,
+Client 30; DataAccess LocalDB suite skipped). New tests: induction site round-trip, workforce by-engagement
+lookup (×2), induction-aware compliance, audit write (×2), expiry tenant-scoping.
+- ✅ **UAT-017 (MC-15) — induction "applies to site" reverted to "All sites".** `InductionBuilder` never loaded
+  the selected site from the template and discarded it on publish (`var siteId = _template.SiteId`). Now maps
+  the stored `SiteId` ↔ site name on both load and save (backend already round-tripped `SiteId`).
+- ✅ **UAT-007 (R15) — "no operative found" drilling into another company's operative.** The org page linked to
+  the tenant-scoped name-slug lookup, which can't reach operatives outside the caller's company. Added an
+  id-based path: `IWorkforceService.GetOperativeByEngagementAsync(companyId, engagementId)` + endpoint
+  `GET /api/workforce/by-engagement/{companyId}/{engagementId}`; `CompanyDetail` navigates by (company, engagement)
+  and `OperativeDetail` gained the `/workforce/{companyId:guid}/{engagementId:guid}` route.
+- ✅ **UAT-014 (MC-8) — "Compliant" shown despite no induction.** Compliance was derived only from cards; the
+  gate blocks without a valid induction. `WorkforceService` now folds induction validity into the reported
+  status for a main contractor (not a subcontractor, SUB-11) — a card-compliant worker with no induction reads
+  "Induction required", and the operative detail shows the induction status + a "not site-ready" banner. Batched
+  induction load in the list (no N+1).
+- ✅ **UAT-019a — "Preview induction" 401 → /login unhandled error.** `/induct` (RecipientLayout) never hydrated
+  auth, so the templates call 401'd and crashed the page. `InductionTake` now hydrates auth (so a signed-in
+  admin's token attaches) and guards the load with a friendly error. The anonymous, tokenised worker link stays
+  Phase 4 (UAT-018).
+- ✅ **UAT-022 (SF-20) — audit log always empty.** Nothing ever called `IAuditService.RecordAsync`. Instrumented
+  `OrganisationService` (company create/update, document add, operative add/update/archive/reactivate) to record
+  audit entries attributed to the signed-in user; audit dependencies are optional so direct-construction unit
+  tests are unaffected, and the write is best-effort so it never fails the operation.
+- ✅ **UAT-003/004/005 (R15, SF-8/SF-9) — dashboard expiries.** The "expiring in 30 days" count was global
+  (un-tenant-scoped) and the list/tile dead-ended on `/compliance`, which shows no expiries; rows showed only the
+  qualification. `ExpiryQueryService.GetUpcomingAsync` is now tenant-scoped and returns the operative's
+  `PersonName` + `Slug`; new `/expiries` drill-down page (the tile and "View all expiries" now target it), and the
+  dashboard list names the operative and links to them.
+
+### UAT remediation — Phase 1: quick frontend/UX wins (previous change)
+Low-risk, frontend-only fixes from the UAT log; whole solution builds **0 warnings / 0 errors**, all suites
+green (Client 30 incl. 4 new nav-structure tests; Web 178, Api 111, others unchanged; DataAccess LocalDB
+suite skipped as usual).
+- ✅ **UAT-001 — dead help button.** The top-bar "?" (`AppTopBar.razor`) had no handler; added an `OnHelp`
+  callback wired in `MainLayout` to open a new `HelpDialog` (`Pages/Shared/HelpDialog.razor`, `TedwrenDialog.Medium()`
+  + `DialogGuidance`) covering search/navigation and support.
+- ✅ **UAT-002 — dark-mode detail tabs.** Inactive "Documents/Operatives" tab labels were near-invisible in
+  night mode; added a shared `.detail-tabs .mud-tab` rule in `app.css` driving the colour from theme tokens
+  (fixes Company/Site/Operative detail together).
+- ✅ **UAT-008a/b — compliance pack.** Operative names were dark-on-dark in night mode (new
+  `CompliancePacks.razor.css` pins the checkbox label to `--mud-palette-text-primary`); the "check & send"
+  problems are now a per-operative breakdown (blocking/warning pill + card + detail) instead of one run-on line.
+- ✅ **UAT-012 — add-site billing text (persona).** "Recording a site is unlimited and never billed" is the
+  subcontractor rule (SUB-6), wrong for a main contractor billed per site; `AddSite.razor` now branches the
+  helper text on `ITenantState.CurrentOrgType` and drops the mis-cited SF-6.
+- ✅ **UAT-013b — coordinate guidance.** Added "where to find latitude/longitude" guidance on the boundary
+  fields (SF-14). (Dispersed-property entry, 013a, is Phase 4.)
+- ✅ **UAT-016a — compliance page.** Removed the valueless "Qualification type library" card (its per-type
+  "held by 30" was what didn't reconcile with the 25-operative donut) and added a caption clarifying the ring
+  counts each operative once by lowest card status (SF-8). Site filter + drill-down is 016b (Phase 3).
+- ✅ **UAT-019b — button rename.** "Open take-flow" → "Preview induction" (`InductionRecords.razor`). The
+  underlying 401 crash is 019a (Phase 2).
+- ✅ **UAT-020 — site-gate declutter.** Replaced the wall of per-operative buttons with a single operative
+  autocomplete + "Check entry" button (keeps the five-check decision, which the on-site muster can't drive).
+- ✅ **UAT-009 / UAT-021 — nav grouping.** Users and Inductions (config) moved under a new expandable
+  "System Configuration" group in the sidebar (`ShellChrome`, `AppSidebar`, `SidebarNavItem`, `NavItem.Leaves()`);
+  `MainLayout` gating now recurses into group children and the title/command-palette walks flatten the tree.
 
 ### Project ↔ documentation alignment pass (this change) — zero warnings/errors + differentiation gaps closed
 Review of the whole solution against the docs (PRD v6.4 + the differentiation plan), driven by testing

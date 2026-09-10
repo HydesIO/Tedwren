@@ -1,6 +1,8 @@
+/* A single compliance-overview card, held to a sensible reading width rather than stretched across the
+   page (the qualification-type library card that used to sit beside it was removed — UAT-016). */
 .compliance-layout {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: minmax(0, 420px);
     gap: var(--spacing-16, 16px);
     align-items: start;
 }
@@ -15,6 +17,10 @@
 
 .compliance-overview ::deep .legend {
     width: 100%;
+}
+
+.compliance-overview__note {
+    text-align: center;
 }
 
 @media (max-width: 960px) {

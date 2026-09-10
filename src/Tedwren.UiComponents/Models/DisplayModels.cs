@@ -32,7 +32,7 @@ public enum RiskSeverity
 /// <param name="Value">Numeric value shown on the right.</param>
 /// <param name="Colour">CSS colour (token var or literal from the palette).</param>
 /// <param name="Percentage">Optional percentage of the whole.</param>
-public sealed record LegendItem(string Label, double Value, string Colour, double? Percentage = null);
+public sealed record LegendItem(string Label, double Value, string Colour, double? Percentage = null, string? Href = null);
 
 /// <summary>A single donut segment.</summary>
 /// <param name="Label">Segment label (for the accessible name / legend).</param>
@@ -46,15 +46,18 @@ public sealed record ExpiryItem(
     string Site,
     DateOnly ExpiresOn,
     int DaysRemaining,
-    StatusKind Status);
+    StatusKind Status,
+    string? Href = null);
 
-/// <summary>An "icon + primary/secondary text + relative time" activity row.</summary>
+/// <summary>An "icon + primary/secondary text + relative time" activity row. When <see cref="Href"/> is set the
+/// whole row links to that route (e.g. the operative a notification is about).</summary>
 public sealed record ActivityItem(
     string Icon,
     string Primary,
     string Secondary,
     string RelativeTime,
-    StatusKind Accent = StatusKind.Neutral);
+    StatusKind Accent = StatusKind.Neutral,
+    string? Href = null);
 
 /// <summary>A single searchable entry in the global command palette.</summary>
 public sealed record CommandItem(string Label, string Group, string Icon, string Href, string? Detail = null);

@@ -18,4 +18,13 @@ public static class ComplianceStatusView
         ComplianceState.NonCompliant => StatusKind.Danger,
         _ => StatusKind.Neutral,
     };
+
+    /// <summary>The display label for a compliance state (matches the pill wording).</summary>
+    public static string Label(ComplianceState state) => state switch
+    {
+        ComplianceState.Compliant => "Compliant",
+        ComplianceState.AtRisk => "At risk",
+        ComplianceState.NonCompliant => "Non-compliant",
+        _ => "Pending",
+    };
 }

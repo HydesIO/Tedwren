@@ -135,5 +135,26 @@ public sealed class SiteApiTests : IClassFixture<WebApplicationFactory<Program>>
         Assert.Equal(HttpStatusCode.NotFound, put.StatusCode);
     }
 
+    [Fact] // UAT-011/MC-21: a user's assigned sites round-trip through the assignment endpoints
+    public async Task SiteAssignments_RoundTripThroughTheEndpoints()
+    {
+        var client = _factory.CreateClient();
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var userId = Guid.NewGuid();
+
+        // Create two tenant sites and assign the user to just one.
+        var a = (await (await client.PostAsJsonAsync("/api/sites", new CreateSiteRequest(
+            me!.CompanyId!.Value, "Assign A " + Guid.NewGuid().ToString("N")[..6], null, null, null, true, false, null)))
+            .Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+        await client.PostAsJsonAsync("/api/sites", new CreateSiteRequest(
+            me.CompanyId!.Value, "Assign B " + Guid.NewGuid().ToString("N")[..6], null, null, null, true, false, null));
+
+        var put = await client.PutAsJsonAsync($"/api/sites/assignments/{userId}", new { SiteIds = new[] { a } });
+        Assert.Equal(HttpStatusCode.NoContent, put.StatusCode);
+
+        var assigned = await client.GetFromJsonAsync<List<Guid>>($"/api/sites/assignments/{userId}");
+        Assert.Equal(new[] { a }, assigned);
+    }
+
     private sealed record CreatedResponse(Guid Id);
 }

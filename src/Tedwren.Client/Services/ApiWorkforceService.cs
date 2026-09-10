@@ -33,4 +33,17 @@ public sealed class ApiWorkforceService : IWorkforceService
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<OperativeDetailDto>(cancellationToken);
     }
+
+    /// <summary>Gets an operative's profile by engaging company + engagement id, or null when the API returns 404.</summary>
+    public async Task<OperativeDetailDto?> GetOperativeByEngagementAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.GetAsync($"api/workforce/by-engagement/{companyId}/{engagementId}", cancellationToken);
+        if (response.StatusCode == HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<OperativeDetailDto>(cancellationToken);
+    }
 }

@@ -128,6 +128,10 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     b.Property<DateOnly?>("ExpiresOn")
                         .HasColumnType("date");
 
+                    b.Property<string>("FileReference")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(256)
@@ -566,6 +570,54 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     b.ToTable("FormTemplates", (string)null);
                 });
 
+            modelBuilder.Entity("Tedwren.DataAccess.Ef.InductionLinkRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("ExpiresUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Name")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("PasscodeHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid?>("SessionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TemplateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("InductionLinks", (string)null);
+                });
+
             modelBuilder.Entity("Tedwren.DataAccess.Ef.InductionSessionRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -874,6 +926,12 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     b.Property<DateTimeOffset>("CreatedUtc")
                         .HasColumnType("datetimeoffset");
 
+                    b.Property<string>("EmergencyContactName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("EmergencyContactPhone")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("PhoneNumber")
                         .IsRequired()
                         .HasMaxLength(32)
@@ -1000,6 +1058,31 @@ namespace Tedwren.DataAccess.Ef.Migrations
                         .IsUnique();
 
                     b.ToTable("ReferenceValues", (string)null);
+                });
+
+            modelBuilder.Entity("Tedwren.DataAccess.Ef.SiteAssignmentRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("SiteId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("UserId", "SiteId")
+                        .IsUnique();
+
+                    b.ToTable("SiteAssignments", (string)null);
                 });
 
             modelBuilder.Entity("Tedwren.DataAccess.Ef.SitePropertyRecord", b =>
@@ -1201,6 +1284,71 @@ namespace Tedwren.DataAccess.Ef.Migrations
                         .IsUnique();
 
                     b.ToTable("Timesheets", (string)null);
+                });
+
+            modelBuilder.Entity("Tedwren.DataAccess.Ef.TradeInviteRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContactEmail")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<Guid?>("CreatedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset>("CreatedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("DecidedBy")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset?>("DecidedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<DateTimeOffset>("ExpiresUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("InviterCompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("PasscodeHash")
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<string>("ReviewNote")
+                        .HasMaxLength(1024)
+                        .HasColumnType("nvarchar(1024)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<DateTimeOffset?>("SubmittedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InviterCompanyId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.ToTable("TradeInvites", (string)null);
                 });
 
             modelBuilder.Entity("Tedwren.DataAccess.Ef.TradeQualificationRequirementRecord", b =>

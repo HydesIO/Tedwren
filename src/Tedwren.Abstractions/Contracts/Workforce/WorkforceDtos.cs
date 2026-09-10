@@ -35,7 +35,16 @@ public sealed record OperativeDetailDto(
     ComplianceState State,
     string StatusLabel,
     IReadOnlyList<OperativeQualificationDto> Qualifications,
-    IReadOnlyList<OperativeHistoryDto> History);
+    IReadOnlyList<OperativeHistoryDto> History,
+    // Induction is a site-entry condition for a main contractor (MC-8) but not a subcontractor (SUB-11), so it
+    // is surfaced only when it applies. The reported State/StatusLabel already fold this in so "Compliant" never
+    // contradicts the site gate (UAT-014); these expose the induction status on its own for the detail view.
+    bool InductionApplies = false,
+    bool InductionValid = false,
+    string InductionStatusLabel = "",
+    // Emergency contact captured for the person (MC-2), shown on the operative overview (UAT-010); null until captured.
+    string? EmergencyContactName = null,
+    string? EmergencyContactPhone = null);
 
 /// <summary>A qualification card held by an operative, with its server-computed status (SF-8).</summary>
 public sealed record OperativeQualificationDto(
@@ -44,7 +53,10 @@ public sealed record OperativeQualificationDto(
     DateOnly? ObtainedOn,
     DateOnly? ExpiresOn,
     ComplianceState State,
-    string StatusLabel);
+    string StatusLabel,
+    // The captured photo of the card (SF-5) so the evidence can be viewed from the qualifications tab (UAT-010);
+    // null when no image was captured.
+    string? ImageReference = null);
 
 /// <summary>A recent event in an operative's history (currently site-entry decisions, R10).</summary>
 public sealed record OperativeHistoryDto(

@@ -43,4 +43,7 @@ public interface IOrganisationService
 
     /// <summary>Reactivates an archived engagement owned by the given company (SF-3). Returns false if not found.</summary>
     Task<bool> ReactivateEngagementAsync(Guid companyId, Guid engagementId, CancellationToken cancellationToken = default);
+
+    /// <summary>Updates a person's emergency contact (MC-2/UAT-010), shared across their engagements. Returns false if not found.</summary>
+    Task<bool> UpdatePersonContactAsync(Guid personId, UpdatePersonContactRequest request, CancellationToken cancellationToken = default);
 }

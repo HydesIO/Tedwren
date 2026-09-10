@@ -49,9 +49,26 @@ public static class SiteEndpoints
                 })
             .WithName("AddSiteProperty");
 
+        // A console user's assigned sites (MC-21/UAT-011): a site manager sees only these.
+        group.MapGet("/assignments/{userId:guid}",
+                async (Guid userId, ISiteService service, CancellationToken cancellationToken) =>
+                    Results.Ok(await service.GetAssignedSiteIdsAsync(userId, cancellationToken)))
+            .WithName("GetSiteAssignments");
+
+        group.MapPut("/assignments/{userId:guid}",
+                async (Guid userId, AssignSitesBody body, ISiteService service, CancellationToken cancellationToken) =>
+                {
+                    await service.SetAssignedSitesAsync(userId, body.SiteIds, cancellationToken);
+                    return Results.NoContent();
+                })
+            .WithName("SetSiteAssignments");
+
         return app;
     }
 
     /// <summary>Body for adding a property — the site id comes from the route.</summary>
     private sealed record AddPropertyBody(string Address, int Units, GeofenceDto Boundary);
+
+    /// <summary>Body for setting a user's assigned sites — the user id comes from the route (MC-21/UAT-011).</summary>
+    private sealed record AssignSitesBody(IReadOnlyList<Guid> SiteIds);
 }

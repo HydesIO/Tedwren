@@ -4,16 +4,35 @@
 <ul class="expiry-list">
     @foreach (var item in Items)
     {
-        <li class="expiry-list__row">
-            <div class="expiry-list__main">
-                <span class="expiry-list__title">@item.Title</span>
-                <span class="expiry-list__site">@item.Site</span>
-            </div>
-            <div class="expiry-list__right">
-                <span class="expiry-list__date">@item.ExpiresOn.ToString("dd MMM yyyy")</span>
-                <StatusPill Label="@DaysLabel(item)" Status="item.Status" />
-            </div>
-        </li>
+        @* A row links to the card holder's profile when a target is supplied (UAT-005), else it is static. *@
+        @if (!string.IsNullOrEmpty(item.Href))
+        {
+            <li class="expiry-list__row">
+                <a class="expiry-list__link" href="@item.Href">
+                    <div class="expiry-list__main">
+                        <span class="expiry-list__title">@item.Title</span>
+                        <span class="expiry-list__site">@item.Site</span>
+                    </div>
+                    <div class="expiry-list__right">
+                        <span class="expiry-list__date">@item.ExpiresOn.ToString("dd MMM yyyy")</span>
+                        <StatusPill Label="@DaysLabel(item)" Status="item.Status" />
+                    </div>
+                </a>
+            </li>
+        }
+        else
+        {
+            <li class="expiry-list__row">
+                <div class="expiry-list__main">
+                    <span class="expiry-list__title">@item.Title</span>
+                    <span class="expiry-list__site">@item.Site</span>
+                </div>
+                <div class="expiry-list__right">
+                    <span class="expiry-list__date">@item.ExpiresOn.ToString("dd MMM yyyy")</span>
+                    <StatusPill Label="@DaysLabel(item)" Status="item.Status" />
+                </div>
+            </li>
+        }
     }
 </ul>
 

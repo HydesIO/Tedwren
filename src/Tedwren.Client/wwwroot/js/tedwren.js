@@ -1,6 +1,20 @@
 // Small interop helpers for the Tedwren shell: theme persistence, the Ctrl/Cmd+K
 // command-palette shortcut, and focusing an element.
 window.tedwren = {
+    // Browser geolocation for site sign-in/out (SF-14/SF-15). Resolves to {latitude, longitude}, or null when
+    // unavailable or denied — the caller signs in without a location and the site policy decides (SF-15).
+    geo: {
+        get: function () {
+            return new Promise(function (resolve) {
+                if (!navigator.geolocation) { resolve(null); return; }
+                navigator.geolocation.getCurrentPosition(
+                    function (pos) { resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }); },
+                    function () { resolve(null); },
+                    { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 });
+            });
+        }
+    },
+
     theme: {
         get: function () {
             try { return localStorage.getItem('tedwren-theme') || ''; }
@@ -76,6 +90,19 @@ window.tedwren = {
             a.click();
             document.body.removeChild(a);
             setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        } catch (e) { /* ignore */ }
+    },
+
+    // Opens base64 content in a new browser tab (e.g. viewing an uploaded RAMS/insurance PDF for review).
+    openBlob: function (base64, contentType) {
+        try {
+            var byteChars = atob(base64);
+            var bytes = new Uint8Array(byteChars.length);
+            for (var i = 0; i < byteChars.length; i++) { bytes[i] = byteChars.charCodeAt(i); }
+            var blob = new Blob([bytes], { type: contentType || 'application/octet-stream' });
+            var url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
         } catch (e) { /* ignore */ }
     },
 

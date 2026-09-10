@@ -9,14 +9,18 @@ public sealed record DigestResultDto(int CompaniesProcessed, int EmailsSent);
 /// <summary>The outcome of a job heartbeat check (R12): how many jobs were flagged as overdue.</summary>
 public sealed record HeartbeatResultDto(int AlertsRaised);
 
-/// <summary>A card approaching or past expiry, for the upcoming-expiries read endpoint.</summary>
+/// <summary>A card approaching or past expiry, for the upcoming-expiries read endpoint. <see cref="PersonName"/>
+/// and <see cref="Slug"/> identify the operative who holds the card (from the tenant's engagement record) so a
+/// row can name the person and link to their profile; null when the query runs unscoped.</summary>
 public sealed record UpcomingExpiryDto(
     Guid CardId,
     Guid PersonId,
     string QualificationName,
     DateOnly? ExpiresOn,
     int DaysUntilExpiry,
-    string StatusLabel);
+    string StatusLabel,
+    string? PersonName = null,
+    string? Slug = null);
 
 /// <summary>A scheduled-job run, for the job-runs read endpoint (SF-21).</summary>
 public sealed record JobRunDto(

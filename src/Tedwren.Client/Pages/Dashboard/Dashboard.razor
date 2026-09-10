@@ -122,7 +122,7 @@
         <DashboardCard Title="@(_isMainContractor ? "Competency expiries" : "Expiring soon")"
                        Subtitle="@(_isMainContractor ? "Cards due in the next 30 days" : "Cards, insurances & accreditations due soon")"
                        FooterLinkText="View all expiries"
-                       FooterLinkHref="/compliance">
+                       FooterLinkHref="/expiries">
             <Body>
                 <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="4">
                     <ExpiryList Items="_expiries" />
@@ -198,7 +198,12 @@
             var upcoming = await Expiry.GetUpcomingAsync(ExpiryWindowDays);
             _expiries = upcoming
                 .Select(e => new ExpiryItem(
-                    e.QualificationName, "—", e.ExpiresOn ?? DateOnly.MaxValue, e.DaysUntilExpiry, ExpiryStatus(e.DaysUntilExpiry)))
+                    e.QualificationName,
+                    e.PersonName ?? "—",   // name the operative whose card is expiring, not a bare dash (UAT-005)
+                    e.ExpiresOn ?? DateOnly.MaxValue,
+                    e.DaysUntilExpiry,
+                    ExpiryStatus(e.DaysUntilExpiry),
+                    e.Slug is null ? null : $"/workforce/{e.Slug}"))   // click through to the operative
                 .ToList();
 
             var audit = await Audit.SearchAsync(null, null, null, null);
@@ -234,7 +239,7 @@
         var sites = new KpiTile("Active sites", k.Sites.ToString(), Icons.Material.Outlined.Apartment,
             null, TrendDirection.None, empty, "var(--color-info)", "/sites");
         var expiring = new KpiTile("Expiring in 30 days", k.UpcomingExpiries.ToString(), Icons.Material.Outlined.Schedule,
-            null, TrendDirection.None, empty, "var(--color-warning)", "/compliance");
+            null, TrendDirection.None, empty, "var(--color-warning)", "/expiries");
         var companies = new KpiTile("Companies", k.Companies.ToString(), Icons.Material.Outlined.Business,
             null, TrendDirection.None, empty, "var(--color-brand)", "/organisation");
 

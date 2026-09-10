@@ -13,6 +13,24 @@
     gap: var(--spacing-8, 8px);
 }
 
+/* A drill-down legend row carries the flex layout itself and gets a hover, so the whole row is clickable. */
+.legend__link {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    padding: var(--spacing-4, 4px) var(--spacing-8, 8px);
+    margin: calc(-1 * var(--spacing-4, 4px)) calc(-1 * var(--spacing-8, 8px));
+    border-radius: var(--radius-control, 8px);
+    transition: background-color .12s ease;
+}
+
+.legend__link:hover {
+    background-color: var(--color-bg, #F7F8FA);
+}
+
 .legend__dot {
     width: 10px;
     height: 10px;

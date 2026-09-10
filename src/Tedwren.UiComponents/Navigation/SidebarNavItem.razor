@@ -12,10 +12,11 @@ else
 }
 
 @code {
-    private RenderFragment NavRow =>@<div class="nav-item @(IsActive ? "nav-item--active" : null)"
+    private RenderFragment NavRow =>@<div class="nav-item @(IsActive ? "nav-item--active" : null) @(IsChild ? "nav-item--child" : null)"
          role="button"
          tabindex="0"
          aria-current="@(IsActive ? "page" : null)"
+         aria-expanded="@(HasChildren ? (IsExpanded ? "true" : "false") : null)"
          aria-label="@Label"
          @onclick="HandleClick"
          @onkeydown="HandleKeyDown">
@@ -25,7 +26,8 @@ else
             <span class="nav-item__label">@Label</span>
             @if (HasChildren)
             {
-                <MudIcon Icon="@Icons.Material.Outlined.ExpandMore" Class="nav-item__chevron" Size="Size.Small" />
+                <MudIcon Icon="@(IsExpanded ? Icons.Material.Outlined.ExpandLess : Icons.Material.Outlined.ExpandMore)"
+                         Class="nav-item__chevron" Size="Size.Small" />
             }
         }
     </div>;
@@ -37,6 +39,13 @@ else
     [Parameter] public bool IsActive { get; set; }
     [Parameter] public bool IsCollapsed { get; set; }
     [Parameter] public bool HasChildren { get; set; }
+
+    /// <summary>True when this row is an expandable group header that is currently expanded.</summary>
+    [Parameter] public bool IsExpanded { get; set; }
+
+    /// <summary>True when this row is a child of an expanded group (indented one level).</summary>
+    [Parameter] public bool IsChild { get; set; }
+
     [Parameter] public EventCallback OnClick { get; set; }
 
     private Task HandleClick() => OnClick.InvokeAsync();

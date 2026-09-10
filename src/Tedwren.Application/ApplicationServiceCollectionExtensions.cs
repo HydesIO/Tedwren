@@ -127,6 +127,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemorySiteStore>();
         services.AddScoped<ISiteRepository, InMemorySiteRepository>();
         services.AddScoped<ISitePropertyRepository, InMemorySitePropertyRepository>();
+        services.AddScoped<ISiteAssignmentRepository, InMemorySiteAssignmentRepository>();
         return services;
     }
 
@@ -181,6 +182,9 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemoryInductionStore>();
         services.AddScoped<IInductionTemplateRepository, InMemoryInductionTemplateRepository>();
         services.AddScoped<IInductionSessionRepository, InMemoryInductionSessionRepository>();
+        // Shareable induction links (UAT-018) — a singleton so a created link survives across test requests.
+        services.AddSingleton<InMemoryInductionLinkRepository>();
+        services.AddScoped<IInductionLinkRepository>(sp => sp.GetRequiredService<InMemoryInductionLinkRepository>());
         return services;
     }
 
@@ -278,6 +282,21 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IOnboardingLinkRepository>(sp => sp.GetRequiredService<InMemoryOnboardingLinkRepository>());
         services.AddSingleton<InMemoryImageStore>();
         services.AddScoped<IImageStore>(sp => sp.GetRequiredService<InMemoryImageStore>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic trade self-service onboarding service (UAT-023, SUB-4/MC-27).</summary>
+    public static IServiceCollection AddTradeOnboardingCore(this IServiceCollection services)
+    {
+        services.AddScoped<ITradeOnboardingService, Trades.TradeOnboardingService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory trade-invite store (singleton so an invite persists across test requests).</summary>
+    public static IServiceCollection AddInMemoryTradeOnboardingStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryTradeInviteRepository>();
+        services.AddScoped<ITradeInviteRepository>(sp => sp.GetRequiredService<InMemoryTradeInviteRepository>());
         return services;
     }
 

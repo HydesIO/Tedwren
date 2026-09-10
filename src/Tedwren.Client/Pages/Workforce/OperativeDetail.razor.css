@@ -15,6 +15,30 @@
     box-shadow: var(--shadow-card);
 }
 
+/* The whole card is a button opening the evidence photo — reset button chrome and add a hover affordance. */
+.qual-card--clickable {
+    width: 100%;
+    text-align: left;
+    font-family: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+.qual-card--clickable:hover {
+    border-color: var(--color-brand, #E8590C);
+    box-shadow: 0 0 0 1px var(--color-brand, #E8590C);
+}
+
+.qual-card__evidence {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--color-brand, #E8590C);
+}
+
 .qual-card__top {
     display: flex;
     align-items: center;

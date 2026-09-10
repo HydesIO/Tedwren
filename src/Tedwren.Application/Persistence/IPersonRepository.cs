@@ -15,6 +15,9 @@ public interface IPersonRepository
     /// <summary>Persists a new person.</summary>
     Task AddAsync(Person person, CancellationToken cancellationToken = default);
 
+    /// <summary>Persists changes to an existing person (e.g. their emergency contact, UAT-010).</summary>
+    Task UpdateAsync(Person person, CancellationToken cancellationToken = default);
+
     /// <summary>Permanently removes a person by id (used only by the demo-data teardown).</summary>
     Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }

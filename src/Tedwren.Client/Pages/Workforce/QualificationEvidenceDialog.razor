@@ -1,0 +1,37 @@
+@* Shows the captured photo of a qualification card (SF-5) so a manager can check the evidence (UAT-010).
+   Opened from the operative's Qualifications tab with TedwrenDialog.Medium(). *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@Name</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            @if (string.IsNullOrWhiteSpace(ImageReference))
+            {
+                <EmptyState Icon="@Icons.Material.Outlined.HideImage"
+                            Title="No evidence image"
+                            Description="No photo of this card was captured. Capture or re-upload the card to add one (SF-5)." />
+            }
+            else
+            {
+                <div class="qual-evidence">
+                    <img class="qual-evidence__image" src="@ImageReference" alt="@($"Evidence photo of {Name}")" />
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Close())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The qualification name, shown as the dialog title.</summary>
+    [Parameter] public string Name { get; set; } = string.Empty;
+
+    /// <summary>The captured card image reference/URL, or null/empty when none was captured.</summary>
+    [Parameter] public string? ImageReference { get; set; }
+}

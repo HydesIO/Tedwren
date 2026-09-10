@@ -1,0 +1,40 @@
+@* Help dialog opened from the top-bar "?" button (UAT-001). A short orientation panel plus how to search,
+   get around and reach support. Shown via IDialogService with TedwrenDialog.Medium(). *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Help &amp; support</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Severity="StatusKind.Info"
+                            Text="Tedwren keeps your workforce site-ready: manage organisations and operatives, track qualification expiries, run inductions and the site-entry decision, and send or receive compliance packs. Here's how to find your way around." />
+
+            <div class="help-dialog__section">
+                <MudText Typo="Typo.subtitle2" Class="help-dialog__heading">Finding things quickly</MudText>
+                <ul class="help-dialog__list">
+                    <li>Press <kbd>Ctrl</kbd> + <kbd>K</kbd> (or use the search bar at the top) to jump to any page, company, operative or site.</li>
+                    <li>Use the left-hand menu to move between areas. Only the modules your organisation holds are shown.</li>
+                    <li>The bell shows upcoming qualification expiries; the moon switches between light and dark themes.</li>
+                </ul>
+            </div>
+
+            <div class="help-dialog__section">
+                <MudText Typo="Typo.subtitle2" Class="help-dialog__heading">Getting support</MudText>
+                <ul class="help-dialog__list">
+                    <li>Email <a href="mailto:support@@tedwren.com">support@@tedwren.com</a> and we'll come back to you.</li>
+                    <li>Tell us the page you were on and what you expected to happen — it helps us fix things faster.</li>
+                </ul>
+            </div>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private void Close() => MudDialog.Close();
+}

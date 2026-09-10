@@ -1,0 +1,19 @@
+/* Persistent, copyable trade-invite link panel shown after the invite is created (UAT-023). Dialog-scoped, so
+   colours use --mud-palette-* (which flip with the theme) rather than --color-* tokens, per the dialog standard. */
+.invite-link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-16, 16px);
+    border: 1px solid var(--mud-palette-success);
+    border-radius: var(--radius-card, 12px);
+    background: var(--mud-palette-success-hover);
+}
+
+.invite-link__head {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}

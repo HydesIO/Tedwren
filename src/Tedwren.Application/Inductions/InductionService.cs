@@ -1,6 +1,7 @@
 using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Inductions;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.CompliancePacks;
 using Tedwren.Application.Persistence;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
@@ -20,22 +21,32 @@ public sealed class InductionService : IInductionService
     private readonly IInductionSessionRepository _sessions;
     private readonly IFormTemplateRepository? _formTemplates;
     private readonly IFormSubmissionService? _formSubmissions;
+    private readonly IInductionLinkRepository? _links;
+    private readonly ICompanyRepository? _companies;
+
+    /// <summary>Default induction-link lifetime (SUB-18: 30 days), mirroring the onboarding link (UAT-018).</summary>
+    private static readonly TimeSpan LinkLifetime = TimeSpan.FromDays(30);
 
     /// <summary>
     /// Creates the service over its repositories. The form-template repository and submission service are optional
     /// so unit tests that only exercise the induction flow can omit them; the composition root supplies them for the
-    /// induction-embedded form feature (requirement 5).
+    /// induction-embedded form feature (requirement 5). The link and company repositories are likewise optional and
+    /// power the shareable, tokenised induction link (UAT-018).
     /// </summary>
     public InductionService(
         IInductionTemplateRepository templates,
         IInductionSessionRepository sessions,
         IFormTemplateRepository? formTemplates = null,
-        IFormSubmissionService? formSubmissions = null)
+        IFormSubmissionService? formSubmissions = null,
+        IInductionLinkRepository? links = null,
+        ICompanyRepository? companies = null)
     {
         _templates = templates;
         _sessions = sessions;
         _formTemplates = formTemplates;
         _formSubmissions = formSubmissions;
+        _links = links;
+        _companies = companies;
     }
 
     /// <summary>Lists a company's induction templates (MC-3).</summary>
@@ -129,6 +140,128 @@ public sealed class InductionService : IInductionService
         t.Id, t.Name, t.ValidityDays, t.PassMark, t.AttemptLimit, t.Mandatory, t.MediaUrl, t.SiteId,
         t.Steps.Select(ToStepDto).ToList(),
         t.Questions.Select(q => new InductionQuizAuthoringDto(q.Id, q.Prompt, q.Options, q.CorrectOptionIndex)).ToList());
+
+    /// <summary>Creates a shareable, tokenised induction link for a company's template and returns the token + (optional) passcode to share (UAT-018).</summary>
+    public async Task<InductionLinkDto> CreateLinkAsync(CreateInductionLinkRequest request, Guid? createdByUserId, CancellationToken cancellationToken = default)
+    {
+        if (_links is null)
+        {
+            throw new InvalidOperationException("Induction links are not configured.");
+        }
+
+        if (request.CompanyId == Guid.Empty)
+        {
+            throw new ArgumentException("A company id is required.", nameof(request));
+        }
+
+        // The link must name one of the company's own templates (R15) — never another tenant's induction.
+        var template = await _templates.GetByIdAsync(request.TemplateId, cancellationToken);
+        if (template is null || template.CompanyId != request.CompanyId)
+        {
+            throw new ArgumentException("The induction template was not found for this company.", nameof(request));
+        }
+
+        string? passcode = null;
+        string? passcodeHash = null;
+        if (request.RequirePasscode)
+        {
+            passcode = PackPasscode.Generate();
+            passcodeHash = PackPasscode.Hash(passcode);
+        }
+
+        var link = new InductionLink
+        {
+            Token = PackToken.Generate(),
+            PasscodeHash = passcodeHash,
+            CompanyId = request.CompanyId,
+            TemplateId = request.TemplateId,
+            Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
+            ExpiresUtc = DateTimeOffset.UtcNow.Add(LinkLifetime),
+            CreatedByUserId = createdByUserId,
+        };
+
+        await _links.AddAsync(link, cancellationToken);
+        return new InductionLinkDto(link.Token, passcode, link.ExpiresUtc);
+    }
+
+    /// <summary>Returns the operative-facing context for an induction link (company + induction names), or null when invalid/expired (UAT-018).</summary>
+    public async Task<InductionLinkViewDto?> GetLinkAsync(string token, string? passcode, CancellationToken cancellationToken = default)
+    {
+        var link = await AuthorizeLinkAsync(token, passcode, cancellationToken);
+        if (link is null)
+        {
+            return null;
+        }
+
+        var template = await _templates.GetByIdAsync(link.TemplateId, cancellationToken);
+        if (template is null)
+        {
+            return null;
+        }
+
+        var company = _companies is null ? null : await _companies.GetByIdAsync(link.CompanyId, cancellationToken);
+        return new InductionLinkViewDto(company?.Name ?? "your employer", template.Name, link.Name);
+    }
+
+    /// <summary>
+    /// Starts (or resumes) the induction behind a link so an operative can complete it without a console account
+    /// (UAT-018). The company and template are fixed by the link — the anonymous caller only supplies their name —
+    /// so the device can never target another tenant's induction (R5/R15). The started session id is remembered on
+    /// the link, so re-opening it resumes the same session rather than starting over.
+    /// </summary>
+    public async Task<InductionSessionDto?> StartFromLinkAsync(string token, string? passcode, string personName, CancellationToken cancellationToken = default)
+    {
+        var link = await AuthorizeLinkAsync(token, passcode, cancellationToken);
+        if (link is null)
+        {
+            return null;
+        }
+
+        var name = (personName ?? string.Empty).Trim();
+        if (name.Length == 0)
+        {
+            throw new ArgumentException("Your name is required.", nameof(personName));
+        }
+
+        // Resume the session already started from this link, if it still exists.
+        if (link.SessionId is { } existingId && await GetSessionAsync(existingId, cancellationToken) is { } resumed)
+        {
+            return resumed;
+        }
+
+        // The link is not tied to a console-known person, so a fresh person id is minted for the session (as the
+        // admin preview does). Captured induction data is recorded against the link's company (R15).
+        var session = await StartAsync(
+            new StartInductionRequest(link.CompanyId, link.TemplateId, Guid.NewGuid(), name), cancellationToken);
+
+        link.SessionId = session.Id;
+        link.Status = OnboardingLinkStatus.Submitted;
+        await _links!.UpdateAsync(link, cancellationToken);
+        return session;
+    }
+
+    /// <summary>Validates an induction link's token, usability and passcode; returns the link or null (UAT-018).</summary>
+    private async Task<InductionLink?> AuthorizeLinkAsync(string token, string? passcode, CancellationToken cancellationToken)
+    {
+        if (_links is null || string.IsNullOrWhiteSpace(token))
+        {
+            return null;
+        }
+
+        var link = await _links.GetByTokenAsync(token, cancellationToken);
+        if (link is null || !link.IsUsable(DateTimeOffset.UtcNow))
+        {
+            return null;
+        }
+
+        if (link.PasscodeHash is not null &&
+            (string.IsNullOrEmpty(passcode) || !PackPasscode.Verify(passcode, link.PasscodeHash)))
+        {
+            return null;
+        }
+
+        return link;
+    }
 
     /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
     public async Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default)

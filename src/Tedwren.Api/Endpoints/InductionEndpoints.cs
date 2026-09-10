@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.Inductions;
 using Tedwren.Abstractions.Services;
@@ -45,6 +46,40 @@ public static class InductionEndpoints
                 }
             })
             .WithName("UpdateInductionTemplate");
+
+        // Admin creates a shareable, tokenised induction link (UAT-018) — authorised (the fallback policy applies).
+        group.MapPost("/links", async (CreateInductionLinkRequest request, ClaimsPrincipal user, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    Guid? userId = Guid.TryParse(user.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub), out var uid) ? uid : null;
+                    return Results.Ok(await service.CreateLinkAsync(request, userId, cancellationToken));
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("CreateInductionLink");
+
+        // The worker opens a shared link with no console account (MC-1/MC-2, UAT-018) — anonymous, token+passcode gated.
+        group.MapGet("/by-link/{token}", async (string token, string? passcode, IInductionService service, CancellationToken cancellationToken) =>
+                await service.GetLinkAsync(token, passcode, cancellationToken) is { } view ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden))
+            .WithName("ViewInductionLink").AllowAnonymous();
+
+        group.MapPost("/by-link/{token}/session", async (string token, StartInductionFromLinkRequest request, IInductionService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.StartFromLinkAsync(token, request.Passcode, request.PersonName, cancellationToken) is { } session
+                        ? Results.Ok(session) : Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
+            .WithName("StartInductionFromLink").AllowAnonymous();
 
         // The worker's take-flow runs from a link with no console account (MC-1/MC-2) — anonymous.
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>

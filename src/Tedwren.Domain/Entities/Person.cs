@@ -16,6 +16,15 @@ public sealed class Person
     /// <summary>The normalised mobile number that identifies this person (SF-1).</summary>
     public required PhoneNumber PhoneNumber { get; init; }
 
+    /// <summary>
+    /// Emergency contact name for the person, captured during onboarding/induction (MC-2). Person-level (not
+    /// per engagement), since it is the same whoever engages them. Null until captured (UAT-010).
+    /// </summary>
+    public string? EmergencyContactName { get; set; }
+
+    /// <summary>Emergency contact phone number (free text, as entered). Null until captured (UAT-010).</summary>
+    public string? EmergencyContactPhone { get; set; }
+
     /// <summary>When the person record was first created (UTC; displayed in UK local time per R11).</summary>
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;
 }

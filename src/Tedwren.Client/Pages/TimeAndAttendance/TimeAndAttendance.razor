@@ -20,7 +20,7 @@
     </Actions>
 </PageHeader>
 
-<DashboardCard>
+<DashboardCard Title="By operative" Subtitle="Weekly timesheets — review, approve and return for correction (SUB-8)">
     <Body>
         <DataTable TItem="TimesheetSummaryDto"
                    Items="_timesheets"
@@ -34,11 +34,45 @@
     </Body>
 </DashboardCard>
 
+@* Per-site rollup for a QS to reconcile against a subcontractor's application for payment (MC-24) — the same
+   timesheets grouped by site rather than by person. This on-screen view was missing (UAT-029). *@
+<DashboardCard Title="By site (QS reconciliation)" Subtitle="@($"Hours by site for the week of {WeekStart:dd MMM yyyy} (MC-24)")">
+    <Body>
+        <AsyncContent Loading="_loading" Variant="LoadingSkeleton.SkeletonVariant.List" Rows="3"
+                      IsEmpty="@(_rollup is null || _rollup.Sites.Count == 0)"
+                      EmptyIcon="@Icons.Material.Outlined.Apartment" EmptyTitle="No hours booked"
+                      EmptyDescription="No attendance has rolled up to any site for this week yet.">
+            <div class="ts-rollup">
+                @foreach (var site in _rollup!.Sites)
+                {
+                    <div class="ts-rollup__site">
+                        <div class="ts-rollup__site-head">
+                            <span class="ts-rollup__site-name">@site.SiteName</span>
+                            <span class="ts-rollup__site-hours">@site.TotalHours.ToString("0.##") h</span>
+                        </div>
+                        <ul class="ts-rollup__ops">
+                            @foreach (var op in site.Operatives)
+                            {
+                                <li><span>@op.OperativeName</span><span>@op.Hours.ToString("0.##") h</span></li>
+                            }
+                        </ul>
+                    </div>
+                }
+                <div class="ts-rollup__total">
+                    <span>Total for all sites</span>
+                    <span>@_rollup.TotalHours.ToString("0.##") h</span>
+                </div>
+            </div>
+        </AsyncContent>
+    </Body>
+</DashboardCard>
+
 @code {
     // The current Monday-anchored week for the signed-in company.
     private static readonly DateOnly WeekStart = CurrentWeekStart();
 
     private IReadOnlyList<TimesheetSummaryDto> _timesheets = Array.Empty<TimesheetSummaryDto>();
+    private TimesheetSiteRollupDto? _rollup;
     private List<DataColumn<TimesheetSummaryDto>> _columns = new();
     private bool _loading = true;
 
@@ -59,6 +93,7 @@
     {
         _loading = true;
         _timesheets = await Timesheets.GetForCompanyWeekAsync(Tenant.CurrentCompanyId, WeekStart);
+        _rollup = await Timesheets.GetSiteRollupAsync(Tenant.CurrentCompanyId, WeekStart);
         _loading = false;
     }
 

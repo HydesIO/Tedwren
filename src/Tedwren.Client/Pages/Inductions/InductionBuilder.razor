@@ -2,6 +2,7 @@
 @page "/inductions/{TemplateId:guid}/edit"
 @using Tedwren.Abstractions.Contracts.Forms
 @using Tedwren.Abstractions.Contracts.Inductions
+@using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Services
 @using Tedwren.UiComponents.Forms
 @inject IInductionService InductionSvc
@@ -53,25 +54,52 @@
             </div>
         </FormSection>
 
-        <FormSection Title="Forms" Description="Attach Forms Library forms to this induction — a worker completes them as induction steps (requirement 5).">
-            <TedwrenSelect T="string" Label="Add a published form" Value="@_selectedForm"
-                           ValueChanged="AddFormStep" Options="_publishedFormNames" Placeholder="Select a form to add" />
+        @* The capture steps a worker completes are data-driven and configurable here — the tester asked whether
+           fields could be added/removed without a developer (UAT-027/028). Built-in steps (identity, emergency
+           contact, declaration, media, signature) and attached Forms Library forms sit in one ordered list. *@
+        <FormSection Title="Capture steps" Description="What a worker completes during the induction (MC-2/MC-3). Add, remove and reorder steps, and attach Forms Library forms for custom capture (requirement 5) — no developer needed.">
             <div class="form-page__full">
-                @if (_formSteps.Count == 0)
+                @if (_steps.Count == 0)
                 {
-                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No forms attached yet.</MudText>
+                    <MudText Typo="Typo.body2" Class="mud-text-secondary">No steps yet — add one below.</MudText>
                 }
                 else
                 {
-                    @foreach (var step in _formSteps)
+                    @for (var i = 0; i < _steps.Count; i++)
                     {
-                        <MudPaper Class="pa-3 mb-2 d-flex align-center justify-space-between" Outlined="true">
-                            <MudText><MudIcon Icon="@Icons.Material.Outlined.Dashboard" Size="Size.Small" Class="mr-2" />@step.Label</MudText>
-                            <MudButton Variant="Variant.Text" Color="Color.Error" Size="Size.Small"
-                                       StartIcon="@Icons.Material.Outlined.Delete" OnClick="@(() => _formSteps.Remove(step))">Remove</MudButton>
+                        var index = i;
+                        var step = _steps[index];
+                        <MudPaper Class="pa-3 mb-2" Outlined="true" @key="step">
+                            <div class="induction-step">
+                                <MudIcon Icon="@StepIcon(step.Kind)" Size="Size.Small" Class="induction-step__icon" />
+                                <div class="induction-step__fields">
+                                    <TedwrenTextField Label="@($"{StepKindLabel(step.Kind)} — label shown to the worker")" @bind-Value="step.Label" />
+                                    <TedwrenToggle Label="Required" Description="A required step must be completed before finishing."
+                                                   @bind-Value="step.Required" />
+                                </div>
+                                <div class="induction-step__actions">
+                                    <MudIconButton Icon="@Icons.Material.Outlined.ArrowUpward" Size="Size.Small"
+                                                   Disabled="index == 0" OnClick="@(() => MoveStep(index, -1))" aria-label="Move up" />
+                                    <MudIconButton Icon="@Icons.Material.Outlined.ArrowDownward" Size="Size.Small"
+                                                   Disabled="index == _steps.Count - 1" OnClick="@(() => MoveStep(index, 1))" aria-label="Move down" />
+                                    <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small"
+                                                   OnClick="@(() => _steps.RemoveAt(index))" aria-label="Remove step" />
+                                </div>
+                            </div>
+                            @if (step.Kind == "Form")
+                            {
+                                <MudText Typo="Typo.caption" Class="mud-text-secondary">Attached form: @FormName(step.Reference)</MudText>
+                            }
                         </MudPaper>
                     }
                 }
+
+                <div class="induction-step__add">
+                    <TedwrenSelect T="string" Label="Add a built-in step" Value="@_selectedKind"
+                                   ValueChanged="AddBuiltInStep" Options="_addableKindLabels" Placeholder="Choose a step type" />
+                    <TedwrenSelect T="string" Label="Attach a published form" Value="@_selectedForm"
+                                   ValueChanged="AddFormStep" Options="_publishedFormNames" Placeholder="Choose a form" />
+                </div>
             </div>
         </FormSection>
 
@@ -97,6 +125,7 @@
     private Guid? _loadedFor;
 
     private InductionTemplateAuthoringDto? _template;
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
     private IReadOnlyList<string> _siteNames = Array.Empty<string>();
     private bool _busy;
 
@@ -111,8 +140,23 @@
 
     private IReadOnlyList<FormTemplateSummaryDto> _publishedForms = Array.Empty<FormTemplateSummaryDto>();
     private IReadOnlyList<string> _publishedFormNames = Array.Empty<string>();
-    private readonly List<InductionStepDto> _formSteps = new();
+
+    // The ordered, editable capture steps (UAT-027/028). Built-in kinds plus attached Forms Library forms.
+    private readonly List<StepEdit> _steps = new();
     private string? _selectedForm;
+    private string? _selectedKind;
+
+    // Built-in step kinds an admin can add, as friendly label → InductionStepKind name (the DTO Kind string).
+    private static readonly IReadOnlyDictionary<string, string> AddableKinds = new Dictionary<string, string>
+    {
+        ["Confirm identity"] = "Identity",
+        ["Qualification cards"] = "Cards",
+        ["Emergency contact"] = "EmergencyContact",
+        ["Declaration"] = "Declaration",
+        ["Video / document"] = "Media",
+        ["Signature"] = "Signature",
+    };
+    private static readonly IReadOnlyList<string> _addableKindLabels = AddableKinds.Keys.ToList();
 
     protected override async Task OnParametersSetAsync()
     {
@@ -122,8 +166,8 @@
         _loadedFor = TemplateId;
 
         await Tenant.InitializeAsync();
-        var sites = await Sites.GetSitesAsync();
-        _siteNames = sites.Select(s => s.Name).ToList();
+        _sites = await Sites.GetSitesAsync();
+        _siteNames = _sites.Select(s => s.Name).ToList();
         _publishedForms = (await Forms.GetTemplatesAsync()).Where(f => f.Status == "Published").ToList();
         _publishedFormNames = _publishedForms.Select(f => f.Name).ToList();
         await LoadAsync();
@@ -134,13 +178,78 @@
     {
         _selectedForm = null;
         var form = _publishedForms.FirstOrDefault(f => f.Name == formName);
-        if (form is null || _formSteps.Any(s => s.Reference == form.FamilyId.ToString()))
+        if (form is null || _steps.Any(s => s.Kind == "Form" && s.Reference == form.FamilyId.ToString()))
         {
             return;
         }
 
-        _formSteps.Add(new InductionStepDto(Guid.NewGuid().ToString("N"), "Form", form.Name, true, form.FamilyId.ToString()));
+        _steps.Add(new StepEdit
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Kind = "Form",
+            Label = form.Name,
+            Required = true,
+            Reference = form.FamilyId.ToString(),
+        });
     }
+
+    // Adds a built-in capture step of the chosen kind (UAT-027/028).
+    private void AddBuiltInStep(string? kindLabel)
+    {
+        _selectedKind = null;
+        if (kindLabel is null || !AddableKinds.TryGetValue(kindLabel, out var kind))
+        {
+            return;
+        }
+
+        _steps.Add(new StepEdit
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Kind = kind,
+            Label = StepKindLabel(kind),
+            Required = true,
+        });
+    }
+
+    // Moves a step up or down in the order.
+    private void MoveStep(int index, int delta)
+    {
+        var target = index + delta;
+        if (target < 0 || target >= _steps.Count)
+        {
+            return;
+        }
+
+        (_steps[index], _steps[target]) = (_steps[target], _steps[index]);
+    }
+
+    private string FormName(string? familyId) =>
+        _publishedForms.FirstOrDefault(f => f.FamilyId.ToString() == familyId)?.Name ?? "—";
+
+    // Friendly label + icon for a step kind (the DTO Kind string is the InductionStepKind name).
+    private static string StepKindLabel(string kind) => kind switch
+    {
+        "Identity" => "Confirm identity",
+        "Cards" => "Qualification cards",
+        "EmergencyContact" => "Emergency contact",
+        "Declaration" => "Declaration",
+        "Media" => "Video / document",
+        "Signature" => "Signature",
+        "Form" => "Form",
+        _ => kind,
+    };
+
+    private static string StepIcon(string kind) => kind switch
+    {
+        "Identity" => Icons.Material.Outlined.Badge,
+        "Cards" => Icons.Material.Outlined.CreditCard,
+        "EmergencyContact" => Icons.Material.Outlined.ContactPhone,
+        "Declaration" => Icons.Material.Outlined.FactCheck,
+        "Media" => Icons.Material.Outlined.PlayCircle,
+        "Signature" => Icons.Material.Outlined.Draw,
+        "Form" => Icons.Material.Outlined.Dashboard,
+        _ => Icons.Material.Outlined.Checklist,
+    };
 
     private async Task LoadAsync()
     {
@@ -155,6 +264,10 @@
             if (_template is null) return;
 
             _name = _template.Name;
+            // Load the current "applies to site" selection so re-editing doesn't silently reset it to
+            // "All sites" (UAT-017). Mapped from the stored SiteId back to the site name the select shows;
+            // a null SiteId means all sites (the placeholder).
+            _site = _sites.FirstOrDefault(s => s.Id == _template.SiteId)?.Name;
             _mediaUrl = _template.MediaUrl;
             _validityDays = _template.ValidityDays;
             _mandatory = _template.Mandatory;
@@ -169,8 +282,15 @@
                 CorrectDisplay = q.CorrectOptionIndex + 1,
             }));
 
-            _formSteps.Clear();
-            _formSteps.AddRange(_template.Steps.Where(s => s.Kind == "Form"));
+            _steps.Clear();
+            _steps.AddRange(_template.Steps.Select(s => new StepEdit
+            {
+                Id = s.Id,
+                Kind = s.Kind,
+                Label = s.Label,
+                Required = s.Required,
+                Reference = s.Reference,
+            }));
         }
         finally
         {
@@ -201,9 +321,16 @@
         _busy = true;
         try
         {
-            var siteId = _template.SiteId; // site scoping edited elsewhere; preserved here
-            // Preserve the template's non-form steps and replace the Form steps with the current selection.
-            var steps = _template.Steps.Where(s => s.Kind != "Form").Concat(_formSteps).ToList();
+            // Persist the chosen "applies to site" (UAT-017): map the selected name back to its id, or null
+            // (all sites) when nothing is chosen. Previously this ignored the picker and re-saved the old id.
+            var siteId = string.IsNullOrWhiteSpace(_site)
+                ? (Guid?)null
+                : _sites.FirstOrDefault(s => s.Name == _site)?.Id;
+            // Persist the full, admin-edited capture step list in its current order (UAT-027/028).
+            var steps = _steps
+                .Where(s => !string.IsNullOrWhiteSpace(s.Label))
+                .Select(s => new InductionStepDto(s.Id, s.Kind, s.Label.Trim(), s.Required, s.Reference))
+                .ToList();
             var updated = await InductionSvc.UpdateTemplateAsync(_template.Id, new UpdateInductionTemplateRequest(
                 _name, _validityDays, _passMark, _attemptLimit, _mandatory, _mediaUrl, siteId, steps, questions));
             if (updated is not null)
@@ -228,5 +355,15 @@
         public string Prompt { get; set; } = string.Empty;
         public List<ChipOption> Options { get; set; } = new();
         public int CorrectDisplay { get; set; } = 1;
+    }
+
+    /// <summary>An editable induction capture step (UAT-027/028).</summary>
+    private sealed class StepEdit
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Kind { get; set; } = string.Empty;
+        public string Label { get; set; } = string.Empty;
+        public bool Required { get; set; } = true;
+        public string? Reference { get; set; }
     }
 }
