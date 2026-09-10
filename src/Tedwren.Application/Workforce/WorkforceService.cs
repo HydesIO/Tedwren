@@ -206,7 +206,9 @@ public sealed class WorkforceService : IWorkforceService
             history,
             applies,
             inductionValid,
-            InductionStatusLabel(applies, latestInduction, now));
+            InductionStatusLabel(applies, latestInduction, now),
+            person?.EmergencyContactName,
+            person?.EmergencyContactPhone);
     }
 
     /// <summary>Whether induction validity is a site-readiness condition for this company: yes for a main

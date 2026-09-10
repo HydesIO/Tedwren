@@ -93,6 +93,13 @@ public sealed class ApiOrganisationService : IOrganisationService
         return response.IsSuccessStatusCode;
     }
 
+    /// <summary>Updates a person's emergency contact via the API (MC-2/UAT-010).</summary>
+    public async Task<bool> UpdatePersonContactAsync(Guid personId, UpdatePersonContactRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/organisation/persons/{personId}/contact", request, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
     /// <summary>Shape of the create-company response body.</summary>
     private sealed record CreatedResponse(Guid Id);
 }

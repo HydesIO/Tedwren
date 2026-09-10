@@ -29,9 +29,15 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   manager is never left with an empty screen), while Administrators/ComplianceManagers/Auditors still see the
   whole tenant. Assignment API (`/api/sites/assignments/{userId}`) + client + an "Assigned sites" section on the
   user detail page. This also lays the site↔operative foundation for the 016 per-site compliance filter.
-- ⏳ **Remaining:** 018 shareable induction link + email, 023 RAMS/trade self-service onboarding, 010a richer
-  operative capture (emergency contact on the profile). The **016 per-site compliance filter** builds on UAT-011
-  and is grouped with this remaining set (the compliance-legend drill-down shipped in Phase 3).
+- ✅ **UAT-010a (MC-2) — emergency contact on the operative profile.** New person-level `EmergencyContactName`/
+  `EmergencyContactPhone` (entity + `PersonRecord` + Dapper/in-memory repos with a new `UpdateAsync` + EF
+  migration `AddPersonEmergencyContact`); surfaced on `OperativeDetailDto` and the operative Overview, and
+  captured via the operative edit dialog (`IOrganisationService.UpdatePersonContactAsync` +
+  `/api/organisation/persons/{id}/contact`). (010b — qualification evidence photo — shipped in Phase 3.)
+- ⏳ **Remaining (infra-dependent / larger workflow — specced in `docs/uat-remaining-features.md`):** 018
+  shareable induction link + email delivery, 023 RAMS/trade self-service onboarding workflow, and the 016
+  per-site compliance filter. 018 and 023 both need the email-delivery provider that is deferred repo-wide
+  (PRD-Phase 7); 023 is a multi-step invite→upload→review workflow.
 
 ---
 

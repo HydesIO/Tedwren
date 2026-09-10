@@ -41,7 +41,10 @@ public sealed record OperativeDetailDto(
     // contradicts the site gate (UAT-014); these expose the induction status on its own for the detail view.
     bool InductionApplies = false,
     bool InductionValid = false,
-    string InductionStatusLabel = "");
+    string InductionStatusLabel = "",
+    // Emergency contact captured for the person (MC-2), shown on the operative overview (UAT-010); null until captured.
+    string? EmergencyContactName = null,
+    string? EmergencyContactPhone = null);
 
 /// <summary>A qualification card held by an operative, with its server-computed status (SF-8).</summary>
 public sealed record OperativeQualificationDto(

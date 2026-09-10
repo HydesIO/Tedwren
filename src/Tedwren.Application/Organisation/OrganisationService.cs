@@ -363,6 +363,22 @@ public sealed class OrganisationService : IOrganisationService
         return true;
     }
 
+    /// <summary>Updates a person's emergency contact (MC-2/UAT-010). Person-level, so it applies across every
+    /// company that engages them. Returns false when the person is not found.</summary>
+    public async Task<bool> UpdatePersonContactAsync(Guid personId, UpdatePersonContactRequest request, CancellationToken cancellationToken = default)
+    {
+        var person = await _people.GetByIdAsync(personId, cancellationToken);
+        if (person is null)
+        {
+            return false;
+        }
+
+        person.EmergencyContactName = string.IsNullOrWhiteSpace(request.EmergencyContactName) ? null : request.EmergencyContactName.Trim();
+        person.EmergencyContactPhone = string.IsNullOrWhiteSpace(request.EmergencyContactPhone) ? null : request.EmergencyContactPhone.Trim();
+        await _people.UpdateAsync(person, cancellationToken);
+        return true;
+    }
+
     /// <summary>Returns a person's current (non-superseded) cards — the input to the compliance roll-up (SF-8/SF-10).</summary>
     private async Task<IReadOnlyList<QualificationCard>> GetCurrentCardsAsync(Guid personId, CancellationToken cancellationToken)
     {

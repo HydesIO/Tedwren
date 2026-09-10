@@ -18,6 +18,12 @@
                                   Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Name is required." />
                 <TedwrenTextField Label="Trade" @bind-Value="_trade" />
             </div>
+
+            @* Emergency contact is captured per person and shown on the overview (MC-2/UAT-010). *@
+            <FormSection Title="Emergency contact" Description="Recorded for the person and shared across their employers.">
+                <TedwrenTextField Label="Contact name" @bind-Value="_emergencyName" Placeholder="e.g. Jordan Doe" />
+                <TedwrenTextField Label="Contact phone" @bind-Value="_emergencyPhone" Placeholder="e.g. 07700 900123" />
+            </FormSection>
         </div>
     </DialogContent>
     <DialogActions>
@@ -33,6 +39,8 @@
 
     private string? _name;
     private string? _trade;
+    private string? _emergencyName;
+    private string? _emergencyPhone;
     private bool _submitted;
     private bool _busy;
 
@@ -40,6 +48,8 @@
     {
         _name = Operative.Name;
         _trade = Operative.Trade;
+        _emergencyName = Operative.EmergencyContactName;
+        _emergencyPhone = Operative.EmergencyContactPhone;
     }
 
     private async Task SaveAsync()
@@ -54,6 +64,9 @@
         _busy = true;
         var ok = await Org.UpdateEngagementAsync(
             Operative.CompanyId, Operative.EngagementId, new UpdateEngagementRequest(_name!, _trade));
+        // Emergency contact is person-level (shared across employers); persist it alongside the engagement edit.
+        await Org.UpdatePersonContactAsync(
+            Operative.PersonId, new UpdatePersonContactRequest(_emergencyName, _emergencyPhone));
         _busy = false;
 
         if (ok)

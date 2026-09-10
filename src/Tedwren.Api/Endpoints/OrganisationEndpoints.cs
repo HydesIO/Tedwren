@@ -73,6 +73,13 @@ public static class OrganisationEndpoints
                         : Results.NotFound())
             .WithName("ReactivateEngagement");
 
+        group.MapPut("/persons/{personId:guid}/contact",
+                async (Guid personId, UpdatePersonContactRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
+                    await service.UpdatePersonContactAsync(personId, request, cancellationToken)
+                        ? Results.NoContent()
+                        : Results.NotFound())
+            .WithName("UpdatePersonContact");
+
         return app;
     }
 }

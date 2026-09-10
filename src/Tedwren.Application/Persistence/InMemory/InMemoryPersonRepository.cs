@@ -32,4 +32,11 @@ public sealed class InMemoryPersonRepository : IPersonRepository
         _store.People[person.Id] = person;
         return Task.CompletedTask;
     }
+
+    /// <summary>Persists changes to an existing person (UAT-010).</summary>
+    public Task UpdateAsync(Person person, CancellationToken cancellationToken = default)
+    {
+        _store.People[person.Id] = person;
+        return Task.CompletedTask;
+    }
 }

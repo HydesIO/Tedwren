@@ -38,6 +38,8 @@ public sealed class PersonRecord
 {
     public Guid Id { get; set; }
     public string PhoneNumber { get; set; } = string.Empty;
+    public string? EmergencyContactName { get; set; }
+    public string? EmergencyContactPhone { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 

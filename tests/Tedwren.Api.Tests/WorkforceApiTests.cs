@@ -87,6 +87,27 @@ public sealed class WorkforceApiTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact] // UAT-010 (MC-2) — a person's emergency contact is captured and shown on the operative detail
+    public async Task OperativeDetail_ExposesEmergencyContact()
+    {
+        var client = _factory.CreateClient();
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var companyId = me!.CompanyId!.Value;
+        var name = "Contact Case " + Guid.NewGuid().ToString("N")[..6];
+
+        await client.PostAsJsonAsync("/api/organisation/operatives",
+            new AddOperativeRequest(companyId, name, "07700900622", "Joiner", null));
+        var row = (await client.GetFromJsonAsync<List<OperativeListItemDto>>("/api/workforce"))!.Single(o => o.Name == name);
+
+        var put = await client.PutAsJsonAsync($"/api/organisation/persons/{row.PersonId}/contact",
+            new { EmergencyContactName = "Jordan Doe", EmergencyContactPhone = "07700 900999" });
+        Assert.Equal(System.Net.HttpStatusCode.NoContent, put.StatusCode);
+
+        var detail = await client.GetFromJsonAsync<OperativeDetailDto>($"/api/workforce/{row.Slug}");
+        Assert.Equal("Jordan Doe", detail!.EmergencyContactName);
+        Assert.Equal("07700 900999", detail.EmergencyContactPhone);
+    }
+
     [Fact] // UAT-010 (SF-5) — the captured card image reference reaches the operative's qualifications
     public async Task OperativeDetail_ExposesQualificationImageReference()
     {

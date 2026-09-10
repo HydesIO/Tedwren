@@ -182,6 +182,13 @@ else
             _overview.Add(new("Induction", _op.InductionStatusLabel));
         }
 
+        // Emergency contact — captured per person, part of the richer operative profile (MC-2, UAT-010).
+        _overview.Add(new("Emergency contact", _op.EmergencyContactName ?? "Not captured"));
+        if (!string.IsNullOrWhiteSpace(_op.EmergencyContactPhone))
+        {
+            _overview.Add(new("Emergency phone", _op.EmergencyContactPhone));
+        }
+
         _history = _op.History
             .Select(h => new ActivityItem(
                 h.Title.Contains("blocked", StringComparison.OrdinalIgnoreCase)
