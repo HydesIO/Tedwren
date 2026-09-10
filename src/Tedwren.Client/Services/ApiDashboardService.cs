@@ -23,8 +23,13 @@ public sealed class ApiDashboardService : IDashboardService
             new ComplianceBreakdownDto(null, 0, 0, 0, 0, 0),
             Array.Empty<SiteRiskRowDto>());
 
-    /// <summary>Gets just the workforce compliance breakdown from the API.</summary>
-    public async Task<ComplianceBreakdownDto> GetComplianceAsync(CancellationToken cancellationToken = default) =>
-        await _http.GetFromJsonAsync<ComplianceBreakdownDto>("api/dashboard/compliance", cancellationToken)
-        ?? new ComplianceBreakdownDto(null, 0, 0, 0, 0, 0);
+    /// <summary>Gets the workforce compliance breakdown from the API, optionally scoped to one site (UAT-016).</summary>
+    public async Task<ComplianceBreakdownDto> GetComplianceAsync(string? siteSlug = null, CancellationToken cancellationToken = default)
+    {
+        var url = string.IsNullOrWhiteSpace(siteSlug)
+            ? "api/dashboard/compliance"
+            : $"api/dashboard/compliance?site={Uri.EscapeDataString(siteSlug)}";
+        return await _http.GetFromJsonAsync<ComplianceBreakdownDto>(url, cancellationToken)
+            ?? new ComplianceBreakdownDto(null, 0, 0, 0, 0, 0);
+    }
 }

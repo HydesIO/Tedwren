@@ -50,4 +50,38 @@ public sealed class DashboardApiTests : IClassFixture<WebApplicationFactory<Prog
         Assert.NotNull(breakdown);
         Assert.Equal(breakdown!.Total, breakdown.Compliant + breakdown.AtRisk + breakdown.NonCompliant + breakdown.Pending);
     }
+
+    [Fact] // UAT-016 — the compliance breakdown can be scoped to a single site, matching the site's operative count
+    public async Task Compliance_ScopedToSite_MatchesSiteRoster()
+    {
+        var client = _factory.CreateClient();
+
+        var summary = await client.GetFromJsonAsync<DashboardSummaryDto>("/api/dashboard");
+        var site = summary!.SiteRisk.FirstOrDefault(s => s.Operatives > 0);
+        if (site is null)
+        {
+            return; // no seeded site has operatives on it — nothing to assert for the per-site path here
+        }
+
+        var scoped = await client.GetFromJsonAsync<ComplianceBreakdownDto>(
+            $"/api/dashboard/compliance?site={site.Slug}");
+
+        Assert.NotNull(scoped);
+        // The per-site tally counts exactly that site's operatives (same attendance-derived roster as the heatmap).
+        Assert.Equal(site.Operatives, scoped!.Total);
+        Assert.Equal(scoped.Total, scoped.Compliant + scoped.AtRisk + scoped.NonCompliant + scoped.Pending);
+        // A single site is a subset of the tenant.
+        Assert.True(scoped.Total <= summary.Compliance.Total);
+    }
+
+    [Fact] // UAT-016/R15 — an unknown (or out-of-scope) site yields an empty breakdown, never another site's data
+    public async Task Compliance_UnknownSite_IsEmpty()
+    {
+        var client = _factory.CreateClient();
+
+        var breakdown = await client.GetFromJsonAsync<ComplianceBreakdownDto>(
+            "/api/dashboard/compliance?site=no-such-site-xyz");
+
+        Assert.Equal(0, breakdown!.Total);
+    }
 }

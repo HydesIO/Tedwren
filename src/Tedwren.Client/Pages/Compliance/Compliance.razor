@@ -1,14 +1,33 @@
 @page "/compliance"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Dashboard
+@using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Services
 @inject IDashboardService Dashboard
+@inject ISiteService Sites
+@inject NavigationManager Nav
 
 <PageTitle>Compliance · Tedwren</PageTitle>
 
-<PageHeader Title="Compliance" Subtitle="Workforce compliance overview" />
+<PageHeader Title="Compliance" Subtitle="Workforce compliance overview">
+    <Actions>
+        @* Per-site filter (UAT-016). The list is already role-scoped — a Site Manager only sees their sites. *@
+        @if (_sites.Count > 0)
+        {
+            <MudSelect T="string" Value="@(SiteFilter ?? string.Empty)" ValueChanged="OnSiteChanged"
+                       Label="Site" Dense="true" Class="compliance-site-filter">
+                <MudSelectItem T="string" Value="@string.Empty">All sites</MudSelectItem>
+                @foreach (var site in _sites)
+                {
+                    <MudSelectItem T="string" Value="@site.Slug">@site.Name</MudSelectItem>
+                }
+            </MudSelect>
+        }
+    </Actions>
+</PageHeader>
 
 <div class="compliance-layout">
-    <DashboardCard Title="Workforce compliance">
+    <DashboardCard Title="@_cardTitle">
         <Body>
             <AsyncContent Loading="_loading" Error="@_error" ErrorTitle="Couldn't load compliance"
                           OnRetry="LoadAsync" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="3">
@@ -21,7 +40,9 @@
                        per-qualification "held by" counts and expected them to tally (UAT-016). Each operative is
                        counted once here, by their lowest current card status (SF-8). *@
                     <MudText Typo="Typo.caption" Class="mud-text-secondary compliance-overview__note">
-                        Each operative is counted once, by their lowest current card status (SF-8).
+                        @(_selectedSiteName is { } site
+                            ? $"{site} — each operative on site is counted once, by their lowest current card status (SF-8)."
+                            : "Each operative is counted once, by their lowest current card status (SF-8).")
                     </MudText>
                 </div>
             </AsyncContent>
@@ -30,23 +51,43 @@
 </div>
 
 @code {
+    // Optional site drill-down: matches a site slug from the (role-scoped) list. Empty/unknown → whole tenant.
+    [Parameter, SupplyParameterFromQuery(Name = "site")] public string? SiteFilter { get; set; }
+
     // A non-null empty overview so the card renders safely before the first load completes (avoids the
     // NullReferenceException that surfaced Blazor's bottom error bar).
     private ComplianceOverviewVm _overview = ComplianceOverviewView.From(new ComplianceBreakdownDto(null, 0, 0, 0, 0, 0));
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private bool _sitesLoaded;
     private bool _loading = true;
     private string? _error;
 
-    protected override Task OnInitializedAsync() => LoadAsync();
+    private string? _selectedSiteName => string.IsNullOrWhiteSpace(SiteFilter)
+        ? null
+        : _sites.FirstOrDefault(s => s.Slug == SiteFilter)?.Name;
+    private string _cardTitle => _selectedSiteName is { } name ? $"Workforce compliance — {name}" : "Workforce compliance";
 
-    // Loads the workforce compliance overview (aggregated from current cards, SF-8) from the Web API. Load
-    // failures surface as an inline retry rather than an unhandled error.
+    protected override async Task OnParametersSetAsync()
+    {
+        // Load the site picker's options once (role-scoped); ignore failures — the page still works tenant-wide.
+        if (!_sitesLoaded)
+        {
+            try { _sites = await Sites.GetSitesAsync(); } catch { /* leave empty → picker hidden */ }
+            _sitesLoaded = true;
+        }
+
+        await LoadAsync();
+    }
+
+    // Loads the workforce compliance overview (aggregated from current cards, SF-8) from the Web API, scoped to
+    // the selected site when one is chosen (UAT-016). Load failures surface as an inline retry, not a crash.
     private async Task LoadAsync()
     {
         _loading = true;
         _error = null;
         try
         {
-            var breakdown = await Dashboard.GetComplianceAsync();
+            var breakdown = await Dashboard.GetComplianceAsync(SiteFilter);
             _overview = ComplianceOverviewView.From(breakdown);
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
@@ -58,4 +99,8 @@
             _loading = false;
         }
     }
+
+    // Switching site updates the query string, which re-runs OnParametersSetAsync → LoadAsync for that site.
+    private void OnSiteChanged(string? slug) =>
+        Nav.NavigateTo(string.IsNullOrEmpty(slug) ? "/compliance" : $"/compliance?site={Uri.EscapeDataString(slug)}");
 }

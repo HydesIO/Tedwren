@@ -43,10 +43,18 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   that creates the link and surfaces the copyable `/induct?token=…` URL + passcode (no email backend needed —
   same pattern as the pack/onboarding links); `/induct` now runs anonymously in link mode and still falls back
   to the authenticated admin preview when no token is present (keeps the UAT-019 fix).
+- ✅ **UAT-016 (per-site compliance filter) — completing 016.** `IDashboardService.GetComplianceAsync` now takes
+  an optional site: no site → the tenant-wide tally (unchanged); a site → that site's operatives (its
+  attendance-derived roster, as the site-risk heatmap uses) run through the same per-person `ComplianceRollup`
+  bucket loop. Resolution goes through the role-aware `ISiteService.GetSiteAsync`, so a Site Manager only sees
+  their assigned sites and an unknown/out-of-scope site yields an empty breakdown (R15). `GET /api/dashboard/compliance`
+  gains `?site={slug}`; the Compliance page shows a role-scoped site `MudSelect` driving a `?site=` query param.
+  (016a labels/library removal and 016b legend drill-down shipped earlier; per-site drill-down into the workforce
+  register is a deliberate follow-up — operatives associate to a site only via attendance, so it needs a
+  site-scoped workforce query rather than a client-side filter.)
 - ⏳ **Remaining (building now — "build everything" scope):** 023 RAMS/trade self-service onboarding workflow
-  (invite→upload→review, two slices) and the 016 per-site compliance filter (builds on UAT-011). Real email
-  delivery is stubbed to the outbox repo-wide (PRD-Phase 7), so the invite/share links are surfaced copyably and
-  the flow is testable without an email provider.
+  (invite→upload→review, two slices). Real email delivery is stubbed to the outbox repo-wide (PRD-Phase 7), so
+  the invite link is surfaced copyably and the flow is testable without an email provider.
 
 ---
 
