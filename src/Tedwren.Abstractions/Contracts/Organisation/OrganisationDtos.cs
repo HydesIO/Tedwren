@@ -73,7 +73,9 @@ public sealed record CreateCompanyRequest(
     string? ContactPhone,
     OrgType? OrgType = null);
 
-/// <summary>Request to update an existing company's editable fields.</summary>
+/// <summary>Request to update an existing company's editable fields. <paramref name="OrgType"/> is the typed
+/// product (SF-22) and is written as given — including null — so a caller must pass the company's existing
+/// product to preserve it (the edit dialog pre-fills it from the current value).</summary>
 public sealed record UpdateCompanyRequest(
     string Name,
     string? Type,
@@ -82,7 +84,8 @@ public sealed record UpdateCompanyRequest(
     string? Address,
     string? ContactName,
     string? ContactEmail,
-    string? ContactPhone);
+    string? ContactPhone,
+    OrgType? OrgType = null);
 
 /// <summary>
 /// Request to add an operative to a company. The person is identified by mobile number (SF-1); the

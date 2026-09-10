@@ -209,6 +209,7 @@ public sealed class OrganisationService : IOrganisationService
         company.ContactName = request.ContactName;
         company.ContactEmail = request.ContactEmail;
         company.ContactPhone = request.ContactPhone;
+        company.OrgType = ToDomainOrgType(request.OrgType);
         await _companies.UpdateAsync(company, cancellationToken);
         return true;
     }

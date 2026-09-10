@@ -1,3 +1,4 @@
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Organisation
 @using Tedwren.Abstractions.Services
 @inject IOrganisationService Org
@@ -18,6 +19,9 @@
                                           Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="Company name is required." />
                     </div>
                     <TedwrenTextField Label="Company type" @bind-Value="_type" />
+                    <TedwrenSelect T="string" Label="Product" @bind-Value="_product"
+                                   Options="_products" Placeholder="Select a product"
+                                   HelperText="Sets the default console and module bundle (SF-22)." />
                     <TedwrenTextField Label="Primary trade" @bind-Value="_trade" />
                     <TedwrenTextField Label="Registration number" @bind-Value="_regNumber" />
                     <div class="tw-dialog-body__full">
@@ -51,6 +55,7 @@
 
     private string? _name;
     private string? _type;
+    private string? _product;
     private string? _trade;
     private string? _regNumber;
     private string? _address;
@@ -60,10 +65,21 @@
     private bool _submitted;
     private bool _busy;
 
+    // The typed product (OrgType) is edited as a friendly label, then mapped to the enum on save.
+    private const string SubcontractorLabel = "Subcontractor";
+    private const string MainContractorLabel = "Main contractor";
+    private static readonly IReadOnlyList<string> _products = new[] { SubcontractorLabel, MainContractorLabel };
+
     protected override void OnInitialized()
     {
         _name = Company.Name;
         _type = Company.Type;
+        _product = Company.OrgType switch
+        {
+            OrgType.MainContractor => MainContractorLabel,
+            OrgType.Subcontractor => SubcontractorLabel,
+            _ => null,
+        };
         _trade = Company.Trade;
         _regNumber = Company.RegistrationNumber;
         _address = Company.Address;
@@ -71,6 +87,14 @@
         _contactEmail = Company.ContactEmail;
         _contactPhone = Company.ContactPhone;
     }
+
+    /// <summary>Maps the chosen product label back to the typed product discriminator (SF-22), or null when unset.</summary>
+    private static OrgType? ToOrgType(string? product) => product switch
+    {
+        MainContractorLabel => OrgType.MainContractor,
+        SubcontractorLabel => OrgType.Subcontractor,
+        _ => null,
+    };
 
     private async Task SaveAsync()
     {
@@ -83,7 +107,7 @@
 
         _busy = true;
         var ok = await Org.UpdateCompanyAsync(Company.Id, new UpdateCompanyRequest(
-            _name!, _type, _trade, _regNumber, _address, _contactName, _contactEmail, _contactPhone));
+            _name!, _type, _trade, _regNumber, _address, _contactName, _contactEmail, _contactPhone, ToOrgType(_product)));
         _busy = false;
 
         if (ok)

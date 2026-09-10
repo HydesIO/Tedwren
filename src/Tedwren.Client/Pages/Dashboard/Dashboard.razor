@@ -162,7 +162,12 @@
     private const int ExpiryWindowDays = 30;
 
     // The active company's product (PRD §2), resolved by the shell before this page renders. Drives the
-    // SUB-24 vs MC-23 framing; a null product (unknown) falls back to the subcontractor/compliance view.
+    // SUB-24 vs MC-23 framing. A null (unknown) product falls back to the subcontractor/compliance view: this
+    // is a purely cosmetic default (which KPIs and cards lead), so the gentler admin framing is fine. It is
+    // deliberately the opposite of the Site Gate's null-product fallback (SiteGateResultPresenter.For), which
+    // keeps the main-contractor decision because that surface is safety-critical and must stay fail-closed
+    // (R2): a product-less company must still be able to block site entry. After onboarding and the admin
+    // add/edit product selector both set the product (SF-22), a product-less company is only a legacy state.
     private OrgType? _product;
     private bool _isMainContractor => _product == OrgType.MainContractor;
 

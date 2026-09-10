@@ -101,9 +101,17 @@ independently testable and never breaks a completed phase.
 ### Phases
 
 - **Phase A — product discriminator.** `OrgType` enum in `Tedwren.Domain`, carried on `Company`
-  beside `Type`; mapped from `OnboardingOrgType` at wizard submit; surfaced onto `CurrentUserDto`
-  and `/api/me` (computed server-side like `IsPlatformAdmin`, never trusted from the client) and
-  exposed via `ITenantState`; additive EF migration + backfill from `Type`.
+  beside `Type`; mapped from `OnboardingOrgType` at wizard submit; additive EF migration + backfill
+  from `Type`.
+  - **As built (session identity):** the product reaches the client via the authoritative company
+    record, not `CurrentUserDto`. `IOrganisationService` returns `OrgType` on `CompanySummary` /
+    `CompanyDetailDto` (mapped server-side from the entity, never trusted from the client), and the
+    shell (`MainLayout.ResolveOrgTypeAsync`) resolves the active tenant's product from that record and
+    caches it on `ITenantState.CurrentOrgType` before any page renders. This is equivalently secure to
+    a `CurrentUserDto` field (the value originates server-side from the DB) and correctly follows the
+    *active tenant* rather than only the JWT company. Optional future optimisation: also expose
+    `OrgType` on `CurrentUserDto`/`/api/me` so the shell need not re-fetch the company list per load —
+    tracked as a non-blocking follow-up, not a correctness gap.
 - **Phase B — product entitlement bundles.** A product→module bundle map (strict split above)
   granted at onboarding submit via `IEntitlementService`; this drives the nav split through the
   existing `GatedNavItemsAsync` with no change to `MainLayout`'s logic. Compliance Packs surface
