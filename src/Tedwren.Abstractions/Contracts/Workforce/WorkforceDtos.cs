@@ -35,7 +35,13 @@ public sealed record OperativeDetailDto(
     ComplianceState State,
     string StatusLabel,
     IReadOnlyList<OperativeQualificationDto> Qualifications,
-    IReadOnlyList<OperativeHistoryDto> History);
+    IReadOnlyList<OperativeHistoryDto> History,
+    // Induction is a site-entry condition for a main contractor (MC-8) but not a subcontractor (SUB-11), so it
+    // is surfaced only when it applies. The reported State/StatusLabel already fold this in so "Compliant" never
+    // contradicts the site gate (UAT-014); these expose the induction status on its own for the detail view.
+    bool InductionApplies = false,
+    bool InductionValid = false,
+    string InductionStatusLabel = "");
 
 /// <summary>A qualification card held by an operative, with its server-computed status (SF-8).</summary>
 public sealed record OperativeQualificationDto(

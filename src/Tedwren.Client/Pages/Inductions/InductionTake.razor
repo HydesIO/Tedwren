@@ -7,6 +7,7 @@
 @using Tedwren.Client.Services
 @inject IInductionService Inductions
 @inject ITenantState Tenant
+@inject AuthState Auth
 @inject ISnackbar Snackbar
 
 <PageTitle>Induction · Tedwren</PageTitle>
@@ -25,7 +26,12 @@
                                        ValueChanged="@(v => _templateName = v)" />
                         <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartAsync"
                                    Disabled="_busy || _templates.Count == 0">Start</MudButton>
-                        @if (_templates.Count == 0 && !_busy)
+                        @if (_loadError)
+                        {
+                            <BannerAlert Severity="StatusKind.Warning" Title="Couldn't load the induction"
+                                         Message="Make sure you're signed in to the console, then reload this page. To preview an induction, open it again from the Induction Records page." />
+                        }
+                        else if (_templates.Count == 0 && !_busy)
                         {
                             <BannerAlert Severity="StatusKind.Info" Title="No inductions available"
                                          Message="There are no inductions to complete for this company yet." />
@@ -154,6 +160,7 @@
     private Phase _phase = Phase.Start;
     private bool _busy;
     private bool _submitted;
+    private bool _loadError;
 
     private IReadOnlyList<InductionTemplateDto> _templates = Array.Empty<InductionTemplateDto>();
     private IReadOnlyList<string> _templateNames = Array.Empty<string>();
@@ -177,11 +184,26 @@
     protected override async Task OnInitializedAsync()
     {
         _busy = true;
-        await Tenant.InitializeAsync();
-        _templates = await Inductions.GetTemplatesAsync(Tenant.CurrentCompanyId);
-        _templateNames = _templates.Select(t => t.Name).ToList();
-        _templateName = _templateNames.FirstOrDefault();
-        _busy = false;
+        try
+        {
+            // Hydrate auth so a signed-in admin previewing the induction carries their bearer token. The
+            // recipient layout doesn't initialise auth, so without this the templates call returned 401 and the
+            // page crashed with an unhandled error and a redirect to /login (UAT-019). The anonymous, tokenised
+            // worker link (so an operative can complete this without an account) is a later change (UAT-018).
+            await Auth.InitializeAsync();
+            await Tenant.InitializeAsync();
+            _templates = await Inductions.GetTemplatesAsync(Tenant.CurrentCompanyId);
+            _templateNames = _templates.Select(t => t.Name).ToList();
+            _templateName = _templateNames.FirstOrDefault();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            _loadError = true;
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     private async Task StartAsync()

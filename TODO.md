@@ -14,11 +14,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 ### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased
 Fixing the issues from the first end-user acceptance testing pass (`docs/` UAT log). Plan groups all 27
 distinct issues into four phases: 1 quick frontend/UX wins, 2 Critical/High correctness bugs, 3 Medium
-data-surfacing, 4 larger features. Phase 1 ✅ (below). **Remaining:**
-- ⏳ **Phase 2 — Critical/High bugs.** UAT-003/004/005 expiries (tenant-scope R15, expired/expiring split,
-  PersonName+Slug on `UpcomingExpiryDto`, clickable list + real drill-down), 007 operative-by-id lookup,
-  014 induction-aware compliance roll-up (MC-8), 017 induction applies-to-site load+save, 019a take-flow
-  auth crash, 022 audit write instrumentation.
+data-surfacing, 4 larger features. Phases 1 & 2 ✅ (below). **Remaining:**
 - ⏳ **Phase 3 — Medium/data-surfacing.** 006 org document add, 008c pack link+passcode surfacing, 010b
   qualification evidence photo, 016b compliance site filter + drill-down, 024 add-company doc storage +
   status, 025/026 clickable notifications.
@@ -30,7 +26,38 @@ data-surfacing, 4 larger features. Phase 1 ✅ (below). **Remaining:**
 
 ## Completed
 
-### UAT remediation — Phase 1: quick frontend/UX wins (this change)
+### UAT remediation — Phase 2: Critical & High correctness bugs (this change)
+Whole solution builds **0 warnings / 0 errors**; suites green (Domain 71, Application 228, Web 178, Api 117,
+Client 30; DataAccess LocalDB suite skipped). New tests: induction site round-trip, workforce by-engagement
+lookup (×2), induction-aware compliance, audit write (×2), expiry tenant-scoping.
+- ✅ **UAT-017 (MC-15) — induction "applies to site" reverted to "All sites".** `InductionBuilder` never loaded
+  the selected site from the template and discarded it on publish (`var siteId = _template.SiteId`). Now maps
+  the stored `SiteId` ↔ site name on both load and save (backend already round-tripped `SiteId`).
+- ✅ **UAT-007 (R15) — "no operative found" drilling into another company's operative.** The org page linked to
+  the tenant-scoped name-slug lookup, which can't reach operatives outside the caller's company. Added an
+  id-based path: `IWorkforceService.GetOperativeByEngagementAsync(companyId, engagementId)` + endpoint
+  `GET /api/workforce/by-engagement/{companyId}/{engagementId}`; `CompanyDetail` navigates by (company, engagement)
+  and `OperativeDetail` gained the `/workforce/{companyId:guid}/{engagementId:guid}` route.
+- ✅ **UAT-014 (MC-8) — "Compliant" shown despite no induction.** Compliance was derived only from cards; the
+  gate blocks without a valid induction. `WorkforceService` now folds induction validity into the reported
+  status for a main contractor (not a subcontractor, SUB-11) — a card-compliant worker with no induction reads
+  "Induction required", and the operative detail shows the induction status + a "not site-ready" banner. Batched
+  induction load in the list (no N+1).
+- ✅ **UAT-019a — "Preview induction" 401 → /login unhandled error.** `/induct` (RecipientLayout) never hydrated
+  auth, so the templates call 401'd and crashed the page. `InductionTake` now hydrates auth (so a signed-in
+  admin's token attaches) and guards the load with a friendly error. The anonymous, tokenised worker link stays
+  Phase 4 (UAT-018).
+- ✅ **UAT-022 (SF-20) — audit log always empty.** Nothing ever called `IAuditService.RecordAsync`. Instrumented
+  `OrganisationService` (company create/update, document add, operative add/update/archive/reactivate) to record
+  audit entries attributed to the signed-in user; audit dependencies are optional so direct-construction unit
+  tests are unaffected, and the write is best-effort so it never fails the operation.
+- ✅ **UAT-003/004/005 (R15, SF-8/SF-9) — dashboard expiries.** The "expiring in 30 days" count was global
+  (un-tenant-scoped) and the list/tile dead-ended on `/compliance`, which shows no expiries; rows showed only the
+  qualification. `ExpiryQueryService.GetUpcomingAsync` is now tenant-scoped and returns the operative's
+  `PersonName` + `Slug`; new `/expiries` drill-down page (the tile and "View all expiries" now target it), and the
+  dashboard list names the operative and links to them.
+
+### UAT remediation — Phase 1: quick frontend/UX wins (previous change)
 Low-risk, frontend-only fixes from the UAT log; whole solution builds **0 warnings / 0 errors**, all suites
 green (Client 30 incl. 4 new nav-structure tests; Web 178, Api 111, others unchanged; DataAccess LocalDB
 suite skipped as usual).

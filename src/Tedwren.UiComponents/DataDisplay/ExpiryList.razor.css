@@ -19,6 +19,23 @@
     border-bottom: none;
 }
 
+/* A linked row fills the row and carries its own hover, so the whole entry is a clickable target. */
+.expiry-list__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    width: 100%;
+    color: inherit;
+    text-decoration: none;
+    border-radius: var(--radius-control, 8px);
+    transition: background-color .12s ease;
+}
+
+.expiry-list__link:hover {
+    background-color: var(--color-bg, #F7F8FA);
+}
+
 .expiry-list__main {
     display: flex;
     flex-direction: column;

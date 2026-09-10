@@ -158,7 +158,13 @@ else
         };
     }
 
-    private void OpenOperative(CompanyOperativeDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
+    // Open by (company, engagement) id, not the name slug: this operative may belong to a company other than
+    // the signed-in tenant, which the slug lookup cannot resolve — the cause of "no operative found" (UAT-007).
+    private void OpenOperative(CompanyOperativeDto op)
+    {
+        if (_company is null) return;
+        Nav.NavigateTo($"/workforce/{_company.Id}/{op.EngagementId}");
+    }
 
     // Opens the edit dialog and reloads on save (persists via IOrganisationService.UpdateCompanyAsync).
     private async Task EditAsync()

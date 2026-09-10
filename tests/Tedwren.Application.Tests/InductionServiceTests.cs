@@ -56,6 +56,29 @@ public sealed class InductionServiceTests
             service.CreateDefaultTemplateAsync(new CreateInductionTemplateRequest(Guid.Empty, "X", 365, 3)));
     }
 
+    [Fact] // UAT-017 (MC-15) — the "applies to site" selection round-trips through update → edit-load
+    public async Task UpdateTemplate_PersistsSiteId_AndEditLoadReturnsIt()
+    {
+        var service = CreateService();
+        var siteId = Guid.Parse("55555555-5555-4555-8555-000000000001");
+        var noSteps = Array.Empty<InductionStepDto>();
+        var noQuestions = Array.Empty<InductionQuizAuthoringDto>();
+
+        // Set a specific site, then reload for edit — it must come back, not reset to "all sites".
+        var updated = await service.UpdateTemplateAsync(Template, new UpdateInductionTemplateRequest(
+            "Site induction", 365, 0, 3, true, null, siteId, noSteps, noQuestions));
+        Assert.NotNull(updated);
+
+        var forEdit = await service.GetTemplateForEditAsync(Template);
+        Assert.Equal(siteId, forEdit!.SiteId);
+
+        // Clearing it back to "all sites" persists as null.
+        await service.UpdateTemplateAsync(Template, new UpdateInductionTemplateRequest(
+            "Site induction", 365, 0, 3, true, null, null, noSteps, noQuestions));
+        var cleared = await service.GetTemplateForEditAsync(Template);
+        Assert.Null(cleared!.SiteId);
+    }
+
     [Fact] // R5 — the device session never carries the correct answers
     public async Task DeviceSession_NeverExposesQuizAnswers()
     {

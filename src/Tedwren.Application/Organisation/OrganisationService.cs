@@ -1,5 +1,6 @@
 using Tedwren.Abstractions;
 using Tedwren.Abstractions.Common;
+using Tedwren.Abstractions.Contracts.Audit;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
@@ -22,23 +23,56 @@ public sealed class OrganisationService : IOrganisationService
     private readonly IPersonRepository _people;
     private readonly IEngagementRepository _engagements;
     private readonly IQualificationCardRepository _cards;
+    private readonly IAuditService? _audit;
+    private readonly ICurrentUserService? _currentUser;
 
     /// <summary>How soon before expiry a document is flagged as at risk.</summary>
     private const int DocumentExpiryWarningDays = 30;
 
-    /// <summary>Creates the service over its repositories.</summary>
+    /// <summary>
+    /// Creates the service over its repositories. <paramref name="audit"/> and <paramref name="currentUser"/>
+    /// are optional so a mutation records an audit-trail entry (SF-20) attributed to the signed-in user when
+    /// they are supplied by DI; they default to null so unit tests that construct the service directly still run.
+    /// </summary>
     public OrganisationService(
         ICompanyRepository companies,
         ICompanyDocumentRepository documents,
         IPersonRepository people,
         IEngagementRepository engagements,
-        IQualificationCardRepository cards)
+        IQualificationCardRepository cards,
+        IAuditService? audit = null,
+        ICurrentUserService? currentUser = null)
     {
         _companies = companies;
         _documents = documents;
         _people = people;
         _engagements = engagements;
         _cards = cards;
+        _audit = audit;
+        _currentUser = currentUser;
+    }
+
+    /// <summary>
+    /// Records an audit-trail entry for a mutation (SF-20), attributed to the signed-in user (or "System").
+    /// Best-effort: an audit-write failure never fails the operation it records. No-ops when no audit service
+    /// is wired (direct unit-test construction).
+    /// </summary>
+    private async Task AuditAsync(Guid companyId, string action, string entity, string? reference, string category, CancellationToken cancellationToken)
+    {
+        if (_audit is null)
+        {
+            return;
+        }
+
+        try
+        {
+            var actor = _currentUser is not null ? (await _currentUser.GetCurrentAsync(cancellationToken)).Name : "System";
+            await _audit.RecordAsync(new RecordAuditRequest(companyId, actor, action, entity, reference, category), cancellationToken);
+        }
+        catch
+        {
+            // Audit is a side effect of the operation, not a precondition — never let it break the mutation.
+        }
     }
 
     /// <summary>Today's date for card-status evaluation (UTC; card expiry is date-only, R11).</summary>
@@ -124,6 +158,7 @@ public sealed class OrganisationService : IOrganisationService
         };
 
         await _companies.AddAsync(company, cancellationToken);
+        await AuditAsync(company.Id, "Company created", company.Name, company.RegistrationNumber, "Organisation", cancellationToken);
         return company.Id;
     }
 
@@ -166,6 +201,7 @@ public sealed class OrganisationService : IOrganisationService
         };
 
         await _documents.AddAsync(document, cancellationToken);
+        await AuditAsync(request.CompanyId, "Document added", document.Name, document.Reference, "Documents", cancellationToken);
         return document.Id;
     }
 
@@ -211,6 +247,7 @@ public sealed class OrganisationService : IOrganisationService
         company.ContactPhone = request.ContactPhone;
         company.OrgType = ToDomainOrgType(request.OrgType);
         await _companies.UpdateAsync(company, cancellationToken);
+        await AuditAsync(company.Id, "Company updated", company.Name, company.RegistrationNumber, "Organisation", cancellationToken);
         return true;
     }
 
@@ -244,6 +281,7 @@ public sealed class OrganisationService : IOrganisationService
             existing.Status = EngagementStatus.Active;
             existing.ArchivedUtc = null;
             await _engagements.UpdateAsync(existing, cancellationToken);
+            await AuditAsync(request.CompanyId, "Operative reactivated", existing.Name, existing.InternalReference, "Workforce", cancellationToken);
             return new AddOperativeResult(true, existing.Id, person.Id, null);
         }
 
@@ -257,6 +295,7 @@ public sealed class OrganisationService : IOrganisationService
         };
 
         await _engagements.AddAsync(engagement, cancellationToken);
+        await AuditAsync(request.CompanyId, "Operative added", engagement.Name, engagement.InternalReference, "Workforce", cancellationToken);
         return new AddOperativeResult(true, engagement.Id, person.Id, null);
     }
 
@@ -288,6 +327,7 @@ public sealed class OrganisationService : IOrganisationService
         engagement.Name = name;
         engagement.Trade = string.IsNullOrWhiteSpace(request.Trade) ? null : request.Trade.Trim();
         await _engagements.UpdateAsync(engagement, cancellationToken);
+        await AuditAsync(companyId, "Operative updated", engagement.Name, engagement.InternalReference, "Workforce", cancellationToken);
         return true;
     }
 
@@ -303,6 +343,7 @@ public sealed class OrganisationService : IOrganisationService
         engagement.Status = EngagementStatus.Archived;
         engagement.ArchivedUtc = DateTimeOffset.UtcNow;
         await _engagements.UpdateAsync(engagement, cancellationToken);
+        await AuditAsync(companyId, "Operative archived", engagement.Name, engagement.InternalReference, "Workforce", cancellationToken);
         return true;
     }
 
@@ -318,6 +359,7 @@ public sealed class OrganisationService : IOrganisationService
         engagement.Status = EngagementStatus.Active;
         engagement.ArchivedUtc = null;
         await _engagements.UpdateAsync(engagement, cancellationToken);
+        await AuditAsync(companyId, "Operative reactivated", engagement.Name, engagement.InternalReference, "Workforce", cancellationToken);
         return true;
     }
 

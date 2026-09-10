@@ -1,4 +1,5 @@
 @page "/workforce/{Slug}"
+@page "/workforce/{CompanyId:guid}/{EngagementId:guid}"
 @using Tedwren.Abstractions.Contracts.Onboarding
 @using Tedwren.Abstractions.Contracts.Workforce
 @using Tedwren.Abstractions.Services
@@ -53,6 +54,15 @@ else
             </MudButton>
         </Actions>
     </DetailHeader>
+
+    @* Induction is a site-entry condition for a main contractor (MC-8). Make it explicit that a card-compliant
+       worker without a valid induction is still blocked at the gate — the "compliant" status alone was
+       misleading (UAT-014). *@
+    @if (_op.InductionApplies && !_op.InductionValid)
+    {
+        <BannerAlert Severity="StatusKind.Warning" Title="Not site-ready — induction outstanding"
+                     Message="@($"Blocked at the site gate until a valid induction is completed (MC-8). Induction status: {_op.InductionStatusLabel}.")" />
+    }
 
     @if (_updateLink is not null)
     {
@@ -123,7 +133,13 @@ else
 }
 
 @code {
-    [Parameter] public string Slug { get; set; } = string.Empty;
+    [Parameter] public string? Slug { get; set; }
+
+    // Set when the operative is opened from the Organisation page (UAT-007): the operative may belong to a
+    // company other than the signed-in tenant, so it is resolved by (company, engagement) rather than by the
+    // tenant-scoped name slug.
+    [Parameter] public Guid? CompanyId { get; set; }
+    [Parameter] public Guid? EngagementId { get; set; }
 
     private OperativeDetailDto? _op;
     private bool _loading = true;
@@ -137,7 +153,9 @@ else
     protected override async Task OnParametersSetAsync()
     {
         _loading = true;
-        _op = await Workforce.GetOperativeBySlugAsync(Slug);
+        _op = CompanyId is { } companyId && EngagementId is { } engagementId
+            ? await Workforce.GetOperativeByEngagementAsync(companyId, engagementId)
+            : await Workforce.GetOperativeBySlugAsync(Slug ?? string.Empty);
         _loading = false;
         if (_op is null) return;
 
@@ -153,6 +171,11 @@ else
             new("Employer", _op.Company),
             new("Phone", _op.Phone ?? "—"),
         };
+        // Show induction status alongside the card details where it is a site-entry condition (MC-8, UAT-014).
+        if (_op.InductionApplies)
+        {
+            _overview.Add(new("Induction", _op.InductionStatusLabel));
+        }
 
         _history = _op.History
             .Select(h => new ActivityItem(

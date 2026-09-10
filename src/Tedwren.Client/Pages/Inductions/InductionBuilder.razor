@@ -2,6 +2,7 @@
 @page "/inductions/{TemplateId:guid}/edit"
 @using Tedwren.Abstractions.Contracts.Forms
 @using Tedwren.Abstractions.Contracts.Inductions
+@using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Services
 @using Tedwren.UiComponents.Forms
 @inject IInductionService InductionSvc
@@ -97,6 +98,7 @@
     private Guid? _loadedFor;
 
     private InductionTemplateAuthoringDto? _template;
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
     private IReadOnlyList<string> _siteNames = Array.Empty<string>();
     private bool _busy;
 
@@ -122,8 +124,8 @@
         _loadedFor = TemplateId;
 
         await Tenant.InitializeAsync();
-        var sites = await Sites.GetSitesAsync();
-        _siteNames = sites.Select(s => s.Name).ToList();
+        _sites = await Sites.GetSitesAsync();
+        _siteNames = _sites.Select(s => s.Name).ToList();
         _publishedForms = (await Forms.GetTemplatesAsync()).Where(f => f.Status == "Published").ToList();
         _publishedFormNames = _publishedForms.Select(f => f.Name).ToList();
         await LoadAsync();
@@ -155,6 +157,10 @@
             if (_template is null) return;
 
             _name = _template.Name;
+            // Load the current "applies to site" selection so re-editing doesn't silently reset it to
+            // "All sites" (UAT-017). Mapped from the stored SiteId back to the site name the select shows;
+            // a null SiteId means all sites (the placeholder).
+            _site = _sites.FirstOrDefault(s => s.Id == _template.SiteId)?.Name;
             _mediaUrl = _template.MediaUrl;
             _validityDays = _template.ValidityDays;
             _mandatory = _template.Mandatory;
@@ -201,7 +207,11 @@
         _busy = true;
         try
         {
-            var siteId = _template.SiteId; // site scoping edited elsewhere; preserved here
+            // Persist the chosen "applies to site" (UAT-017): map the selected name back to its id, or null
+            // (all sites) when nothing is chosen. Previously this ignored the picker and re-saved the old id.
+            var siteId = string.IsNullOrWhiteSpace(_site)
+                ? (Guid?)null
+                : _sites.FirstOrDefault(s => s.Name == _site)?.Id;
             // Preserve the template's non-form steps and replace the Form steps with the current selection.
             var steps = _template.Steps.Where(s => s.Kind != "Form").Concat(_formSteps).ToList();
             var updated = await InductionSvc.UpdateTemplateAsync(_template.Id, new UpdateInductionTemplateRequest(

@@ -1,0 +1,83 @@
+@page "/expiries"
+@using Tedwren.Abstractions.Contracts.Expiry
+@using Tedwren.Abstractions.Services
+@inject IExpiryQueryService Expiry
+@inject NavigationManager Nav
+
+<PageTitle>Upcoming expiries · Tedwren</PageTitle>
+
+@* The drill-down the dashboard "Expiring in 30 days" tile and "View all expiries" link now open (UAT-003/004/005).
+   Previously both dead-ended on the compliance page, which listed no expiries; this shows who and what is
+   expiring, scoped to the tenant (R15), and each row opens the operative. *@
+<PageHeader Title="Upcoming expiries" Subtitle="Qualification cards due to expire in the next 30 days, or already expired (SF-8/SF-9)" />
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="UpcomingExpiryDto"
+                   Items="_items"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search operative or qualification…"
+                   EmptyTitle="Nothing expiring"
+                   EmptyDescription="No qualification cards are expiring in the next 30 days."
+                   EmptyIcon="@Icons.Material.Outlined.EventAvailable"
+                   OnRowClick="OpenOperative" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<UpcomingExpiryDto> _items = Array.Empty<UpcomingExpiryDto>();
+    private List<DataColumn<UpcomingExpiryDto>> _columns = new();
+    private bool _loading = true;
+
+    // Matches the dashboard "Expiring in 30 days" tile so the count and this list agree (UAT-003).
+    private const int WindowDays = 30;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _items = await Expiry.GetUpcomingAsync(WindowDays);
+        _loading = false;
+    }
+
+    // Opens the operative whose card is expiring; a row with no resolved operative (unscoped) is not navigable.
+    private void OpenOperative(UpcomingExpiryDto expiry)
+    {
+        if (!string.IsNullOrEmpty(expiry.Slug))
+        {
+            Nav.NavigateTo($"/workforce/{expiry.Slug}");
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Operative", Value = e => e.PersonName ?? "—", Filterable = true },
+            new() { Title = "Qualification", Value = e => e.QualificationName, Filterable = true },
+            new()
+            {
+                Title = "Expires", Value = e => e.ExpiresOn ?? DateOnly.MaxValue, Searchable = false,
+                CellTemplate = e => @<span>@(e.ExpiresOn?.ToString("dd MMM yyyy") ?? "—")</span>
+            },
+            new()
+            {
+                Title = "Status", Value = e => e.StatusLabel, Searchable = false, Filterable = true,
+                CellTemplate = e => @<StatusPill Label="@e.StatusLabel" Status="@ExpiryStatus(e.DaysUntilExpiry)" />
+            },
+        };
+    }
+
+    private static StatusKind ExpiryStatus(int daysUntilExpiry) => daysUntilExpiry switch
+    {
+        <= 7 => StatusKind.Danger,
+        <= 30 => StatusKind.Warning,
+        _ => StatusKind.Info,
+    };
+}

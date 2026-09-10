@@ -46,7 +46,8 @@ public sealed record ExpiryItem(
     string Site,
     DateOnly ExpiresOn,
     int DaysRemaining,
-    StatusKind Status);
+    StatusKind Status,
+    string? Href = null);
 
 /// <summary>An "icon + primary/secondary text + relative time" activity row.</summary>
 public sealed record ActivityItem(
