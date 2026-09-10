@@ -12,7 +12,7 @@ using Tedwren.DataAccess.Ef;
 namespace Tedwren.DataAccess.Ef.Migrations
 {
     [DbContext(typeof(TedwrenDbContext))]
-    [Migration("20260817123440_InitialCreate")]
+    [Migration("20260817134314_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />

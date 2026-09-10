@@ -20,7 +20,7 @@ namespace Tedwren.Api.Tests;
 public sealed class AuthApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
     private const string AdminEmail = "admin@tedwren.local";
-    private const string AdminPassword = "ChangeMe12345";
+    private const string AdminPassword = "Admin123!";
     private static readonly Guid CompanyId = Guid.Parse("22222222-2222-4222-8222-000000000001");
 
     private readonly WebApplicationFactory<Program> _auth;

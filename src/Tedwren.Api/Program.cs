@@ -212,17 +212,35 @@ builder.Services.AddRateLimiter(options =>
 });
 
 // CORS: permit the Blazor WASM client origin(s) declared in configuration to call the API.
+//const string clientCorsPolicy = "TedwrenClient";
+//var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+//    ?? Array.Empty<string>();
+//builder.Services.AddCors(options =>
+//    options.AddPolicy(clientCorsPolicy, policy =>
+//    {
+//        if (allowedOrigins.Length > 0)
+//        {
+//            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+//        }
+//    }));
+
 const string clientCorsPolicy = "TedwrenClient";
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
-    ?? Array.Empty<string>();
+
 builder.Services.AddCors(options =>
+{
     options.AddPolicy(clientCorsPolicy, policy =>
     {
-        if (allowedOrigins.Length > 0)
-        {
-            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
-        }
-    }));
+        policy
+            .WithOrigins("https://admin.tedwren.com")
+            .WithOrigins("https://console.tedwren.com")
+            .WithOrigins("https://beta.tedwren.com")
+            .WithOrigins("https://tedwren.com")
+            .WithOrigins("https://www.tedwren.com")
+            .WithOrigins("https://localhost:11379")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
 
 var app = builder.Build();
 

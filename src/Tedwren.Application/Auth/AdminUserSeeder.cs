@@ -100,5 +100,5 @@ public sealed class SeedAdminOptions
     /// Password used for every seeded master administrator. Override with a strong value in any real
     /// deployment; seeded admins should change it on first sign-in.
     /// </summary>
-    public string Password { get; set; } = "ChangeMe12345";
+    public string Password { get; set; } = "Admin123!";
 }
