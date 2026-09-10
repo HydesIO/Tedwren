@@ -36,6 +36,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<PermitRecord> Permits => Set<PermitRecord>();
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
     public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
+    public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
     public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
@@ -61,6 +62,7 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.Name).HasMaxLength(256);
             e.Property(x => x.Type).HasMaxLength(128);
             e.Property(x => x.Reference).HasMaxLength(128);
+            e.Property(x => x.FileReference).HasMaxLength(128);
             e.HasIndex(x => x.CompanyId);                       // SUB-4
         });
 
@@ -183,6 +185,19 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.PasscodeHash).HasMaxLength(256);
             e.Property(x => x.Name).HasMaxLength(256);
             e.HasIndex(x => x.Token).IsUnique();
+        });
+
+        model.Entity<TradeInviteRecord>(e =>
+        {
+            e.ToTable("TradeInvites");
+            e.Property(x => x.Token).HasMaxLength(128);
+            e.Property(x => x.PasscodeHash).HasMaxLength(256);
+            e.Property(x => x.ContactName).HasMaxLength(256);
+            e.Property(x => x.ContactEmail).HasMaxLength(256);
+            e.Property(x => x.DecidedBy).HasMaxLength(256);
+            e.Property(x => x.ReviewNote).HasMaxLength(1024);
+            e.HasIndex(x => x.Token).IsUnique();
+            e.HasIndex(x => x.InviterCompanyId);   // the review queue is scoped to the inviting tenant (R15)
         });
 
         model.Entity<StoredImageRecord>(e =>

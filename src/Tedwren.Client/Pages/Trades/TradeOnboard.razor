@@ -1,0 +1,196 @@
+@page "/trade"
+@layout RecipientLayout
+@using Microsoft.AspNetCore.Components.Forms
+@using Tedwren.Abstractions.Contracts.Trades
+@using Tedwren.Abstractions.Services
+@inject ITradeOnboardingService Trades
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+<PageTitle>Trade onboarding · Tedwren</PageTitle>
+
+<MudPaper Class="pa-8 mx-auto mt-6" MaxWidth="560px" Elevation="0" Outlined="true">
+    @if (_loading)
+    {
+        <AsyncContent Loading="true" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="5" />
+    }
+    else if (_view is null)
+    {
+        <MudText Typo="Typo.h5" Class="mb-2">Link not valid</MudText>
+        <BannerAlert Severity="StatusKind.Danger" Title="This link cannot be opened"
+                     Message="The link may have expired, already been completed, or the passcode is incorrect. Ask whoever sent it for a new link." />
+    }
+    else
+    {
+        <MudText Typo="Typo.h5" Class="mb-1">Onboarding for @_view.CompanyName</MudText>
+        <MudText Typo="Typo.body2" Class="mb-4">Upload your company's documents below, then submit them for review.</MudText>
+
+        @if (_view.Status == "Returned" && !string.IsNullOrWhiteSpace(_view.ReviewNote))
+        {
+            <BannerAlert Severity="StatusKind.Warning" Title="Returned for changes"
+                         Message="@_view.ReviewNote" />
+        }
+        else if (_view.Status == "Submitted")
+        {
+            <BannerAlert Severity="StatusKind.Info" Title="With the reviewer"
+                         Message="Your documents have been submitted. You can still add more while they're reviewed." />
+        }
+
+        <MudText Typo="Typo.subtitle1" Class="mt-4 mb-1">Add a document</MudText>
+        <MudText Typo="Typo.caption" Class="mud-text-secondary mb-2">
+            Requested: @string.Join(", ", _view.RequestedDocumentTypes)
+        </MudText>
+        <MudSelect T="string" Label="Document type" @bind-Value="_docType" Dense="true">
+            @foreach (var type in _view.RequestedDocumentTypes)
+            {
+                <MudSelectItem T="string" Value="@type">@type</MudSelectItem>
+            }
+        </MudSelect>
+        <TedwrenTextField Label="Document name" @bind-Value="_docName" Placeholder="e.g. Employer's Liability" />
+        <MudDatePicker Label="Expiry date (if any)" @bind-Date="_expiry" />
+        <div class="mt-2">
+            <InputFile OnChange="OnFileSelected" />
+        </div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" Disabled="_busy || string.IsNullOrWhiteSpace(_docType)"
+                   OnClick="AddDocument">Add document</MudButton>
+
+        @if (_view.Documents.Count > 0)
+        {
+            <MudText Typo="Typo.subtitle1" Class="mt-6 mb-2">@($"Documents added ({_view.Documents.Count})")</MudText>
+            <MudList T="string" Dense="true">
+                @foreach (var doc in _view.Documents)
+                {
+                    <MudListItem T="string" Icon="@(doc.HasFile ? Icons.Material.Outlined.AttachFile : Icons.Material.Outlined.Description)">
+                        @doc.Type — @doc.Name @(doc.ExpiresOn is { } e ? $"· expires {e:dd MMM yyyy}" : "")
+                    </MudListItem>
+                }
+            </MudList>
+
+            @if (_canSubmit)
+            {
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" Class="mt-4"
+                           Disabled="_busy" OnClick="SubmitForReview">Submit for review</MudButton>
+            }
+        }
+    }
+</MudPaper>
+
+@code {
+    private string _token = string.Empty;
+    private string? _passcode;
+    private TradeInviteViewDto? _view;
+    private bool _loading = true;
+    private bool _busy;
+
+    private string? _docType;
+    private string? _docName;
+    private DateTime? _expiry;
+    private IBrowserFile? _file;
+
+    // The trade can submit while the invite is fresh or was returned for changes (not once it's with the reviewer).
+    private bool _canSubmit => _view?.Status is "Invited" or "Returned";
+
+    protected override async Task OnInitializedAsync()
+    {
+        ParseQuery();
+        _view = await Trades.GetByTokenAsync(_token, _passcode);
+        if (_view is not null)
+        {
+            _docType = _view.RequestedDocumentTypes.FirstOrDefault();
+        }
+
+        _loading = false;
+    }
+
+    private void OnFileSelected(InputFileChangeEventArgs e) => _file = e.File;
+
+    private async Task AddDocument()
+    {
+        if (string.IsNullOrWhiteSpace(_docType))
+        {
+            Snackbar.Add("Choose a document type.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            string? fileB64 = null, fileType = null;
+            if (_file is not null)
+            {
+                using var ms = new MemoryStream();
+                await _file.OpenReadStream(10 * 1024 * 1024).CopyToAsync(ms);
+                fileB64 = Convert.ToBase64String(ms.ToArray());
+                fileType = _file.ContentType;
+            }
+
+            var expiry = _expiry is { } d ? DateOnly.FromDateTime(d) : (DateOnly?)null;
+            var name = string.IsNullOrWhiteSpace(_docName) ? _docType! : _docName!.Trim();
+            var updated = await Trades.SubmitDocumentAsync(_token, _passcode,
+                new SubmitTradeDocumentRequest(_docType!, name, expiry, Reference: null, fileB64, fileType));
+            if (updated is not null)
+            {
+                _view = updated;
+                _docName = null;
+                _expiry = null;
+                _file = null;
+                Snackbar.Add("Document added.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("This link cannot be opened.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SubmitForReview()
+    {
+        _busy = true;
+        try
+        {
+            var updated = await Trades.SubmitForReviewAsync(_token, _passcode);
+            if (updated is not null)
+            {
+                _view = updated;
+                Snackbar.Add("Submitted for review. You'll hear back once it's been checked.", Severity.Success);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Reads the token/passcode from the query string (mirrors the self-onboarding page).
+    private void ParseQuery()
+    {
+        var query = Nav.ToAbsoluteUri(Nav.Uri).Query.TrimStart('?');
+        foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var parts = pair.Split('=', 2);
+            if (parts.Length != 2)
+            {
+                continue;
+            }
+
+            var key = Uri.UnescapeDataString(parts[0]);
+            var value = Uri.UnescapeDataString(parts[1]);
+            if (key == "token")
+            {
+                _token = value;
+            }
+            else if (key == "passcode")
+            {
+                _passcode = value;
+            }
+        }
+    }
+}

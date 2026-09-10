@@ -30,6 +30,7 @@ public sealed class CompanyDocumentRecord
     public string Type { get; set; } = string.Empty;
     public DateOnly? ExpiresOn { get; set; }
     public string? Reference { get; set; }
+    public string? FileReference { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
@@ -240,6 +241,26 @@ public sealed class OnboardingLinkRecord
     public int Status { get; set; }
     public Guid? PersonId { get; set; }
     public Guid? EngagementId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>TradeInvites</c> table (trade self-service onboarding, UAT-023/SUB-4).</summary>
+public sealed class TradeInviteRecord
+{
+    public Guid Id { get; set; }
+    public string Token { get; set; } = string.Empty;
+    public string? PasscodeHash { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid InviterCompanyId { get; set; }
+    public string? ContactName { get; set; }
+    public string? ContactEmail { get; set; }
+    public int Status { get; set; }
+    public DateTimeOffset ExpiresUtc { get; set; }
+    public DateTimeOffset? SubmittedUtc { get; set; }
+    public string? DecidedBy { get; set; }
+    public DateTimeOffset? DecidedUtc { get; set; }
+    public string? ReviewNote { get; set; }
     public Guid? CreatedByUserId { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }

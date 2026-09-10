@@ -3,6 +3,7 @@
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject IOrganisationService Org
+@inject IDialogService Dialogs
 @inject NavigationManager Nav
 
 <PageTitle>Organisation · Tedwren</PageTitle>
@@ -12,6 +13,11 @@
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.RocketLaunch"
                    OnClick="@(() => Nav.NavigateTo("/onboarding"))">
             Add client
+        </MudButton>
+        @* Invite a trade to onboard themselves — uploads their own RAMS/insurance/accreditations for review (UAT-023). *@
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ForwardToInbox"
+                   OnClick="InviteTradeAsync">
+            Invite trade
         </MudButton>
         <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
                    OnClick="@(() => Nav.NavigateTo("/organisation/add"))">
@@ -42,8 +48,24 @@
     protected override async Task OnInitializedAsync()
     {
         BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
         _companies = await Org.GetCompaniesAsync();
         _loading = false;
+    }
+
+    // Opens the invite-trade dialog; on success the new trade company appears in the list (UAT-023).
+    private async Task InviteTradeAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<InviteTradeDialog>("Invite trade", TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
     }
 
     private void OpenCompany(CompanySummary company) => Nav.NavigateTo($"/organisation/{company.Slug}");

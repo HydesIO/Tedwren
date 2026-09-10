@@ -1,0 +1,125 @@
+@using Tedwren.Abstractions.Contracts.Trades
+@using Tedwren.Abstractions.Services
+@inject ITradeOnboardingService Trades
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+
+@* Invite a trade (subcontractor) to onboard themselves (UAT-023). Creating the invite creates the trade
+   company; we surface a copyable link the trade opens to upload their registration/RAMS/insurance/accreditations.
+   No email backend is required (PRD-Phase 7) — the link is shown to copy, like the pack/onboarding links. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance>
+                Add the trade's details and we'll create a private link to send them. They complete their own
+                registration, RAMS, insurance and accreditations from the link — no account needed — then you
+                review and approve it. Add a passcode for an extra check.
+            </DialogGuidance>
+
+            @if (_link is null)
+            {
+                <FormSection Title="Trade details" Description="Creates the trade's company record; they fill in the rest.">
+                    <TedwrenTextField Label="Company name" @bind-Value="_companyName" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_companyName)" ErrorText="A company name is required." />
+                    <TedwrenTextField Label="Primary trade" @bind-Value="_trade" Placeholder="e.g. Electrical" />
+                    <TedwrenTextField Label="Company type" @bind-Value="_type" Placeholder="e.g. Subcontractor" />
+                    <TedwrenTextField Label="Contact name" @bind-Value="_contactName" Placeholder="e.g. Sam Taylor" />
+                    <TedwrenTextField Label="Contact email" @bind-Value="_contactEmail" Placeholder="name@company.co.uk" />
+                </FormSection>
+                <TedwrenToggle Label="Require a passcode"
+                               Description="Adds a short passcode the trade must enter to open the link."
+                               Value="_requirePasscode" ValueChanged="@(v => _requirePasscode = v)" />
+            }
+            else
+            {
+                <div class="invite-link">
+                    <div class="invite-link__head">
+                        <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                        <span>Invite ready — send this link to the trade. It's valid until @_link.ExpiresUtc.LocalDateTime.ToString("dd MMM yyyy").</span>
+                    </div>
+                    <MudTextField Value="@_shareUrl" ReadOnly="true" Label="Trade onboarding link" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_shareUrl!))" />
+                    @if (_link.Passcode is not null)
+                    {
+                        <MudTextField Value="@_link.Passcode" ReadOnly="true" Label="Passcode" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" Adornment="Adornment.End"
+                                      AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_link.Passcode!))" />
+                    }
+                </div>
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (_link is null)
+        {
+            <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CreateAsync" Disabled="_busy">Create invite</MudButton>
+        }
+        else
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="@(() => MudDialog.Close(DialogResult.Ok(true)))">Done</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    private string? _companyName;
+    private string? _trade;
+    private string? _type;
+    private string? _contactName;
+    private string? _contactEmail;
+    private bool _requirePasscode;
+    private bool _submitted;
+    private bool _busy;
+
+    private TradeInviteLinkDto? _link;
+    private string? _shareUrl;
+
+    // Creates the trade company + invite and surfaces the copyable link + passcode (UAT-023).
+    private async Task CreateAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_companyName))
+        {
+            Snackbar.Add("A company name is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            _link = await Trades.InviteTradeAsync(
+                new CreateTradeInviteRequest(_companyName!, _type, _trade, _contactName, _contactEmail, _requirePasscode), null);
+            var passcodePart = _link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(_link.Passcode)}";
+            _shareUrl = $"{Nav.BaseUri}trade?token={Uri.EscapeDataString(_link.Token)}{passcodePart}";
+            Snackbar.Add("Trade invited — link created.", Severity.Success);
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Copies the link/passcode to the clipboard for sharing.
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch
+        {
+            // Clipboard unavailable — the value is on screen to copy manually.
+        }
+    }
+}

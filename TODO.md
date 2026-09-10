@@ -52,9 +52,17 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   (016a labels/library removal and 016b legend drill-down shipped earlier; per-site drill-down into the workforce
   register is a deliberate follow-up — operatives associate to a site only via attendance, so it needs a
   site-scoped workforce query rather than a client-side filter.)
-- ⏳ **Remaining (building now — "build everything" scope):** 023 RAMS/trade self-service onboarding workflow
-  (invite→upload→review, two slices). Real email delivery is stubbed to the outbox repo-wide (PRD-Phase 7), so
-  the invite link is surfaced copyably and the flow is testable without an email provider.
+- ✅ **UAT-023a (SUB-4/MC-27) — trade invite + self-service upload.** New `TradeInvite` entity (company-level
+  tokenised invite + review state) with `TradeOnboardingStatus`/`TradeOnboardingWorkflow`, in-memory + Dapper
+  repositories and an EF migration (`AddTradeOnboarding`, which also adds `CompanyDocument.FileReference` for the
+  uploaded file bytes, stored via the existing `IImageStore`, R9). New `ITradeOnboardingService`: inviting a trade
+  creates its company (as a subcontractor, via `IOrganisationService`) plus the link; the trade opens
+  `/trade?token=…` anonymously and uploads its registration/RAMS/insurance/accreditations. Authorised
+  `POST /api/trades/invites`; anonymous `GET /api/trades/by-link/{token}` + `POST …/documents`. Client: an "Invite
+  trade" action + dialog on the Organisation page surfacing the copyable link + passcode, and the recipient
+  `TradeOnboard` page. (The manager review/approval loop is 023b.)
+- ⏳ **Remaining (building now — "build everything" scope):** 023b — submit-for-review + the manager review queue
+  (approve / reject / return-with-comments). Real email delivery is stubbed to the outbox repo-wide (PRD-Phase 7).
 
 ---
 

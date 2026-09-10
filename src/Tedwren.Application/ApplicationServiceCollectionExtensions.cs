@@ -285,6 +285,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic trade self-service onboarding service (UAT-023, SUB-4/MC-27).</summary>
+    public static IServiceCollection AddTradeOnboardingCore(this IServiceCollection services)
+    {
+        services.AddScoped<ITradeOnboardingService, Trades.TradeOnboardingService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory trade-invite store (singleton so an invite persists across test requests).</summary>
+    public static IServiceCollection AddInMemoryTradeOnboardingStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryTradeInviteRepository>();
+        services.AddScoped<ITradeInviteRepository>(sp => sp.GetRequiredService<InMemoryTradeInviteRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic launch-list service (Web Content Spec §6.9). Uses the ambient email sender.</summary>
     public static IServiceCollection AddLaunchListCore(this IServiceCollection services)
     {
