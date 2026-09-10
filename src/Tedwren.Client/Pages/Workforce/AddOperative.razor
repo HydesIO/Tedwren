@@ -17,7 +17,7 @@
 
 <div class="form-page">
     <TedwrenStepper @bind-ActiveIndex="_activeStep">
-        <MudStep Title="Method" Icon="@Icons.Material.Outlined.Tune">
+        <MudStep Title="Method">
             <div class="add-operative__step">
                 <p class="add-operative__lead">How would you like to add this operative?</p>
                 <MudRadioGroup T="string" Value="_method" ValueChanged="OnMethodChanged">
@@ -37,7 +37,7 @@
             </div>
         </MudStep>
 
-        <MudStep Title="@(_method == "link" ? "Recipient" : "Details")" Icon="@Icons.Material.Outlined.Badge">
+        <MudStep Title="@(_method == "link" ? "Recipient" : "Details")">
             <div class="add-operative__step">
                 @if (_method == "link")
                 {
@@ -62,7 +62,7 @@
             </div>
         </MudStep>
 
-        <MudStep Title="Review" Icon="@Icons.Material.Outlined.CheckCircle">
+        <MudStep Title="Review">
             <div class="add-operative__step">
                 <p class="add-operative__lead">Review and confirm</p>
                 <dl class="add-operative__review">

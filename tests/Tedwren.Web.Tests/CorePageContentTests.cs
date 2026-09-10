@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using Tedwren.Web.Tests.Support;
+
 namespace Tedwren.Web.Tests;
 
 /// <summary>
@@ -8,13 +10,13 @@ namespace Tedwren.Web.Tests;
 /// highlighted differentiator gets its distinct treatment, and product copy is not forked between the
 /// home card and the dedicated page.
 /// </summary>
-public sealed class CorePageContentTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CorePageContentTests : IClassFixture<SiteFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host for Tedwren.Web.</param>
-    public CorePageContentTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public CorePageContentTests(SiteFactory factory) => _factory = factory;
 
     /// <summary>Home renders hero, product cards, the how-it-works steps and the trust strip.</summary>
     [Fact]

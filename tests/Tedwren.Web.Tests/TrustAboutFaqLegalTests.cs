@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using Tedwren.Web.Tests.Support;
+
 namespace Tedwren.Web.Tests;
 
 /// <summary>
@@ -9,13 +11,13 @@ namespace Tedwren.Web.Tests;
 /// renders questions plus valid FAQPage schema, and the legal pages serve real content rather than a
 /// placeholder.
 /// </summary>
-public sealed class TrustAboutFaqLegalTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class TrustAboutFaqLegalTests : IClassFixture<SiteFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host for Tedwren.Web.</param>
-    public TrustAboutFaqLegalTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public TrustAboutFaqLegalTests(SiteFactory factory) => _factory = factory;
 
     /// <summary>The security page makes no fabricated badge or absolute-compliance claims (§8.1, §6.6).</summary>
     [Fact]

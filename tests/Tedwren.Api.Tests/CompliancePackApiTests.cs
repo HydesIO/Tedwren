@@ -79,7 +79,7 @@ public sealed class CompliancePackApiTests : IClassFixture<WebApplicationFactory
 
         var list = await client.GetFromJsonAsync<List<PackListItemDto>>($"/api/packs/company/{companyId}");
         Assert.Equal(1, list!.Single().DownloadedCount);
-        Assert.True(list.Single().OpenedCount >= 1);
+        Assert.True(list!.Single().OpenedCount >= 1);
 
         // Revoke, then the link no longer works (SUB-21).
         var revoke = await client.PostAsync($"/api/packs/company/{companyId}/{built.PackId}/revoke", null);

@@ -74,9 +74,15 @@ public sealed class EntitlementServiceTests
     {
         var service = CreateService(out _);
 
-        // "workforce" defaults on, "time" defaults off.
+        // A product-less company falls back to the catalogue default: the shared foundation only.
         Assert.True(await service.IsEnabledAsync(Company, "workforce"));
+        Assert.True(await service.IsEnabledAsync(Company, "compliance"));
+        Assert.True(await service.IsEnabledAsync(Company, "reports"));
         Assert.False(await service.IsEnabledAsync(Company, "time"));
+        // Induction is a main-contractor engine (§6.1, SUB-11) and permits is a paid add-on: neither may
+        // default on for a product-less company, or the two-product split silently leaks back in.
+        Assert.False(await service.IsEnabledAsync(Company, "inductions"));
+        Assert.False(await service.IsEnabledAsync(Company, "permits"));
     }
 
     [Fact]
