@@ -127,6 +127,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<InMemorySiteStore>();
         services.AddScoped<ISiteRepository, InMemorySiteRepository>();
         services.AddScoped<ISitePropertyRepository, InMemorySitePropertyRepository>();
+        services.AddScoped<ISiteAssignmentRepository, InMemorySiteAssignmentRepository>();
         return services;
     }
 

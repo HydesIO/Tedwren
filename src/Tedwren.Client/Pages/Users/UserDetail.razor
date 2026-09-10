@@ -1,9 +1,11 @@
 @page "/users/{Id:guid}"
+@using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Contracts.Users
 @using Tedwren.Abstractions.Services
 @using Tedwren.UiComponents.Models
 @using Tedwren.UiComponents.Feedback
 @inject IUserService Users
+@inject ISiteService Sites
 @inject IDialogService Dialogs
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
@@ -84,6 +86,38 @@ else
             }
         </Body>
     </DashboardCard>
+
+    @* A site manager is scoped to the sites assigned here (MC-21/UAT-011) — administrators, compliance managers
+       and auditors always see the whole company, so the section only applies to site managers. *@
+    @if (string.Equals(_user.Role, "SiteManager", StringComparison.OrdinalIgnoreCase))
+    {
+        <DashboardCard Title="Assigned sites" Subtitle="A site manager sees only the sites assigned here (MC-21).">
+            <Body>
+                @if (_sites.Count == 0)
+                {
+                    <EmptyState Icon="@Icons.Material.Outlined.Apartment" Title="No sites"
+                                Description="Record a site first — then assign it to this manager." />
+                }
+                else
+                {
+                    <div class="user-sites">
+                        @foreach (var s in _sites)
+                        {
+                            <MudCheckBox T="bool" Value="_assigned.Contains(s.Id)"
+                                         ValueChanged="@(v => ToggleSite(s.Id, v))" Label="@s.Name" Dense="true" />
+                        }
+                    </div>
+                    <div class="user-edit__actions">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_savingSites"
+                                   OnClick="SaveAssignments">Save assigned sites</MudButton>
+                    </div>
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                        With no sites assigned, this manager sees all sites until you assign some.
+                    </MudText>
+                }
+            </Body>
+        </DashboardCard>
+    }
 }
 
 @code {
@@ -101,6 +135,11 @@ else
     private List<KeyValueList.Pair> _overview = new();
     private IReadOnlyList<DetailHeader.Crumb> _crumbs = Array.Empty<DetailHeader.Crumb>();
 
+    // Site-manager assignment state (MC-21/UAT-011).
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private readonly HashSet<Guid> _assigned = new();
+    private bool _savingSites;
+
     protected override async Task OnInitializedAsync()
     {
         _crumbs = new List<DetailHeader.Crumb> { new("Users", "/users"), new("User") };
@@ -116,6 +155,34 @@ else
         if (_user is not null)
         {
             BuildOverview(_user);
+            if (string.Equals(_user.Role, "SiteManager", StringComparison.OrdinalIgnoreCase))
+            {
+                _sites = await Sites.GetSitesAsync();   // the viewing admin's tenant sites — the assignable set
+                _assigned.Clear();
+                foreach (var siteId in await Sites.GetAssignedSiteIdsAsync(Id))
+                {
+                    _assigned.Add(siteId);
+                }
+            }
+        }
+    }
+
+    private void ToggleSite(Guid siteId, bool selected)
+    {
+        if (selected) _assigned.Add(siteId); else _assigned.Remove(siteId);
+    }
+
+    private async Task SaveAssignments()
+    {
+        _savingSites = true;
+        try
+        {
+            await Sites.SetAssignedSitesAsync(Id, _assigned.ToList());
+            Snackbar.Add("Assigned sites saved.", Severity.Success);
+        }
+        finally
+        {
+            _savingSites = false;
         }
     }
 

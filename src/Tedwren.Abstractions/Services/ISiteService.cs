@@ -23,4 +23,10 @@ public interface ISiteService
 
     /// <summary>Adds a property to a dispersed scheme and returns its new identifier (SF-26). Null if the site is not found.</summary>
     Task<Guid?> AddPropertyAsync(AddSitePropertyRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns the site ids a console user is assigned to (MC-21/UAT-011).</summary>
+    Task<IReadOnlyList<Guid>> GetAssignedSiteIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Sets the sites a console user is assigned to, replacing any existing assignments (MC-21/UAT-011).</summary>
+    Task SetAssignedSitesAsync(Guid userId, IReadOnlyList<Guid> siteIds, CancellationToken cancellationToken = default);
 }

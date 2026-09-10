@@ -18,6 +18,9 @@ public sealed class InMemorySiteStore
     /// <summary>Properties by id.</summary>
     public ConcurrentDictionary<Guid, SiteProperty> Properties { get; } = new();
 
+    /// <summary>User↔site assignments by id (MC-21) — which sites a site manager is responsible for (UAT-011).</summary>
+    public ConcurrentDictionary<Guid, SiteAssignment> Assignments { get; } = new();
+
     /// <summary>Creates the store and loads the demo seed.</summary>
     public InMemorySiteStore() : this(seed: true)
     {

@@ -65,6 +65,18 @@ public sealed class ApiSiteService : ISiteService
         return created?.Id;
     }
 
+    /// <summary>Returns the site ids a console user is assigned to (MC-21/UAT-011).</summary>
+    public async Task<IReadOnlyList<Guid>> GetAssignedSiteIdsAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<IReadOnlyList<Guid>>($"api/sites/assignments/{userId}", cancellationToken)
+        ?? Array.Empty<Guid>();
+
+    /// <summary>Sets the sites a console user is assigned to, replacing any existing assignments (MC-21/UAT-011).</summary>
+    public async Task SetAssignedSitesAsync(Guid userId, IReadOnlyList<Guid> siteIds, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PutAsJsonAsync($"api/sites/assignments/{userId}", new { SiteIds = siteIds }, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
     /// <summary>Shape of the create response body.</summary>
     private sealed record CreatedResponse(Guid Id);
 }

@@ -27,6 +27,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<JobRunRecord> JobRuns => Set<JobRunRecord>();
     public DbSet<SiteRecord> Sites => Set<SiteRecord>();
     public DbSet<SitePropertyRecord> SiteProperties => Set<SitePropertyRecord>();
+    public DbSet<SiteAssignmentRecord> SiteAssignments => Set<SiteAssignmentRecord>();
     public DbSet<UserRecord> Users => Set<UserRecord>();
     public DbSet<AttendanceRecord> Attendance => Set<AttendanceRecord>();
     public DbSet<ModuleEntitlementRecord> ModuleEntitlements => Set<ModuleEntitlementRecord>();
@@ -114,6 +115,13 @@ public sealed class TedwrenDbContext : DbContext
         {
             e.ToTable("SiteProperties");
             e.HasIndex(x => x.SiteId);
+        });
+
+        model.Entity<SiteAssignmentRecord>(e =>
+        {
+            e.ToTable("SiteAssignments");
+            e.HasIndex(x => x.UserId);
+            e.HasIndex(x => new { x.UserId, x.SiteId }).IsUnique();
         });
 
         model.Entity<UserRecord>(e =>

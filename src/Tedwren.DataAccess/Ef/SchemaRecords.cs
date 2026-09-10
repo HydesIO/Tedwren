@@ -151,6 +151,15 @@ public sealed class SitePropertyRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>SiteAssignments</c> table — a console user's assigned sites (MC-21/UAT-011).</summary>
+public sealed class SiteAssignmentRecord
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public Guid SiteId { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>Users</c> table (SF-20/SF-23).</summary>
 public sealed class UserRecord
 {

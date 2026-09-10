@@ -1,4 +1,6 @@
+using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Sites;
+using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Sites;
 using Xunit;
@@ -21,6 +23,47 @@ public sealed class SiteServiceTests
             new InMemorySitePropertyRepository(store),
             new InMemoryAttendanceRepository(new InMemoryAttendanceStore(seed: false)),
             new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false)));
+    }
+
+    [Fact] // UAT-011 (MC-21) — a site manager sees only assigned sites; other roles see the whole tenant
+    public async Task SiteManager_SeesOnlyAssignedSites_WhileAdministratorSeesAll()
+    {
+        var store = new InMemorySiteStore(seed: false);
+        var props = new InMemorySitePropertyRepository(store);
+        var attendance = new InMemoryAttendanceRepository(new InMemoryAttendanceStore(seed: false));
+        var cards = new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false));
+        var assignments = new InMemorySiteAssignmentRepository(store);
+        var company = Guid.NewGuid();
+        var managerId = Guid.NewGuid();
+
+        SiteService For(string role, Guid userId) => new(
+            new InMemorySiteRepository(store), props, attendance, cards,
+            new FakeCurrentUser(new CurrentUserDto("Tester", role, company, UserId: userId)), assignments);
+
+        var admin = For("Administrator", Guid.NewGuid());
+        var siteA = await admin.CreateSiteAsync(new CreateSiteRequest(company, "Alpha Site", null, null, null, true, false, null));
+        await admin.CreateSiteAsync(new CreateSiteRequest(company, "Beta Site", null, null, null, true, false, null));
+
+        // Manager assigned to only one of the two sites.
+        await assignments.ReplaceForUserAsync(managerId, new[] { siteA });
+        var manager = For("SiteManager", managerId);
+
+        var managerSites = await manager.GetSitesAsync();
+        Assert.Equal("Alpha Site", Assert.Single(managerSites).Name);
+
+        var adminSites = await admin.GetSitesAsync();
+        Assert.Equal(2, adminSites.Count);   // administrators are never scoped
+
+        // A manager with no assignments fails open (sees all) rather than an empty screen.
+        var unassigned = For("SiteManager", Guid.NewGuid());
+        Assert.Equal(2, (await unassigned.GetSitesAsync()).Count);
+    }
+
+    private sealed class FakeCurrentUser : ICurrentUserService
+    {
+        private readonly CurrentUserDto _user;
+        public FakeCurrentUser(CurrentUserDto user) => _user = user;
+        public Task<CurrentUserDto> GetCurrentAsync(CancellationToken cancellationToken = default) => Task.FromResult(_user);
     }
 
     [Fact] // SF-14

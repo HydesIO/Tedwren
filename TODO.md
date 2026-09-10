@@ -23,8 +23,15 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   steps (identity, cards, emergency contact, declaration, media, signature) plus attached forms in one ordered,
   editable list (add / remove / reorder / required toggle), over the already-data-driven `Steps` round-trip —
   answering "can capture fields be changed without a developer?".
-- ⏳ **Remaining:** 011 site-manager site scoping, 018 shareable induction link + email, 023 RAMS/trade
-  self-service onboarding, 010a richer operative capture (emergency contact on the profile).
+- ✅ **UAT-011 (MC-21) — site-manager site scoping.** New `SiteAssignment` entity (user↔site) with in-memory +
+  Dapper repositories and an EF migration (`AddSiteAssignments`); `SiteService.GetSitesAsync`/`GetSiteAsync` now
+  scope a **SiteManager** to their assigned sites (fail-open to all when none are assigned, so an unconfigured
+  manager is never left with an empty screen), while Administrators/ComplianceManagers/Auditors still see the
+  whole tenant. Assignment API (`/api/sites/assignments/{userId}`) + client + an "Assigned sites" section on the
+  user detail page. This also lays the site↔operative foundation for the 016 per-site compliance filter.
+- ⏳ **Remaining:** 018 shareable induction link + email, 023 RAMS/trade self-service onboarding, 010a richer
+  operative capture (emergency contact on the profile). The **016 per-site compliance filter** builds on UAT-011
+  and is grouped with this remaining set (the compliance-legend drill-down shipped in Phase 3).
 
 ---
 
