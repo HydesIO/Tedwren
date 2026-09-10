@@ -1,0 +1,92 @@
+@page "/trade-approvals"
+@using Tedwren.Abstractions.Contracts.Trades
+@using Tedwren.Abstractions.Services
+@inject ITradeOnboardingService Trades
+@inject IDialogService Dialogs
+
+<PageTitle>Trade approvals · Tedwren</PageTitle>
+
+<PageHeader Title="Trade approvals" Subtitle="Review trades' self-service onboarding submissions" />
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="TradeReviewItemDto"
+                   Items="_items"
+                   Columns="_columns"
+                   Loading="_loading"
+                   OnRowClick="OpenReview"
+                   SearchPlaceholder="Search trades…"
+                   EmptyTitle="Nothing to review"
+                   EmptyDescription="Invited trades appear here once they submit their documents."
+                   EmptyIcon="@Icons.Material.Outlined.FactCheck" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private IReadOnlyList<TradeReviewItemDto> _items = Array.Empty<TradeReviewItemDto>();
+    private List<DataColumn<TradeReviewItemDto>> _columns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _items = await Trades.GetReviewQueueAsync();
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
+        {
+            _items = Array.Empty<TradeReviewItemDto>();   // e.g. a read-only Auditor — nothing to action
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    // Opens the review dialog; on a decision the item updates, so reload the queue.
+    private async Task OpenReview(TradeReviewItemDto item)
+    {
+        var parameters = new DialogParameters<TradeReviewDialog> { { x => x.Item, item } };
+        var dialog = await Dialogs.ShowAsync<TradeReviewDialog>("Review trade", parameters, TedwrenDialog.Large());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Company", Value = r => r.CompanyName, Filterable = true },
+            new() { Title = "Contact", Value = r => r.ContactName ?? "—" },
+            new() { Title = "Documents", Value = r => r.Documents.Count, AlignRight = true, Searchable = false },
+            new()
+            {
+                Title = "Submitted", Value = r => r.SubmittedUtc ?? DateTimeOffset.MinValue, Searchable = false,
+                CellTemplate = r => @<span>@(r.SubmittedUtc is { } s ? s.ToString("dd MMM yyyy") : "—")</span>
+            },
+            new()
+            {
+                Title = "Status", Value = r => r.Status, Searchable = false, Filterable = true,
+                CellTemplate = r => @<StatusPill Label="@r.Status" Status="@ToStatusKind(r.Status)" />
+            },
+        };
+    }
+
+    private static StatusKind ToStatusKind(string status) => status switch
+    {
+        "Submitted" => StatusKind.Warning,   // awaiting the manager's decision
+        "Approved" => StatusKind.Success,
+        "Rejected" => StatusKind.Danger,
+        "Returned" => StatusKind.Neutral,
+        _ => StatusKind.Neutral,
+    };
+}

@@ -14,7 +14,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 ### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased
 Fixing the issues from the first end-user acceptance testing pass (`docs/` UAT log). Plan groups all 27
 distinct issues into four phases: 1 quick frontend/UX wins, 2 Critical/High correctness bugs, 3 Medium
-data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4 progress:**
+data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues delivered.** **Phase 4 items:**
 - ✅ **UAT-015 — geofenced clock-in surface.** A sign-in/sign-out panel on the Attendance page (operative
   picker + browser geolocation) over the existing `IAttendanceService`; the tables now show operative names.
 - ✅ **UAT-029 (MC-24) — QS timesheet rollup.** `GetSiteRollupAsync` + endpoint + a "By site (QS reconciliation)"
@@ -61,8 +61,19 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   `POST /api/trades/invites`; anonymous `GET /api/trades/by-link/{token}` + `POST …/documents`. Client: an "Invite
   trade" action + dialog on the Organisation page surfacing the copyable link + passcode, and the recipient
   `TradeOnboard` page. (The manager review/approval loop is 023b.)
-- ⏳ **Remaining (building now — "build everything" scope):** 023b — submit-for-review + the manager review queue
-  (approve / reject / return-with-comments). Real email delivery is stubbed to the outbox repo-wide (PRD-Phase 7).
+- ✅ **UAT-023b (SUB-4/MC-27) — trade review / approval loop.** The trade submits its documents for review
+  (`SubmitForReviewAsync`, Invited/Returned → Submitted); a manager works the tenant-scoped review queue
+  (`GetReviewQueueAsync`) and **approves / rejects / returns-with-comments** (`Approve/Reject/ReturnAsync`, guarded
+  by `TradeOnboardingWorkflow`, reject/return require a note, R18 "returned" not "denied"). Each decision records
+  audit (`OrganisationService.AuditAsync` pattern) and best-effort notifies via `IEmailSender` (stub→outbox,
+  PRD-Phase 7). Authorised `POST /api/trades/by-link/{token}/submit`, `GET /api/trades/reviews`,
+  `POST /api/trades/reviews/{id}/approve|reject|return`. Client: a "Trade approvals" queue page + review dialog
+  (view uploaded files via the authenticated image endpoint, approve/reject/return); a returned trade re-opens
+  its link, sees the note, and resubmits.
+- ✅ **UAT remediation complete — all 27 issues delivered** across Phases 1–4 (1–3 fixes/UX; 4a–4h larger
+  features 015/029, 027/028, 011, 010a, 018, 016, 023a, 023b). Whole solution builds 0 warnings / 0 errors; all
+  suites green (Api 134). DB-layer code (Dapper + EF migrations) is build-validated; behaviour is covered by the
+  in-memory API/unit suites (the LocalDB integration suite is skipped in this sandbox).
 
 ---
 

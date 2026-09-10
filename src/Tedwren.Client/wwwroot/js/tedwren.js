@@ -93,6 +93,19 @@ window.tedwren = {
         } catch (e) { /* ignore */ }
     },
 
+    // Opens base64 content in a new browser tab (e.g. viewing an uploaded RAMS/insurance PDF for review).
+    openBlob: function (base64, contentType) {
+        try {
+            var byteChars = atob(base64);
+            var bytes = new Uint8Array(byteChars.length);
+            for (var i = 0; i < byteChars.length; i++) { bytes[i] = byteChars.charCodeAt(i); }
+            var blob = new Blob([bytes], { type: contentType || 'application/octet-stream' });
+            var url = URL.createObjectURL(blob);
+            window.open(url, '_blank');
+            setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
+        } catch (e) { /* ignore */ }
+    },
+
     // Canvas signature pad: pointer-drawn strokes captured as a PNG data URL (MC-5 style signature).
     signature: {
         init: function (canvas, dotNetRef) {

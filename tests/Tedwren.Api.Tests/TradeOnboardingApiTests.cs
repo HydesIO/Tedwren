@@ -79,4 +79,97 @@ public sealed class TradeOnboardingApiTests : IClassFixture<WebApplicationFactor
         var response = await client.GetAsync($"/api/trades/by-link/{Guid.NewGuid():N}");
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact] // UAT-023b — submit for review, it appears in the queue, approve it, and the link then closes
+    public async Task Submit_AppearsInQueue_ThenApprove_ClosesLink()
+    {
+        var client = CreateClient();
+        var companyName = "Approve Co " + Guid.NewGuid().ToString("N")[..6];
+        var token = await InviteUploadAndSubmitAsync(client, companyName);
+
+        // The submission is now in the manager's review queue.
+        var queue = await client.GetFromJsonAsync<List<TradeReviewItemDto>>("/api/trades/reviews");
+        var item = Assert.Single(queue!, r => r.CompanyName == companyName);
+        Assert.Equal("Submitted", item.Status);
+
+        // Approve it.
+        var approved = await (await client.PostAsJsonAsync($"/api/trades/reviews/{item.InviteId}/approve", new ReviewTradeRequest(null)))
+            .Content.ReadFromJsonAsync<TradeReviewItemDto>();
+        Assert.Equal("Approved", approved!.Status);
+
+        // An approved invite's link is closed (R9) — the trade can no longer open it.
+        var view = await client.GetAsync($"/api/trades/by-link/{token}");
+        Assert.Equal(HttpStatusCode.Forbidden, view.StatusCode);
+    }
+
+    [Fact] // UAT-023b — returning requires a note; the trade sees it and can resubmit (R18: returned, not denied)
+    public async Task Return_RequiresNote_ThenTradeResubmits()
+    {
+        var client = CreateClient();
+        var companyName = "Return Co " + Guid.NewGuid().ToString("N")[..6];
+        var token = await InviteUploadAndSubmitAsync(client, companyName);
+        var item = (await client.GetFromJsonAsync<List<TradeReviewItemDto>>("/api/trades/reviews"))!.Single(r => r.CompanyName == companyName);
+
+        // Returning without a note is rejected (400).
+        var noNote = await client.PostAsJsonAsync($"/api/trades/reviews/{item.InviteId}/return", new ReviewTradeRequest(null));
+        Assert.Equal(HttpStatusCode.BadRequest, noNote.StatusCode);
+
+        // With a note it is returned, and the trade sees the note on their link.
+        var returned = await client.PostAsJsonAsync($"/api/trades/reviews/{item.InviteId}/return", new ReviewTradeRequest("Insurance certificate has expired."));
+        Assert.Equal(HttpStatusCode.OK, returned.StatusCode);
+
+        var view = await client.GetFromJsonAsync<TradeInviteViewDto>($"/api/trades/by-link/{token}");
+        Assert.Equal("Returned", view!.Status);
+        Assert.Equal("Insurance certificate has expired.", view.ReviewNote);
+
+        // The trade can resubmit after fixing it.
+        var resubmitted = await (await client.PostAsync($"/api/trades/by-link/{token}/submit", content: null))
+            .Content.ReadFromJsonAsync<TradeInviteViewDto>();
+        Assert.Equal("Submitted", resubmitted!.Status);
+    }
+
+    [Fact] // UAT-023b — rejecting requires a note too
+    public async Task Reject_RequiresNote()
+    {
+        var client = CreateClient();
+        var companyName = "Reject Co " + Guid.NewGuid().ToString("N")[..6];
+        await InviteUploadAndSubmitAsync(client, companyName);
+        var item = (await client.GetFromJsonAsync<List<TradeReviewItemDto>>("/api/trades/reviews"))!.Single(r => r.CompanyName == companyName);
+
+        var noNote = await client.PostAsJsonAsync($"/api/trades/reviews/{item.InviteId}/reject", new ReviewTradeRequest(" "));
+        Assert.Equal(HttpStatusCode.BadRequest, noNote.StatusCode);
+
+        var rejected = await (await client.PostAsJsonAsync($"/api/trades/reviews/{item.InviteId}/reject", new ReviewTradeRequest("Not proceeding.")))
+            .Content.ReadFromJsonAsync<TradeReviewItemDto>();
+        Assert.Equal("Rejected", rejected!.Status);
+    }
+
+    [Fact] // UAT-023b — a decision before submission is refused (409) by the workflow guard
+    public async Task Approve_BeforeSubmit_Conflicts()
+    {
+        var client = CreateClient();
+        var companyName = "Premature Co " + Guid.NewGuid().ToString("N")[..6];
+
+        // Invite only (status Invited) — do not submit.
+        await client.PostAsJsonAsync("/api/trades/invites",
+            new CreateTradeInviteRequest(companyName, null, null, null, null, RequirePasscode: false));
+        var item = (await client.GetFromJsonAsync<List<TradeReviewItemDto>>("/api/trades/reviews"))!.Single(r => r.CompanyName == companyName);
+
+        var early = await client.PostAsJsonAsync($"/api/trades/reviews/{item.InviteId}/approve", new ReviewTradeRequest(null));
+        Assert.Equal(HttpStatusCode.Conflict, early.StatusCode);
+    }
+
+    /// <summary>Invites a trade (no passcode), uploads one document, and submits it for review; returns the link token.</summary>
+    private static async Task<string> InviteUploadAndSubmitAsync(HttpClient client, string companyName)
+    {
+        var link = await (await client.PostAsJsonAsync("/api/trades/invites",
+            new CreateTradeInviteRequest(companyName, "Subcontractor", "Groundworks", "Alex Reed", "alex@trade.test", RequirePasscode: false)))
+            .Content.ReadFromJsonAsync<TradeInviteLinkDto>();
+
+        await client.PostAsJsonAsync($"/api/trades/by-link/{link!.Token}/documents",
+            new SubmitTradeDocumentRequest("RAMS", "Method Statement", null, null, null, null));
+
+        await client.PostAsync($"/api/trades/by-link/{link.Token}/submit", content: null);
+        return link.Token;
+    }
 }

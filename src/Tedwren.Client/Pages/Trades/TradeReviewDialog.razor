@@ -1,0 +1,169 @@
+@using System.Net.Http
+@using Tedwren.Abstractions.Contracts.Trades
+@using Tedwren.Abstractions.Services
+@inject ITradeOnboardingService Trades
+@inject HttpClient Http
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+@* Review a trade's self-service onboarding submission (UAT-023): read the uploaded documents, then approve,
+   return-with-comments or reject. Reject/return require a note the trade will see. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance>
+                Check the trade's uploaded documents, then decide. <b>Approve</b> onboards them; <b>Return</b>
+                sends it back with your comments to fix and resubmit; <b>Reject</b> declines it. A note is required
+                to return or reject.
+            </DialogGuidance>
+
+            <FormSection Title="@Item.CompanyName" Description="@ContactLine">
+                <div class="trade-review__meta">
+                    <span><b>Status:</b> @Item.Status</span>
+                    @if (Item.SubmittedUtc is { } submitted)
+                    {
+                        <span><b>Submitted:</b> @submitted.LocalDateTime.ToString("dd MMM yyyy HH:mm")</span>
+                    }
+                </div>
+            </FormSection>
+
+            @if (!string.IsNullOrWhiteSpace(Item.ReviewNote) && !_awaitingReview)
+            {
+                <BannerAlert Severity="StatusKind.Info" Title="Your note" Message="@Item.ReviewNote" />
+            }
+
+            <MudText Typo="Typo.subtitle2" Class="mt-2 mb-1">Documents (@Item.Documents.Count)</MudText>
+            @if (Item.Documents.Count == 0)
+            {
+                <MudText Typo="Typo.body2" Class="mud-text-secondary">No documents were uploaded.</MudText>
+            }
+            else
+            {
+                <MudList T="string" Dense="true">
+                    @foreach (var doc in Item.Documents)
+                    {
+                        <MudListItem T="string" Icon="@(doc.HasFile ? Icons.Material.Outlined.AttachFile : Icons.Material.Outlined.Description)">
+                            <div class="trade-review__doc">
+                                <span>@doc.Type — @doc.Name @(doc.ExpiresOn is { } e ? $"· expires {e:dd MMM yyyy}" : "")</span>
+                                @if (doc.HasFile && !string.IsNullOrEmpty(doc.FileReference))
+                                {
+                                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                               Disabled="_busy" OnClick="@(() => ViewAsync(doc))">View</MudButton>
+                                }
+                            </div>
+                        </MudListItem>
+                    }
+                </MudList>
+            }
+
+            @if (_awaitingReview)
+            {
+                <TedwrenTextField Label="Note to the trade (required to return or reject)" @bind-Value="_note"
+                                  Lines="3" Placeholder="e.g. Your insurance certificate has expired — please upload a current one." />
+            }
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Close</MudButton>
+        @if (_awaitingReview)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" Disabled="_busy" OnClick="RejectAsync">Reject</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Warning" Disabled="_busy" OnClick="ReturnAsync">Return for changes</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="ApproveAsync">Approve</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The submission being reviewed.</summary>
+    [Parameter] public TradeReviewItemDto Item { get; set; } = default!;
+
+    private string? _note;
+    private bool _busy;
+
+    private bool _awaitingReview => Item.Status == "Submitted";
+    private string ContactLine => string.Join(" · ",
+        new[] { Item.ContactName, Item.ContactEmail }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    // Fetches a document's file via the authenticated API client (the private image endpoint, R9) and opens it.
+    private async Task ViewAsync(TradeDocumentDto doc)
+    {
+        if (string.IsNullOrEmpty(doc.FileReference))
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            using var response = await Http.GetAsync($"api/images/{doc.FileReference}");
+            if (!response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Couldn't open the file.", Severity.Warning);
+                return;
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync();
+            var contentType = response.Content.Headers.ContentType?.ToString() ?? "application/octet-stream";
+            await JS.InvokeVoidAsync("tedwren.openBlob", Convert.ToBase64String(bytes), contentType);
+        }
+        catch (HttpRequestException)
+        {
+            Snackbar.Add("Couldn't open the file.", Severity.Warning);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private Task ApproveAsync() =>
+        DecideAsync(() => Trades.ApproveAsync(Item.InviteId, new ReviewTradeRequest(_note)), "approved");
+
+    private Task RejectAsync() => DecideWithNoteAsync(
+        () => Trades.RejectAsync(Item.InviteId, new ReviewTradeRequest(_note)), "rejected");
+
+    private Task ReturnAsync() => DecideWithNoteAsync(
+        () => Trades.ReturnAsync(Item.InviteId, new ReviewTradeRequest(_note)), "returned");
+
+    // Reject/return need a note the trade will see; guard client-side (the server enforces it too).
+    private Task DecideWithNoteAsync(Func<Task<TradeReviewItemDto?>> action, string verb)
+    {
+        if (string.IsNullOrWhiteSpace(_note))
+        {
+            Snackbar.Add("Add a note explaining what the trade needs to do.", Severity.Error);
+            return Task.CompletedTask;
+        }
+
+        return DecideAsync(action, verb);
+    }
+
+    private async Task DecideAsync(Func<Task<TradeReviewItemDto?>> action, string verb)
+    {
+        _busy = true;
+        try
+        {
+            var updated = await action();
+            if (updated is not null)
+            {
+                Snackbar.Add($"Trade {verb}.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(updated));
+            }
+            else
+            {
+                Snackbar.Add("This submission could not be found.", Severity.Error);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
