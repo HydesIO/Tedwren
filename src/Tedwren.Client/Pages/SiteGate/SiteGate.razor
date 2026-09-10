@@ -1,4 +1,5 @@
 @page "/site-gate"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.SiteEntry
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
@@ -8,14 +9,24 @@
 @inject ITenantState Tenant
 @inject ISnackbar Snackbar
 
-<PageTitle>Site Gate · Tedwren</PageTitle>
+<PageTitle>@(_isSubcontractor ? "Site Attendance" : "Site Gate") · Tedwren</PageTitle>
 
-<PageHeader Title="Site Gate" Subtitle="Five-check entry decision, manager override and live muster" />
+@* The subcontractor product never presents a site-access decision (R18, SUB-12): it records attendance and
+   flags outstanding cards ("recorded" / "site-ready"), never "permitted/denied/blocked". The main contractor
+   product makes the actual five-check entry decision (MC-8, R10) with a manager override (MC-11). *@
+<PageHeader Title="@(_isSubcontractor ? "Site Attendance" : "Site Gate")"
+            Subtitle="@(_isSubcontractor
+                ? "Record who is on site — attendance and required cards, and live muster"
+                : "Five-check entry decision, manager override and live muster")" />
 
 <DashboardCard>
     <Body>
-        <MudText Typo="Typo.h6">Check entry</MudText>
-        <MudText Typo="Typo.body2" Class="mud-text-secondary gate__hint">Select an operative to run the five-check entry decision (MC-8, R10).</MudText>
+        <MudText Typo="Typo.h6">@(_isSubcontractor ? "Record attendance" : "Check entry")</MudText>
+        <MudText Typo="Typo.body2" Class="mud-text-secondary gate__hint">
+            @(_isSubcontractor
+                ? "Select an operative to record arrival and check their required cards (SUB-7, SUB-11)."
+                : "Select an operative to run the five-check entry decision (MC-8, R10).")
+        </MudText>
 
         <AsyncContent Loading="_loading" Error="@_error" ErrorTitle="Couldn't load the gate"
                       OnRetry="LoadAsync" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="4"
@@ -38,10 +49,9 @@
 
         @if (_result is { } r)
         {
+            var view = SiteGateResultPresenter.For(_product, r);
             <div class="gate__result">
-                <BannerAlert Severity="@(r.Admitted ? StatusKind.Success : StatusKind.Danger)"
-                             Title="@(r.Admitted ? (r.WasOverridden ? "Admitted (manager override)" : "Admitted") : "Entry blocked")"
-                             Message="@(r.Admitted ? $"Decision in {r.ElapsedMs} ms." : (r.BlockReason ?? "Blocked."))" />
+                <BannerAlert Severity="@view.Severity" Title="@view.Title" Message="@view.Message" />
 
                 <MudSimpleTable Dense="true" Class="gate__checks">
                     <thead><tr><th>Check</th><th>Outcome</th><th>Detail</th></tr></thead>
@@ -57,7 +67,9 @@
                     </tbody>
                 </MudSimpleTable>
 
-                @if (!r.Admitted)
+                @* Manager override of a block is a main-contractor concept (MC-11). The subcontractor product
+                   never blocks, so there is nothing to override — it only records (R18). *@
+                @if (view.OffersOverride)
                 {
                     <div class="gate__override-row">
                         <MudButton Variant="Variant.Filled" Color="Color.Warning"
@@ -118,8 +130,14 @@
     private string? _error;
     private List<DataColumn<MusterPersonDto>> _musterColumns = new();
 
+    // The active company's product, resolved by the shell before this page renders. Subcontractors get the
+    // R18-safe "recorded / site-ready" wording; a null (unknown) product keeps the main-contractor decision UI.
+    private OrgType? _product;
+    private bool _isSubcontractor => _product == OrgType.Subcontractor;
+
     protected override Task OnInitializedAsync()
     {
+        _product = Tenant.CurrentOrgType;
         BuildColumns();
         return LoadAsync();
     }

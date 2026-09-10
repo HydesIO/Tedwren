@@ -30,6 +30,35 @@ public sealed class OrganisationServiceTests
     private static Task<Guid> AddCompanyAsync(OrganisationService service, string name) =>
         service.CreateCompanyAsync(new CreateCompanyRequest(name, "Subcontractor", "Groundworks", null, null, null, null, null));
 
+    [Fact] // Product discriminator (PRD §2, SF-22): OrgType survives create → summary → detail.
+    public async Task CreateCompany_WithProduct_RoundTripsOrgType_OnSummaryAndDetail()
+    {
+        var (service, _) = CreateSut();
+
+        var mainId = await service.CreateCompanyAsync(new CreateCompanyRequest(
+            "Meridian Ltd", "Main Contractor", "General Build", null, null, null, null, null, OrgType.MainContractor));
+        await service.CreateCompanyAsync(new CreateCompanyRequest(
+            "Apex Ltd", "Subcontractor", "Groundworks", null, null, null, null, null, OrgType.Subcontractor));
+
+        var summaries = await service.GetCompaniesAsync();
+        Assert.Equal(OrgType.MainContractor, summaries.Single(c => c.Id == mainId).OrgType);
+        Assert.Equal(OrgType.Subcontractor, summaries.Single(c => c.Name == "Apex Ltd").OrgType);
+
+        var detail = await service.GetCompanyAsync(summaries.Single(c => c.Id == mainId).Slug);
+        Assert.Equal(OrgType.MainContractor, detail!.OrgType);
+    }
+
+    [Fact] // Product is optional: a company created without one has no product (null), not a default.
+    public async Task CreateCompany_WithoutProduct_LeavesOrgTypeNull()
+    {
+        var (service, _) = CreateSut();
+        var id = await service.CreateCompanyAsync(new CreateCompanyRequest(
+            "Nomad Ltd", null, null, null, null, null, null, null));
+
+        var summary = (await service.GetCompaniesAsync()).Single(c => c.Id == id);
+        Assert.Null(summary.OrgType);
+    }
+
     [Fact] // SF-1
     public async Task SamePhoneAcrossTwoCompanies_CreatesOnePerson_WithTwoEngagements()
     {
@@ -187,13 +216,15 @@ public sealed class OrganisationServiceTests
         var id = await AddCompanyAsync(service, "Alpha Ltd");
 
         var ok = await service.UpdateCompanyAsync(id, new UpdateCompanyRequest(
-            "Alpha Renamed Ltd", "Main Contractor", "Roofing", "12345678", "1 New Road", "Jo", "jo@x.com", "0800"));
+            "Alpha Renamed Ltd", "Main Contractor", "Roofing", "12345678", "1 New Road", "Jo", "jo@x.com", "0800",
+            OrgType.MainContractor));
 
         Assert.True(ok);
         var updated = await service.GetCompanyAsync("alpha-renamed-ltd");
         Assert.NotNull(updated);
         Assert.Equal("Main Contractor", updated!.Type);
         Assert.Equal("jo@x.com", updated.ContactEmail);
+        Assert.Equal(OrgType.MainContractor, updated.OrgType);   // the typed product is editable and persisted (SF-22)
     }
 
     [Fact]

@@ -2,13 +2,15 @@
    Consumers supply MudStep children; this standardises the stepper chrome. *@
 
 <div class="tedwren-stepper">
+    @* MudBlazor 8.x MudStepper API: linearity is expressed as NonLinear (the inverse of Linear), and the
+       active-step accent is CurrentStepColor. MudStepper has no Variant/Color parameters — passing them
+       silently splats them as no-op HTML attributes (MUD0002), so they are not used here. *@
     <MudStepper ActiveIndex="@ActiveIndex"
                 ActiveIndexChanged="@OnActiveIndexChanged"
                 OnPreviewInteraction="@OnPreviewInteraction"
-                Linear="@Linear"
+                NonLinear="@(!Linear)"
                 Class="tedwren-stepper__mud"
-                Variant="Variant.Filled"
-                Color="Color.Primary">
+                CurrentStepColor="Color.Primary">
         <ChildContent>
             @ChildContent
         </ChildContent>

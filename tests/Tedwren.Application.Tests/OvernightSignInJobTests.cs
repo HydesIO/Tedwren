@@ -17,7 +17,7 @@ public sealed class OvernightSignInJobTests
     {
         var org = new InMemoryOrganisationStore(seed: false);
         var siteStore = new InMemorySiteStore(seed: false);
-        var attendance = new InMemoryAttendanceStore();
+        var attendance = new InMemoryAttendanceStore(seed: false);
         var outbox = new NotificationOutbox();
 
         var company = new Company { Name = "Alpha Ltd", ContactEmail = "manager@alpha.test" };

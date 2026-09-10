@@ -19,7 +19,7 @@ public sealed class SiteServiceTests
         return new SiteService(
             new InMemorySiteRepository(store),
             new InMemorySitePropertyRepository(store),
-            new InMemoryAttendanceRepository(new InMemoryAttendanceStore()),
+            new InMemoryAttendanceRepository(new InMemoryAttendanceStore(seed: false)),
             new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false)));
     }
 
@@ -120,7 +120,7 @@ public sealed class SiteServiceTests
     public async Task SiteOperatives_ComeFromAttendance()
     {
         var siteStore = new InMemorySiteStore(seed: false);
-        var attendance = new InMemoryAttendanceRepository(new InMemoryAttendanceStore());
+        var attendance = new InMemoryAttendanceRepository(new InMemoryAttendanceStore(seed: false));
         var service = new SiteService(
             new InMemorySiteRepository(siteStore), new InMemorySitePropertyRepository(siteStore),
             attendance, new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false)));

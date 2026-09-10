@@ -51,6 +51,9 @@ public sealed class LeadTestFactory : WebApplicationFactory<Program>
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
+        // The lead forms live on the real (launched) marketing pages, so turn the pre-launch landing gate
+        // off; otherwise every GET funnels to the landing page and the forms under test never render.
+        builder.UseSetting("Site:IsLanding", "false");
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<ILeadRouter>();

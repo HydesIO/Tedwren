@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Tedwren.Abstractions.Contracts.Inductions;
+using Tedwren.Application.Auth;
 using Xunit;
 
 namespace Tedwren.Api.Tests;
@@ -13,8 +14,8 @@ namespace Tedwren.Api.Tests;
 /// </summary>
 public sealed class InductionApiTests : IClassFixture<WebApplicationFactory<Program>>
 {
-    // Matches the API mock seed (DefaultInductionTemplate).
-    private static readonly Guid CompanyId = Guid.Parse("66666666-6666-4666-8666-000000000001");
+    // Matches the API mock seed (DefaultInductionTemplate) — the main-contractor tenant (Meridian, MC-3).
+    private static readonly Guid CompanyId = AdminUserSeeder.SeedCompanyId;
     private static readonly Guid TemplateId = Guid.Parse("66666666-6666-4666-8666-000000000010");
 
     private readonly WebApplicationFactory<Program> _factory;

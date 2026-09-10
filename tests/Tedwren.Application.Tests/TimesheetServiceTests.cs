@@ -26,7 +26,7 @@ public sealed class TimesheetServiceTests
 
     private static TimesheetService CreateService()
     {
-        var attendanceStore = new InMemoryAttendanceStore();
+        var attendanceStore = new InMemoryAttendanceStore(seed: false);
         var attendance = new InMemoryAttendanceRepository(attendanceStore);
         // One 8-hour shift (08:00–16:00) on the Tuesday of the week.
         attendanceStore.Records.TryAdd(Guid.NewGuid(), Shift(AttendanceEventType.SignIn, 8));

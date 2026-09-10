@@ -9,7 +9,118 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+## In progress
+
+_Nothing currently in progress._
+
+---
+
 ## Completed
+
+### Project ↔ documentation alignment pass (this change) — zero warnings/errors + differentiation gaps closed
+Review of the whole solution against the docs (PRD v6.4 + the differentiation plan), driven by testing
+feedback that the sub/main portals looked identical. Two read-only audits (OrgType flow end-to-end; the
+DTO/repo/dual-dialect SQL layer) found the data-access layer clean and the differentiation substantially
+built (Phases A–D), with a handful of concrete gaps. All now fixed; whole solution builds **0 warnings /
+0 errors** and every suite is green (Domain 71 · DataAccess 4 +18 LocalDB-skipped · Application 227 ·
+Client 26 · Web 178 · Api 111 — 617 passing, 18 LocalDB-skipped, 0 failing).
+- ✅ **All build warnings eliminated (was 15).** `TedwrenStepper` moved to the MudBlazor 8.x `MudStepper`
+  API (`NonLinear`, `CurrentStepColor`) instead of the removed `Linear`/`Variant`/`Color`; removed the
+  unsupported `Icon` from every `MudStep` in `Onboarding`/`AddOperative` (MUD0002 — the attributes were
+  silently splatted as no-op HTML and the icons never rendered); fixed a CS8604 nullable-deref in
+  `CompliancePackApiTests`.
+- ✅ **All failing tests fixed (was 52, all in `Tedwren.Web.Tests`).** The content/SEO/routing/brand/
+  partner/worker-passport/lead-form suites booted the host under the committed pre-launch gate
+  (`Site:IsLanding=true`), so every route returned the landing page. Added a shared gate-off `SiteFactory`
+  (and set the flag on `LeadTestFactory`); `LandingGateTests` still exercises the gate on. No site
+  behaviour changed — a test-config regression, not a site bug.
+- ✅ **Product-less entitlement defaults aligned to the PRD (SF-22, §6.1, SUB-11).** `ModuleCatalog` no
+  longer defaults `inductions` or `permits` on; a product-less company now falls back to the shared
+  foundation only (workforce/compliance/reports), so the two-product split can't leak back in.
+  Product-aware companies are unaffected (they use `ProductModuleBundles`). Regression test extended.
+- ✅ **Admin can set a company's product (closes the "admin-created companies look the same" gap).**
+  `UpdateCompanyRequest` carries `OrgType`; `OrganisationService.UpdateCompanyAsync` persists it; the
+  Organisation **Add company** page and the **Edit company** dialog now have a Product (Subcontractor /
+  Main contractor) selector. Previously only the onboarding wizard set the product, so admin-created
+  companies were product-less. Wired UI → DTO → `/api/organisation` PUT → service → Dapper/in-memory.
+- ✅ **Migration renumber.** `022_company_orgtype.sql` → `023` in both dialects (it shared `022` with
+  `022_user_profile.sql`). Runtime behaviour unchanged (idempotent scripts, no migration-history table).
+- ✅ **Doc/comment reconciliation.** The differentiation doc's Phase A note now matches the as-built
+  session identity (product resolved server-side from the authoritative company record, cached on
+  `ITenantState`; a `CurrentUserDto` field is logged as an optional future optimisation, not a
+  correctness gap). Documented why the Dashboard (cosmetic → subcontractor) and Site Gate (fail-closed
+  → main contractor, R2) product-less fallbacks deliberately differ.
+- ❗ **Non-blocking follow-ups (raised, not worked around).** (a) Optionally surface `OrgType` on
+  `CurrentUserDto`/`/api/me` to drop the shell's per-load companies fetch. (b) The DTO/SQL audit noted the
+  SQL-Server-only computed `LaunchSignups.EmailLower` (by design) and that `MigrationRunner` has no
+  applied-migrations table (safe only while every script stays idempotent).
+
+### Subcontractor vs Main Contractor portal differentiation — merged to `main` (SF-22, SUB-24, MC-23, R18)
+**Integration note.** Brought into `main` from `claude/client-portal-ui-diff-g41xnr` via the working
+branch. The single merge conflict — `Dashboard.razor` `BuildKpis` — was resolved to keep **both** changes:
+this feature's product-aware KPI ordering **and** `main`'s per-tile drill-through `Href` links
+(Companies→`/organisation`, Active operatives→`/workforce`, Compliant workforce→`/compliance`, Active
+sites→`/sites`, Expiring→`/compliance`). `AddCompanyOrgType` remains the latest EF migration (model
+snapshot carries the `OrgType` column). Whole solution builds; all product-affected suites green (Api 111
+· Application 227 · Client 26 · Domain 71 · DataAccess 4, +18 LocalDB-skipped). The only red is the
+pre-existing `Tedwren.Web.Tests` SEO baseline — 52 failures identical on clean `main`, unrelated to this
+change. The redundant `claude/phase-1-implementation-c0exms` (identical tree) and the obsolete/empty
+`claude/phase-2-implementation-c0exms` can be retired.
+Analysis + plan: `docs/subcontractor-vs-maincontractor-differentiation.md`. Feedback: the two
+products render an identical portal after login. Root cause: the onboarding product choice
+(`OnboardingOrgType`) is flattened to free-text `Company.Type` and never read back; the session
+identity carries no product; nav is gated only by module entitlements (SF-22, correct) but every
+company gets the same default bundle, and no page branches on product. Agreed decisions: strict PRD
+module→product split; a new typed `OrgType` enum stored *beside* the free-text `Company.Type`; one
+product per company (no switcher).
+- ✅ **Phase 0 — analysis persisted.** New `docs/subcontractor-vs-maincontractor-differentiation.md`
+  (diagnosis, PRD→gap map, resolved decisions) and this checklist entry.
+- ✅ **Phase A — product discriminator.** `OrgType` enum (Domain) on `Company` beside `Type`; mirror
+  enum in `Abstractions.Common` (client references only Abstractions), mapped in the Application layer;
+  carried on `CompanySummary`/`CompanyDetailDto`/`CreateCompanyRequest`; mapped from `OnboardingOrgType`
+  at wizard submit; cached on `ITenantState.CurrentOrgType`, resolved by `MainLayout` before pages
+  render; Dapper column + idempotent `023_company_orgtype.sql` (both engines, backfill; renumbered from
+  `022` in the alignment pass to avoid a duplicate number) + EF
+  `AddCompanyOrgType` migration; demo tenants seeded with their product.
+- ✅ **Phase B — product entitlement bundles.** `ProductModuleBundles` (strict split — SUB: workforce,
+  compliance, time, reports; MC: workforce, compliance, inductions, reports; permits/forms/integrations
+  off for both). `EntitlementService` defaults are now product-aware (looks up the company's `OrgType`);
+  a per-company override still wins (`AdminCompanyModules`), and a product-less company falls back to the
+  catalogue default. Drives the client nav split via the existing `GatedNavItemsAsync` — no change to
+  `MainLayout`'s gating logic. Compliance Packs send-vs-receive content handled in Phase D.
+- ✅ **Phase C — product-aware dashboard.** `Dashboard.razor` branches on `Tenant.CurrentOrgType`: a
+  main contractor sees a "Site operations" view (MC-23 — leads with site status → site gate, competency
+  expiries, induction management; KPI row leads with sites/on-site headcount); a subcontractor sees the
+  time-&-attendance / compliance admin framing (SUB-24 — compliance/expiry digest → compliance packs,
+  operative-register KPIs). Same loaded data + component kit; a product-less company falls back to the
+  subcontractor framing.
+- ✅ **Phase D — R18 wording + per-product pages.** Site Gate is now product-aware: a subcontractor sees
+  "Site Attendance" that only ever reads "recorded / site-ready" or "recorded — action needed" and never
+  "permitted/denied/blocked", with no manager-override (R18, SUB-12); a main contractor keeps the
+  five-check entry decision + override (MC-8/9/11). Compliance Packs reframes send (SUB) vs receive
+  (MC-19). No MC-only route leaks into the subcontractor experience (Inductions gated off by the SUB
+  bundle).
+- ✅ **Demo seed data reflects the product rules (full showcase).** Re-homed the mis-owned demo data and
+  filled each product's signature gaps so the two demo logins show their real products. New shared fixed-id
+  holder `DemoSeed` joins the stores up (persons ↔ sites ↔ attendance/decisions/cards/inductions).
+  - **Subcontractor (Apex/Kingsway):** weekly timesheets re-homed to Apex operatives at Apex Yard (SUB-8);
+    company insurances/accreditations with a valid/expiring/lapsed spread (SUB-4); one sent compliance pack
+    + an "opened" access event (SUB-13/SUB-20); Kingsway given an operative + documents (no longer an empty
+    shell). Apex holds a purchased **Permits** add-on to demo the override path.
+  - **Main contractor (Meridian):** the induction template now belongs to Meridian (MC-3) with a completed
+    induction record (MC-7); two operatives on site via open sign-ins so the live muster has data
+    (MC-12/14); a recorded five-check site-entry decision (MC-8/R10). Meridian keeps the Forms add-on.
+  - **Shared:** confirmed qualification cards per operative, one expiring inside the warning window, so
+    compliance roll-ups (SF-8) and the expiry digest (SF-9/SUB-5) are non-empty. Demo cards live behind the
+    parameterless store ctor (the mock host) so they never pollute unit tests' global card scans.
+  - Retired the orphan demo company ids (`44444444…`/`66666666…`) in favour of the `AdminUserSeeder` tenant
+    constants; updated `TimesheetApiTests`/`InductionApiTests` accordingly and set the newly-seeded stores'
+    unit-test constructions to `seed: false`. Whole solution builds; all tests green.
+- ❗ **Follow-ups (raised, not silently worked around).** Two PRD surfaces are framed but not fully
+  built here — a dedicated main-contractor **received-packs inbox** (MC-19) needs a receive-side data
+  source, and the **commercial reconciliation timesheet** (MC-24, per-site/per-company for a QS) is a
+  distinct view over the shared timesheet object. Both are backend features beyond this UI-differentiation
+  change; track as PRD-Phase work.
 
 ### Dashboard drill-down, leads & billing overview (this change)
 Plan: `docs/plan-and-scope.md` (hardening). Client + UiComponents only — no domain/DTO/API changes; the
