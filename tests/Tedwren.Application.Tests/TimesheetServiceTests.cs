@@ -62,6 +62,23 @@ public sealed class TimesheetServiceTests
         Assert.Equal("Meridian Tower", line.SiteName);
     }
 
+    [Fact] // UAT-029 (MC-24) — a company week rolls up by site for QS reconciliation
+    public async Task GetSiteRollup_GroupsHoursBySiteAndOperative()
+    {
+        var service = CreateService();
+        await service.GetOrCreateForWeekAsync(Company, Person, WeekStart);   // materialise the timesheet
+
+        var rollup = await service.GetSiteRollupAsync(Company, WeekStart);
+
+        Assert.Equal(8m, rollup.TotalHours);
+        var site = Assert.Single(rollup.Sites);
+        Assert.Equal("Meridian Tower", site.SiteName);
+        Assert.Equal(8m, site.TotalHours);
+        var op = Assert.Single(site.Operatives);
+        Assert.Equal("M. Adeyemi", op.OperativeName);
+        Assert.Equal(8m, op.Hours);
+    }
+
     [Fact]
     public async Task Submit_ThenApprove_RecordsWhoAndScope()
     {

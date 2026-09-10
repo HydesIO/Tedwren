@@ -1,0 +1,51 @@
+/* Per-site QS rollup (MC-24): each site with its total and its operatives' hours. */
+.ts-rollup {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16, 16px);
+}
+
+.ts-rollup__site {
+    border: 1px solid var(--color-border, #E4E7EC);
+    border-radius: var(--radius-card, 12px);
+    overflow: hidden;
+}
+
+.ts-rollup__site-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) var(--spacing-16, 16px);
+    background: var(--color-bg, #F7F8FA);
+    font-weight: 600;
+    color: var(--color-text-primary, #101828);
+}
+
+.ts-rollup__ops {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.ts-rollup__ops li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-8, 8px) var(--spacing-16, 16px);
+    border-top: 1px solid var(--color-border, #E4E7EC);
+    font-size: .875rem;
+    color: var(--color-text-secondary, #667085);
+}
+
+.ts-rollup__total {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-12, 12px);
+    padding: var(--spacing-12, 12px) var(--spacing-16, 16px);
+    border-top: 2px solid var(--color-border, #E4E7EC);
+    font-weight: 700;
+    color: var(--color-text-primary, #101828);
+}

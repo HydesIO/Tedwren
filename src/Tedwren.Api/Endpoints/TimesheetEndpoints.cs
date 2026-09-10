@@ -16,6 +16,10 @@ public static class TimesheetEndpoints
     {
         var group = app.MapGroup("/api/timesheets").WithTags("Timesheets");
 
+        group.MapGet("/company/{companyId:guid}/site-rollup", async (Guid companyId, DateOnly week, ITimesheetService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetSiteRollupAsync(companyId, week, cancellationToken)))
+            .WithName("GetTimesheetSiteRollup");
+
         group.MapGet("/company/{companyId:guid}", async (Guid companyId, DateOnly week, ITimesheetService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.GetForCompanyWeekAsync(companyId, week, cancellationToken)))
             .WithName("GetCompanyTimesheets");

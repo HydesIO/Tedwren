@@ -14,10 +14,13 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 ### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased
 Fixing the issues from the first end-user acceptance testing pass (`docs/` UAT log). Plan groups all 27
 distinct issues into four phases: 1 quick frontend/UX wins, 2 Critical/High correctness bugs, 3 Medium
-data-surfacing, 4 larger features. Phases 1–3 ✅ (below). **Remaining:**
-- ⏳ **Phase 4 — Larger features.** 011 site-manager site scoping, 018 shareable induction link + email,
-  023 RAMS/trade self-service onboarding, 010a/027/028 richer capture + editable induction steps, 015
-  geofenced clock-in surface, 029 MC-24 QS timesheet rollup view.
+data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4 progress:**
+- ✅ **UAT-015 — geofenced clock-in surface.** A sign-in/sign-out panel on the Attendance page (operative
+  picker + browser geolocation) over the existing `IAttendanceService`; the tables now show operative names.
+- ✅ **UAT-029 (MC-24) — QS timesheet rollup.** `GetSiteRollupAsync` + endpoint + a "By site (QS reconciliation)"
+  view on the timesheet page, grouping the existing timesheets by site with per-operative hours.
+- ⏳ **Remaining:** 011 site-manager site scoping, 018 shareable induction link + email, 023 RAMS/trade
+  self-service onboarding, 010a/027/028 richer capture + editable induction steps.
 
 ---
 

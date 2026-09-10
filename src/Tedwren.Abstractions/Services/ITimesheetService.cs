@@ -13,6 +13,9 @@ public interface ITimesheetService
     /// <summary>Lists a company's timesheets for a week — the valuation-period view (MC-24).</summary>
     Task<IReadOnlyList<TimesheetSummaryDto>> GetForCompanyWeekAsync(Guid companyId, DateOnly weekStart, CancellationToken cancellationToken = default);
 
+    /// <summary>Rolls a company's week up by site for QS reconciliation (MC-24) — hours per site, each with its operatives.</summary>
+    Task<TimesheetSiteRollupDto> GetSiteRollupAsync(Guid companyId, DateOnly weekStart, CancellationToken cancellationToken = default);
+
     /// <summary>Gets (creating and rolling up from attendance on first access) an operative's timesheet for a week.</summary>
     Task<TimesheetDto?> GetTimesheetAsync(Guid timesheetId, CancellationToken cancellationToken = default);
 

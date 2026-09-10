@@ -49,6 +49,46 @@ public sealed class TimesheetService : ITimesheetService
         return summaries;
     }
 
+    /// <summary>Rolls a company's week up by site for QS reconciliation (MC-24) — the same timesheet lines,
+    /// grouped by site with each site's operatives, rather than by person.</summary>
+    public async Task<TimesheetSiteRollupDto> GetSiteRollupAsync(Guid companyId, DateOnly weekStart, CancellationToken cancellationToken = default)
+    {
+        var headers = await _timesheets.GetByCompanyWeekAsync(companyId, weekStart, cancellationToken);
+
+        // site id -> (site name, person id -> (operative name, accumulated hours))
+        var sites = new Dictionary<Guid, (string Name, Dictionary<Guid, (string Name, decimal Hours)> Ops)>();
+        foreach (var header in headers)
+        {
+            var entries = await _timesheets.GetEntriesAsync(header.Id, cancellationToken);
+            var dto = ToDto(header, entries);   // effective (correction-folded) lines
+            foreach (var line in dto.Lines)
+            {
+                if (!sites.TryGetValue(line.SiteId, out var site))
+                {
+                    site = (line.SiteName, new Dictionary<Guid, (string, decimal)>());
+                    sites[line.SiteId] = site;
+                }
+
+                var priorHours = site.Ops.TryGetValue(dto.PersonId, out var op) ? op.Hours : 0m;
+                site.Ops[dto.PersonId] = (dto.OperativeName, priorHours + line.Hours);
+            }
+        }
+
+        var rows = sites
+            .Select(kv => new TimesheetSiteRowDto(
+                kv.Key,
+                kv.Value.Name,
+                kv.Value.Ops.Values.Sum(o => o.Hours),
+                kv.Value.Ops
+                    .Select(o => new TimesheetRollupOperativeDto(o.Key, o.Value.Name, o.Value.Hours))
+                    .OrderBy(o => o.OperativeName, StringComparer.OrdinalIgnoreCase)
+                    .ToList()))
+            .OrderBy(s => s.SiteName, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        return new TimesheetSiteRollupDto(weekStart, rows.Sum(r => r.TotalHours), rows);
+    }
+
     /// <summary>Gets a timesheet by id, or null.</summary>
     public async Task<TimesheetDto?> GetTimesheetAsync(Guid timesheetId, CancellationToken cancellationToken = default)
     {

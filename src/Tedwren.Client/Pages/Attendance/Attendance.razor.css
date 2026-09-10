@@ -1,3 +1,26 @@
+.attendance-clockin {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-16, 16px);
+    flex-wrap: wrap;
+}
+
+.attendance-clockin ::deep .form-field {
+    flex: 1 1 260px;
+    min-width: 0;
+}
+
+.attendance-clockin__controls {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+}
+
+.attendance-clockin__buttons {
+    display: flex;
+    gap: var(--spacing-8, 8px);
+}
+
 .attendance-grid {
     display: grid;
     grid-template-columns: 1fr;

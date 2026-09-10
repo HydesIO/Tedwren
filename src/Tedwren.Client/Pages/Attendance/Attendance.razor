@@ -1,10 +1,14 @@
 @page "/attendance"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Attendance
 @using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Services
 @using Tedwren.UiComponents.Models
 @inject ISiteService SiteData
 @inject IAttendanceService AttendanceData
+@inject IWorkforceService Workforce
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
 
 <PageTitle>Attendance · Tedwren</PageTitle>
 
@@ -32,6 +36,34 @@
 }
 else
 {
+    @* Record a geofenced sign-in / sign-out (SF-13–SF-16). The service and API existed but nothing invoked
+       them, so sign-in and geofencing couldn't be tested (UAT-015). Location is optional — the site policy
+       decides what happens without it (SF-15). *@
+    <DashboardCard Title="Record sign-in / sign-out" Subtitle="Geofenced attendance for the selected site (SF-14)">
+        <Body>
+            <div class="attendance-clockin">
+                <TedwrenAutocomplete T="Guid" Label="Operative"
+                                     @bind-Value="_clockPersonId"
+                                     Options="_operativeIds" OptionText="@OperativeName"
+                                     Placeholder="Search operatives…"
+                                     HelperText="Who is arriving at or leaving the site." />
+                <div class="attendance-clockin__controls">
+                    <MudCheckBox T="bool" @bind-Value="_useLocation" Label="Use my current location" Dense="true" />
+                    <div class="attendance-clockin__buttons">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Login"
+                                   Disabled="_clockBusy || _clockPersonId == Guid.Empty" OnClick="SignInAsync">Sign in</MudButton>
+                        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Outlined.Logout"
+                                   Disabled="_clockBusy || _clockPersonId == Guid.Empty" OnClick="SignOutAsync">Sign out</MudButton>
+                    </div>
+                </div>
+            </div>
+            @if (_clockResult is not null)
+            {
+                <BannerAlert Severity="@_clockSeverity" Title="@_clockTitle" Message="@_clockResult" />
+            }
+        </Body>
+    </DashboardCard>
+
     <div class="attendance-grid">
         <DashboardCard Title="On site now" Subtitle="@OnSiteSubtitle">
             <Body>
@@ -76,6 +108,25 @@ else
     private bool _loadingSites = true;
     private bool _loading;
 
+    // Sign-in/out panel state (UAT-015).
+    private IReadOnlyList<(Guid Id, string Name)> _operatives = Array.Empty<(Guid, string)>();
+    private Guid _clockPersonId;
+    private bool _useLocation = true;
+    private bool _clockBusy;
+    private string? _clockResult;
+    private string _clockTitle = string.Empty;
+    private StatusKind _clockSeverity = StatusKind.Info;
+
+    private IEnumerable<Guid> _operativeIds => _operatives.Select(o => o.Id);
+    private string OperativeName(Guid id) => _operatives.FirstOrDefault(o => o.Id == id).Name ?? string.Empty;
+
+    // The operative's recorded name for the on-site / log tables, falling back to a short id (UAT-015).
+    private string WorkerName(Guid id)
+    {
+        var match = _operatives.FirstOrDefault(o => o.Id == id).Name;
+        return string.IsNullOrEmpty(match) ? id.ToString()[..8] : match;
+    }
+
     private string OnSiteSubtitle => $"{_onSite.Count} currently signed in";
 
     protected override async Task OnInitializedAsync()
@@ -83,6 +134,7 @@ else
         BuildColumns();
         _sites = await SiteData.GetSitesAsync();
         _siteNames = _sites.Select(s => s.Name).ToList();
+        _operatives = (await Workforce.ListOperativesAsync()).Select(o => (o.PersonId, o.Name)).ToList();
         _loadingSites = false;
 
         if (_sites.Count > 0)
@@ -92,6 +144,86 @@ else
             await LoadSiteAsync();
         }
     }
+
+    // Records a geofenced sign-in for the chosen operative at the selected site (SF-13/14/16).
+    private async Task SignInAsync()
+    {
+        _clockBusy = true;
+        try
+        {
+            var (lat, lng) = await ResolveLocationAsync();
+            var result = await AttendanceData.SignInAsync(new SignInRequest(
+                _clockPersonId, _selectedSiteId, PropertyId: null, lat, lng, SignInMethod.AssignmentLink));
+
+            _clockTitle = $"Sign-in {result.Outcome.ToLowerInvariant()}";
+            _clockSeverity = OutcomeSeverity(result.Outcome);
+            _clockResult = result.Reason
+                ?? (result.SignedIn ? "Signed in and recorded on site." : "Not signed in.");
+            if (result.SignedInElsewhere is { } elsewhere)
+            {
+                _clockResult += $" Already signed in at {elsewhere}.";
+            }
+            await LoadSiteAsync();
+        }
+        finally
+        {
+            _clockBusy = false;
+        }
+    }
+
+    // Records a sign-out for the chosen operative, showing the duration on site when successful (SF-17).
+    private async Task SignOutAsync()
+    {
+        _clockBusy = true;
+        try
+        {
+            var (lat, lng) = await ResolveLocationAsync();
+            var result = await AttendanceData.SignOutAsync(new SignOutRequest(
+                _clockPersonId, _selectedSiteId, lat, lng, SignInMethod.AssignmentLink));
+
+            _clockTitle = $"Sign-out {result.Outcome.ToLowerInvariant()}";
+            _clockSeverity = OutcomeSeverity(result.Outcome);
+            _clockResult = result.Reason
+                ?? (result.SignedOut
+                    ? $"Signed out{(result.DurationHours is { } h ? $" after {h:0.0}h on site." : ".")}"
+                    : "Not signed out.");
+            await LoadSiteAsync();
+        }
+        finally
+        {
+            _clockBusy = false;
+        }
+    }
+
+    // Gets the browser location when "Use my current location" is on; null coordinates otherwise (SF-15).
+    private async Task<(double? Lat, double? Lng)> ResolveLocationAsync()
+    {
+        if (!_useLocation)
+        {
+            return (null, null);
+        }
+
+        try
+        {
+            var position = await JS.InvokeAsync<GeoPosition?>("tedwren.geo.get");
+            return position is null ? (null, null) : (position.Latitude, position.Longitude);
+        }
+        catch
+        {
+            return (null, null);
+        }
+    }
+
+    private static StatusKind OutcomeSeverity(string outcome) => outcome switch
+    {
+        "Accepted" => StatusKind.Success,
+        "Flagged" => StatusKind.Warning,
+        "Refused" => StatusKind.Danger,
+        _ => StatusKind.Info,
+    };
+
+    /// <summary>A browser geolocation reading returned from JS interop.</summary>
+    private sealed record GeoPosition(double Latitude, double Longitude);
 
     private async Task OnSiteChanged(string? name)
     {
@@ -117,7 +249,7 @@ else
     {
         _onSiteColumns = new()
         {
-            new() { Title = "Worker", Value = w => w.PersonId.ToString()[..8] },
+            new() { Title = "Worker", Value = w => WorkerName(w.PersonId) },
             new()
             {
                 Title = "Since", Value = w => w.SinceUtc, Searchable = false,
@@ -137,7 +269,7 @@ else
                 Title = "When", Value = r => r.OccurredUtc, Searchable = false,
                 CellTemplate = r => @<span>@r.OccurredUtc.LocalDateTime.ToString("dd MMM, HH:mm")</span>
             },
-            new() { Title = "Worker", Value = r => r.PersonId.ToString()[..8] },
+            new() { Title = "Worker", Value = r => WorkerName(r.PersonId) },
             new() { Title = "Event", Value = r => r.Type, Filterable = true },
             new() { Title = "Method", Value = r => r.Method, Filterable = true },
             new()

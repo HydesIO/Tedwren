@@ -20,6 +20,10 @@ public sealed class ApiTimesheetService : ITimesheetService
         await _http.GetFromJsonAsync<IReadOnlyList<TimesheetSummaryDto>>($"api/timesheets/company/{companyId}?week={Week(weekStart)}", cancellationToken)
         ?? Array.Empty<TimesheetSummaryDto>();
 
+    /// <summary>Rolls a company's week up by site for QS reconciliation (MC-24).</summary>
+    public async Task<TimesheetSiteRollupDto> GetSiteRollupAsync(Guid companyId, DateOnly weekStart, CancellationToken cancellationToken = default) =>
+        (await _http.GetFromJsonAsync<TimesheetSiteRollupDto>($"api/timesheets/company/{companyId}/site-rollup?week={Week(weekStart)}", cancellationToken))!;
+
     /// <summary>Gets a timesheet by id, or null.</summary>
     public async Task<TimesheetDto?> GetTimesheetAsync(Guid timesheetId, CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<TimesheetDto>($"api/timesheets/{timesheetId}", cancellationToken);
