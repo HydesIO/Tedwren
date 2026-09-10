@@ -39,6 +39,7 @@ public sealed class InMemorySiteStore
 
         var tower = new Site
         {
+            Id = DemoSeed.MeridianTowerSiteId,
             CompanyId = ownerCompanyId,
             Name = "Meridian Tower",
             Client = "Meridian Estates",
@@ -68,6 +69,7 @@ public sealed class InMemorySiteStore
         // stays fully independent of the Main Contractor's sites (R15).
         var apexYard = new Site
         {
+            Id = DemoSeed.ApexYardSiteId,
             CompanyId = AdminUserSeeder.SubcontractorSeedCompanyId,
             Name = "Apex Yard",
             Client = "Apex Groundworks",

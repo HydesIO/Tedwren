@@ -370,7 +370,7 @@
         {
             companyId = await Org.CreateCompanyAsync(new CreateCompanyRequest(
                 _model.CompanyName!.Trim(), _model.TypeLabel, _model.Trade, _model.RegistrationNumber,
-                _model.Address, _model.ContactName, _model.ContactEmail, _model.ContactPhone));
+                _model.Address, _model.ContactName, _model.ContactEmail, _model.ContactPhone, _model.ProductType));
         }
         catch (Exception ex)
         {

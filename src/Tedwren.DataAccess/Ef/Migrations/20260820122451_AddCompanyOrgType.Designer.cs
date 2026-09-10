@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Tedwren.DataAccess.Ef;
 
@@ -11,9 +12,11 @@ using Tedwren.DataAccess.Ef;
 namespace Tedwren.DataAccess.Ef.Migrations
 {
     [DbContext(typeof(TedwrenDbContext))]
-    partial class TedwrenDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260820122451_AddCompanyOrgType")]
+    partial class AddCompanyOrgType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1231,9 +1234,6 @@ namespace Tedwren.DataAccess.Ef.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
-                    b.Property<string>("AvatarImageReference")
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<Guid>("CompanyId")
                         .HasColumnType("uniqueidentifier");
 
@@ -1254,10 +1254,6 @@ namespace Tedwren.DataAccess.Ef.Migrations
 
                     b.Property<DateTimeOffset?>("LastActiveUtc")
                         .HasColumnType("datetimeoffset");
-
-                    b.Property<string>("Mobile")
-                        .HasMaxLength(32)
-                        .HasColumnType("nvarchar(32)");
 
                     b.Property<string>("Name")
                         .IsRequired()

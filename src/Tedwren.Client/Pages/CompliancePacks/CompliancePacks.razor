@@ -1,4 +1,5 @@
 @page "/compliance-packs"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.CompliancePacks
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
@@ -10,7 +11,18 @@
 
 <PageTitle>Compliance Packs · Tedwren</PageTitle>
 
-<PageHeader Title="Compliance Packs" Subtitle="Build, send and track shareable compliance evidence" />
+@* Sending compliance packs is the subcontractor's defining feature (SUB-13…26). A main contractor
+   receives and opens packs shared by its subcontractors (MC-19) — sending is not its core surface. *@
+<PageHeader Title="Compliance Packs"
+            Subtitle="@(_isMainContractor
+                ? "Open and review packs shared with you by your subcontractors"
+                : "Build, send and track shareable compliance evidence")" />
+
+@if (_isMainContractor)
+{
+    <BannerAlert Severity="StatusKind.Info" Title="Receiving packs (MC-19)"
+                 Message="Compliance packs are sent to you by your subcontractors and opened here — no account or set-up needed on their side. Building and sending packs is a subcontractor feature." />
+}
 
 <DashboardCard Class="pack-builder">
     <Body>
@@ -82,9 +94,14 @@
     private static readonly string[] NominatedRoles = { "Administrator", "ComplianceManager" };
     private bool _canSend;
 
+    // The active company's product: a main contractor receives packs (MC-19); a subcontractor sends them.
+    private OrgType? _product;
+    private bool _isMainContractor => _product == OrgType.MainContractor;
+
     protected override async Task OnInitializedAsync()
     {
         await Tenant.InitializeAsync();
+        _product = Tenant.CurrentOrgType;
         BuildColumns();
         var currentUser = await CurrentUser.GetCurrentAsync();
         _canSend = NominatedRoles.Contains(currentUser.Role, StringComparer.OrdinalIgnoreCase);
