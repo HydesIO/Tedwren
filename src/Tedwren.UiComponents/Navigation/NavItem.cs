@@ -15,4 +15,11 @@ public sealed record NavItem(
     IReadOnlyList<NavItem>? Children = null)
 {
     public bool HasChildren => Children is { Count: > 0 };
+
+    /// <summary>
+    /// The navigable leaves this item contributes: its children when it is a group header (which is not
+    /// itself navigable), otherwise the item itself. Lets callers walk a nested nav list as a flat set of
+    /// destinations for title matching and the command palette.
+    /// </summary>
+    public IEnumerable<NavItem> Leaves() => HasChildren ? Children! : new[] { this };
 }

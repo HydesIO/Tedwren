@@ -128,6 +128,23 @@ h1:focus-visible {
     padding-top: var(--spacing-16) !important;
 }
 
+/* Detail-page tab labels (Overview / Documents / Operatives on the company, site and operative detail
+   pages). MudBlazor's default inactive-tab colour is too dark against the themed-dark page background, so
+   the inactive tabs were almost invisible in night mode (UAT-002). Drive both states from theme tokens,
+   which flip under .theme-dark; the tabs are a normal page (not a dialog overlay), so --color-* is safe. */
+.detail-tabs .mud-tab {
+    color: var(--color-text-secondary);
+    opacity: 1;
+}
+
+.detail-tabs .mud-tab:hover {
+    color: var(--color-text-primary);
+}
+
+.detail-tabs .mud-tab.mud-tab-active {
+    color: var(--color-brand);
+}
+
 /* Admin area: inline action rows (company picker + inputs + action button) and small overview blocks. */
 .admin-action-row {
     display: flex;

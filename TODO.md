@@ -11,11 +11,53 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ## In progress
 
-_Nothing currently in progress._
+### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased
+Fixing the issues from the first end-user acceptance testing pass (`docs/` UAT log). Plan groups all 27
+distinct issues into four phases: 1 quick frontend/UX wins, 2 Critical/High correctness bugs, 3 Medium
+data-surfacing, 4 larger features. Phase 1 ✅ (below). **Remaining:**
+- ⏳ **Phase 2 — Critical/High bugs.** UAT-003/004/005 expiries (tenant-scope R15, expired/expiring split,
+  PersonName+Slug on `UpcomingExpiryDto`, clickable list + real drill-down), 007 operative-by-id lookup,
+  014 induction-aware compliance roll-up (MC-8), 017 induction applies-to-site load+save, 019a take-flow
+  auth crash, 022 audit write instrumentation.
+- ⏳ **Phase 3 — Medium/data-surfacing.** 006 org document add, 008c pack link+passcode surfacing, 010b
+  qualification evidence photo, 016b compliance site filter + drill-down, 024 add-company doc storage +
+  status, 025/026 clickable notifications.
+- ⏳ **Phase 4 — Larger features.** 011 site-manager site scoping, 018 shareable induction link + email,
+  023 RAMS/trade self-service onboarding, 010a/027/028 richer capture + editable induction steps, 015
+  geofenced clock-in surface, 029 MC-24 QS timesheet rollup view.
 
 ---
 
 ## Completed
+
+### UAT remediation — Phase 1: quick frontend/UX wins (this change)
+Low-risk, frontend-only fixes from the UAT log; whole solution builds **0 warnings / 0 errors**, all suites
+green (Client 30 incl. 4 new nav-structure tests; Web 178, Api 111, others unchanged; DataAccess LocalDB
+suite skipped as usual).
+- ✅ **UAT-001 — dead help button.** The top-bar "?" (`AppTopBar.razor`) had no handler; added an `OnHelp`
+  callback wired in `MainLayout` to open a new `HelpDialog` (`Pages/Shared/HelpDialog.razor`, `TedwrenDialog.Medium()`
+  + `DialogGuidance`) covering search/navigation and support.
+- ✅ **UAT-002 — dark-mode detail tabs.** Inactive "Documents/Operatives" tab labels were near-invisible in
+  night mode; added a shared `.detail-tabs .mud-tab` rule in `app.css` driving the colour from theme tokens
+  (fixes Company/Site/Operative detail together).
+- ✅ **UAT-008a/b — compliance pack.** Operative names were dark-on-dark in night mode (new
+  `CompliancePacks.razor.css` pins the checkbox label to `--mud-palette-text-primary`); the "check & send"
+  problems are now a per-operative breakdown (blocking/warning pill + card + detail) instead of one run-on line.
+- ✅ **UAT-012 — add-site billing text (persona).** "Recording a site is unlimited and never billed" is the
+  subcontractor rule (SUB-6), wrong for a main contractor billed per site; `AddSite.razor` now branches the
+  helper text on `ITenantState.CurrentOrgType` and drops the mis-cited SF-6.
+- ✅ **UAT-013b — coordinate guidance.** Added "where to find latitude/longitude" guidance on the boundary
+  fields (SF-14). (Dispersed-property entry, 013a, is Phase 4.)
+- ✅ **UAT-016a — compliance page.** Removed the valueless "Qualification type library" card (its per-type
+  "held by 30" was what didn't reconcile with the 25-operative donut) and added a caption clarifying the ring
+  counts each operative once by lowest card status (SF-8). Site filter + drill-down is 016b (Phase 3).
+- ✅ **UAT-019b — button rename.** "Open take-flow" → "Preview induction" (`InductionRecords.razor`). The
+  underlying 401 crash is 019a (Phase 2).
+- ✅ **UAT-020 — site-gate declutter.** Replaced the wall of per-operative buttons with a single operative
+  autocomplete + "Check entry" button (keeps the five-check decision, which the on-site muster can't drive).
+- ✅ **UAT-009 / UAT-021 — nav grouping.** Users and Inductions (config) moved under a new expandable
+  "System Configuration" group in the sidebar (`ShellChrome`, `AppSidebar`, `SidebarNavItem`, `NavItem.Leaves()`);
+  `MainLayout` gating now recurses into group children and the title/command-palette walks flatten the tree.
 
 ### Project ↔ documentation alignment pass (this change) — zero warnings/errors + differentiation gaps closed
 Review of the whole solution against the docs (PRD v6.4 + the differentiation plan), driven by testing

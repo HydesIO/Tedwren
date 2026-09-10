@@ -62,6 +62,12 @@
     padding: var(--spacing-8, 8px) 0;
 }
 
+/* Children of an expanded group, tucked under the group header with a subtle guide rail. */
+.sidebar__group {
+    margin-left: var(--spacing-16, 16px);
+    border-left: 1px solid var(--color-border, #E4E7EC);
+}
+
 .sidebar--collapsed .sidebar__brand {
     justify-content: center;
     padding: 0;

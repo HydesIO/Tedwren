@@ -30,7 +30,8 @@
         <NotificationsMenu Notifications="Notifications" ViewAllHref="@NotificationsHref" />
         <MudIconButton Icon="@Icons.Material.Outlined.HelpOutline"
                        Size="Size.Medium"
-                       aria-label="Help" />
+                       aria-label="Help"
+                       OnClick="OnHelp" />
         <div class="topbar__divider" aria-hidden="true"></div>
         <ProfileMenu UserName="@CurrentUserName" UserRole="@CurrentUserRole"
                      AvatarUrl="@CurrentUserAvatarUrl" ProfileHref="@ProfileHref" OnSignOut="OnSignOut" />
@@ -51,4 +52,5 @@
     [Parameter] public EventCallback OnOpenSearch { get; set; }
     [Parameter] public EventCallback OnToggleTheme { get; set; }
     [Parameter] public EventCallback OnSignOut { get; set; }
+    [Parameter] public EventCallback OnHelp { get; set; }
 }

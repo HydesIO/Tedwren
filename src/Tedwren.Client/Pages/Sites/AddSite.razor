@@ -1,9 +1,11 @@
 @page "/sites/add"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Organisation
 @using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Services
 @inject IOrganisationService Org
 @inject ISiteService SiteData
+@inject ITenantState Tenant
 @inject NavigationManager Nav
 @inject ISnackbar Snackbar
 
@@ -11,10 +13,14 @@
 
 <MudBreadcrumbs Items="_breadcrumbs" Class="px-0" />
 
-<PageHeader Title="Add site" Subtitle="Record a site, project or dispersed scheme (SF-6)" />
+<PageHeader Title="Add site" Subtitle="Record a site, project or dispersed scheme" />
 
 <div class="form-page">
-    <FormSection Title="Site details" Description="Recording a site is unlimited and never billed (SF-6).">
+    @* Billing note is product-specific. "Recording a site is free and unlimited" is the subcontractor rule
+       (SUB-6): a subcontractor records sites belonging to other companies at no cost. It does NOT apply to a
+       main contractor, who is billed per site, so that line must not show in the main-contractor portal
+       (UAT-012). *@
+    <FormSection Title="Site details" Description="@_siteDetailsHelp">
         <TedwrenSelect T="string" Label="Managing company" @bind-Value="_company" Required="true"
                        Options="_companyNames" Placeholder="Select a company"
                        HelperText="The company that records and manages this site."
@@ -46,6 +52,14 @@
                               Placeholder="e.g. 51.5074" HelperText="Optional. Provide all three to set a boundary." />
             <TedwrenTextField Label="Boundary longitude" @bind-Value="_lng" Placeholder="e.g. -0.1278" />
             <TedwrenTextField Label="Boundary radius (m)" @bind-Value="_radius" Placeholder="e.g. 150" />
+            @* Where to find coordinates — the tester didn't know where latitude/longitude come from (UAT-013). *@
+            <div class="form-page__full">
+                <MudText Typo="Typo.caption" Class="mud-text-secondary">
+                    Finding coordinates: open the location in Google Maps, right-click the exact spot, and the
+                    first line of the menu is the latitude and longitude — click it to copy, then paste the two
+                    numbers here. Radius is how far from that point a sign-in still counts (SF-14).
+                </MudText>
+            </div>
         }
     </FormSection>
 
@@ -76,6 +90,15 @@
     private IReadOnlyList<string> _companyNames = Array.Empty<string>();
     private IReadOnlyList<string> _regions = new[] { "London", "Manchester", "Leeds", "Bristol", "Birmingham", "Glasgow", "Cardiff" };
 
+    // The active company's product, resolved by the shell before this page renders. Drives the billing note:
+    // "free and unlimited" is a subcontractor rule (SUB-6) and must not show to a main contractor (UAT-012).
+    private OrgType? _product;
+
+    // Persona-aware helper text under "Site details". A null (unknown) product keeps the neutral wording.
+    private string _siteDetailsHelp => _product == OrgType.Subcontractor
+        ? "Recording a site is free and unlimited — subcontractors record the sites their people attend at no cost (SUB-6)."
+        : "Record the sites, projects and dispersed schemes your workforce attends.";
+
     private List<BreadcrumbItem> _breadcrumbs = new()
     {
         new("Sites & Projects", "/sites"),
@@ -84,6 +107,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        await Tenant.InitializeAsync();
+        _product = Tenant.CurrentOrgType;
         _companies = await Org.GetCompaniesAsync();
         _companyNames = _companies.Select(c => c.Name).ToList();
     }

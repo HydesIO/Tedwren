@@ -1,13 +1,11 @@
 @page "/compliance"
 @using Tedwren.Abstractions.Contracts.Dashboard
-@using Tedwren.Abstractions.Contracts.Qualifications
 @using Tedwren.Abstractions.Services
-@inject IQualificationService Qualifications
 @inject IDashboardService Dashboard
 
 <PageTitle>Compliance · Tedwren</PageTitle>
 
-<PageHeader Title="Compliance" Subtitle="Compliance overview and qualification library" />
+<PageHeader Title="Compliance" Subtitle="Workforce compliance overview" />
 
 <div class="compliance-layout">
     <DashboardCard Title="Workforce compliance">
@@ -19,22 +17,14 @@
                                CentreValue="@_overview.HeadlinePercent"
                                CentreLabel="@_overview.HeadlineLabel" />
                     <LegendList Items="_overview.Legend" />
+                    @* Clarify what the ring measures — the tester read the operative-level ring against the
+                       per-qualification "held by" counts and expected them to tally (UAT-016). Each operative is
+                       counted once here, by their lowest current card status (SF-8). *@
+                    <MudText Typo="Typo.caption" Class="mud-text-secondary compliance-overview__note">
+                        Each operative is counted once, by their lowest current card status (SF-8).
+                    </MudText>
                 </div>
             </AsyncContent>
-        </Body>
-    </DashboardCard>
-
-    <DashboardCard Title="Qualification type library"
-                   Subtitle="Qualifications tracked across the workforce">
-        <Body>
-            <DataTable TItem="QualificationTypeDto"
-                       Items="_qualifications"
-                       Columns="_columns"
-                       Loading="_loading"
-                       SearchPlaceholder="Search qualifications…"
-                       EmptyTitle="No qualification types"
-                       EmptyDescription="Add a qualification type to start tracking it across operatives."
-                       EmptyIcon="@Icons.Material.Outlined.WorkspacePremium" />
         </Body>
     </DashboardCard>
 </div>
@@ -43,19 +33,13 @@
     // A non-null empty overview so the card renders safely before the first load completes (avoids the
     // NullReferenceException that surfaced Blazor's bottom error bar).
     private ComplianceOverviewVm _overview = ComplianceOverviewView.From(new ComplianceBreakdownDto(null, 0, 0, 0, 0, 0));
-    private IReadOnlyList<QualificationTypeDto> _qualifications = Array.Empty<QualificationTypeDto>();
-    private List<DataColumn<QualificationTypeDto>> _columns = new();
     private bool _loading = true;
     private string? _error;
 
-    protected override Task OnInitializedAsync()
-    {
-        BuildColumns();
-        return LoadAsync();
-    }
+    protected override Task OnInitializedAsync() => LoadAsync();
 
-    // Loads the workforce compliance overview (aggregated from current cards, SF-8) and the qualification-type
-    // library, both from the Web API. Load failures surface as an inline retry rather than an unhandled error.
+    // Loads the workforce compliance overview (aggregated from current cards, SF-8) from the Web API. Load
+    // failures surface as an inline retry rather than an unhandled error.
     private async Task LoadAsync()
     {
         _loading = true;
@@ -64,7 +48,6 @@
         {
             var breakdown = await Dashboard.GetComplianceAsync();
             _overview = ComplianceOverviewView.From(breakdown);
-            _qualifications = await Qualifications.GetQualificationTypesAsync();
         }
         catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException)
         {
@@ -74,22 +57,5 @@
         {
             _loading = false;
         }
-    }
-
-    // Builds the qualification-library table columns.
-    private void BuildColumns()
-    {
-        _columns = new()
-        {
-            new() { Title = "Qualification", Value = q => q.Name },
-            new() { Title = "Category", Value = q => q.Category ?? "—", Filterable = true },
-            new() { Title = "Issuer", Value = q => q.Issuer ?? "—", Filterable = true },
-            new()
-            {
-                Title = "Valid for", Value = q => q.DefaultValidityMonths, AlignRight = true, Searchable = false,
-                CellTemplate = q => @<span>@q.DefaultValidityMonths months</span>
-            },
-            new() { Title = "Held by", Value = q => q.HeldBy, AlignRight = true },
-        };
     }
 }

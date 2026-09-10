@@ -1,0 +1,31 @@
+.help-dialog__section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+}
+
+.help-dialog__heading {
+    margin: 0;
+}
+
+.help-dialog__list {
+    margin: 0;
+    padding-left: var(--spacing-20, 20px);
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+    color: var(--mud-palette-text-primary);
+}
+
+.help-dialog__list a {
+    color: var(--mud-palette-primary);
+}
+
+.help-dialog__list kbd {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: .8125rem;
+    padding: 1px 6px;
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 4px;
+    background: var(--mud-palette-background-gray);
+}

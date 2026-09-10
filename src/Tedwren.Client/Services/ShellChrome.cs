@@ -11,18 +11,22 @@ namespace Tedwren.Client.Services;
 public static class ShellChrome
 {
     /// <summary>The sidebar navigation / route inventory.</summary>
+    // Users and Inductions (config) live under the "System Configuration" group rather than in the main
+    // operational list — they are configuration surfaces and were cluttering the site-management pages
+    // (UAT-009, UAT-021). Induction *Records* stay in the operational list; only the induction *builder*
+    // (/inductions) is configuration. The group header carries no route of its own (empty Href); its
+    // "General Settings" child is the former /system-configuration page. Route gating still applies to the
+    // children (e.g. /inductions on the inductions module) via MainLayout's recursive filter.
     public static IReadOnlyList<NavItem> NavItems { get; } = new List<NavItem>
     {
         new("Dashboard",           Icons.Material.Outlined.SpaceDashboard, "/"),
         new("Organisation",        Icons.Material.Outlined.Business,       "/organisation"),
-        new("Users",               Icons.Material.Outlined.PeopleOutline,  "/users"),
         new("Workforce",           Icons.Material.Outlined.Engineering,    "/workforce"),
         new("Sites & Projects",    Icons.Material.Outlined.Apartment,      "/sites"),
         new("Site Gate",           Icons.Material.Outlined.Login,          "/site-gate"),
         new("Attendance",          Icons.Material.Outlined.HowToReg,       "/attendance"),
         new("Compliance",          Icons.Material.Outlined.VerifiedUser,   "/compliance"),
         new("Compliance Packs",    Icons.Material.Outlined.FolderShared,   "/compliance-packs"),
-        new("Inductions",          Icons.Material.Outlined.PlayCircle,     "/inductions"),
         new("Induction Records",   Icons.Material.Outlined.FactCheck,      "/induction-records"),
         new("Forms Library",       Icons.Material.Outlined.Dashboard,      "/forms"),
         new("Form Submissions",    Icons.Material.Outlined.AssignmentTurnedIn, "/form-submissions"),
@@ -30,8 +34,13 @@ public static class ShellChrome
         new("Permits",             Icons.Material.Outlined.Assignment,     "/permits"),
         new("Reports & Analytics", Icons.Material.Outlined.BarChart,       "/reports"),
         new("Integrations",        Icons.Material.Outlined.Hub,            "/integrations"),
-        new("System Configuration",Icons.Material.Outlined.Settings,       "/system-configuration"),
         new("Audit Log",           Icons.Material.Outlined.History,        "/audit-log"),
+        new("System Configuration",Icons.Material.Outlined.Settings,       string.Empty, new List<NavItem>
+        {
+            new("General Settings",Icons.Material.Outlined.Tune,           "/system-configuration"),
+            new("Users",           Icons.Material.Outlined.PeopleOutline,  "/users"),
+            new("Inductions",      Icons.Material.Outlined.PlayCircle,     "/inductions"),
+        }),
     };
 
     /// <summary>

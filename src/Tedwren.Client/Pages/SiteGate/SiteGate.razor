@@ -32,18 +32,24 @@
                       OnRetry="LoadAsync" Variant="LoadingSkeleton.SkeletonVariant.Card" Rows="4"
                       IsEmpty="@(_operatives.Count == 0)" EmptyIcon="@Icons.Material.Outlined.Engineering"
                       EmptyTitle="No operatives" EmptyDescription="No operatives are registered for this company yet.">
-            <div class="gate__operatives">
-                @foreach (var op in _operatives)
-                {
-                    <button type="button"
-                            class="@($"gate__op{(op.Id == _lastPersonId ? " gate__op--active" : string.Empty)}")"
-                            @onclick="@(() => DecideAsync(op.Id))">
-                        <span class="gate__op-icon" aria-hidden="true">
-                            <MudIcon Icon="@Icons.Material.Outlined.Badge" Size="Size.Small" />
-                        </span>
-                        <span class="gate__op-name">@op.Name</span>
-                    </button>
-                }
+            @* Search-and-pick, not a wall of per-operative buttons (UAT-020): the button grid was redundant
+               with the search here, and cluttered the page. The decision still needs to run on any operative
+               (including one not yet on site), so this is an operative picker — not the "on site now" muster. *@
+            <div class="gate__picker">
+                <TedwrenAutocomplete T="Guid"
+                                     Label="Operative"
+                                     @bind-Value="_selectedPersonId"
+                                     Options="_operativeIds"
+                                     OptionText="@OperativeName"
+                                     Placeholder="Search operatives…"
+                                     HelperText="@(_isSubcontractor
+                                         ? "Pick the operative to record arrival and check their required cards."
+                                         : "Pick the operative arriving at the gate to run the five-check entry decision.")" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Login"
+                           Disabled="_selectedPersonId == Guid.Empty"
+                           OnClick="@(() => DecideAsync(_selectedPersonId))">
+                    @(_isSubcontractor ? "Record attendance" : "Check entry")
+                </MudButton>
             </div>
         </AsyncContent>
 
@@ -119,6 +125,11 @@
     private Guid _siteId;
     private Guid _companyId;
     private IReadOnlyList<(Guid Id, string Name)> _operatives = Array.Empty<(Guid, string)>();
+
+    // The operative chosen in the picker to run the decision on (UAT-020).
+    private Guid _selectedPersonId;
+    private IEnumerable<Guid> _operativeIds => _operatives.Select(o => o.Id);
+    private string OperativeName(Guid id) => _operatives.FirstOrDefault(o => o.Id == id).Name ?? string.Empty;
 
     private EntryDecisionResultDto? _result;
     private Guid _lastPersonId;

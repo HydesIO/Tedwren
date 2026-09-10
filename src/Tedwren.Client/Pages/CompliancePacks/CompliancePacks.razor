@@ -45,7 +45,27 @@
         {
             <BannerAlert Severity="@(_issues.Any(i => i.Blocking) ? StatusKind.Danger : StatusKind.Warning)"
                          Title="Not-site-ready problems found"
-                         Message="@IssuesSummary()" />
+                         Message="Resolve these before sending, or acknowledge and send anyway. Problems are grouped by operative below." />
+            @* Per-operative breakdown so it is clear whose card is the problem (UAT-008): the flat one-line
+               summary made it impossible to tell, for example, whose CSCS card had expired. *@
+            <div class="pack-builder__issues">
+                @foreach (var group in _issues.GroupBy(i => i.SubjectName).OrderBy(g => g.Key))
+                {
+                    <div class="pack-builder__issue">
+                        <div class="pack-builder__issue-name">@group.Key</div>
+                        <ul class="pack-builder__issue-list">
+                            @foreach (var issue in group)
+                            {
+                                <li>
+                                    <StatusPill Label="@(issue.Blocking ? "Blocking" : "Warning")"
+                                                Status="@(issue.Blocking ? StatusKind.Danger : StatusKind.Warning)" />
+                                    <span>@issue.QualificationName — @issue.Detail</span>
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+            </div>
         }
 
         @if (!_canSend)
@@ -118,10 +138,6 @@
         _packs = await Packs.ListForCompanyAsync(Tenant.CurrentCompanyId);
         _loading = false;
     }
-
-    // One-line summary of the current readiness issues for the banner (SUB-14).
-    private string IssuesSummary() =>
-        string.Join("; ", _issues.Select(i => $"{i.SubjectName} — {i.QualificationName}: {i.Detail}{(i.Blocking ? " (blocking)" : "")}"));
 
     private void Toggle(Guid id, bool selected)
     {

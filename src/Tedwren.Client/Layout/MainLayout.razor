@@ -2,7 +2,9 @@
 @implements IDisposable
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
+@using Tedwren.Client.Pages.Shared
 @inject Tedwren.Client.Services.AuthState Auth
+@inject IDialogService Dialogs
 @inject ICurrentUserService CurrentUser
 @inject IExpiryQueryService Expiry
 @inject IEntitlementService Entitlements
@@ -51,6 +53,7 @@
                    OnMenuClick="ToggleSidebar"
                    OnOpenSearch="OpenPalette"
                    OnToggleTheme="ToggleTheme"
+                   OnHelp="OpenHelp"
                    OnSignOut="SignOut" />
 
         <main class="app-shell__content" role="main">
@@ -194,6 +197,9 @@
 
     private void OpenPalette() => _paletteOpen = true;
 
+    // Opens the help dialog from the top-bar "?" button (UAT-001), which previously did nothing.
+    private Task OpenHelp() => Dialogs.ShowAsync<HelpDialog>("Help & support", TedwrenDialog.Medium());
+
     private async Task OnCommandSelect(CommandItem item)
     {
         if (item.Href == "action:logout")
@@ -217,7 +223,8 @@
     {
         var items = new List<CommandItem>();
 
-        foreach (var nav in _navItems)
+        // Flatten group children (e.g. Users, Inductions) so every destination stays searchable in the palette.
+        foreach (var nav in _navItems.SelectMany(n => n.Leaves()))
         {
             items.Add(new CommandItem(nav.Label, "Pages", nav.Icon, nav.Href, "Go to page"));
         }
@@ -273,17 +280,20 @@
         var relative = "/" + Nav.ToBaseRelativePath(Nav.Uri);
         _activeRoute = relative == "/" ? "/" : "/" + relative.TrimStart('/').Split('?', '#')[0];
 
+        // Walk the nav tree flat (group children included) so nested routes still resolve a page title.
+        var leaves = _navItems.SelectMany(n => n.Leaves()).ToList();
+
         var rel = _activeRoute.TrimStart('/');
         if (rel.Length == 0)
         {
-            _pageTitle = _navItems.FirstOrDefault(n => n.Href == "/")?.Label ?? "Dashboard";
+            _pageTitle = leaves.FirstOrDefault(n => n.Href == "/")?.Label ?? "Dashboard";
             return;
         }
 
         // Longest-prefix match so sub-routes (e.g. /organisation/add) inherit their
         // section's title; otherwise fall back to a title-cased last segment.
-        var match = _navItems
-            .Where(n => n.Href != "/" && rel.StartsWith(n.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
+        var match = leaves
+            .Where(n => n.Href is not ("/" or "") && rel.StartsWith(n.Href.TrimStart('/'), StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(n => n.Href.Length)
             .FirstOrDefault();
 
@@ -308,9 +318,27 @@
                 .Select(e => e.Key)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-            return all
-                .Where(n => !GatedRouteModules.TryGetValue(n.Href, out var moduleKey) || enabled.Contains(moduleKey))
-                .ToList();
+            bool Visible(NavItem n) => !GatedRouteModules.TryGetValue(n.Href, out var moduleKey) || enabled.Contains(moduleKey);
+
+            var result = new List<NavItem>();
+            foreach (var n in all)
+            {
+                if (n.HasChildren)
+                {
+                    // Gate each child; keep the group only while it still has at least one visible child.
+                    var kids = n.Children!.Where(Visible).ToList();
+                    if (kids.Count > 0)
+                    {
+                        result.Add(n with { Children = kids });
+                    }
+                }
+                else if (Visible(n))
+                {
+                    result.Add(n);
+                }
+            }
+
+            return result;
         }
         catch
         {
