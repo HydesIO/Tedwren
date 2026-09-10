@@ -87,6 +87,30 @@ public sealed class WorkforceApiTests : IClassFixture<WebApplicationFactory<Prog
         Assert.Equal(System.Net.HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    [Fact] // UAT-010 (SF-5) — the captured card image reference reaches the operative's qualifications
+    public async Task OperativeDetail_ExposesQualificationImageReference()
+    {
+        var client = _factory.CreateClient();
+        var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/me");
+        var companyId = me!.CompanyId!.Value;
+        var name = "Evidence Case " + Guid.NewGuid().ToString("N")[..6];
+
+        await client.PostAsJsonAsync("/api/organisation/operatives",
+            new AddOperativeRequest(companyId, name, "07700900611", "Plasterer", null));
+        var row = (await client.GetFromJsonAsync<List<OperativeListItemDto>>("/api/workforce"))!.Single(o => o.Name == name);
+
+        var types = await client.GetFromJsonAsync<List<QualificationTypeDto>>("/api/qualifications/types");
+        var cscs = types!.First(t => t.Name == "CSCS Card");
+        var future = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(2));
+        const string image = "https://evidence.example/cscs-card.png";
+        await client.PostAsJsonAsync("/api/qualifications/cards",
+            new CaptureCardRequest(row.PersonId, cscs.Id, "CS-IMG", name, null, future, NeedsReview: false, ImageReference: image));
+
+        var detail = await client.GetFromJsonAsync<OperativeDetailDto>($"/api/workforce/{row.Slug}");
+        var qualification = Assert.Single(detail!.Qualifications);
+        Assert.Equal(image, qualification.ImageReference);
+    }
+
     [Fact] // UAT-014 (MC-8) — a card-compliant main-contractor operative with no induction is not "Compliant"
     public async Task Operative_WithValidCardButNoInduction_ShowsInductionRequired()
     {

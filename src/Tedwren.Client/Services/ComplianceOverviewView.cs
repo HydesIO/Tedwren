@@ -35,12 +35,14 @@ public static class ComplianceOverviewView
             new("Pending", b.Pending, NeutralColour),
         };
 
+        // Each legend row drills down to the workforce filtered by that status (UAT-016): "5 at risk" → who.
+        // The status value matches the ComplianceState enum name the workforce page parses.
         var legend = new List<LegendItem>
         {
-            new("Compliant", b.Compliant, SuccessColour, Pct(b.Compliant)),
-            new("At risk", b.AtRisk, WarningColour, Pct(b.AtRisk)),
-            new("Non-compliant", b.NonCompliant, DangerColour, Pct(b.NonCompliant)),
-            new("Pending", b.Pending, NeutralColour, Pct(b.Pending)),
+            new("Compliant", b.Compliant, SuccessColour, Pct(b.Compliant), "/workforce?status=Compliant"),
+            new("At risk", b.AtRisk, WarningColour, Pct(b.AtRisk), "/workforce?status=AtRisk"),
+            new("Non-compliant", b.NonCompliant, DangerColour, Pct(b.NonCompliant), "/workforce?status=NonCompliant"),
+            new("Pending", b.Pending, NeutralColour, Pct(b.Pending), "/workforce?status=Pending"),
         };
 
         return new ComplianceOverviewVm(

@@ -187,7 +187,8 @@ public sealed class QualificationService : IQualificationService
             card.NeedsReview,
             card.ConfirmedBy,
             card.ConfirmedUtc,
-            card.IsSuperseded);
+            card.IsSuperseded,
+            card.ImageReference);
     }
 
     /// <summary>Maps the computed card status to the neutral compliance state used on the pill.</summary>

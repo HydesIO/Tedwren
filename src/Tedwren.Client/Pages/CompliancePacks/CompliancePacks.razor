@@ -7,6 +7,8 @@
 @inject ICurrentUserService CurrentUser
 @inject IWorkforceService Workforce
 @inject ITenantState Tenant
+@inject NavigationManager Nav
+@inject IJSRuntime JS
 @inject ISnackbar Snackbar
 
 <PageTitle>Compliance Packs · Tedwren</PageTitle>
@@ -27,6 +29,28 @@
 <DashboardCard Class="pack-builder">
     <Body>
         <MudText Typo="Typo.h6" Class="pack-builder__title">New pack</MudText>
+
+        @* After sending, surface the shareable link and passcode persistently so they can be copied and sent to
+           the recipient — previously the passcode only flashed up in a snackbar and the link was never shown
+           (UAT-008). *@
+        @if (_sentLink is not null)
+        {
+            <div class="pack-builder__share">
+                <div class="pack-builder__share-head">
+                    <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                    <span>Pack ready to share — send this link and passcode to the recipient.</span>
+                </div>
+                <MudTextField Value="@_sentLink" ReadOnly="true" Label="Recipient link" Variant="Variant.Outlined"
+                              Margin="Margin.Dense" Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_sentLink!))" />
+                @if (_sentPasscode is not null)
+                {
+                    <MudTextField Value="@_sentPasscode" ReadOnly="true" Label="Passcode" Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_sentPasscode!))" />
+                }
+            </div>
+        }
         <MudTextField @bind-Value="_title" Label="Pack title" Variant="Variant.Outlined" Margin="Margin.Dense" Class="pack-builder__field" />
 
         <MudText Typo="Typo.subtitle2" Class="pack-builder__label">Operatives</MudText>
@@ -110,6 +134,10 @@
     private bool _loading = true;
     private bool _busy;
 
+    // The shareable recipient link + passcode from the last successful send, surfaced persistently (UAT-008).
+    private string? _sentLink;
+    private string? _sentPasscode;
+
     // SUB-22: only nominated roles may send/re-issue packs (AccessRole names).
     private static readonly string[] NominatedRoles = { "Administrator", "ComplianceManager" };
     private bool _canSend;
@@ -178,8 +206,25 @@
         }
 
         _issues = Array.Empty<ReadinessIssueDto>();
-        Snackbar.Add($"Pack sent. Passcode: {result.Passcode}", Severity.Success);
+        // Surface the recipient link + passcode persistently (copyable), not just a transient snackbar (UAT-008).
+        _sentLink = result.Token is null ? null : $"{Nav.BaseUri}pack?token={Uri.EscapeDataString(result.Token)}";
+        _sentPasscode = result.Passcode;
+        Snackbar.Add("Pack ready to share — link and passcode are shown above.", Severity.Success);
         await LoadAsync();
+    }
+
+    // Copies the given text to the clipboard for sharing the pack link/passcode.
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch
+        {
+            // Clipboard unavailable (e.g. permissions) — the value is on screen to copy manually.
+        }
     }
 
     private async Task RevokeAsync(PackListItemDto pack)

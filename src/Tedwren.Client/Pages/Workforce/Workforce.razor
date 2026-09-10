@@ -1,4 +1,5 @@
 @page "/workforce"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Workforce
 @using Tedwren.Abstractions.Services
 @inject IWorkforceService WorkforceSvc
@@ -15,6 +16,16 @@
     </Actions>
 </PageHeader>
 
+@* Active drill-down filter, e.g. arriving from a compliance legend row ("5 at risk" → those operatives, UAT-016). *@
+@if (_activeStatus is { } status)
+{
+    <div class="workforce-filter">
+        <MudIcon Icon="@Icons.Material.Outlined.FilterAlt" Size="Size.Small" />
+        <span>Showing <strong>@ComplianceStatusView.Label(status)</strong> operatives (@_operatives.Count)</span>
+        <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="ClearFilter">Clear filter</MudButton>
+    </div>
+}
+
 <DashboardCard>
     <Body>
         <DataTable TItem="OperativeListItemDto"
@@ -30,16 +41,32 @@
 </DashboardCard>
 
 @code {
+    // Optional compliance-status drill-down from another page (e.g. the compliance legend). Matches a
+    // ComplianceState enum name; anything else is ignored and the full register shows.
+    [Parameter, SupplyParameterFromQuery(Name = "status")] public string? StatusFilter { get; set; }
+
+    private IReadOnlyList<OperativeListItemDto> _all = Array.Empty<OperativeListItemDto>();
     private IReadOnlyList<OperativeListItemDto> _operatives = Array.Empty<OperativeListItemDto>();
     private List<DataColumn<OperativeListItemDto>> _columns = new();
     private bool _loading = true;
+    private bool _loaded;
+    private ComplianceState? _activeStatus;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnParametersSetAsync()
     {
-        BuildColumns();
-        _operatives = await WorkforceSvc.ListOperativesAsync();
-        _loading = false;
+        if (!_loaded)
+        {
+            BuildColumns();
+            _all = await WorkforceSvc.ListOperativesAsync();
+            _loaded = true;
+            _loading = false;
+        }
+
+        _activeStatus = Enum.TryParse<ComplianceState>(StatusFilter, ignoreCase: true, out var status) ? status : null;
+        _operatives = _activeStatus is { } s ? _all.Where(o => o.State == s).ToList() : _all;
     }
+
+    private void ClearFilter() => Nav.NavigateTo("/workforce");
 
     private void OpenOperative(OperativeListItemDto op) => Nav.NavigateTo($"/workforce/{op.Slug}");
 

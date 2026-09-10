@@ -37,10 +37,14 @@
 
     private static ActivityItem ToActivity(UpcomingExpiryDto e) => new(
         Icon: Icons.Material.Outlined.WarningAmber,
-        Primary: $"{e.QualificationName} — {DisplayText.Humanize(e.StatusLabel)}",
-        Secondary: e.ExpiresOn is { } on ? $"Expires {on:dd MMM yyyy}" : "No expiry date recorded",
+        // Name the operative whose card is expiring, and link the row to their profile (UAT-025/026): clicking
+        // a notification previously did nothing. The name/slug come from the tenant-scoped expiry query.
+        Primary: e.PersonName is { } who ? $"{who} — {e.QualificationName}" : e.QualificationName,
+        Secondary: (e.ExpiresOn is { } on ? $"Expires {on:dd MMM yyyy}" : "No expiry date recorded")
+                   + $" · {DisplayText.Humanize(e.StatusLabel)}",
         RelativeTime: RelativeLabel(e.DaysUntilExpiry),
-        Accent: Accent(e.DaysUntilExpiry));
+        Accent: Accent(e.DaysUntilExpiry),
+        Href: e.Slug is null ? null : $"/workforce/{e.Slug}");
 
     // "expired", "today", or "in N days".
     private static string RelativeLabel(int daysUntilExpiry)

@@ -96,7 +96,8 @@ else
                     <div class="qual-grid">
                         @foreach (var q in _op.Qualifications)
                         {
-                            <div class="qual-card">
+                            @* Click a card to view its captured evidence photo (UAT-010). *@
+                            <button type="button" class="qual-card qual-card--clickable" @onclick="@(() => OpenEvidenceAsync(q))">
                                 <div class="qual-card__top">
                                     <span class="qual-card__name">@q.Name</span>
                                     <StatusPill Label="@q.StatusLabel" Status="ComplianceStatusView.ToStatusKind(q.State)" />
@@ -106,7 +107,11 @@ else
                                     <span>Obtained: @(q.ObtainedOn?.ToString("dd MMM yyyy") ?? "—")</span>
                                     <span>Expires: @(q.ExpiresOn?.ToString("dd MMM yyyy") ?? "No expiry")</span>
                                 </div>
-                            </div>
+                                <span class="qual-card__evidence">
+                                    <MudIcon Icon="@(string.IsNullOrEmpty(q.ImageReference) ? Icons.Material.Outlined.HideImage : Icons.Material.Outlined.Image)" Size="Size.Small" />
+                                    @(string.IsNullOrEmpty(q.ImageReference) ? "No photo" : "View photo")
+                                </span>
+                            </button>
                         }
                     </div>
                 }
@@ -207,6 +212,17 @@ else
                 await OnParametersSetAsync();   // same slug — reload the updated fields in place
             }
         }
+    }
+
+    // Opens the captured evidence photo for a qualification card (SF-5, UAT-010).
+    private async Task OpenEvidenceAsync(OperativeQualificationDto qualification)
+    {
+        var parameters = new DialogParameters<QualificationEvidenceDialog>
+        {
+            { x => x.Name, qualification.Name },
+            { x => x.ImageReference, qualification.ImageReference },
+        };
+        await Dialogs.ShowAsync<QualificationEvidenceDialog>(qualification.Name, parameters, TedwrenDialog.Medium());
     }
 
     // Creates a real self-service onboarding link for this operative (SF-4/SUB-2). No email backend yet, so the

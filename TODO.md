@@ -14,10 +14,7 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 ### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased
 Fixing the issues from the first end-user acceptance testing pass (`docs/` UAT log). Plan groups all 27
 distinct issues into four phases: 1 quick frontend/UX wins, 2 Critical/High correctness bugs, 3 Medium
-data-surfacing, 4 larger features. Phases 1 & 2 ✅ (below). **Remaining:**
-- ⏳ **Phase 3 — Medium/data-surfacing.** 006 org document add, 008c pack link+passcode surfacing, 010b
-  qualification evidence photo, 016b compliance site filter + drill-down, 024 add-company doc storage +
-  status, 025/026 clickable notifications.
+data-surfacing, 4 larger features. Phases 1–3 ✅ (below). **Remaining:**
 - ⏳ **Phase 4 — Larger features.** 011 site-manager site scoping, 018 shareable induction link + email,
   023 RAMS/trade self-service onboarding, 010a/027/028 richer capture + editable induction steps, 015
   geofenced clock-in surface, 029 MC-24 QS timesheet rollup view.
@@ -26,7 +23,29 @@ data-surfacing, 4 larger features. Phases 1 & 2 ✅ (below). **Remaining:**
 
 ## Completed
 
-### UAT remediation — Phase 2: Critical & High correctness bugs (this change)
+### UAT remediation — Phase 3: Medium bugs & data-surfacing (this change)
+Whole solution builds **0 warnings / 0 errors**; suites green (Api 118 incl. new image-reference test, others
+unchanged). Site-scoped compliance (the site-filter half of UAT-016) folds into Phase 4 with UAT-011, which
+builds the site↔operative mapping it needs.
+- ✅ **UAT-025/026 — notifications not clickable.** `ActivityItem` gained an optional `Href` and `ActivityFeed`
+  renders linked rows; the notifications page names the operative and links each row to their profile (reusing
+  the tenant-scoped expiry name/slug).
+- ✅ **UAT-010b (SF-5) — qualification evidence photo.** `ImageReference` now flows onto `QualificationCardDto`
+  and `OperativeQualificationDto`; the operative Qualifications tab cards are clickable and open a new
+  `QualificationEvidenceDialog` showing the captured photo (or an empty state).
+- ✅ **UAT-006 (SUB-4) — no way to add a company document.** New `AddCompanyDocumentDialog` on the company's
+  Documents tab, wired to the existing `AddCompanyDocumentAsync` (metadata; file-binary upload is later).
+- ✅ **UAT-024 — add-company file picker discarded the file / "pending" confusion.** Removed the misleading
+  `TedwrenFileUpload` (no binary storage exists) and replaced it with guidance to add documents on the Documents
+  tab, clarifying that the "Pending" status is derived from compliance, not set by hand.
+- ✅ **UAT-008c — compliance-pack link/passcode only flashed in a snackbar.** After sending, the recipient link
+  and passcode are surfaced in a persistent, copyable panel. (Email delivery + the merge-into-compliance IA
+  question remain for Phase 4 / product confirmation.)
+- ✅ **UAT-016b — compliance drill-down.** `LegendItem` gained an optional `Href`; the compliance legend rows
+  link to the workforce filtered by that status (`/workforce?status=…`), and the workforce register honours the
+  `status` query with an active-filter banner. (Per-site compliance filter → Phase 4 with UAT-011.)
+
+### UAT remediation — Phase 2: Critical & High correctness bugs (previous change)
 Whole solution builds **0 warnings / 0 errors**; suites green (Domain 71, Application 228, Web 178, Api 117,
 Client 30; DataAccess LocalDB suite skipped). New tests: induction site round-trip, workforce by-engagement
 lookup (×2), induction-aware compliance, audit write (×2), expiry tenant-scoping.

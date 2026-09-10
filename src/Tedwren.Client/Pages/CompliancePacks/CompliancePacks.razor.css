@@ -6,6 +6,26 @@
     color: var(--mud-palette-text-primary);
 }
 
+/* Persistent "pack ready to share" panel: the recipient link + passcode, copyable (UAT-008). */
+.pack-builder__share {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
+    margin: var(--spacing-12, 12px) 0;
+    padding: var(--spacing-16, 16px);
+    border: 1px solid var(--mud-palette-success);
+    border-radius: var(--radius-card, 12px);
+    background: var(--mud-palette-success-hover);
+}
+
+.pack-builder__share-head {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    font-weight: 600;
+    color: var(--mud-palette-text-primary);
+}
+
 /* Per-operative readiness breakdown shown when "Check & send" finds problems. */
 .pack-builder__issues {
     display: flex;

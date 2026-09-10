@@ -169,7 +169,7 @@ public sealed class WorkforceService : IWorkforceService
         var qualifications = cards
             .Where(c => !c.IsSuperseded)
             .Select(c => new OperativeQualificationDto(
-                c.QualificationName, c.Issuer, c.IssuedOn, c.ExpiresOn, c.State, c.StatusLabel))
+                c.QualificationName, c.Issuer, c.IssuedOn, c.ExpiresOn, c.State, c.StatusLabel, c.ImageReference))
             .ToList();
 
         var decisions = await _decisions.GetForPersonAsync(engagement.PersonId, cancellationToken);

@@ -50,7 +50,10 @@ public sealed record OperativeQualificationDto(
     DateOnly? ObtainedOn,
     DateOnly? ExpiresOn,
     ComplianceState State,
-    string StatusLabel);
+    string StatusLabel,
+    // The captured photo of the card (SF-5) so the evidence can be viewed from the qualifications tab (UAT-010);
+    // null when no image was captured.
+    string? ImageReference = null);
 
 /// <summary>A recent event in an operative's history (currently site-entry decisions, R10).</summary>
 public sealed record OperativeHistoryDto(

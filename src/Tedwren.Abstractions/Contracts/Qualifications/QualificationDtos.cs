@@ -35,7 +35,10 @@ public sealed record QualificationCardDto(
     bool NeedsReview,
     string? ConfirmedBy,
     DateTimeOffset? ConfirmedUtc,
-    bool IsSuperseded);
+    bool IsSuperseded,
+    // The captured photo of the card (SF-5), so the evidence can be viewed. A reference/URL, or null when no
+    // image was captured.
+    string? ImageReference = null);
 
 /// <summary>
 /// Request to capture a new card for a person (SF-5). <see cref="NeedsReview"/> carries the reading

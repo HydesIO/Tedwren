@@ -43,11 +43,13 @@
                           InputType="InputType.Telephone" Placeholder="+44 …" />
     </FormSection>
 
-    <FormSection Title="Accreditations" Description="Upload accreditation and insurance documents.">
+    @* Documents are added on the company's Documents tab after saving (UAT-006). A file picker here previously
+       discarded the file silently — there is no document-binary storage yet — so it is replaced with guidance
+       rather than a control that does nothing (UAT-024). *@
+    <FormSection Title="Accreditations &amp; documents" Description="Insurance, accreditations and policies for this company.">
         <div class="form-page__full">
-            <TedwrenFileUpload Label="Documents"
-                               HelperText="e.g. SSIP certificate, employer's liability insurance."
-                               HintText="PDF, PNG or JPG up to 10MB" />
+            <DialogGuidance Severity="StatusKind.Info"
+                            Text="Add accreditation, insurance and policy documents on the company's Documents tab after saving — open the new company and choose &quot;Add document&quot;. Until compliance data (documents and the workforce's cards) is recorded, the company shows as &quot;Pending&quot;; that status is derived from its compliance, not set by hand." />
         </div>
     </FormSection>
 
