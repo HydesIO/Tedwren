@@ -1,6 +1,8 @@
 using System.Net;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using Tedwren.Web.Tests.Support;
+
 namespace Tedwren.Web.Tests;
 
 /// <summary>
@@ -8,13 +10,13 @@ namespace Tedwren.Web.Tests;
 /// the friendly error page, and the config-driven header/footer render. Uses the MVC test host, so
 /// no network or database is involved.
 /// </summary>
-public sealed class RoutingTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class RoutingTests : IClassFixture<SiteFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host for Tedwren.Web.</param>
-    public RoutingTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public RoutingTests(SiteFactory factory) => _factory = factory;
 
     /// <summary>Every sitemap route returns 200 OK.</summary>
     /// <param name="route">The path to request.</param>

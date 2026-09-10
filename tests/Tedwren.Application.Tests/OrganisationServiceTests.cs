@@ -216,13 +216,15 @@ public sealed class OrganisationServiceTests
         var id = await AddCompanyAsync(service, "Alpha Ltd");
 
         var ok = await service.UpdateCompanyAsync(id, new UpdateCompanyRequest(
-            "Alpha Renamed Ltd", "Main Contractor", "Roofing", "12345678", "1 New Road", "Jo", "jo@x.com", "0800"));
+            "Alpha Renamed Ltd", "Main Contractor", "Roofing", "12345678", "1 New Road", "Jo", "jo@x.com", "0800",
+            OrgType.MainContractor));
 
         Assert.True(ok);
         var updated = await service.GetCompanyAsync("alpha-renamed-ltd");
         Assert.NotNull(updated);
         Assert.Equal("Main Contractor", updated!.Type);
         Assert.Equal("jo@x.com", updated.ContactEmail);
+        Assert.Equal(OrgType.MainContractor, updated.OrgType);   // the typed product is editable and persisted (SF-22)
     }
 
     [Fact]

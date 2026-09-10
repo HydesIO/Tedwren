@@ -17,6 +17,44 @@ _Nothing currently in progress._
 
 ## Completed
 
+### Project ↔ documentation alignment pass (this change) — zero warnings/errors + differentiation gaps closed
+Review of the whole solution against the docs (PRD v6.4 + the differentiation plan), driven by testing
+feedback that the sub/main portals looked identical. Two read-only audits (OrgType flow end-to-end; the
+DTO/repo/dual-dialect SQL layer) found the data-access layer clean and the differentiation substantially
+built (Phases A–D), with a handful of concrete gaps. All now fixed; whole solution builds **0 warnings /
+0 errors** and every suite is green (Domain 71 · DataAccess 4 +18 LocalDB-skipped · Application 227 ·
+Client 26 · Web 178 · Api 111 — 617 passing, 18 LocalDB-skipped, 0 failing).
+- ✅ **All build warnings eliminated (was 15).** `TedwrenStepper` moved to the MudBlazor 8.x `MudStepper`
+  API (`NonLinear`, `CurrentStepColor`) instead of the removed `Linear`/`Variant`/`Color`; removed the
+  unsupported `Icon` from every `MudStep` in `Onboarding`/`AddOperative` (MUD0002 — the attributes were
+  silently splatted as no-op HTML and the icons never rendered); fixed a CS8604 nullable-deref in
+  `CompliancePackApiTests`.
+- ✅ **All failing tests fixed (was 52, all in `Tedwren.Web.Tests`).** The content/SEO/routing/brand/
+  partner/worker-passport/lead-form suites booted the host under the committed pre-launch gate
+  (`Site:IsLanding=true`), so every route returned the landing page. Added a shared gate-off `SiteFactory`
+  (and set the flag on `LeadTestFactory`); `LandingGateTests` still exercises the gate on. No site
+  behaviour changed — a test-config regression, not a site bug.
+- ✅ **Product-less entitlement defaults aligned to the PRD (SF-22, §6.1, SUB-11).** `ModuleCatalog` no
+  longer defaults `inductions` or `permits` on; a product-less company now falls back to the shared
+  foundation only (workforce/compliance/reports), so the two-product split can't leak back in.
+  Product-aware companies are unaffected (they use `ProductModuleBundles`). Regression test extended.
+- ✅ **Admin can set a company's product (closes the "admin-created companies look the same" gap).**
+  `UpdateCompanyRequest` carries `OrgType`; `OrganisationService.UpdateCompanyAsync` persists it; the
+  Organisation **Add company** page and the **Edit company** dialog now have a Product (Subcontractor /
+  Main contractor) selector. Previously only the onboarding wizard set the product, so admin-created
+  companies were product-less. Wired UI → DTO → `/api/organisation` PUT → service → Dapper/in-memory.
+- ✅ **Migration renumber.** `022_company_orgtype.sql` → `023` in both dialects (it shared `022` with
+  `022_user_profile.sql`). Runtime behaviour unchanged (idempotent scripts, no migration-history table).
+- ✅ **Doc/comment reconciliation.** The differentiation doc's Phase A note now matches the as-built
+  session identity (product resolved server-side from the authoritative company record, cached on
+  `ITenantState`; a `CurrentUserDto` field is logged as an optional future optimisation, not a
+  correctness gap). Documented why the Dashboard (cosmetic → subcontractor) and Site Gate (fail-closed
+  → main contractor, R2) product-less fallbacks deliberately differ.
+- ❗ **Non-blocking follow-ups (raised, not worked around).** (a) Optionally surface `OrgType` on
+  `CurrentUserDto`/`/api/me` to drop the shell's per-load companies fetch. (b) The DTO/SQL audit noted the
+  SQL-Server-only computed `LaunchSignups.EmailLower` (by design) and that `MigrationRunner` has no
+  applied-migrations table (safe only while every script stays idempotent).
+
 ### Subcontractor vs Main Contractor portal differentiation — merged to `main` (SF-22, SUB-24, MC-23, R18)
 **Integration note.** Brought into `main` from `claude/client-portal-ui-diff-g41xnr` via the working
 branch. The single merge conflict — `Dashboard.razor` `BuildKpis` — was resolved to keep **both** changes:
@@ -41,7 +79,8 @@ product per company (no switcher).
   enum in `Abstractions.Common` (client references only Abstractions), mapped in the Application layer;
   carried on `CompanySummary`/`CompanyDetailDto`/`CreateCompanyRequest`; mapped from `OnboardingOrgType`
   at wizard submit; cached on `ITenantState.CurrentOrgType`, resolved by `MainLayout` before pages
-  render; Dapper column + idempotent `022_company_orgtype.sql` (both engines, backfill) + EF
+  render; Dapper column + idempotent `023_company_orgtype.sql` (both engines, backfill; renumbered from
+  `022` in the alignment pass to avoid a duplicate number) + EF
   `AddCompanyOrgType` migration; demo tenants seeded with their product.
 - ✅ **Phase B — product entitlement bundles.** `ProductModuleBundles` (strict split — SUB: workforce,
   compliance, time, reports; MC: workforce, compliance, inductions, reports; permits/forms/integrations

@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using Tedwren.Web.Tests.Support;
+
 namespace Tedwren.Web.Tests;
 
 /// <summary>
@@ -9,13 +11,13 @@ namespace Tedwren.Web.Tests;
 /// positioning restriction holds in the title and meta description (§8.2), and the pricing page renders
 /// numbers from config plus the plain-language clarifiers, with SoftwareApplication schema.
 /// </summary>
-public sealed class WorkerPassportAndPricingTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class WorkerPassportAndPricingTests : IClassFixture<SiteFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host for Tedwren.Web.</param>
-    public WorkerPassportAndPricingTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public WorkerPassportAndPricingTests(SiteFactory factory) => _factory = factory;
 
     /// <summary>The Worker Passport page carries the "never locked out for non-payment" benefit (PRD W2).</summary>
     [Fact]

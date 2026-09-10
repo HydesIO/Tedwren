@@ -1,4 +1,5 @@
 @page "/organisation/add"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Organisation
 @using Tedwren.Abstractions.Services
 @inject IReferenceDataService Reference
@@ -22,6 +23,11 @@
                        Options="_companyTypes" Placeholder="Select a type"
                        Error="_submitted && string.IsNullOrWhiteSpace(_type)"
                        ErrorText="Select a company type." />
+        <TedwrenSelect T="string" Label="Product" @bind-Value="_product" Required="true"
+                       Options="_products" Placeholder="Select a product"
+                       Error="_submitted && string.IsNullOrWhiteSpace(_product)"
+                       ErrorText="Select the product this company is on."
+                       HelperText="Subcontractor (time &amp; attendance + compliance packs) or Main contractor (workforce management + site entry). Sets the default console (SF-22)." />
         <TedwrenSelect T="string" Label="Primary trade" @bind-Value="_trade"
                        Options="_trades" Placeholder="Select a trade" />
         <TedwrenTextField Label="Registration number" @bind-Value="_regNumber"
@@ -58,6 +64,7 @@
 @code {
     private string? _name;
     private string? _type;
+    private string? _product;
     private string? _trade;
     private string? _regNumber;
     private string? _contactName;
@@ -65,8 +72,21 @@
     private string? _contactPhone;
     private bool _submitted;
 
+    // The typed product (OrgType) is chosen as a friendly label, then mapped to the enum on save.
+    private const string SubcontractorLabel = "Subcontractor";
+    private const string MainContractorLabel = "Main contractor";
+    private static readonly IReadOnlyList<string> _products = new[] { SubcontractorLabel, MainContractorLabel };
+
     private IReadOnlyList<string> _companyTypes = Array.Empty<string>();
     private IReadOnlyList<string> _trades = Array.Empty<string>();
+
+    /// <summary>Maps the chosen product label to the typed product discriminator (SF-22), or null when unset.</summary>
+    private static OrgType? ToOrgType(string? product) => product switch
+    {
+        MainContractorLabel => OrgType.MainContractor,
+        SubcontractorLabel => OrgType.Subcontractor,
+        _ => null,
+    };
 
     private List<BreadcrumbItem> _breadcrumbs = new()
     {
@@ -83,15 +103,16 @@
     private async Task Save()
     {
         _submitted = true;
-        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_type))
+        if (string.IsNullOrWhiteSpace(_name) || string.IsNullOrWhiteSpace(_type) || string.IsNullOrWhiteSpace(_product))
         {
             Snackbar.Add("Please fix the highlighted fields.", Severity.Error);
             return;
         }
 
-        // Persists the new company via the Web API (SF-1).
+        // Persists the new company via the Web API (SF-1). The product (OrgType) drives the default module
+        // bundle and the post-login console divergence (SF-22).
         await Org.CreateCompanyAsync(new CreateCompanyRequest(
-            _name!, _type, _trade, _regNumber, Address: null, _contactName, _contactEmail, _contactPhone));
+            _name!, _type, _trade, _regNumber, Address: null, _contactName, _contactEmail, _contactPhone, ToOrgType(_product)));
 
         Snackbar.Add($"Company \"{_name}\" saved.", Severity.Success);
         Nav.NavigateTo("/organisation");

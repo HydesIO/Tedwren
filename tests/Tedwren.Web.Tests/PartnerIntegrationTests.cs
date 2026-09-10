@@ -12,13 +12,13 @@ namespace Tedwren.Web.Tests;
 /// the dashboard is private (unknown code 404s), and a referral link attributes a later demo conversion
 /// across the request boundary.
 /// </summary>
-public sealed class PartnerIntegrationTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class PartnerIntegrationTests : IClassFixture<SiteFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host.</param>
-    public PartnerIntegrationTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public PartnerIntegrationTests(SiteFactory factory) => _factory = factory;
 
     private HttpClient NoRedirect() =>
         _factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });

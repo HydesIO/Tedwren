@@ -28,7 +28,7 @@
 
     <TedwrenStepper @bind-ActiveIndex="_activeStep" OnPreviewInteraction="OnStepPreview">
         @* 1. Org type *@
-        <MudStep Title="Type" Icon="@Icons.Material.Outlined.Business">
+        <MudStep Title="Type">
             <div class="onboarding__step">
                 <div class="onboarding__step-head">
                     <h2 class="onboarding__step-title">What kind of organisation is this?</h2>
@@ -52,7 +52,7 @@
         </MudStep>
 
         @* 2. Company details *@
-        <MudStep Title="Company" Icon="@Icons.Material.Outlined.Apartment">
+        <MudStep Title="Company">
             <div class="onboarding__step">
                 <FormSection Title="Company details" Description="@($"Basic identifying information for this {_model.TypeLabel.ToLower()}.")">
                     @* Read-only, derived from the type chosen on the previous step. Rendered as plain markup
@@ -83,7 +83,7 @@
         </MudStep>
 
         @* 3. First admin *@
-        <MudStep Title="Administrator" Icon="@Icons.Material.Outlined.AdminPanelSettings">
+        <MudStep Title="Administrator">
             <div class="onboarding__step">
                 <FormSection Title="First administrator" Description="The first account, with full access. You can invite more users later.">
                     <TedwrenTextField Label="Full name" @bind-Value="_model.AdminName" Required="true" Placeholder="Full name"
@@ -98,7 +98,7 @@
         </MudStep>
 
         @* 4. Sites *@
-        <MudStep Title="Sites" Icon="@Icons.Material.Outlined.Place">
+        <MudStep Title="Sites">
             <div class="onboarding__step">
                 <div class="onboarding__step-head">
                     <h2 class="onboarding__step-title">Sites</h2>
@@ -146,7 +146,7 @@
         @* 5a. Operatives (subcontractor) *@
         @if (_model.OrgType == OnboardingOrgType.Subcontractor)
         {
-            <MudStep Title="Operatives" Icon="@Icons.Material.Outlined.Engineering">
+            <MudStep Title="Operatives">
                 <div class="onboarding__step">
                     <div class="onboarding__step-head">
                         <h2 class="onboarding__step-title">Operatives</h2>
@@ -179,7 +179,7 @@
             </MudStep>
 
             @* 6a. Insurances / accreditations (SUB-4) *@
-            <MudStep Title="Insurances" Icon="@Icons.Material.Outlined.VerifiedUser">
+            <MudStep Title="Insurances">
                 <div class="onboarding__step">
                     <div class="onboarding__step-head">
                         <h2 class="onboarding__step-title">Insurances &amp; accreditations</h2>
@@ -207,7 +207,7 @@
         else
         {
             @* 5b. Induction template (main contractor) *@
-            <MudStep Title="Induction" Icon="@Icons.Material.Outlined.Assignment">
+            <MudStep Title="Induction">
                 <div class="onboarding__step">
                     <FormSection Title="Site induction" Description="We seed a default induction (steps + quiz) you can refine later.">
                         <TedwrenTextField Label="Induction name" @bind-Value="_model.InductionName" Placeholder="e.g. General Site Induction" />
@@ -223,7 +223,7 @@
         }
 
         @* Review *@
-        <MudStep Title="Review" Icon="@Icons.Material.Outlined.CheckCircle">
+        <MudStep Title="Review">
             <div class="onboarding__step">
                 <div class="onboarding__step-head">
                     <h2 class="onboarding__step-title">Review &amp; finish</h2>

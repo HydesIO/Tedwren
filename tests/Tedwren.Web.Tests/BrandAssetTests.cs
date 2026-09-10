@@ -1,6 +1,8 @@
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Mvc.Testing;
 
+using Tedwren.Web.Tests.Support;
+
 namespace Tedwren.Web.Tests;
 
 /// <summary>
@@ -8,14 +10,14 @@ namespace Tedwren.Web.Tests;
 /// <c>Tedwren.Client</c> is copied into this project's wwwroot at build (single source), rendered in
 /// both the header and footer, and served as an SVG static file.
 /// </summary>
-public sealed class BrandAssetTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class BrandAssetTests : IClassFixture<SiteFactory>
 {
     private const string LogoPath = "/images/logo-icon.svg";
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host for Tedwren.Web.</param>
-    public BrandAssetTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public BrandAssetTests(SiteFactory factory) => _factory = factory;
 
     /// <summary>The shared logo is referenced in both the header and the footer (two occurrences).</summary>
     [Fact]

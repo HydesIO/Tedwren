@@ -16,7 +16,10 @@ public sealed record SiteGateResultView(StatusKind Severity, string Title, strin
 public static class SiteGateResultPresenter
 {
     /// <summary>Presents a decision result for the given product. A null (unknown) product keeps the main
-    /// contractor decision presentation.</summary>
+    /// contractor decision presentation: this surface is safety-critical and must stay fail-closed (R2), so a
+    /// product-less company retains the ability to block entry rather than silently "record only". This is
+    /// deliberately the opposite of the Dashboard's null-product fallback (which is cosmetic and defaults to the
+    /// gentler subcontractor framing).</summary>
     public static SiteGateResultView For(OrgType? product, EntryDecisionResultDto result)
     {
         if (product == OrgType.Subcontractor)

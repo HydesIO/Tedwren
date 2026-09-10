@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Tedwren.Web.Configuration;
 using Tedwren.Web.Seo;
 
+using Tedwren.Web.Tests.Support;
+
 namespace Tedwren.Web.Tests;
 
 /// <summary>
@@ -11,13 +13,13 @@ namespace Tedwren.Web.Tests;
 /// from the route list and exclude capability URLs; every page declares a canonical URL, exactly one
 /// H1, a title within the SERP budget and (where present) a meta description within budget.
 /// </summary>
-public sealed class SeoInfrastructureTests : IClassFixture<WebApplicationFactory<Program>>
+public sealed class SeoInfrastructureTests : IClassFixture<SiteFactory>
 {
-    private readonly WebApplicationFactory<Program> _factory;
+    private readonly SiteFactory _factory;
 
     /// <summary>Injects the in-process site host.</summary>
     /// <param name="factory">Test host for Tedwren.Web.</param>
-    public SeoInfrastructureTests(WebApplicationFactory<Program> factory) => _factory = factory;
+    public SeoInfrastructureTests(SiteFactory factory) => _factory = factory;
 
     /// <summary>The indexable content pages whose SEO metadata is asserted.</summary>
     public static TheoryData<string> IndexablePages() => new()
