@@ -32,8 +32,46 @@
     color: var(--color-text-secondary, #667085);
 }
 
+/* Capture-step editor rows (UAT-027/028): icon, editable fields, reorder/remove actions. */
+.induction-step {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--spacing-12, 12px);
+}
+
+.induction-step__icon {
+    margin-top: var(--spacing-8, 8px);
+    color: var(--color-text-secondary, #667085);
+    flex: 0 0 auto;
+}
+
+.induction-step__fields {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+    min-width: 0;
+}
+
+.induction-step__actions {
+    display: flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.induction-step__add {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: var(--spacing-16, 16px);
+    margin-top: var(--spacing-12, 12px);
+}
+
 @media (max-width: 720px) {
     .induction__grid {
+        grid-template-columns: 1fr;
+    }
+
+    .induction-step__add {
         grid-template-columns: 1fr;
     }
 }

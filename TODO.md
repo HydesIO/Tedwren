@@ -19,8 +19,12 @@ data-surfacing, 4 larger features. Phases 1–3 ✅; Phase 4 underway. **Phase 4
   picker + browser geolocation) over the existing `IAttendanceService`; the tables now show operative names.
 - ✅ **UAT-029 (MC-24) — QS timesheet rollup.** `GetSiteRollupAsync` + endpoint + a "By site (QS reconciliation)"
   view on the timesheet page, grouping the existing timesheets by site with per-operative hours.
+- ✅ **UAT-027/028 (MC-3) — editable induction capture steps.** The induction builder now shows all capture
+  steps (identity, cards, emergency contact, declaration, media, signature) plus attached forms in one ordered,
+  editable list (add / remove / reorder / required toggle), over the already-data-driven `Steps` round-trip —
+  answering "can capture fields be changed without a developer?".
 - ⏳ **Remaining:** 011 site-manager site scoping, 018 shareable induction link + email, 023 RAMS/trade
-  self-service onboarding, 010a/027/028 richer capture + editable induction steps.
+  self-service onboarding, 010a richer operative capture (emergency contact on the profile).
 
 ---
 
