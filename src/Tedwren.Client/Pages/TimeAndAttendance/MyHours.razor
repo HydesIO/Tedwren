@@ -6,11 +6,20 @@
 @inject ITimesheetService Timesheets
 @inject ITenantState Tenant
 @inject NavigationManager Nav
+@inject AuthState Auth
 
 <PageTitle>My hours · Tedwren</PageTitle>
 
 <div class="myhours">
-    @if (_personId == Guid.Empty)
+    @if (_error is not null)
+    {
+        <DashboardCard Title="My hours">
+            <Body>
+                <BannerAlert Severity="StatusKind.Info" Title="Sign in to view hours" Message="@_error" />
+            </Body>
+        </DashboardCard>
+    }
+    else if (_personId == Guid.Empty)
     {
         <DashboardCard Title="My hours">
             <Body>
@@ -75,16 +84,31 @@
     private Guid _companyId;
     private DateOnly _weekStart;
     private OperativeHoursDto? _hours;
+    private string? _error;
 
     private static DateOnly ThisWeekStart => WeekStartOf(DateOnly.FromDateTime(DateTime.Today));
 
     protected override async Task OnInitializedAsync()
     {
+        // The recipient layout doesn't restore a signed-in session, so a manager opening this hours link — even
+        // in a new browser tab — would otherwise reach the authenticated endpoint with no token and be bounced
+        // to /login. Restore any persisted session first so hours stay behind auth (they are sensitive) but the
+        // link works (F8). A genuinely account-free operative link (SUB-27) needs a dedicated token+passcode-gated
+        // anonymous endpoint (R8/R9) and is tracked as a follow-up.
         await Tenant.InitializeAsync();
+        await Auth.InitializeAsync();
         var uri = Nav.ToAbsoluteUri(Nav.Uri);
         _personId = Guid.TryParse(ParseQuery(uri.Query, "person"), out var p) ? p : Guid.Empty;
         _companyId = Guid.TryParse(ParseQuery(uri.Query, "company"), out var c) ? c : Tenant.CurrentCompanyId;
         _weekStart = ThisWeekStart;
+
+        if (_personId != Guid.Empty && !Auth.IsAuthenticated)
+        {
+            // Calling the authenticated endpoint unauthenticated would 401 and force a jarring /login redirect;
+            // show a clear notice instead until the account-free personal link exists.
+            _error = "Sign in to view these hours. A sign-in-free personal link is coming soon.";
+            return;
+        }
 
         if (_personId != Guid.Empty)
         {
@@ -92,8 +116,18 @@
         }
     }
 
-    private async Task LoadAsync() =>
-        _hours = await Timesheets.GetOperativeHoursAsync(_companyId, _personId, _weekStart);
+    private async Task LoadAsync()
+    {
+        _error = null;
+        try
+        {
+            _hours = await Timesheets.GetOperativeHoursAsync(_companyId, _personId, _weekStart);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = "These hours couldn't be loaded. Please try again.";
+        }
+    }
 
     private async Task ChangeWeek(int days)
     {
