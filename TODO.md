@@ -79,6 +79,29 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Console data-viewing code sweep — fixes + hardening (this change)
+Whole-solution build **0 warnings / 0 errors**; all suites green (652 passed, 18 SQL LocalDB tests skipped
+in CI without a database). Full sweep of the console (tenant/commercial) pages after a team review reported
+errors viewing organisational data, missing elements and field mismatches. 21 confirmed defects fixed across
+5 workstreams (IDs F1–F21 in the change):
+- **Tenant isolation (R15):** console **Users** list/detail scoped to the caller's company (F1); **Audit**
+  search/export scoped server-side from the auth claims (F2); Dashboard **Companies** KPI scoped to match the
+  other tiles (F3, own-company-vs-supply-chain semantic raised as an open PRD question).
+- **Broken/dead flows:** quiz-less **induction** finalize (F4, MC-4); operative-edit navigation no longer
+  reintroduces UAT-007 (F5); **Site Gate** site selector (F6, MC-8/MC-12); pre-auth "Create account" CTA removed
+  (F7 — a real anonymous signup is a PRD follow-up); **My hours** link restores the session so it works for a
+  manager (F8 — account-free SUB-27 token+passcode link is a follow-up); Dashboard period selector reloads (F9);
+  induction builder is create-on-publish, no orphan template (F10).
+- **Wrong/misleading data:** Profile save preserves **OrgType** (F11, SF-22 — was silent data loss); Attendance
+  worker names resolved server-side instead of a GUID (F12); Audit time shown in UK local (F13, R11); induction
+  pass mark shown as a count not "%" (F14); slug-collision detail lookups resolve by stable id (F15);
+  CompanyDetail subtitle joins non-empty parts (F16); induction status filter humanised (F17).
+- **Resilience & hardening:** systemic load error-handling / entitlement-403 guards across Expiries, Site Gate,
+  AddOperative and the Forms pages (F18); `DataTable` null-`Items` safety + nested-collection coalescing (F19);
+  attendance records `take` honoured end-to-end (F20); wire enums serialized by name (F21). Refuted candidates
+  (SiteDetail boundary NRE, OrganisationService scoping, SQL-path test gap) verified and left as-is.
+- Regression tests added for F1, F4, F15.
+
 ### UAT remediation — Phase 3: Medium bugs & data-surfacing (this change)
 Whole solution builds **0 warnings / 0 errors**; suites green (Api 118 incl. new image-reference test, others
 unchanged). Site-scoped compliance (the site-filter half of UAT-016) folds into Phase 4 with UAT-011, which
