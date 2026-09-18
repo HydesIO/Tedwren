@@ -34,6 +34,12 @@ public static class InductionEndpoints
                 await service.GetTemplateForEditAsync(templateId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
             .WithName("GetInductionTemplateForEdit");
 
+        // The shipped-default induction as an authoring DTO, NOT persisted — seeds the "new induction" form so
+        // the template row is created only on Publish (no orphan when the admin opens then cancels the builder).
+        group.MapGet("/templates/default/edit", async (IInductionService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetDefaultTemplateForEditAsync(cancellationToken)))
+            .WithName("GetDefaultInductionTemplateForEdit");
+
         group.MapPut("/templates/{templateId:guid}", async (Guid templateId, UpdateInductionTemplateRequest request, IInductionService service, CancellationToken cancellationToken) =>
             {
                 try

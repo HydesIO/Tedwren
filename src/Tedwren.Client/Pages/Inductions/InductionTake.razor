@@ -99,7 +99,7 @@
             break;
 
         case Phase.Quiz:
-            <DashboardCard Title="Quiz" Subtitle="@($"Answer all questions. Pass mark {_session!.PassMark}%.")">
+            <DashboardCard Title="Quiz" Subtitle="@($"Answer all questions. You need {_session!.PassMark} of {_session.Questions.Count} correct to pass.")">
                 <Body>
                     @foreach (var q in _session.Questions)
                     {
@@ -426,6 +426,12 @@
             {
                 _session = finalised;
                 _phase = Phase.Done;
+            }
+            else
+            {
+                // The API returns a non-success (409) when the induction is not yet completable; the client
+                // maps that to null. Surface it rather than silently doing nothing (the "Finish" dead-end).
+                Snackbar.Add("Couldn't finish the induction — please complete every required step and try again.", Severity.Error);
             }
         }
         catch (Exception ex)

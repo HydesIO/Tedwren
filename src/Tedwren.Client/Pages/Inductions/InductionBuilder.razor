@@ -256,11 +256,12 @@
         _loading = true;
         try
         {
-            // "new" seeds a template from the shipped default then edits it; "edit" loads the given template.
-            var templateId = TemplateId ?? await InductionSvc.CreateDefaultTemplateAsync(
-                new CreateInductionTemplateRequest(Tenant.CurrentCompanyId, "Site induction", 365, 1));
-
-            _template = await InductionSvc.GetTemplateForEditAsync(templateId);
+            // "new" seeds the form from the shipped default WITHOUT persisting (create-on-publish, see Publish);
+            // "edit" loads the given template. Seeding without a write means cancelling "Add induction" no
+            // longer leaves an orphan template in the /inductions list.
+            _template = TemplateId is { } editId
+                ? await InductionSvc.GetTemplateForEditAsync(editId)
+                : await InductionSvc.GetDefaultTemplateForEditAsync();
             if (_template is null) return;
 
             _name = _template.Name;
@@ -331,7 +332,13 @@
                 .Where(s => !string.IsNullOrWhiteSpace(s.Label))
                 .Select(s => new InductionStepDto(s.Id, s.Kind, s.Label.Trim(), s.Required, s.Reference))
                 .ToList();
-            var updated = await InductionSvc.UpdateTemplateAsync(_template.Id, new UpdateInductionTemplateRequest(
+            // Create-on-publish: a brand-new induction is persisted only now — create the row from the default,
+            // then apply the admin's edits — so an opened-then-cancelled builder never leaves an orphan template.
+            var templateId = _isNew
+                ? await InductionSvc.CreateDefaultTemplateAsync(new CreateInductionTemplateRequest(
+                    Tenant.CurrentCompanyId, string.IsNullOrWhiteSpace(_name) ? "Site induction" : _name.Trim(), _validityDays, _passMark))
+                : _template.Id;
+            var updated = await InductionSvc.UpdateTemplateAsync(templateId, new UpdateInductionTemplateRequest(
                 _name, _validityDays, _passMark, _attemptLimit, _mandatory, _mediaUrl, siteId, steps, questions));
             if (updated is not null)
             {
