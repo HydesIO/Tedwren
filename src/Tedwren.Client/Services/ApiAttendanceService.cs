@@ -36,8 +36,8 @@ public sealed class ApiAttendanceService : IAttendanceService
         await _http.GetFromJsonAsync<IReadOnlyList<OnSiteWorkerDto>>($"api/attendance/on-site/{siteId}", cancellationToken)
         ?? Array.Empty<OnSiteWorkerDto>();
 
-    /// <summary>Gets the recent attendance records for a site (the append-only log).</summary>
+    /// <summary>Gets the recent attendance records for a site (the append-only log), honouring the requested count.</summary>
     public async Task<IReadOnlyList<AttendanceRecordDto>> GetSiteRecordsAsync(Guid siteId, int take, CancellationToken cancellationToken = default) =>
-        await _http.GetFromJsonAsync<IReadOnlyList<AttendanceRecordDto>>($"api/attendance/sites/{siteId}/records", cancellationToken)
+        await _http.GetFromJsonAsync<IReadOnlyList<AttendanceRecordDto>>($"api/attendance/sites/{siteId}/records?take={take}", cancellationToken)
         ?? Array.Empty<AttendanceRecordDto>();
 }

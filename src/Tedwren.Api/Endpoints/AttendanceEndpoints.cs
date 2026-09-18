@@ -27,8 +27,10 @@ public static class AttendanceEndpoints
                 Results.Ok(await service.GetOnSiteAsync(siteId, cancellationToken)))
             .WithName("GetOnSite");
 
-        group.MapGet("/sites/{siteId:guid}/records", async (Guid siteId, IAttendanceService service, CancellationToken cancellationToken) =>
-                Results.Ok(await service.GetSiteRecordsAsync(siteId, 50, cancellationToken)))
+        group.MapGet("/sites/{siteId:guid}/records", async (Guid siteId, int? take, IAttendanceService service, CancellationToken cancellationToken) =>
+                // Honour the client's requested page size (F20), defaulting to 50 and clamping to a sane maximum
+                // so a caller cannot request an unbounded read of the append-only log.
+                Results.Ok(await service.GetSiteRecordsAsync(siteId, Math.Clamp(take ?? 50, 1, 500), cancellationToken)))
             .WithName("GetAttendanceRecords");
 
         return app;
