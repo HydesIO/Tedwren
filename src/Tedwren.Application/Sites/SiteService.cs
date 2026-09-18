@@ -161,7 +161,11 @@ public sealed class SiteService : ISiteService
     {
         var tenant = await ResolveTenantAsync(cancellationToken);
         var sites = await _sites.GetAllAsync(cancellationToken);
-        var site = sites.FirstOrDefault(s => Slug.From(s.Name) == slug);
+        // Resolve by the stable id when the route token is a Guid (collision-proof), else fall back to the
+        // name slug. Sites whose names slugify identically no longer collide — the list links by id (F15).
+        var site = Guid.TryParse(slug, out var siteId)
+            ? sites.FirstOrDefault(s => s.Id == siteId)
+            : sites.FirstOrDefault(s => Slug.From(s.Name) == slug);
         if (site is null)
         {
             return null;

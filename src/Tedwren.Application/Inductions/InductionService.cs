@@ -92,6 +92,27 @@ public sealed class InductionService : IInductionService
         return template is null ? null : ToAuthoringDto(template);
     }
 
+    /// <summary>Returns the shipped-default induction as an authoring DTO without persisting it (MC-3). See the interface.</summary>
+    public Task<InductionTemplateAuthoringDto> GetDefaultTemplateForEditAsync(CancellationToken cancellationToken = default)
+    {
+        // Clone the shipped default's content into an in-memory template (fresh id, no company); NOT persisted.
+        // The real row is created only when the admin publishes, so cancelling "Add induction" leaves no orphan.
+        var template = new InductionTemplate
+        {
+            CompanyId = Guid.Empty,
+            Name = DefaultInductionTemplate.Template.Name,
+            ValidityDays = DefaultInductionTemplate.Template.ValidityDays,
+            PassMark = DefaultInductionTemplate.Template.PassMark,
+            AttemptLimit = DefaultInductionTemplate.Template.AttemptLimit,
+            Mandatory = DefaultInductionTemplate.Template.Mandatory,
+            MediaUrl = DefaultInductionTemplate.Template.MediaUrl,
+            SiteId = DefaultInductionTemplate.Template.SiteId,
+            Steps = DefaultInductionTemplate.Template.Steps.ToList(),
+            Questions = DefaultInductionTemplate.Template.Questions.ToList(),
+        };
+        return Task.FromResult(ToAuthoringDto(template));
+    }
+
     /// <summary>Updates a template's content and configuration (MC-4/MC-5/MC-15). Null when the template is not found.</summary>
     public async Task<InductionTemplateAuthoringDto?> UpdateTemplateAsync(Guid templateId, UpdateInductionTemplateRequest request, CancellationToken cancellationToken = default)
     {
@@ -452,8 +473,13 @@ public sealed class InductionService : IInductionService
             ?? throw new InvalidOperationException("Induction template not found.");
 
         // MC-4: cannot complete until every required step is done and the quiz has been passed.
+        // A template with no quiz questions (a valid, builder-reachable "watch and sign" induction with
+        // PassMark 0) has no score to record — the take flow skips the quiz — so treat the quiz as satisfied
+        // when there are no questions and the pass mark is 0. Otherwise the recorded score must meet the mark.
         var requiredDone = template.Steps.Where(s => s.Required).All(s => session.CompletedStepIds.Contains(s.Id));
-        var quizPassed = session.LastScore is { } score && score >= template.PassMark;
+        var quizPassed = template.Questions.Count == 0
+            ? template.PassMark == 0
+            : session.LastScore is { } score && score >= template.PassMark;
         if (!requiredDone || !quizPassed)
         {
             throw new InvalidOperationException("The induction cannot be completed until all required steps are done and the quiz is passed.");

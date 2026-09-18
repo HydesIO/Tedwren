@@ -29,10 +29,14 @@ public sealed record SignOutRequest(
 /// <summary>The outcome of a sign-out, including the duration on site when successful (SF-17).</summary>
 public sealed record SignOutResult(bool SignedOut, string Outcome, string? Reason, double? DurationHours, Guid RecordId);
 
-/// <summary>A worker currently present on a site.</summary>
-public sealed record OnSiteWorkerDto(Guid PersonId, Guid SiteId, Guid? PropertyId, DateTimeOffset SinceUtc, string Outcome);
+/// <summary>
+/// A worker currently present on a site. <see cref="WorkerName"/> is resolved server-side (the API is the
+/// only place that can see the name cross-company, since it is per-engagement) so the console does not have to
+/// guess it from its own tenant-scoped operative list (F12).
+/// </summary>
+public sealed record OnSiteWorkerDto(Guid PersonId, Guid SiteId, Guid? PropertyId, DateTimeOffset SinceUtc, string Outcome, string WorkerName);
 
-/// <summary>An attendance record for the site log.</summary>
+/// <summary>An attendance record for the site log. <see cref="WorkerName"/> is resolved server-side (see <see cref="OnSiteWorkerDto"/>).</summary>
 public sealed record AttendanceRecordDto(
     Guid Id,
     Guid PersonId,
@@ -45,4 +49,5 @@ public sealed record AttendanceRecordDto(
     double? Longitude,
     bool? WithinBoundary,
     string? Reason,
-    DateTimeOffset OccurredUtc);
+    DateTimeOffset OccurredUtc,
+    string WorkerName);

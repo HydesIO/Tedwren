@@ -21,6 +21,13 @@ public interface IInductionService
     /// <summary>Returns a template for authoring (answers + config, MC-15) — authorised admin only. Null if not found.</summary>
     Task<InductionTemplateAuthoringDto?> GetTemplateForEditAsync(Guid templateId, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns the shipped-default induction as an authoring DTO WITHOUT persisting it (MC-3), so the
+    /// "new induction" form is seeded without creating a row. The template is created only on Publish
+    /// (create-on-publish), so opening and cancelling "Add induction" leaves no orphan template.
+    /// </summary>
+    Task<InductionTemplateAuthoringDto> GetDefaultTemplateForEditAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Updates a template's content and configuration (MC-4/MC-5/MC-15). Null when not found.</summary>
     Task<InductionTemplateAuthoringDto?> UpdateTemplateAsync(Guid templateId, UpdateInductionTemplateRequest request, CancellationToken cancellationToken = default);
 

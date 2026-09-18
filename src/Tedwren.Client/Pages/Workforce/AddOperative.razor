@@ -139,13 +139,26 @@
         {
             // Create a real self-service onboarding link (SF-4/SUB-2). No email backend yet, so show the link
             // for the admin to share; the operative completes their own details and card photos there.
+            // Guard the call (mirrors OperativeDetail.SendUpdateLinkAsync): on a failure, reset the busy flag in
+            // finally and show an error, so the "Create link" button re-enables instead of staying stuck
+            // disabled with no message when the onboarding-link API call fails (F18).
             _busy = true;
-            var link = await Onboarding.CreateAsync(
-                new CreateOnboardingLinkRequest(Tenant.CurrentCompanyId, _name, _trade, RequirePasscode: _requirePasscode), null);
-            _busy = false;
-            var passcodePart = link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(link.Passcode)}";
-            _onboardingLink = $"{Nav.BaseUri}onboard?token={Uri.EscapeDataString(link.Token)}{passcodePart}";
-            _onboardingPasscode = link.Passcode;
+            try
+            {
+                var link = await Onboarding.CreateAsync(
+                    new CreateOnboardingLinkRequest(Tenant.CurrentCompanyId, _name, _trade, RequirePasscode: _requirePasscode), null);
+                var passcodePart = link.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(link.Passcode)}";
+                _onboardingLink = $"{Nav.BaseUri}onboard?token={Uri.EscapeDataString(link.Token)}{passcodePart}";
+                _onboardingPasscode = link.Passcode;
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                Snackbar.Add("Could not create the onboarding link. Please try again.", Severity.Error);
+            }
+            finally
+            {
+                _busy = false;
+            }
             return;
         }
 

@@ -44,6 +44,11 @@ public sealed class ApiInductionService : IInductionService
         return await response.Content.ReadFromJsonAsync<InductionTemplateAuthoringDto>(cancellationToken);
     }
 
+    /// <summary>Fetches the shipped-default induction as an authoring DTO (not persisted) to seed the new-induction form.</summary>
+    public async Task<InductionTemplateAuthoringDto> GetDefaultTemplateForEditAsync(CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<InductionTemplateAuthoringDto>("api/inductions/templates/default/edit", cancellationToken)
+        ?? throw new InvalidOperationException("The default induction template could not be loaded.");
+
     /// <summary>Updates a template's content and configuration (MC-15), or null when not found.</summary>
     public async Task<InductionTemplateAuthoringDto?> UpdateTemplateAsync(Guid templateId, UpdateInductionTemplateRequest request, CancellationToken cancellationToken = default)
     {

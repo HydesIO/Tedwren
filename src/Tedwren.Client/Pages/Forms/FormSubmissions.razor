@@ -21,6 +21,8 @@
                    Items="_submissions"
                    Columns="_columns"
                    Loading="_loading"
+                   ErrorMessage="@_error"
+                   OnRetry="LoadAsync"
                    SearchPlaceholder="Search submissions…"
                    EmptyTitle="No submissions yet"
                    EmptyDescription="Completed forms will appear here."
@@ -32,6 +34,7 @@
     private IReadOnlyList<FormSubmissionSummaryDto> _submissions = Array.Empty<FormSubmissionSummaryDto>();
     private List<DataColumn<FormSubmissionSummaryDto>> _columns = new();
     private bool _loading = true;
+    private string? _error;
 
     protected override async Task OnInitializedAsync()
     {
@@ -42,9 +45,22 @@
 
     private async Task LoadAsync()
     {
+        // Guard the load (see FormsLibrary): a 403 for a plan without Forms — reachable by direct URL — or any
+        // transient failure shows an inline retry instead of crashing the page (F18).
         _loading = true;
-        _submissions = await Submissions.GetSubmissionsAsync();
-        _loading = false;
+        _error = null;
+        try
+        {
+            _submissions = await Submissions.GetSubmissionsAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = "Submissions couldn't be loaded. They may not be included in your plan, or the service is unavailable.";
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private void BuildColumns()

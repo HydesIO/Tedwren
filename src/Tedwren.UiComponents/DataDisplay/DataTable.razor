@@ -75,7 +75,7 @@
                     }
                 </div>
             }
-            <span class="data-table__count">@FilteredCount of @Items.Count</span>
+            <span class="data-table__count">@FilteredCount of @Rows.Count</span>
         </div>
     }
 
@@ -100,7 +100,7 @@
     else
     {
     <MudTable T="TItem"
-              Items="@Items"
+              Items="@Rows"
               Filter="@FilterPredicate"
               Hover="true"
               Dense="false"
@@ -181,7 +181,12 @@
 
     private bool _hasActiveFilters => _filters.Values.Any(v => !string.IsNullOrEmpty(v));
 
-    private int FilteredCount => Items.Count(FilterPredicate);
+    // Defends against a caller whose bound Items expression evaluates to null (the parameter is EditorRequired,
+    // but a binding can still yield null): treat null as empty so the table renders empty rather than NRE-ing
+    // before any row appears. All internal reads go through this, never Items directly (F19).
+    private IReadOnlyList<TItem> Rows => Items ?? Array.Empty<TItem>();
+
+    private int FilteredCount => Rows.Count(FilterPredicate);
 
     protected override void OnParametersSet()
     {
@@ -189,7 +194,7 @@
         _filterOptions.Clear();
         foreach (var col in _filterColumns)
         {
-            _filterOptions[col.Title] = Items
+            _filterOptions[col.Title] = Rows
                 .Select(col.TextOf)
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Distinct()

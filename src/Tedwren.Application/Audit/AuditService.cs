@@ -1,5 +1,5 @@
-using System.Globalization;
 using System.Text;
+using Tedwren.Abstractions.Common;
 using Tedwren.Abstractions.Contracts.Audit;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
@@ -33,7 +33,9 @@ public sealed class AuditService : IAuditService
         sb.AppendLine("When,Actor,Action,Entity,Reference,Category");
         foreach (var e in entries)
         {
-            sb.Append(Csv(e.OccurredUtc.ToString("u", CultureInfo.InvariantCulture))).Append(',')
+            // R11: export the timestamp in UK local time with a BST/GMT suffix (comma-free variant so it stays
+            // one CSV field), matching what the grid shows rather than raw UTC.
+            sb.Append(Csv(UkTime.Format(e.OccurredUtc, "yyyy-MM-dd HH:mm"))).Append(',')
                 .Append(Csv(e.Actor)).Append(',')
                 .Append(Csv(e.Action)).Append(',')
                 .Append(Csv(e.Entity)).Append(',')

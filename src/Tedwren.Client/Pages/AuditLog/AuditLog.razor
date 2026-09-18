@@ -1,4 +1,5 @@
 @page "/audit-log"
+@using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.Audit
 @using Tedwren.Abstractions.Services
 @inject IAuditService Audit
@@ -62,6 +63,8 @@
         _loading = true;
         DateOnly? from = _range?.Start is { } s ? DateOnly.FromDateTime(s) : null;
         DateOnly? to = _range?.End is { } e ? DateOnly.FromDateTime(e) : null;
+        // companyId is left null on purpose: the API scopes the read to the caller's own tenant server-side
+        // from the auth claims (R15), so the client cannot widen (or is not trusted to narrow) the result set.
         _entries = await Audit.SearchAsync(companyId: null, text: null, from: from, to: to);
         _loading = false;
     }
@@ -84,8 +87,9 @@
         {
             new()
             {
+                // Sort on the raw UTC instant; display in UK local time with a BST/GMT suffix (R11).
                 Title = "When", Value = e => e.OccurredUtc, Searchable = false,
-                CellTemplate = e => @<span>@e.OccurredUtc.ToString("dd MMM yyyy, HH:mm")</span>
+                CellTemplate = e => @<span>@UkTime.Format(e.OccurredUtc)</span>
             },
             new() { Title = "Actor", Value = e => e.Actor, Filterable = true },
             new() { Title = "Action", Value = e => e.Action },

@@ -1,6 +1,7 @@
 @page "/site-gate"
 @using Tedwren.Abstractions.Common
 @using Tedwren.Abstractions.Contracts.SiteEntry
+@using Tedwren.Abstractions.Contracts.Sites
 @using Tedwren.Abstractions.Services
 @using Tedwren.Client.Services
 @inject ISiteEntryService SiteEntry
@@ -17,7 +18,15 @@
 <PageHeader Title="@(_isSubcontractor ? "Site Attendance" : "Site Gate")"
             Subtitle="@(_isSubcontractor
                 ? "Record who is on site — attendance and required cards, and live muster"
-                : "Five-check entry decision, manager override and live muster")" />
+                : "Five-check entry decision, manager override and live muster")">
+    <Actions>
+        @* Site Gate is per-site (MC-8/MC-12): let a multi-site main contractor pick which site's gate and muster
+           to work with, rather than being locked to whichever site loads first (F6). Mirrors Attendance.razor. *@
+        <TedwrenSelect T="string" Label="Site" Value="_selectedSiteName"
+                       Options="_siteNames" Placeholder="Select a site"
+                       ValueChanged="OnSiteChanged" />
+    </Actions>
+</PageHeader>
 
 <DashboardCard>
     <Body>
@@ -46,7 +55,7 @@
                                          ? "Pick the operative to record arrival and check their required cards."
                                          : "Pick the operative arriving at the gate to run the five-check entry decision.")" />
                 <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Login"
-                           Disabled="_selectedPersonId == Guid.Empty"
+                           Disabled="_selectedPersonId == Guid.Empty || _selectedSiteId == Guid.Empty"
                            OnClick="@(() => DecideAsync(_selectedPersonId))">
                     @(_isSubcontractor ? "Record attendance" : "Check entry")
                 </MudButton>
@@ -91,7 +100,7 @@
 <DashboardCard>
     <Body>
         <div class="gate__muster-head">
-            <MudText Typo="Typo.h6">On site now</MudText>
+            <MudText Typo="Typo.h6">@("On site now" + (string.IsNullOrEmpty(_selectedSiteName) ? "" : $" · {_selectedSiteName}"))</MudText>
             @if (_muster is { } m)
             {
                 <MudText Typo="Typo.caption">As at @m.GeneratedUtc.ToString("HH:mm:ss") UTC · @_dataAgeSeconds s ago</MudText>
@@ -122,8 +131,11 @@
 </DashboardCard>
 
 @code {
-    private Guid _siteId;
     private Guid _companyId;
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private IReadOnlyList<string> _siteNames = Array.Empty<string>();
+    private string? _selectedSiteName;
+    private Guid _selectedSiteId;
     private IReadOnlyList<(Guid Id, string Name)> _operatives = Array.Empty<(Guid, string)>();
 
     // The operative chosen in the picker to run the decision on (UAT-020).
@@ -162,8 +174,13 @@
             await Tenant.InitializeAsync();
             _companyId = Tenant.CurrentCompanyId;
 
-            var sites = await Sites.GetSitesAsync();
-            _siteId = sites.Count > 0 ? sites[0].Id : Guid.Empty;
+            _sites = await Sites.GetSitesAsync();
+            _siteNames = _sites.Select(s => s.Name).ToList();
+            if (_sites.Count > 0)
+            {
+                _selectedSiteName = _sites[0].Name;
+                _selectedSiteId = _sites[0].Id;
+            }
 
             var operatives = await Workforce.ListOperativesAsync();
             _operatives = operatives.Select(o => (o.PersonId, o.Name)).ToList();
@@ -182,28 +199,63 @@
 
     private async Task LoadMusterAsync()
     {
-        if (_siteId == Guid.Empty) return;
-        _muster = await SiteEntry.GetMusterAsync(_siteId);
+        if (_selectedSiteId == Guid.Empty) return;
+        _muster = await SiteEntry.GetMusterAsync(_selectedSiteId);
         _musterPeople = _muster.People;
         _dataAgeSeconds = (int)(DateTimeOffset.UtcNow - _muster.GeneratedUtc).TotalSeconds;
+    }
+
+    // Switches the gate/muster to the chosen site (F6): clears the previous site's decision and reloads its muster.
+    private async Task OnSiteChanged(string? name)
+    {
+        _selectedSiteName = name;
+        _selectedSiteId = _sites.FirstOrDefault(s => s.Name == name)?.Id ?? Guid.Empty;
+        _result = null;
+        _lastPersonId = Guid.Empty;
+        await LoadMusterAsync();
     }
 
     // Runs the five-check decision for an operative (MC-8) and shows the result and every check (R10).
     private async Task DecideAsync(Guid personId)
     {
-        _lastPersonId = personId;
-        _result = await SiteEntry.DecideAsync(new DecideEntryRequest(_companyId, _siteId, personId, null, null));
+        if (_selectedSiteId == Guid.Empty)
+        {
+            Snackbar.Add("Select a site before running an entry decision.", Severity.Error);
+            return;
+        }
+
+        // Guard the call (unlike the load, this had no error handling): a 5xx/transport failure must surface a
+        // friendly message rather than throwing out of the click handler and erroring the page (F18).
+        try
+        {
+            _lastPersonId = personId;
+            _result = await SiteEntry.DecideAsync(new DecideEntryRequest(_companyId, _selectedSiteId, personId, null, null));
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException
+            or System.Text.Json.JsonException or NotSupportedException)
+        {
+            Snackbar.Add("Couldn't run the entry decision. Please try again.", Severity.Error);
+        }
     }
 
     // Day-only manager override of a blocked decision, with a reason (MC-11).
     private async Task OverrideAsync()
     {
-        _result = await SiteEntry.DecideAsync(new DecideEntryRequest(
-            _companyId, _siteId, _lastPersonId, null,
-            new ManagerOverrideDto("You", "Escorted on site for a supervised task")));
-        if (_result.Admitted)
+        try
         {
-            Snackbar.Add("Entry admitted by manager override (recorded for today).", Severity.Warning);
+            var result = await SiteEntry.DecideAsync(new DecideEntryRequest(
+                _companyId, _selectedSiteId, _lastPersonId, null,
+                new ManagerOverrideDto("You", "Escorted on site for a supervised task")));
+            _result = result;
+            if (result?.Admitted == true)
+            {
+                Snackbar.Add("Entry admitted by manager override (recorded for today).", Severity.Warning);
+            }
+        }
+        catch (Exception ex) when (ex is HttpRequestException or InvalidOperationException or TaskCanceledException
+            or System.Text.Json.JsonException or NotSupportedException)
+        {
+            Snackbar.Add("Couldn't apply the manager override. Please try again.", Severity.Error);
         }
     }
 

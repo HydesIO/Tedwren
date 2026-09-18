@@ -61,7 +61,13 @@ public sealed class DashboardService : IDashboardService
         var breakdown = await ComputeComplianceAsync(siteSlug: null, cancellationToken);
         var sites = await _sites.GetSitesAsync(cancellationToken);
         var upcoming = await _expiry.GetUpcomingAsync(UpcomingExpiryWindowDays, cancellationToken);
-        var companyCount = (await _companies.GetAllAsync(cancellationToken)).Count;
+        // R15: count only companies in the caller's tenant scope, consistent with the operatives/compliance
+        // tiles (which flow through ScopedCompaniesAsync). Counting _companies.GetAllAsync() here showed a
+        // platform-wide total that leaked other tenants' company count and was inconsistent with the same row.
+        // OPEN PRD QUESTION: whether this tile should read the caller's own company (=1) or a supply-chain
+        // breadth count (companies the tenant is engaged with) — the latter needs a tenant-relationship
+        // definition in the PRD. Until that is settled it must at least never count other tenants' companies.
+        var companyCount = (await ScopedCompaniesAsync(cancellationToken)).Count;
 
         var kpis = new DashboardKpisDto(
             Companies: companyCount,

@@ -4,6 +4,8 @@ namespace Tedwren.Abstractions.Common;
 /// Provider-neutral verification state carried on qualification-card DTOs (SF-7), mirroring the domain
 /// enum without the contracts depending on the domain. The client renders the three states distinctly.
 /// </summary>
+// Serialized by name on the API↔client wire (F21); persistence uses the separate Domain enums (ints).
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum CardVerificationState
 {
     /// <summary>Read from a photo/upload but not yet checked by a person.</summary>

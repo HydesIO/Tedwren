@@ -30,7 +30,7 @@
             <ChildContent>
                 @foreach (var range in _ranges)
                 {
-                    <MudMenuItem OnClick="@(() => SelectRange(range))">@range</MudMenuItem>
+                    <MudMenuItem OnClick="@(async () => await SelectRange(range))">@range</MudMenuItem>
                 }
             </ChildContent>
         </MudMenu>
@@ -206,7 +206,11 @@
                     e.Slug is null ? null : $"/workforce/{e.Slug}"))   // click through to the operative
                 .ToList();
 
-            var audit = await Audit.SearchAsync(null, null, null, null);
+            // Scope the recent-activity feed to the selected period (F9). The KPI/compliance/site-risk tiles are
+            // point-in-time snapshots that a date range does not apply to; refiltering those would need a period
+            // parameter added to IDashboardService.GetSummaryAsync (flagged as a PRD follow-up).
+            var from = DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime.AddDays(-RangeWindowDays(_rangeLabel)));
+            var audit = await Audit.SearchAsync(null, null, from, null);
             _activity = audit
                 .OrderByDescending(a => a.OccurredUtc)
                 .Take(6)
@@ -255,8 +259,23 @@
         _ => StatusKind.Info,
     };
 
-    // Sets the reporting period shown on the dashboard.
-    private void SelectRange(string range) => _rangeLabel = range;
+    // Sets the reporting period and reloads so the selection actually takes effect (F9) — previously this only
+    // changed the button caption and nothing re-queried.
+    private async Task SelectRange(string range)
+    {
+        _rangeLabel = range;
+        await LoadAsync();
+    }
+
+    // Maps a period label to a lookback window in days for the activity feed.
+    private static int RangeWindowDays(string label) => label switch
+    {
+        "This week" => 7,
+        "Last 30 days" => 30,
+        "Last 90 days" => 90,
+        "Year to date" => Math.Max(1, DateTimeOffset.UtcNow.DayOfYear),
+        _ => 30,
+    };
 
     // Exports the site risk heatmap to a CSV file the browser downloads.
     private async Task ExportAsync()

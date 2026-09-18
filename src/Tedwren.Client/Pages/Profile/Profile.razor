@@ -333,7 +333,10 @@ else
                 Empty(_companyEdit.Address),
                 Empty(_companyEdit.ContactName),
                 Empty(_companyEdit.ContactEmail),
-                Empty(_companyEdit.ContactPhone));
+                Empty(_companyEdit.ContactPhone),
+                // Preserve the company's typed product (SF-22): UpdateCompanyRequest writes OrgType as given —
+                // including null — so omitting it here wiped the stored product on every Profile save.
+                _company.OrgType);
 
             var saved = await Org.UpdateCompanyAsync(_company.Id, request);
             if (saved)

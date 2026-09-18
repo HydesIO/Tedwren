@@ -17,6 +17,8 @@
                    Items="_items"
                    Columns="_columns"
                    Loading="_loading"
+                   ErrorMessage="@_error"
+                   OnRetry="LoadAsync"
                    SearchPlaceholder="Search operative or qualification…"
                    EmptyTitle="Nothing expiring"
                    EmptyDescription="No qualification cards are expiring in the next 30 days."
@@ -29,6 +31,7 @@
     private IReadOnlyList<UpcomingExpiryDto> _items = Array.Empty<UpcomingExpiryDto>();
     private List<DataColumn<UpcomingExpiryDto>> _columns = new();
     private bool _loading = true;
+    private string? _error;
 
     // Matches the dashboard "Expiring in 30 days" tile so the count and this list agree (UAT-003).
     private const int WindowDays = 30;
@@ -41,9 +44,22 @@
 
     private async Task LoadAsync()
     {
+        // Guard the load so an API failure shows an inline retry via the DataTable instead of throwing out of
+        // the lifecycle method and leaving the page stuck/crashed (F18), mirroring Compliance.razor.
         _loading = true;
-        _items = await Expiry.GetUpcomingAsync(WindowDays);
-        _loading = false;
+        _error = null;
+        try
+        {
+            _items = await Expiry.GetUpcomingAsync(WindowDays);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = "We couldn't load upcoming expiries. Please try again.";
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     // Opens the operative whose card is expiring; a row with no resolved operative (unscoped) is not navigable.

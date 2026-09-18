@@ -208,15 +208,18 @@ else
         var dialog = await Dialogs.ShowAsync<EditOperativeDialog>("Edit operative", parameters, TedwrenDialog.Medium());
         if (await dialog.Result is { Canceled: false, Data: string newName })
         {
-            var newSlug = Tedwren.Abstractions.Slug.From(newName);
-            if (!string.Equals(newSlug, Slug, StringComparison.OrdinalIgnoreCase))
+            // Only switch to the tenant-scoped slug route when the page was opened BY slug AND the slug actually
+            // changed. When opened by (company, engagement) — the route the Organisation page uses for a possibly
+            // cross-tenant operative — Slug is null, so reload in place instead: navigating to the slug route
+            // there drops the engagement context and reintroduces the "Operative not found" failure (UAT-007, F5).
+            if (Slug is not null && !string.Equals(Tedwren.Abstractions.Slug.From(newName), Slug, StringComparison.OrdinalIgnoreCase))
             {
                 // The slug follows the name; navigating updates the route and reloads via OnParametersSetAsync.
-                Nav.NavigateTo($"/workforce/{newSlug}");
+                Nav.NavigateTo($"/workforce/{Tedwren.Abstractions.Slug.From(newName)}");
             }
             else
             {
-                await OnParametersSetAsync();   // same slug — reload the updated fields in place
+                await OnParametersSetAsync();   // reload the updated fields in place, preserving the current route
             }
         }
     }

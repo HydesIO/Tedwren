@@ -21,6 +21,20 @@ public sealed class ApiSiteEntryService : ISiteEntryService
             .Content.ReadFromJsonAsync<EntryDecisionResultDto>(cancellationToken))!;
 
     /// <summary>Gets the live muster for a site via the API (MC-12–MC-14).</summary>
-    public async Task<MusterDto> GetMusterAsync(Guid siteId, CancellationToken cancellationToken = default) =>
-        (await _http.GetFromJsonAsync<MusterDto>($"api/site-entry/muster/{siteId}", cancellationToken))!;
+    public async Task<MusterDto> GetMusterAsync(Guid siteId, CancellationToken cancellationToken = default)
+    {
+        var muster = await _http.GetFromJsonAsync<MusterDto>($"api/site-entry/muster/{siteId}", cancellationToken);
+        if (muster is null)
+        {
+            throw new InvalidOperationException("The site muster could not be loaded.");
+        }
+
+        // Coalesce the nested collections so the muster table and competency-cover row cannot NRE on a null/absent
+        // list from the API (the DTO declares them non-null but System.Text.Json does not enforce that) (F19).
+        return muster with
+        {
+            People = muster.People ?? Array.Empty<MusterPersonDto>(),
+            Competencies = muster.Competencies ?? Array.Empty<CompetencyCoverDto>(),
+        };
+    }
 }

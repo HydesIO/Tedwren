@@ -30,6 +30,22 @@ public sealed class OrganisationServiceTests
     private static Task<Guid> AddCompanyAsync(OrganisationService service, string name) =>
         service.CreateCompanyAsync(new CreateCompanyRequest(name, "Subcontractor", "Groundworks", null, null, null, null, null));
 
+    [Fact] // F15 — a detail lookup by the stable Guid id resolves the exact record, so names that slugify
+           // identically (which would collide on the name-slug lookup) each remain reachable and correct.
+    public async Task GetCompany_ById_ResolvesEachRecord_EvenWhenNamesSlugifyAlike()
+    {
+        var (service, _) = CreateSut();
+        var aId = await AddCompanyAsync(service, "Acme Ltd");
+        var bId = await AddCompanyAsync(service, "Acme  Ltd");   // extra space — slugifies the same as "Acme Ltd"
+
+        var a = await service.GetCompanyAsync(aId.ToString());
+        var b = await service.GetCompanyAsync(bId.ToString());
+
+        Assert.Equal(aId, a!.Id);
+        Assert.Equal(bId, b!.Id);
+        Assert.NotEqual(a.Id, b.Id);
+    }
+
     [Fact] // Product discriminator (PRD §2, SF-22): OrgType survives create → summary → detail.
     public async Task CreateCompany_WithProduct_RoundTripsOrgType_OnSummaryAndDetail()
     {

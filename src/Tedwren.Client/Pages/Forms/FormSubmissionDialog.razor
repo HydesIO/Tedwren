@@ -102,16 +102,26 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _detail = await Submissions.GetSubmissionAsync(SubmissionId);
-        if (_detail is not null)
+        // Guard the load so a failure (403/5xx — 404 already maps to null) closes the dialog with a message
+        // instead of leaving it stuck on "Loading…" forever (F18). Guard the nested Fields too (F19).
+        try
         {
-            var template = await Forms.GetTemplateAsync(_detail.FormTemplateId);
-            if (template is not null)
+            _detail = await Submissions.GetSubmissionAsync(SubmissionId);
+            if (_detail is not null)
             {
-                _labels = template.Sections
-                    .SelectMany(s => s.Fields)
-                    .ToDictionary(f => f.Id, f => f.Label, StringComparer.Ordinal);
+                var template = await Forms.GetTemplateAsync(_detail.FormTemplateId);
+                if (template is not null)
+                {
+                    _labels = template.Sections
+                        .SelectMany(s => s.Fields ?? Array.Empty<FormFieldDto>())
+                        .ToDictionary(f => f.Id, f => f.Label, StringComparer.Ordinal);
+                }
             }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Snackbar.Add("This submission couldn't be loaded. Please try again.", Severity.Error);
+            MudDialog.Cancel();
         }
     }
 

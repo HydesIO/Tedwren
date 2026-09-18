@@ -22,13 +22,20 @@ public sealed class AttendanceService : IAttendanceService
     private readonly ISiteRepository _sites;
     private readonly ISitePropertyRepository _properties;
     private readonly IAttendanceRepository _attendance;
+    private readonly IEngagementRepository? _engagements;
 
-    /// <summary>Creates the service over its repositories.</summary>
-    public AttendanceService(ISiteRepository sites, ISitePropertyRepository properties, IAttendanceRepository attendance)
+    /// <summary>
+    /// Creates the service over its repositories. <paramref name="engagements"/> resolves a worker's display
+    /// name for the muster/log (the name is per-engagement, cross-company; F12); it is optional so unit tests
+    /// that construct the service directly run without it (names then fall back to a neutral placeholder).
+    /// </summary>
+    public AttendanceService(ISiteRepository sites, ISitePropertyRepository properties, IAttendanceRepository attendance,
+        IEngagementRepository? engagements = null)
     {
         _sites = sites;
         _properties = properties;
         _attendance = attendance;
+        _engagements = engagements;
     }
 
     /// <summary>Records a sign-in attempt and returns its outcome.</summary>
@@ -106,8 +113,10 @@ public sealed class AttendanceService : IAttendanceService
     public async Task<IReadOnlyList<OnSiteWorkerDto>> GetOnSiteAsync(Guid siteId, CancellationToken cancellationToken = default)
     {
         var open = await _attendance.GetOnSiteAsync(siteId, cancellationToken);
+        var names = await ResolveWorkerNamesAsync(open.Select(r => r.PersonId), cancellationToken);
         return open
-            .Select(r => new OnSiteWorkerDto(r.PersonId, r.SiteId, r.PropertyId, r.OccurredUtc, r.Outcome.ToString()))
+            .Select(r => new OnSiteWorkerDto(r.PersonId, r.SiteId, r.PropertyId, r.OccurredUtc, r.Outcome.ToString(),
+                names.GetValueOrDefault(r.PersonId, UnknownWorker)))
             .ToList();
     }
 
@@ -115,7 +124,38 @@ public sealed class AttendanceService : IAttendanceService
     public async Task<IReadOnlyList<AttendanceRecordDto>> GetSiteRecordsAsync(Guid siteId, int take, CancellationToken cancellationToken = default)
     {
         var records = await _attendance.GetBySiteAsync(siteId, take, cancellationToken);
-        return records.Select(ToDto).ToList();
+        var names = await ResolveWorkerNamesAsync(records.Select(r => r.PersonId), cancellationToken);
+        return records.Select(r => ToDto(r, names.GetValueOrDefault(r.PersonId, UnknownWorker))).ToList();
+    }
+
+    /// <summary>Shown when a worker's name cannot be resolved (e.g. a historical log row with no active engagement).</summary>
+    private const string UnknownWorker = "Unknown operative";
+
+    /// <summary>
+    /// Resolves display names for a set of person ids (F12). A worker's name is held per-company on the
+    /// engagement (Person holds none), and a site's attendance is cross-company, so the name is taken from any
+    /// of the person's active engagements. Deduplicates first, so this is one lookup per distinct person, not
+    /// per record. Returns an empty map when no engagement repository is wired (direct-construction unit tests).
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> ResolveWorkerNamesAsync(IEnumerable<Guid> personIds, CancellationToken cancellationToken)
+    {
+        var names = new Dictionary<Guid, string>();
+        if (_engagements is null)
+        {
+            return names;
+        }
+
+        foreach (var personId in personIds.Distinct())
+        {
+            var engagements = await _engagements.GetActiveByPersonAsync(personId, cancellationToken);
+            var name = engagements.Select(e => e.Name).FirstOrDefault(n => !string.IsNullOrWhiteSpace(n));
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                names[personId] = name;
+            }
+        }
+
+        return names;
     }
 
     /// <summary>Decides the sign-in outcome from the location and the site's policy (SF-14/SF-15).</summary>
@@ -181,8 +221,8 @@ public sealed class AttendanceService : IAttendanceService
     private static DomainMethod ToDomain(AbstractionsMethod method) =>
         method == AbstractionsMethod.AssignmentLink ? DomainMethod.AssignmentLink : DomainMethod.QrScan;
 
-    /// <summary>Maps an attendance record to its DTO.</summary>
-    private static AttendanceRecordDto ToDto(AttendanceRecord r) => new(
+    /// <summary>Maps an attendance record to its DTO, with the resolved worker display name (F12).</summary>
+    private static AttendanceRecordDto ToDto(AttendanceRecord r, string workerName) => new(
         r.Id, r.PersonId, r.SiteId, r.PropertyId, r.Type.ToString(), r.Outcome.ToString(), r.Method.ToString(),
-        r.Latitude, r.Longitude, r.WithinBoundary, r.Reason, r.OccurredUtc);
+        r.Latitude, r.Longitude, r.WithinBoundary, r.Reason, r.OccurredUtc, workerName);
 }

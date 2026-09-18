@@ -31,7 +31,10 @@ public sealed class ApiSiteService : ISiteService
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<SiteDetailDto>(cancellationToken);
+        var dto = await response.Content.ReadFromJsonAsync<SiteDetailDto>(cancellationToken);
+        // Defend the detail page's Properties tab (its label reads Properties.Count) against a null nested
+        // collection from the API: the DTO declares it non-null but System.Text.Json does not enforce that (F19).
+        return dto is null ? null : dto with { Properties = dto.Properties ?? Array.Empty<SitePropertyDto>() };
     }
 
     /// <summary>Records a site via the API and returns its new id.</summary>

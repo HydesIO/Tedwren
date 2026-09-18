@@ -61,25 +61,37 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        await Tenant.InitializeAsync();
-        if (TemplateId is { } id)
+        try
         {
-            var template = await Forms.GetTemplateAsync(id);
-            if (template is not null)
+            await Tenant.InitializeAsync();
+            if (TemplateId is { } id)
             {
-                _name = template.Name;
-                _description = template.Description;
-                _sections = FormEditModel.FromDto(template.Sections);
+                var template = await Forms.GetTemplateAsync(id);
+                if (template is not null)
+                {
+                    _name = template.Name;
+                    _description = template.Description;
+                    _sections = FormEditModel.FromDto(template.Sections);
+                }
+            }
+            else
+            {
+                _name = string.Empty;
+                _description = null;
+                _sections = FormEditModel.FromDto(null);
             }
         }
-        else
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _name = string.Empty;
-            _description = null;
-            _sections = FormEditModel.FromDto(null);
+            // A failed load (e.g. a 403 for a plan without Forms, or a transient error) shouldn't leave the
+            // page stuck on its loading skeleton: tell the user and return to the library (F18).
+            Snackbar.Add("This form couldn't be loaded. It may not be included in your plan.", Severity.Error);
+            Nav.NavigateTo("/forms");
         }
-
-        _loading = false;
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task SaveAsync(bool publish)

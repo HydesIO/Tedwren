@@ -7,6 +7,8 @@ namespace Tedwren.Abstractions.Common;
 /// only Abstractions, the entity only Domain). Drives the default module bundle (SF-22), the console shape
 /// (SUB-24 vs MC-23) and the sign-in semantics (R18).
 /// </summary>
+// Serialized by name on the API↔client wire (F21); persistence uses the separate Domain enums (ints).
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum OrgType
 {
     /// <summary>A specialist subcontractor: time &amp; attendance + the compliance pack (§5.2).</summary>

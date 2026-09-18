@@ -73,7 +73,10 @@
             new() { Title = "Induction", Value = r => r.TemplateName },
             new()
             {
-                Title = "Status", Value = r => r.Status, Searchable = false, Filterable = true,
+                // Text drives the distinct-value filter: humanise it so the filter options ("In Progress")
+                // match the StatusPill labels the cells show, not the raw enum names ("InProgress").
+                Title = "Status", Value = r => r.Status, Text = r => DisplayText.Humanize(r.Status),
+                Searchable = false, Filterable = true,
                 CellTemplate = r => @<StatusPill Label="@r.Status" Status="@ToStatusKind(r.Status)" />
             },
             new() { Title = "Reference", Value = r => r.CompletionReference ?? "—", Searchable = false },
