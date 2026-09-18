@@ -1685,6 +1685,21 @@ Phase M1 delivers the shared foundations and the first page migrations:
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
+- 📋 **Next-phases scope — [`docs/next-phases-plan.md`](docs/next-phases-plan.md) (proposed, for review).**
+  A grounded scope of the stage after the MVPs, biased to *robustness* (launch-readiness first). Three
+  tracks: **Track A — Launch Readiness** (LR-1 secrets & auth hardening [P0: committed live DB credential,
+  forgeable JWT signing-key default, seeded-admin default password, `Auth:TestBypass` guard]; LR-2 real SMS
+  + broaden the R12 heartbeat to all jobs + independent watchdog; LR-3 the PostgreSQL parity gate; LR-4
+  rate-limit the anonymous induction/site-entry/onboarding/packs groups + harden the anonymous file uploads +
+  the independent pack-link review; LR-5 object-storage `IImageStore`; LR-6 load/a11y/backup; LR-7 README +
+  demo write-actions + Permit lifecycle). **Track B — CSCS verification (PRD-Phase 1)**: start the CSCS
+  agreement now (longest lead time), build `ICscsVerificationService` behind the existing
+  `CardVerificationState.CscsVerified`/`IsCscsVerifiable` seam with an unconfigured no-op + human fallback.
+  **Track C — Health, Safety & Compliance (PRD-Phase 2)** on the already-built Forms spine: HSE-1 Asset/Plant
+  register (the PRD §8.2 data-model debt — never stubbed), HSE-2 RAMS (reuse the trade-onboarding pattern +
+  fold into the site-entry decision), HSE-3 document distribution & acknowledgement, HSE-4 near-miss/incident
+  (RIDDOR), HSE-5 doc versioning + unified evidence export + HAVs + carbon. Deferred with reasons: PRD-Phases
+  3–7, Worker Passport. Decisions for Leigh/James: PRD Q14, Q18/§9 metering, Q21/Q22 default libraries, Q3.
 - ⏸️ **PostgreSQL launch gate — deferred for now (per request).** The full PostgreSQL parity suite and the
   dual-engine pre-launch gate are intentionally out of scope for the current push. The EF model already
   lower-cases identifiers for PostgreSQL and the migration scripts exist, so this is a run/verify task when
