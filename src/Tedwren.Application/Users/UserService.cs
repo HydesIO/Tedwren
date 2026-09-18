@@ -23,27 +23,65 @@ public sealed class UserService : IUserService
     private readonly IUserRepository _users;
     private readonly IEmailSender _email;
     private readonly EmailOptions _emailOptions;
+    private readonly ICurrentUserService? _currentUser;
 
-    /// <summary>Creates the service over its repository, the email sender and the email/branding options.</summary>
-    public UserService(IUserRepository users, IEmailSender email, EmailOptions emailOptions)
+    /// <summary>
+    /// Creates the service over its repository, the email sender and the email/branding options.
+    /// <paramref name="currentUser"/> supplies the signed-in tenant so the console user list/detail are scoped
+    /// to the caller's company (R15); it is optional so unit tests that construct the service directly run
+    /// unscoped (the platform-admin all-company view lives separately in the admin area).
+    /// </summary>
+    public UserService(IUserRepository users, IEmailSender email, EmailOptions emailOptions, ICurrentUserService? currentUser = null)
     {
         _users = users;
         _email = email;
         _emailOptions = emailOptions;
+        _currentUser = currentUser;
     }
 
-    /// <summary>Returns every console user as a list row.</summary>
+    /// <summary>Returns every console user in the caller's tenant as a list row (R15).</summary>
     public async Task<IReadOnlyList<UserDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
         var users = await _users.GetAllAsync(cancellationToken);
+        if (await TenantScopeAsync(cancellationToken) is { } companyId)
+        {
+            users = users.Where(u => u.CompanyId == companyId).ToList();
+        }
+
         return users.Select(ToDto).ToList();
     }
 
-    /// <summary>Returns a single user by id, or null.</summary>
+    /// <summary>Returns a single user by id, or null — including when the user is outside the caller's tenant (R15).</summary>
     public async Task<UserDto?> GetUserAsync(Guid id, CancellationToken cancellationToken = default)
     {
         var user = await _users.GetByIdAsync(id, cancellationToken);
-        return user is null ? null : ToDto(user);
+        if (user is null)
+        {
+            return null;
+        }
+
+        if (await TenantScopeAsync(cancellationToken) is { } companyId && user.CompanyId != companyId)
+        {
+            return null;
+        }
+
+        return ToDto(user);
+    }
+
+    /// <summary>
+    /// The company the current caller is scoped to for console user management (R15), or null to run unscoped:
+    /// a platform administrator (the all-company operator whose view lives in the admin area) and tests /
+    /// unauthenticated callers (constructed without <see cref="ICurrentUserService"/>) are not tenant-filtered.
+    /// </summary>
+    private async Task<Guid?> TenantScopeAsync(CancellationToken cancellationToken)
+    {
+        if (_currentUser is null)
+        {
+            return null;
+        }
+
+        var current = await _currentUser.GetCurrentAsync(cancellationToken);
+        return current.IsPlatformAdmin ? null : current.CompanyId;
     }
 
     /// <summary>Returns the selectable access roles, in a stable order, from the single source (the enum).</summary>
