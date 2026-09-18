@@ -32,7 +32,14 @@ public sealed class ApiOrganisationService : IOrganisationService
         }
 
         response.EnsureSuccessStatusCode();
-        return await response.Content.ReadFromJsonAsync<CompanyDetailDto>(cancellationToken);
+        var dto = await response.Content.ReadFromJsonAsync<CompanyDetailDto>(cancellationToken);
+        // Defend the detail page's tab labels (Documents.Count / Operatives.Count) and tables against a null
+        // nested collection: the DTO declares them non-null but System.Text.Json does not enforce that (F19).
+        return dto is null ? null : dto with
+        {
+            Documents = dto.Documents ?? Array.Empty<CompanyDocumentDto>(),
+            Operatives = dto.Operatives ?? Array.Empty<CompanyOperativeDto>(),
+        };
     }
 
     /// <summary>Creates a company via the API and returns its new id.</summary>

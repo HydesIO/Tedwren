@@ -72,7 +72,9 @@
         }
     }
 
-    private void OpenCompany(CompanySummary company) => Nav.NavigateTo($"/organisation/{company.Slug}");
+    // Navigate by the stable id (not the name slug) so two companies whose names slugify identically are both
+    // reachable and never resolve to the wrong record (F15); the detail lookup accepts an id or a slug.
+    private void OpenCompany(CompanySummary company) => Nav.NavigateTo($"/organisation/{company.Id}");
 
     private void BuildColumns()
     {

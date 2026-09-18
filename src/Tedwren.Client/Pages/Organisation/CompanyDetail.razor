@@ -29,7 +29,7 @@
 else
 {
     <DetailHeader Title="@_company.Name"
-                  Subtitle="@($"{_company.Type} · {_company.Trade}")"
+                  Subtitle="@Subtitle(_company)"
                   StatusLabel="@_company.StatusLabel"
                   Status="ComplianceStatusView.ToStatusKind(_company.State)"
                   AvatarText="@Initials(_company.Name)"
@@ -223,4 +223,9 @@ else
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         return parts.Length == 0 ? "?" : parts[0][..1].ToUpperInvariant();
     }
+
+    // "Type · Trade", omitting empty parts so a null Type/Trade (onboarding/invite-trade companies) never
+    // renders a dangling or bare "·" separator (mirrors SiteDetail.Subtitle).
+    private static string Subtitle(CompanyDetailDto c)
+        => string.Join(" · ", new[] { c.Type, c.Trade }.Where(v => !string.IsNullOrWhiteSpace(v)));
 }

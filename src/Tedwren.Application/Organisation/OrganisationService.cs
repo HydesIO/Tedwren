@@ -99,7 +99,12 @@ public sealed class OrganisationService : IOrganisationService
     public async Task<CompanyDetailDto?> GetCompanyAsync(string slug, CancellationToken cancellationToken = default)
     {
         var companies = await _companies.GetAllAsync(cancellationToken);
-        var company = companies.FirstOrDefault(c => Slug.From(c.Name) == slug);
+        // Resolve by the stable id when the route token is a Guid (collision-proof), else fall back to the
+        // name slug. Two companies whose names slugify identically no longer collide — one becoming
+        // unreachable or the wrong record opening — because the list now links by id (F15).
+        var company = Guid.TryParse(slug, out var companyId)
+            ? companies.FirstOrDefault(c => c.Id == companyId)
+            : companies.FirstOrDefault(c => Slug.From(c.Name) == slug);
         if (company is null)
         {
             return null;

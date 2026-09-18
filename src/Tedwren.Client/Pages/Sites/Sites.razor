@@ -43,7 +43,9 @@
         _loading = false;
     }
 
-    private void OpenSite(SiteSummary site) => Nav.NavigateTo($"/sites/{site.Slug}");
+    // Navigate by the stable id (not the name slug) so sites whose names slugify identically are both reachable
+    // and never resolve to the wrong record (F15); the detail lookup accepts an id or a slug.
+    private void OpenSite(SiteSummary site) => Nav.NavigateTo($"/sites/{site.Id}");
 
     private void BuildColumns()
     {
