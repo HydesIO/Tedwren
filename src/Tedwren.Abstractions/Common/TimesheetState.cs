@@ -5,6 +5,8 @@ namespace Tedwren.Abstractions.Common;
 /// contracts depending on the domain. A timesheet is <see cref="Returned"/> for correction, never "denied"
 /// (R18, SUB-12).
 /// </summary>
+// Serialized by name on the API↔client wire (F21); persistence uses the separate Domain enums (ints).
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum TimesheetState
 {
     /// <summary>Accruing hours; not yet submitted.</summary>

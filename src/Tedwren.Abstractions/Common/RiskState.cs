@@ -4,6 +4,8 @@ namespace Tedwren.Abstractions.Common;
 /// A provider-neutral risk level carried on site DTOs, so the shared contracts do not depend on any UI
 /// enum. The client maps it to its risk-chip severity.
 /// </summary>
+// Serialized by name on the API↔client wire (F21); persistence uses the separate Domain enums (ints).
+[System.Text.Json.Serialization.JsonConverter(typeof(System.Text.Json.Serialization.JsonStringEnumConverter))]
 public enum RiskState
 {
     /// <summary>Low risk.</summary>
