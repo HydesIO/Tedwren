@@ -1,6 +1,8 @@
 using Tedwren.Abstractions.Configuration;
+using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Users;
 using Tedwren.Abstractions.Notifications;
+using Tedwren.Abstractions.Services;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Users;
@@ -43,6 +45,52 @@ public sealed class UserServiceTests
 
         public Task SendHtmlAsync(string toEmail, string subject, string contentHtml, CancellationToken cancellationToken = default) =>
             throw new InvalidOperationException("send failed");
+    }
+
+    /// <summary>A fixed current-user, so the service scopes (or, for a platform admin, does not scope) reads.</summary>
+    private sealed class FakeCurrentUser : ICurrentUserService
+    {
+        private readonly CurrentUserDto _dto;
+        public FakeCurrentUser(Guid? companyId, bool isPlatformAdmin = false) =>
+            _dto = new CurrentUserDto("Test", "Administrator", companyId, isPlatformAdmin);
+        public Task<CurrentUserDto> GetCurrentAsync(CancellationToken cancellationToken = default) => Task.FromResult(_dto);
+    }
+
+    [Fact] // F1 (R15) — the console user list/detail are scoped to the caller's tenant company
+    public async Task GetUsers_And_GetUser_ScopeToCallerCompany()
+    {
+        var companyA = Guid.Parse("22222222-2222-4222-8222-00000000000A");
+        var companyB = Guid.Parse("22222222-2222-4222-8222-00000000000B");
+        var store = new InMemoryUserStore(seed: false);
+        var email = new OutboxEmailSender(new NotificationOutbox());
+
+        // Seed one user in each company through an unscoped service, then read through a company-A-scoped one.
+        var seeder = new UserService(new InMemoryUserRepository(store), email, new EmailOptions());
+        await seeder.InviteUserAsync(new InviteUserRequest(companyA, "Alice", "alice@a.com", "Administrator"));
+        var bobId = (await seeder.InviteUserAsync(new InviteUserRequest(companyB, "Bob", "bob@b.com", "Administrator"))).UserId;
+
+        var scoped = new UserService(new InMemoryUserRepository(store), email, new EmailOptions(), new FakeCurrentUser(companyA));
+
+        Assert.Equal(new[] { "Alice" }, (await scoped.GetUsersAsync()).Select(u => u.Name));
+        Assert.Null(await scoped.GetUserAsync(bobId));   // company B's user is not resolvable from company A
+    }
+
+    [Fact] // F1 — a platform administrator is not tenant-scoped (the all-company operator view)
+    public async Task GetUsers_PlatformAdmin_SeesAllCompanies()
+    {
+        var companyA = Guid.Parse("22222222-2222-4222-8222-00000000000A");
+        var companyB = Guid.Parse("22222222-2222-4222-8222-00000000000B");
+        var store = new InMemoryUserStore(seed: false);
+        var email = new OutboxEmailSender(new NotificationOutbox());
+
+        var seeder = new UserService(new InMemoryUserRepository(store), email, new EmailOptions());
+        await seeder.InviteUserAsync(new InviteUserRequest(companyA, "Alice", "alice@a.com", "Administrator"));
+        await seeder.InviteUserAsync(new InviteUserRequest(companyB, "Bob", "bob@b.com", "Administrator"));
+
+        var platformAdmin = new UserService(new InMemoryUserRepository(store), email, new EmailOptions(),
+            new FakeCurrentUser(companyA, isPlatformAdmin: true));
+
+        Assert.Equal(2, (await platformAdmin.GetUsersAsync()).Count);
     }
 
     [Fact] // SF-20

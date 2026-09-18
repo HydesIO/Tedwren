@@ -164,6 +164,24 @@ public sealed class InductionServiceTests
         Assert.True(summary.ConsentGiven);
     }
 
+    [Fact] // F4 (MC-4) — a quiz-less "watch and sign" induction (no questions, pass mark 0) can be finalized
+    public async Task Finalize_QuizLessTemplate_Completes()
+    {
+        var service = CreateService();
+        // Author a no-quiz induction: no questions, pass mark 0, and no required steps. Previously the take flow
+        // skipped the (absent) quiz, LastScore stayed null, and Finalize threw — a silent dead-end at "Finish".
+        await service.UpdateTemplateAsync(Template, new UpdateInductionTemplateRequest(
+            "Site induction", 365, 0, 3, true, null, null,
+            Array.Empty<InductionStepDto>(), Array.Empty<InductionQuizAuthoringDto>()));
+
+        var session = await StartAsync(service);
+        var done = await service.FinalizeAsync(session.Id, new FinalizeInductionRequest("M. Adeyemi", ConsentGiven: false));
+
+        Assert.NotNull(done);
+        Assert.Equal("Passed", done!.Status);
+        Assert.StartsWith("IND-", done.CompletionReference);
+    }
+
     [Fact] // MC-6 — a manager reset clears the failed attempt for a retake
     public async Task Reset_ReturnsAFailedInductionToInProgress()
     {
