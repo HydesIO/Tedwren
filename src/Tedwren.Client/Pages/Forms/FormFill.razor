@@ -66,11 +66,23 @@
 
     protected override async Task OnInitializedAsync()
     {
-        await Tenant.InitializeAsync();
-        _template = await Forms.GetTemplateForFillAsync(TemplateId);
-        _sites = await Sites.GetSitesAsync();
-        _siteNames = _sites.Select(s => s.Name).ToList();
-        _loading = false;
+        // Guard the load so a 403 (unentitled) or transient failure shows the existing "Form unavailable" state
+        // rather than leaving the page stuck on the loading skeleton or crashing the circuit (F18).
+        try
+        {
+            await Tenant.InitializeAsync();
+            _template = await Forms.GetTemplateForFillAsync(TemplateId);
+            _sites = await Sites.GetSitesAsync();
+            _siteNames = _sites.Select(s => s.Name).ToList();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _template = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private async Task SubmitAsync()

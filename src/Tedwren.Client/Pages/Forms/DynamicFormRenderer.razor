@@ -7,10 +7,12 @@
    captured answers and files for submission (PRD-Phase 2). Required fields flagged in the builder are marked. *@
 
 <div class="dynamic-form">
-    @foreach (var sec in Sections.OrderBy(s => s.Order))
+    @* Guard the schema collections against a null/absent list from the API (the DTOs declare them non-null but
+       System.Text.Json does not enforce that): render nothing rather than NRE on a partial schema (F19). *@
+    @foreach (var sec in (Sections ?? Array.Empty<FormSectionDto>()).OrderBy(s => s.Order))
     {
         <FormSection Title="@sec.Title">
-            @foreach (var field in sec.Fields.OrderBy(f => f.Order))
+            @foreach (var field in (sec.Fields ?? Array.Empty<FormFieldDto>()).OrderBy(f => f.Order))
             {
                 <div class="dynamic-form__field">
                     @RenderField(field)

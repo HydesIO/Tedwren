@@ -26,6 +26,8 @@
                    Items="_templates"
                    Columns="_columns"
                    Loading="_loading"
+                   ErrorMessage="@_error"
+                   OnRetry="LoadAsync"
                    SearchPlaceholder="Search forms…"
                    EmptyTitle="No forms yet"
                    EmptyDescription="Create your first custom form to start building your library."
@@ -58,6 +60,7 @@
     private List<DataColumn<FormAssignmentDto>> _assignmentColumns = new();
     private bool _loading = true;
     private bool _seeding;
+    private string? _error;
 
     private async Task SeedStartersAsync()
     {
@@ -82,10 +85,24 @@
 
     private async Task LoadAsync()
     {
+        // Guard the load so a failure — most realistically the 403 for a company without the Forms module,
+        // reachable by direct URL even though the nav item is hidden — shows an inline message instead of
+        // throwing out of the lifecycle method and crashing the page (F18).
         _loading = true;
-        _templates = await Forms.GetTemplatesAsync();
-        _assignments = await Assignments.GetAssignmentsAsync();
-        _loading = false;
+        _error = null;
+        try
+        {
+            _templates = await Forms.GetTemplatesAsync();
+            _assignments = await Assignments.GetAssignmentsAsync();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = "Forms couldn't be loaded. They may not be included in your plan, or the service is unavailable.";
+        }
+        finally
+        {
+            _loading = false;
+        }
     }
 
     private void BuildAssignmentColumns()
