@@ -83,7 +83,31 @@ a workload machine (iOS needs macOS).
   notification / push; OS background sync when closed (M8); orphan-image cleanup (M8); biometric-gated DB key
   (until the real biometric integration lands). SQLCipher round-trip is CI/on-device only (kept out of the
   native-free Core test project).
-- ⏳ **M6** forms engine (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
+- ✅ **M6 — Forms & inspection engine (comprehensive).** Operatives complete assigned inspection/checklist forms
+  **offline** (all 14 field kinds, photos, signatures, RAG) with draft autosave/resume, syncing idempotently;
+  reusing the whole existing server forms engine. Delivered all-in-one (server + Core + native UI). Server: reuse
+  `IFormSubmissionService.SubmitForContextAsync` (on-behalf submit — full validation, file storage, red-RAG alert,
+  PDF) + `IFormTemplateService.GetTemplateForFillAsync` (published, tenant-scoped) — **no** methods added to the
+  client-implemented forms interfaces (SRP). Idempotency: added `Guid? ClientId` to `CreateFormSubmissionRequest`;
+  `SubmitCoreAsync` dedups on it (`GetByIdAsync`, company-guarded) + uses it as the submission id — existing
+  console/induction callers pass null → unchanged (no new table, R4/R16/R15). New mobile-only `IMobileFormService`
+  filters company assignments to the operative (Organisation + Operator==me + Site∈attended-via-attendance) and
+  resolves each family's latest published version. `MobileFormEndpoints` (`/api/mobile/forms/{assignments,
+  templates/{id},submissions}`, RequireOperative + `ModuleGate("forms")`). Dashboard `FormsDue` populated (assigned
+  count when the company holds `forms`). Client (Core): `FormsApiClient`; `Forms/` — `FormValidation`
+  (required-by-default, mirrors server), `FormsDueCalculator` (schedule-aware Daily/Weekly/Monthly/AdHoc due/overdue),
+  `FormDraft` + `IFormDraftStore`; `Sync/FormsOutboxHandler` (`form-submission` kind — one idempotent JSON POST, base64
+  files in the payload, no per-file checkpoint). MAUI head: `TwDynamicForm` renderer (all 14 kinds → `GetAnswers()`/
+  `GetFiles()`, signature inline PNG data URL) + `TwSignaturePad`; `FormsInboxPage` (due/overdue badges + draft
+  markers) + `FormFillPage` (offline fill, autosave/resume, client-validate, enqueue → sync); `EncryptedStore` gains
+  a `FormDraft` table (implements `IFormDraftStore`); DI + "Forms due" tile wired. Tests (all green): Application
+  (`MobileFormService` filtering + `SubmitCoreAsync` ClientId idempotency), API (assignments/template/submit reuse,
+  idempotency, module-gate 403, console 403), Core (`FormsApiClient`, `FormsOutboxHandler`, `FormsDueCalculator`,
+  `FormValidation`). ❗ Deferred: multipart forms upload (base64 reused; M8 perf); server-side `ValidationJson`
+  enforcement (unused; client mirrors required-only); operative submission-history read-back (needs an operative
+  file GET, R9); offline form-capture time preserved on the submission (uses server-receipt time for M6); manager
+  assign/review UI (M7). Native renderer + pages are CI/on-device only (kept out of the native-free Core tests).
+- ⏳ **M7** manager/admin mode · **M8** hardening & store readiness.
 - ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
   workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and

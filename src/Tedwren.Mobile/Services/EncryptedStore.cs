@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Tedwren.Mobile.Core.Caching;
+using Tedwren.Mobile.Core.Forms;
 using Tedwren.Mobile.Core.Platform;
 using Tedwren.Mobile.Core.Sync;
 
@@ -15,7 +16,7 @@ namespace Tedwren.Mobile.Services;
 /// and single-flighted (the key fetch is async), so app start is not blocked. Read-cache reads/writes fail soft (a
 /// storage error must never blank a screen); outbox operations surface errors to the sync engine.
 /// </summary>
-public sealed class EncryptedStore : IReadCache, IOutboxStore
+public sealed class EncryptedStore : IReadCache, IOutboxStore, IFormDraftStore
 {
     /// <summary>Secure-store key under which the database encryption key is held.</summary>
     private const string DbKeyName = "tedwren.db.key";
@@ -159,6 +160,55 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore
         return new OutboxCounts(0, 0);
     }
 
+    // ---- IFormDraftStore ---------------------------------------------------------------------------------
+
+    /// <inheritdoc />
+    public async Task SaveAsync(FormDraft draft, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO FormDraft (Key, TemplateVersionId, PayloadJson, UpdatedUtc) VALUES ($key, $tvid, $payload, $utc) " +
+            "ON CONFLICT(Key) DO UPDATE SET TemplateVersionId = $tvid, PayloadJson = $payload, UpdatedUtc = $utc";
+        command.Parameters.AddWithValue("$key", draft.Key.ToString());
+        command.Parameters.AddWithValue("$tvid", draft.TemplateVersionId.ToString());
+        command.Parameters.AddWithValue("$payload", draft.PayloadJson);
+        command.Parameters.AddWithValue("$utc", draft.UpdatedUtc.ToString("O", CultureInfo.InvariantCulture));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<FormDraft?> GetAsync(Guid key, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Key, TemplateVersionId, PayloadJson, UpdatedUtc FROM FormDraft WHERE Key = $key";
+        command.Parameters.AddWithValue("$key", key.ToString());
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new FormDraft
+        {
+            Key = Guid.Parse(reader.GetString(0)),
+            TemplateVersionId = Guid.Parse(reader.GetString(1)),
+            PayloadJson = reader.GetString(2),
+            UpdatedUtc = ParseUtc(reader.GetString(3)),
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(Guid key, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM FormDraft WHERE Key = $key";
+        command.Parameters.AddWithValue("$key", key.ToString());
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     // ---- infrastructure ----------------------------------------------------------------------------------
 
     private const string Columns =
@@ -171,7 +221,9 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore
         "Id TEXT PRIMARY KEY, Sequence INTEGER NOT NULL, Kind TEXT NOT NULL, PayloadJson TEXT NOT NULL, " +
         "PhotoBytes BLOB NULL, PhotoContentType TEXT NULL, UploadedImageReference TEXT NULL, Status INTEGER NOT NULL, " +
         "AttemptCount INTEGER NOT NULL, NextAttemptUtc TEXT NULL, LastError TEXT NULL, CreatedUtc TEXT NOT NULL, " +
-        "CompletedUtc TEXT NULL);";
+        "CompletedUtc TEXT NULL);" +
+        "CREATE TABLE IF NOT EXISTS FormDraft (Key TEXT PRIMARY KEY, TemplateVersionId TEXT NOT NULL, " +
+        "PayloadJson TEXT NOT NULL, UpdatedUtc TEXT NOT NULL);";
 
     /// <summary>Opens a fresh connection, ensuring the key + schema exist (single-flighted).</summary>
     private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)

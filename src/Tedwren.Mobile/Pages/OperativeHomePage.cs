@@ -121,7 +121,7 @@ public class OperativeHomePage : ContentPage
             ("🕒", "Sign in / out", "Record arrival & departure", () => _services.GetRequiredService<SignInOutPage>()),
             ("📷", "Capture evidence", "Photos with location", () => _services.GetRequiredService<CaptureEvidencePage>()),
             ("⚠️", "Report hazard", "Near-miss & observations", () => _services.GetRequiredService<ReportHazardPage>()),
-            ("📋", "Forms due", "Checklists & inspections", null),
+            ("📋", "Forms due", "Checklists & inspections", () => _services.GetRequiredService<FormsInboxPage>()),
             ("⏱", "My hours", "This week's timesheet", () => _services.GetRequiredService<MyHoursPage>()),
             ("🪪", "My cards", "Compliance & expiries", () => _services.GetRequiredService<MyCardsPage>()),
             ("📄", "Site documents", "Rules, plans, welfare", null),

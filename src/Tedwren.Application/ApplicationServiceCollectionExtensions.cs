@@ -304,7 +304,7 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the operative (mobile) services: authentication + one-time-code generator (M2), the read surface + dashboard (M3), the attendance read (M4) and the offline-capture evidence + hazard writes (M5).</summary>
+    /// <summary>Registers the operative (mobile) services: authentication + one-time-code generator (M2), the read surface + dashboard (M3), the attendance read (M4), the offline-capture evidence + hazard writes (M5) and the forms assignment surface (M6).</summary>
     public static IServiceCollection AddMobileAuthCore(this IServiceCollection services)
     {
         services.AddScoped<IOperativeAuthService, Mobile.OperativeAuthService>();
@@ -314,6 +314,7 @@ public static class ApplicationServiceCollectionExtensions
         services.AddScoped<IMobileAttendanceService, Mobile.MobileAttendanceService>();
         services.AddScoped<IMobileEvidenceService, Mobile.MobileEvidenceService>();
         services.AddScoped<IMobileHazardService, Mobile.MobileHazardService>();
+        services.AddScoped<IMobileFormService, Mobile.MobileFormService>();
         return services;
     }
 

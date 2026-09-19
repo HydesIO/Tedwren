@@ -90,13 +90,18 @@ assign/review via the existing `/api/forms/*`.
 - **M4 — Attendance sign-in/out** (online-only, geofenced) *(landed)*: token-scoped PersonId + R15 site
   guard over the existing `IAttendanceService`; `/api/mobile/attendance/{sign-in,sign-out,current}`; live
   dashboard on-site state; MAUI `SignInOutPage` (cached site, location + geofence hint, online-only, R18 wording).
-- **M5 — Offline capture & sync foundation** (encrypted outbox, multipart upload, sync engine, photo+GPS) *(this
-  increment)*: SQLCipher `EncryptedStore` (read cache + append-only outbox); connectivity-driven `SyncEngine`
+- **M5 — Offline capture & sync foundation** (encrypted outbox, multipart upload, sync engine, photo+GPS) *(landed)*:
+  SQLCipher `EncryptedStore` (read cache + append-only outbox); connectivity-driven `SyncEngine`
   (ordered, idempotent, retry/backoff, upload-checkpointed); `POST /api/mobile/uploads` (multipart) reusing
   `IImageStore`; **two consumers** — ungated generic **evidence** (`EvidenceItem`, net-new) for every operative,
   and **`hse`-gated hazard/near-miss** reusing the existing HSE domain; MAUI `CaptureEvidencePage` +
   `ReportHazardPage` (camera + GPS, offline-first) + a pending-sync badge.
-- **M6 — Forms & inspection engine (comprehensive).**
+- **M6 — Forms & inspection engine (comprehensive)** *(this increment)*: operatives complete assigned forms
+  offline (all 14 field kinds, photos, signatures, RAG) with draft autosave/resume, syncing idempotently. Reuses
+  the server engine (`SubmitForContextAsync` + `GetTemplateForFillAsync`; client-implemented interfaces untouched);
+  idempotency via a `ClientId` on `CreateFormSubmissionRequest` (no new table); mobile-only `IMobileFormService`
+  resolves "forms for me"; `/api/mobile/forms/*` (RequireOperative + `ModuleGate("forms")`); native `TwDynamicForm`
+  renderer + `FormsInboxPage`/`FormFillPage`; forms outbox handler + draft store in `EncryptedStore`.
 - **M7 — Manager/admin mode** (dashboard via `IDashboardService`, muster, decisions, forms review).
 - **M8 — Hardening & store readiness** (perf, a11y, tablet, security review, store submission).
 

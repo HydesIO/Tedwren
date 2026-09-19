@@ -22,11 +22,11 @@ seven numbered commercial modules. The definitive brief is **PRD v6.4**
 > **Mobile (M-track):** a separate native **.NET MAUI** field app (Android + iOS) for operatives (primary) and
 > site managers/admins (secondary) is now planned and under way — see
 > [`mobile-app-plan.md`](mobile-app-plan.md) and [`mobile-app-build.md`](mobile-app-build.md). It is an optional
-> layer beside the mandatory browser paths (R1/Q8/Q14). **M1–M5 have landed** (foundation → operative auth →
-> operative surface/dashboard → attendance sign-in/out → offline capture & sync foundation with encrypted outbox,
-> multipart upload, a connectivity-driven sync engine, and two consumers: ungated evidence capture + hse-gated
-> hazard/near-miss reporting): `Tedwren.Mobile.Core` (+ tests) builds in `Tedwren.sln`; the MAUI heads build from
-> `Tedwren.Mobile.slnx`.
+> layer beside the mandatory browser paths (R1/Q8/Q14). **M1–M6 have landed** (foundation → operative auth →
+> operative surface/dashboard → attendance sign-in/out → offline capture & sync → the comprehensive forms &
+> inspection engine: operatives complete assigned checklists/inspections offline with photos, signatures and RAG,
+> reusing the whole server forms engine and syncing idempotently): `Tedwren.Mobile.Core` (+ tests) builds in
+> `Tedwren.sln`; the MAUI heads build from `Tedwren.Mobile.slnx`.
 
 The repository began as a **UI/UX foundation only**. **Six UI phases were complete on `origin/main`**
 (PRs #1–#10), all of them **front-end/component work over mock data**:

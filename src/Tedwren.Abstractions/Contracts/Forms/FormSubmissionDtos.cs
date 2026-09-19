@@ -9,14 +9,20 @@ public sealed record FormSubmissionFileInput(string FieldId, string FileName, st
 /// <summary>Metadata for a file captured against a submission (no bytes).</summary>
 public sealed record FormSubmissionFileDto(Guid Id, string FieldId, string FileName, string ContentType, DateTimeOffset UploadedUtc);
 
-/// <summary>Request to submit a completed form (requirement 7: at organisation or site level). <c>Scope</c> is the <c>FormScope</c> name.</summary>
+/// <summary>
+/// Request to submit a completed form (requirement 7: at organisation or site level). <c>Scope</c> is the
+/// <c>FormScope</c> name. <c>ClientId</c> is an optional device-generated id used by the offline mobile app as the
+/// submission id + idempotency key, so a retried sync never creates a duplicate (R4/R16); console/induction callers
+/// leave it null and the server generates the id as before.
+/// </summary>
 public sealed record CreateFormSubmissionRequest(
     Guid FormTemplateId,
     string Scope,
     Guid? SiteId,
     Guid? PersonId,
     IReadOnlyList<FormAnswerDto> Answers,
-    IReadOnlyList<FormSubmissionFileInput> Files);
+    IReadOnlyList<FormSubmissionFileInput> Files,
+    Guid? ClientId = null);
 
 /// <summary>A submission row for the submissions list.</summary>
 public sealed record FormSubmissionSummaryDto(

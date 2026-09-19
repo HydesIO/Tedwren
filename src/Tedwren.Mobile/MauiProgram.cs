@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Tedwren.Mobile.Core.Api;
 using Tedwren.Mobile.Core.Caching;
+using Tedwren.Mobile.Core.Forms;
 using Tedwren.Mobile.Core.Platform;
 using Tedwren.Mobile.Core.Session;
 using Tedwren.Mobile.Core.Sync;
@@ -68,6 +69,13 @@ public static class MauiProgram
         builder.Services.AddSingleton<IOutboxItemHandler, HazardOutboxHandler>();
         builder.Services.AddSingleton<SyncEngine>();
 
+        // Forms & inspection engine (M6): the forms client, its outbox handler (auto-discovered by SyncEngine) and
+        // the offline draft store (in the same encrypted database).
+        builder.Services.AddHttpClient<FormsApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl))
+            .AddHttpMessageHandler<OperativeAuthMessageHandler>();
+        builder.Services.AddSingleton<IOutboxItemHandler, FormsOutboxHandler>();
+        builder.Services.AddSingleton<IFormDraftStore>(sp => sp.GetRequiredService<EncryptedStore>());
+
         // Pages.
         builder.Services.AddTransient<LoadingPage>();
         builder.Services.AddTransient<SignInPage>();
@@ -76,6 +84,8 @@ public static class MauiProgram
         builder.Services.AddTransient<SignInOutPage>();
         builder.Services.AddTransient<CaptureEvidencePage>();
         builder.Services.AddTransient<ReportHazardPage>();
+        builder.Services.AddTransient<FormsInboxPage>();
+        builder.Services.AddTransient<FormFillPage>();
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
         builder.Services.AddTransient<ProfilePage>();

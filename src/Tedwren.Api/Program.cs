@@ -428,6 +428,7 @@ app.MapMobileAttendanceEndpoints();
 app.MapMobileUploadEndpoints();
 app.MapMobileEvidenceEndpoints();
 app.MapMobileHazardEndpoints();
+app.MapMobileFormEndpoints();
 app.MapLaunchListEndpoints();
 app.MapLeadEndpoints();
 app.MapAffiliateEndpoints();
