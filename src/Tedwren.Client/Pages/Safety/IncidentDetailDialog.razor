@@ -1,0 +1,182 @@
+@using Tedwren.Abstractions.Contracts.Safety
+@using Tedwren.Abstractions.Services
+@inject IIncidentReportService IncidentsSvc
+@inject ISnackbar Snackbar
+
+@* View an accident / incident, record its investigation (causes, corrective actions, the RIDDOR decision) and
+   close it out. *@
+
+<MudDialog>
+    <DialogContent>
+        @if (_incident is null)
+        {
+            <MudText>Loading…</MudText>
+        }
+        else
+        {
+            <div class="tw-dialog-body">
+                <DialogGuidance Text="Record the investigation: the immediate and underlying causes, the corrective actions to prevent recurrence, and whether the event is reportable to the HSE under RIDDOR. Save as you go; close the investigation once the actions are complete." />
+
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2">@Humanize(_incident.Kind) · @_incident.Severity severity · @Humanize(_incident.Status)</MudText>
+                    <MudText Typo="Typo.body1">@_incident.Description</MudText>
+                    <MudText Typo="Typo.body2">Occurred @_incident.OccurredUtc.ToLocalTime().ToString("dd MMM yyyy") · Location: @(_incident.Location ?? "—")</MudText>
+                    @if (!string.IsNullOrWhiteSpace(_incident.InjuredPersonName))
+                    {
+                        <MudText Typo="Typo.body2">Injured: @_incident.InjuredPersonName — @(_incident.InjuryDetail ?? "—")</MudText>
+                    }
+                    <MudText Typo="Typo.body2">Reported by @_incident.ReportedBy · @_incident.ReportedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</MudText>
+                </MudStack>
+
+                @if (_incident.Status != "Closed")
+                {
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Investigation</h3>
+                        <div class="tw-dialog-section__grid">
+                            <div class="tw-dialog-body__full">
+                                <MudTextField @bind-Value="_immediateCause" Label="Immediate cause" Variant="Variant.Outlined" Lines="2" />
+                            </div>
+                            <div class="tw-dialog-body__full">
+                                <MudTextField @bind-Value="_rootCause" Label="Underlying / root cause" Variant="Variant.Outlined" Lines="2" />
+                            </div>
+                            <div class="tw-dialog-body__full">
+                                <MudTextField @bind-Value="_correctiveActions" Label="Corrective actions" Variant="Variant.Outlined" Lines="2" />
+                            </div>
+                            <TedwrenTextField Label="Investigated by" @bind-Value="_investigatedBy" />
+                        </div>
+                    </section>
+
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">RIDDOR</h3>
+                        <MudSwitch T="bool" @bind-Value="_riddorReportable" Color="Color.Error" Label="Reportable to the HSE under RIDDOR" />
+                        @if (_riddorReportable)
+                        {
+                            <TedwrenTextField Label="RIDDOR category" @bind-Value="_riddorCategory"
+                                              Placeholder="e.g. Specified injury, Over-7-day incapacitation" />
+                        }
+                    </section>
+                }
+                else
+                {
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Investigation</h3>
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.body2">Immediate cause: @(_incident.ImmediateCause ?? "—")</MudText>
+                            <MudText Typo="Typo.body2">Root cause: @(_incident.RootCause ?? "—")</MudText>
+                            <MudText Typo="Typo.body2">Corrective actions: @(_incident.CorrectiveActions ?? "—")</MudText>
+                            <MudText Typo="Typo.body2">RIDDOR: @(_incident.RiddorReportable ? $"Reportable — {_incident.RiddorCategory ?? "category not set"}" : "Not reportable")</MudText>
+                            <MudText Typo="Typo.body2">Investigated by @(_incident.InvestigatedBy ?? "—") · closed @(_incident.ClosedUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm"))</MudText>
+                        </MudStack>
+                    </section>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Close(DialogResult.Ok(_changed)))">Close</MudButton>
+        @if (_incident is not null && _incident.Status != "Closed")
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="_busy" OnClick="SaveAsync">Save investigation</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="CloseOutAsync">Close investigation</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid IncidentId { get; set; }
+
+    private IncidentReportDto? _incident;
+    private string? _immediateCause;
+    private string? _rootCause;
+    private string? _correctiveActions;
+    private string? _investigatedBy;
+    private bool _riddorReportable;
+    private string? _riddorCategory;
+    private bool _busy;
+    private bool _changed;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _incident = await IncidentsSvc.GetAsync(Guid.Empty, IncidentId);
+            if (_incident is null)
+            {
+                Snackbar.Add("This incident could not be loaded.", Severity.Error);
+                MudDialog.Cancel();
+                return;
+            }
+
+            _immediateCause = _incident.ImmediateCause;
+            _rootCause = _incident.RootCause;
+            _correctiveActions = _incident.CorrectiveActions;
+            _investigatedBy = _incident.InvestigatedBy;
+            _riddorReportable = _incident.RiddorReportable;
+            _riddorCategory = _incident.RiddorCategory;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Snackbar.Add("This incident could not be loaded.", Severity.Error);
+            MudDialog.Cancel();
+        }
+    }
+
+    private async Task<bool> SaveInvestigationAsync()
+    {
+        var request = new UpdateIncidentInvestigationRequest(
+            _immediateCause, _rootCause, _correctiveActions, _riddorReportable, _riddorCategory, _investigatedBy);
+        var ok = await IncidentsSvc.UpdateInvestigationAsync(Guid.Empty, IncidentId, request);
+        if (ok)
+        {
+            _changed = true;
+        }
+
+        return ok;
+    }
+
+    private async Task SaveAsync()
+    {
+        _busy = true;
+        try
+        {
+            var ok = await SaveInvestigationAsync();
+            Snackbar.Add(ok ? "Investigation saved." : "Could not save the investigation.", ok ? Severity.Success : Severity.Error);
+            if (ok)
+            {
+                await LoadAsync();
+            }
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task CloseOutAsync()
+    {
+        _busy = true;
+        try
+        {
+            // Persist the latest investigation edits before closing so nothing entered is lost.
+            if (!await SaveInvestigationAsync())
+            {
+                Snackbar.Add("Could not save the investigation.", Severity.Error);
+                return;
+            }
+
+            var ok = await IncidentsSvc.CloseAsync(Guid.Empty, IncidentId);
+            Snackbar.Add(ok ? "Investigation closed." : "Could not close the investigation.", ok ? Severity.Success : Severity.Error);
+            if (ok)
+            {
+                _changed = true;
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Inserts spaces before internal capitals so an enum name reads as words.</summary>
+    private static string Humanize(string value) =>
+        string.IsNullOrEmpty(value) ? value : System.Text.RegularExpressions.Regex.Replace(value, "(?<=[a-z])([A-Z])", " $1");
+}

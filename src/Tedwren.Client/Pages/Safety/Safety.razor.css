@@ -1,0 +1,20 @@
+/* Leading-indicator tiles above the hazard register. */
+.safety-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-12);
+    margin-bottom: var(--spacing-20);
+}
+
+.safety-stats__tile {
+    flex: 1 1 140px;
+    min-width: 120px;
+    border-radius: var(--radius-card);
+}
+
+/* Report/record action row above each register's table. */
+.safety-toolbar {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: var(--spacing-16);
+}

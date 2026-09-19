@@ -202,11 +202,18 @@ sell-before-build applies to each.
   (token pattern) so a recipient signs without a login; scheduled/at-clock-in **re-acknowledgement**; and
   folding the matrix into the compliance pack as a proof point.
 
-### HSE-4 — Near-miss / hazard reporting + accident/incident (RIDDOR)
+### HSE-4 — Near-miss / hazard reporting + accident/incident (RIDDOR) *(delivered — core; geolocation/notify deferred)*
 - Worker reports from their phone with photo + location (reuse SF-14 geolocation + `IImageStore`);
   responsible manager notified immediately; categorise, assign, close; leading-indicator statistics.
 - Structured **accident/incident** record with investigation fields, actions, close-out, a
   **RIDDOR-reportable flag** and export.
+- **Delivered:** `HazardReport` + `IncidentReport` (two SRP entities), the `hse`-gated `/api/safety`
+  group (`/hazards*` report→assign→close + leading-indicator stats; `/incidents*` report→investigate
+  →close with the **RIDDOR flag/category**), the tabbed **Safety Events** page (hazard tiles + report/
+  triage dialogs; incident record + investigation dialog), and unit/API tests.
+- **Deferred (follow-ups):** on-device geolocation capture (lat/lng columns provisioned); immediate
+  manager notification on report (reuse the notification engine); resolving reporter/assignee from the
+  people roster; and RIDDOR export.
 
 ### HSE-5 — Library versioning, unified evidence export, HAVs & carbon
 - Add **versioning/supersede** to `CompanyDocument` (mirror `QualificationCard`'s supersede chain) →

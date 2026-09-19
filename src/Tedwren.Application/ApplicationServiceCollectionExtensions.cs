@@ -409,6 +409,24 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic safety-events services: hazard/near-miss reporting + accident/incident (PRD §8.2).</summary>
+    public static IServiceCollection AddSafetyCore(this IServiceCollection services)
+    {
+        services.AddScoped<IHazardReportService, Safety.HazardReportService>();
+        services.AddScoped<IIncidentReportService, Safety.IncidentReportService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory safety-events repositories (singletons so they persist across test requests).</summary>
+    public static IServiceCollection AddInMemorySafetyStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryHazardReportRepository>();
+        services.AddScoped<IHazardReportRepository>(sp => sp.GetRequiredService<InMemoryHazardReportRepository>());
+        services.AddSingleton<InMemoryIncidentReportRepository>();
+        services.AddScoped<IIncidentReportRepository>(sp => sp.GetRequiredService<InMemoryIncidentReportRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
     public static IServiceCollection AddSettingsCore(this IServiceCollection services)
     {

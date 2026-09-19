@@ -1,0 +1,100 @@
+@using Tedwren.Abstractions.Contracts.Safety
+@using Tedwren.Abstractions.Services
+@inject IHazardReportService HazardsSvc
+@inject ISnackbar Snackbar
+
+@* Report a hazard / near-miss from site; persists via IHazardReportService and shows the reference on success. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Report what you saw so it can be actioned. Near-misses and hazards are leading indicators — reporting them early prevents incidents. Add a photo and location if you can; a responsible person will be assigned to close it out." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">What did you see?</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenSelect T="string" Label="Kind" @bind-Value="_kind" Options="_kinds" OptionText="Humanize" />
+                    <TedwrenSelect T="string" Label="Severity / potential" @bind-Value="_severity" Options="_severities" />
+                    <div class="tw-dialog-body__full">
+                        <MudTextField @bind-Value="_description" Label="Description" Variant="Variant.Outlined" Lines="3" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_description)" ErrorText="A description is required." />
+                    </div>
+                    <TedwrenTextField Label="Location" @bind-Value="_location" Placeholder="e.g. Level 3, east core" />
+                    <TedwrenTextField Label="Category" @bind-Value="_category" Placeholder="e.g. Working at height" />
+                    <div class="tw-dialog-body__full">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach a photo (optional)</MudText>
+                        <InputFile OnChange="OnFileSelected" accept="image/*" />
+                        @if (_photo is not null)
+                        {
+                            <MudText Typo="Typo.caption">@_photo.Name</MudText>
+                        }
+                    </div>
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitAsync" Disabled="_busy">Submit report</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid CompanyId { get; set; }
+
+    private readonly string[] _kinds = { "NearMiss", "Hazard", "UnsafeAct", "UnsafeCondition" };
+    private readonly string[] _severities = { "Low", "Medium", "High" };
+
+    private string _kind = "NearMiss";
+    private string _severity = "Medium";
+    private string? _description;
+    private string? _location;
+    private string? _category;
+    private IBrowserFile? _photo;
+    private bool _submitted;
+    private bool _busy;
+
+    private void OnFileSelected(InputFileChangeEventArgs e) => _photo = e.File;
+
+    private async Task SubmitAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_description))
+        {
+            Snackbar.Add("A description is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            string? photoB64 = null, photoType = null;
+            if (_photo is not null)
+            {
+                using var ms = new MemoryStream();
+                await _photo.OpenReadStream(10 * 1024 * 1024).CopyToAsync(ms);
+                photoB64 = Convert.ToBase64String(ms.ToArray());
+                photoType = _photo.ContentType;
+            }
+
+            var dto = await HazardsSvc.ReportAsync(CompanyId, string.Empty,
+                new ReportHazardRequest(_kind, _description!, _location, null, null, photoB64, photoType, _severity, _category));
+            Snackbar.Add($"Reported — reference {dto.Reference}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch
+        {
+            Snackbar.Add("Could not submit the report.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Inserts spaces before internal capitals so an enum name reads as words.</summary>
+    private static string Humanize(string value) =>
+        string.IsNullOrEmpty(value) ? value : System.Text.RegularExpressions.Regex.Replace(value, "(?<=[a-z])([A-Z])", " $1");
+}

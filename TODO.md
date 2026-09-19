@@ -79,6 +79,32 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-4 near-miss/hazard reporting + accident/incident (RIDDOR) (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The fourth HSE slice — two coherent features under one `hse`-gated
+`/api/safety` group and one tabbed **Safety Events** page (§8.2). Whole solution builds **0 warnings / 0 errors**;
+all suites green (Domain 71, Application 299 incl. 15 new, Api 154 incl. 3 new, Web 178, Client 30; DataAccess 4
++18 LocalDB-skipped).
+- ✅ **Domain + persistence.** Two SRP entities — `HazardReport` (near-miss/hazard/unsafe-act/-condition, with an
+  optional photo + coordinates and a triage lifecycle) and `IncidentReport` (accident/incident/dangerous-occurrence
+  with investigation fields + a **RIDDOR-reportable flag/category**). Enums `HazardKind`/`HazardStatus`/
+  `SafetySeverity`/`IncidentKind`/`IncidentStatus`. `IHazardReportRepository`/`IIncidentReportRepository` — Dapper
+  (dual-engine) + in-memory. Migration `027_safety_events.sql` (SQL Server + Postgres), EF `AddSafetyEvents` +
+  `HazardReportRecord`/`IncidentReportRecord` + mappings.
+- ✅ **Service + API.** `IHazardReportService`/`HazardReportService` (report→assign→close with a required note;
+  photo stored via `IImageStore`, validated, R9; **leading-indicator stats** by status/kind) and
+  `IIncidentReportService`/`IncidentReportService` (report→investigate→close; RIDDOR category cleared when not
+  reportable). `/api/safety` (`/hazards*` + `/incidents*`) is **entitlement-gated on `hse`** (fails closed, Q2),
+  writes `RequireWrite` (SF-23), company + reporter resolved server-side (R15). Enum values are strings on the wire
+  (parsed leniently server-side), matching the DTO convention. Validation errors → 400.
+- ✅ **Client.** `ApiHazardReportService`/`ApiIncidentReportService`; a **Safety Events** page (`/safety`, nav-gated
+  on `hse`) with two tabs — hazards (leading-indicator tiles + `DataTable` + report dialog with photo + a
+  view/triage dialog) and incidents (`DataTable` + record dialog + an investigation dialog with the RIDDOR switch).
+- ✅ Tests: `HazardReportServiceTests` (9) + `IncidentReportServiceTests` (6) + `SafetyApiTests` (3: module-off
+  403; hazard report→assign→close→stats; incident report→investigate-with-RIDDOR→close).
+- ❗ **HSE-4 follow-ups (raised):** device geolocation capture on the phone report (lat/lng columns provisioned);
+  immediate manager notification on report (reuse the notification engine); resolving reporter/assignee from the
+  people roster; and RIDDOR export. Next: **HSE-5** doc versioning + unified evidence export + HAVs + carbon.
+
 ### Commercial expansion — Track C: HSE-3 document distribution & acknowledgement (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C). The third HSE slice — distribute a document to a set of recipients in
 one action and track who has acknowledged it (§8.2). Whole solution builds **0 warnings / 0 errors**; all suites

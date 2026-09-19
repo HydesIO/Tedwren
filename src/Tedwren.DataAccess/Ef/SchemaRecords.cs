@@ -368,6 +368,53 @@ public sealed class DocumentAcknowledgementRecord
     public DateTimeOffset? AcknowledgedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>HazardReports</c> table (hazard / near-miss reporting, PRD §8.2).</summary>
+public sealed class HazardReportRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public int Kind { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? PhotoReference { get; set; }
+    public int Severity { get; set; }
+    public string? Category { get; set; }
+    public int Status { get; set; }
+    public string? AssignedTo { get; set; }
+    public string ReportedBy { get; set; } = string.Empty;
+    public DateTimeOffset ReportedUtc { get; set; }
+    public DateTimeOffset? ClosedUtc { get; set; }
+    public string? ClosureNote { get; set; }
+}
+
+/// <summary>Schema row for the <c>IncidentReports</c> table (accident / incident record + RIDDOR, PRD §8.2).</summary>
+public sealed class IncidentReportRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public int Kind { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public DateTimeOffset OccurredUtc { get; set; }
+    public string? InjuredPersonName { get; set; }
+    public string? InjuryDetail { get; set; }
+    public int Severity { get; set; }
+    public string? ImmediateCause { get; set; }
+    public string? RootCause { get; set; }
+    public string? CorrectiveActions { get; set; }
+    public int Status { get; set; }
+    public bool RiddorReportable { get; set; }
+    public string? RiddorCategory { get; set; }
+    public string ReportedBy { get; set; } = string.Empty;
+    public DateTimeOffset ReportedUtc { get; set; }
+    public string? InvestigatedBy { get; set; }
+    public DateTimeOffset? ClosedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {

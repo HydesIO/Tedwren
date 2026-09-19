@@ -38,6 +38,8 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<RamsSubmissionRecord> RamsSubmissions => Set<RamsSubmissionRecord>();
     public DbSet<DocumentDistributionRecord> DocumentDistributions => Set<DocumentDistributionRecord>();
     public DbSet<DocumentAcknowledgementRecord> DocumentAcknowledgements => Set<DocumentAcknowledgementRecord>();
+    public DbSet<HazardReportRecord> HazardReports => Set<HazardReportRecord>();
+    public DbSet<IncidentReportRecord> IncidentReports => Set<IncidentReportRecord>();
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
     public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
@@ -260,6 +262,37 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.RecipientName).HasMaxLength(256);
             e.HasIndex(x => x.DistributionId);
             e.HasIndex(x => x.CompanyId);
+        });
+
+        model.Entity<HazardReportRecord>(e =>
+        {
+            e.ToTable("HazardReports");
+            e.Property(x => x.Reference).HasMaxLength(64);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.Location).HasMaxLength(256);
+            e.Property(x => x.PhotoReference).HasMaxLength(256);
+            e.Property(x => x.Category).HasMaxLength(128);
+            e.Property(x => x.AssignedTo).HasMaxLength(256);
+            e.Property(x => x.ReportedBy).HasMaxLength(256);
+            e.Property(x => x.ClosureNote).HasMaxLength(2000);
+            e.HasIndex(x => new { x.CompanyId, x.ReportedUtc });
+        });
+
+        model.Entity<IncidentReportRecord>(e =>
+        {
+            e.ToTable("IncidentReports");
+            e.Property(x => x.Reference).HasMaxLength(64);
+            e.Property(x => x.Description).HasMaxLength(2000);
+            e.Property(x => x.Location).HasMaxLength(256);
+            e.Property(x => x.InjuredPersonName).HasMaxLength(256);
+            e.Property(x => x.InjuryDetail).HasMaxLength(512);
+            e.Property(x => x.ImmediateCause).HasMaxLength(2000);
+            e.Property(x => x.RootCause).HasMaxLength(2000);
+            e.Property(x => x.CorrectiveActions).HasMaxLength(2000);
+            e.Property(x => x.RiddorCategory).HasMaxLength(128);
+            e.Property(x => x.ReportedBy).HasMaxLength(256);
+            e.Property(x => x.InvestigatedBy).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.ReportedUtc });
         });
 
         model.Entity<AuditEntryRecord>(e =>
