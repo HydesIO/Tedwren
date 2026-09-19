@@ -79,6 +79,29 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-1 plant & equipment register (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The first HSE slice — the Asset/Plant register the PRD said should
+exist "from the MVP so this is an addition, not a rewrite" (§8.2), now added. Metered **per active site** (Q18,
+per the product owner). Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application
+267 incl. 9 new, Api 147 incl. 2 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** New `Asset` entity + `AssetStatus` (Active/Retired). `IAssetRepository`
+  (Add/GetByCompany/Get/Update) — Dapper (dual-engine) + in-memory. Migration: idempotent `024_assets.sql`
+  (SQL Server + Postgres), EF `AddAssetRegister` migration + `AssetRecord` schema record + `TedwrenDbContext`
+  mapping.
+- ✅ **Service + API.** `IAssetService`/`AssetService` (list/create/update/retire, tenant-scoped R15) derives a
+  display **certification status** (Valid / Expiring soon [≤30d] / Expired / No certificate) from the expiry date,
+  reusing the card warning-window idea (SF-9). `/api/assets` (GET/POST/PUT/`{id}/retire`): the whole group is
+  **entitlement-gated on the paid `hse` module** (`ModuleGate.Require("hse")`, fails closed, Q2), writes
+  `RequireWrite` (SF-23), the caller's company resolved server-side (R15).
+- ✅ **Module + client + UI.** New `hse` module in `ModuleCatalog` (default off, billed per active site).
+  `ApiAssetService`; a **Plant & Equipment** page (`/assets`, nav-gated on `hse`) — a `DataTable` with cert-status,
+  Add/Edit via `EditAssetDialog` (MudDialog standard, two-way binds) and confirm-gated Retire.
+- ✅ Tests: `AssetServiceTests` (9: CRUD, R15, cert-status derivation) + `AssetApiTests` (2: module-off 403,
+  create→list→update→retire round-trip).
+- ❗ **Follow-ups:** wire asset certification/inspection expiry into `ExpiryWarningJob` (SMS/email warnings;
+  in-list only for now); an asset-type reference list; inspection records via the Forms engine. The rest of
+  Track C — **HSE-2 RAMS** onward — is the next work.
+
 ### Commercial expansion — Track B: CSCS verification seam (PRD-Phase 1) (this change)
 Plan: `docs/next-phases-plan.md` (Track B). The buildable half of live CSCS verification, behind the existing
 data-model seam; the real Smart Check client + induction/gate wiring are the post-agreement build (the CSCS

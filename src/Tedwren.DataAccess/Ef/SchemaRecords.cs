@@ -307,6 +307,23 @@ public sealed class PermitRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>Assets</c> table (plant &amp; equipment register, PRD §8.2).</summary>
+public sealed class AssetRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? AssetType { get; set; }
+    public string? SerialNumber { get; set; }
+    public string? Location { get; set; }
+    public string? OwnerName { get; set; }
+    public DateOnly? CertificationExpiry { get; set; }
+    public DateOnly? NextInspectionDue { get; set; }
+    public string? Notes { get; set; }
+    public int Status { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {

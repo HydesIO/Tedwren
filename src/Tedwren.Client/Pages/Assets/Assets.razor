@@ -1,0 +1,122 @@
+@page "/assets"
+@using Tedwren.Abstractions.Contracts.Assets
+@using Tedwren.Abstractions.Services
+@inject IAssetService AssetSvc
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Plant &amp; Equipment · Tedwren</PageTitle>
+
+<PageHeader Title="Plant & Equipment" Subtitle="The company's plant and equipment register">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                   OnClick="AddAsset">Add asset</MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="AssetDto"
+                   Items="_assets"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search assets…"
+                   EmptyTitle="No assets yet"
+                   EmptyDescription="Add plant or equipment to track its certification and inspections."
+                   EmptyIcon="@Icons.Material.Outlined.Construction" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private bool _loading = true;
+
+    private IReadOnlyList<AssetDto> _assets = Array.Empty<AssetDto>();
+    private List<DataColumn<AssetDto>> _columns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _assets = await AssetSvc.ListForCompanyAsync(Tenant.CurrentCompanyId);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Name", Value = a => a.Name, Filterable = true },
+            new() { Title = "Type", Value = a => a.AssetType ?? "—", Filterable = true },
+            new() { Title = "Location", Value = a => a.Location ?? "—" },
+            new()
+            {
+                Title = "Certification", Value = a => a.CertificationStatus, Filterable = true,
+                CellTemplate = a => @<span>@CertLabel(a)</span>
+            },
+            new() { Title = "Status", Value = a => a.Status, Filterable = true },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = a => @<div class="asset-row-actions">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               OnClick="@(() => EditAsset(a))">Edit</MudButton>
+                    @if (a.Status != "Retired")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                   OnClick="@(() => RetireAsset(a))">Retire</MudButton>
+                    }
+                </div>
+            },
+        };
+    }
+
+    private static string CertLabel(AssetDto a) =>
+        a.CertificationExpiry is { } e ? $"{a.CertificationStatus} · {e:dd MMM yyyy}" : a.CertificationStatus;
+
+    private async Task AddAsset()
+    {
+        var parameters = new DialogParameters<EditAssetDialog> { { x => x.CompanyId, Tenant.CurrentCompanyId } };
+        var dialog = await Dialogs.ShowAsync<EditAssetDialog>("Add asset", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task EditAsset(AssetDto asset)
+    {
+        var parameters = new DialogParameters<EditAssetDialog>
+        {
+            { x => x.CompanyId, Tenant.CurrentCompanyId },
+            { x => x.Asset, asset },
+        };
+        var dialog = await Dialogs.ShowAsync<EditAssetDialog>("Edit asset", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task RetireAsset(AssetDto asset)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Retire \"{asset.Name}\"? It stays in the register for history but is marked retired." },
+            { x => x.ConfirmText, "Retire" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Retire asset", parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false })
+        {
+            var ok = await AssetSvc.RetireAsync(Tenant.CurrentCompanyId, asset.Id);
+            Snackbar.Add(ok ? "Asset retired." : "Could not retire the asset.", ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadAsync();
+        }
+    }
+}

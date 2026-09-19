@@ -54,6 +54,7 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<IPermitRepository, PermitRepository>();
+        services.AddScoped<IAssetRepository, AssetRepository>();
         services.AddScoped<IOnboardingLinkRepository, OnboardingLinkRepository>();
         services.AddScoped<ITradeInviteRepository, TradeInviteRepository>();
         services.AddScoped<IImageStore, ImageStore>();

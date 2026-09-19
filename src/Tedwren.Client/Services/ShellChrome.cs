@@ -32,6 +32,7 @@ public static class ShellChrome
         new("Form Submissions",    Icons.Material.Outlined.AssignmentTurnedIn, "/form-submissions"),
         new("Time & Attendance",   Icons.Material.Outlined.Schedule,       "/time-attendance"),
         new("Permits",             Icons.Material.Outlined.Assignment,     "/permits"),
+        new("Plant & Equipment",   Icons.Material.Outlined.Construction,   "/assets"),
         new("Reports & Analytics", Icons.Material.Outlined.BarChart,       "/reports"),
         new("Integrations",        Icons.Material.Outlined.Hub,            "/integrations"),
         new("Audit Log",           Icons.Material.Outlined.History,        "/audit-log"),

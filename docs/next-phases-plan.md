@@ -265,8 +265,9 @@ agreement kicked off on day one**, then **HSE-1 → HSE-2 → HSE-3 → HSE-4 �
 Needed to shape (not just detail) the build:
 
 - **Q14** — identity/app route for Phase 5 (affects identity modelling *now*).
-- **Q18 / §9** — is a module priced per site or per operative? Decides the metering work for HSE, and
-  which-meter/which-band must stay **configuration** (PRD §9 — do not hard-code).
+- **Q18 / §9** — is a module priced per site or per operative? **Resolved: the HSE module is billed per active
+  site** (product owner). Which-meter/which-band stays **configuration** (PRD §9 — not hard-coded); the HSE
+  features ship as an on/off module and the per-site billing is a commercial-config concern for the billing layer.
 - **Q21 / Q22** — the default qualification and insurance/accreditation libraries (needs a construction
   practitioner, not a developer).
 - **Q3** — does the cross-company sharing surface belong in the MC MVP after all (PRD instinct: no).

@@ -364,6 +364,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic plant &amp; equipment register service (PRD §8.2).</summary>
+    public static IServiceCollection AddAssetCore(this IServiceCollection services)
+    {
+        services.AddScoped<IAssetService, Assets.AssetService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory asset repository (singleton so added assets persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryAssetStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryAssetRepository>();
+        services.AddScoped<IAssetRepository>(sp => sp.GetRequiredService<InMemoryAssetRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
     public static IServiceCollection AddSettingsCore(this IServiceCollection services)
     {

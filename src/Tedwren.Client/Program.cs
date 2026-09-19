@@ -60,6 +60,7 @@ builder.Services.AddScoped<IWorkforceService, ApiWorkforceService>();
 builder.Services.AddScoped<IDashboardService, ApiDashboardService>();
 builder.Services.AddScoped<ISettingsService, ApiSettingsService>();
 builder.Services.AddScoped<IPermitService, ApiPermitService>();
+builder.Services.AddScoped<IAssetService, ApiAssetService>();
 builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
 builder.Services.AddScoped<ITradeOnboardingService, ApiTradeOnboardingService>();
 builder.Services.AddScoped<IDemoDataService, ApiDemoDataService>();

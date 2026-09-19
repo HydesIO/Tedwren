@@ -26,6 +26,7 @@ public static class ModuleCatalog
         new("integrations", "Integrations", "Connected third-party services", DefaultEnabled: false),
         new("forms", "Forms Library", "Custom forms, submissions and assignments", DefaultEnabled: false),
         new("cscs", "CSCS Verification", "Live CSCS Smart Check card verification (paid add-on)", DefaultEnabled: false),
+        new("hse", "Health, Safety & Compliance", "Plant register, RAMS and safety records (paid add-on, billed per active site)", DefaultEnabled: false),
     };
 
     /// <summary>Returns the catalogue module for a key, or null when the key is unknown (fails closed, Q2).</summary>
