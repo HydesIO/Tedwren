@@ -66,6 +66,7 @@ builder.Services.AddScoped<IDocumentDistributionService, ApiDocumentDistribution
 builder.Services.AddScoped<IHazardReportService, ApiHazardReportService>();
 builder.Services.AddScoped<IIncidentReportService, ApiIncidentReportService>();
 builder.Services.AddScoped<IHavsExposureService, ApiHavsExposureService>();
+builder.Services.AddScoped<IEvidenceExportService, ApiEvidenceExportService>();
 builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
 builder.Services.AddScoped<ITradeOnboardingService, ApiTradeOnboardingService>();
 builder.Services.AddScoped<IDemoDataService, ApiDemoDataService>();

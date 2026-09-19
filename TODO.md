@@ -79,6 +79,27 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-5 unified compliance evidence export (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **unified evidence export** — the ISO 45001 /
+project-audit pack that assembles a company's compliance evidence across modules into one download. This completes
+every **buildable** HSE-5 item (carbon remains **blocked** on the unbuilt MC-26 prerequisite). Whole solution builds
+**0 warnings / 0 errors**; all suites green (Domain 71, Application 317 incl. 3 new, Api 159 incl. 2 new, Web 178,
+Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Service.** `IEvidenceExportService`/`EvidenceExportService` reads the **existing** evidence repositories
+  (permits, RAMS, plant, hazards, incidents, HAVs, document acknowledgements — no new tables) and renders each to a
+  shared `TabularSheet` → CSV via the existing `CsvWriter`, so every format shows identical content (SUB-16 reuse).
+  `GetSummaryAsync` returns the per-section counts; `BuildZipAsync` packs one CSV per section + a `manifest.txt`
+  fixed-snapshot into a ZIP. Everything is company-scoped (R15). HAVs rows carry the derived A(8)/points/band.
+- ✅ **API.** `/api/evidence` (`/summary` + `/export`) is **entitlement-gated on the paid `hse` module** (fails
+  closed, Q2); the company is resolved server-side (R15). `/export` streams the ZIP via `Results.File`.
+- ✅ **Client.** `ApiEvidenceExportService`; an **Evidence Export** page (`/evidence`, nav-gated on `hse`) that shows
+  what the pack covers (sections + counts + total) and downloads the ZIP via the shared `tedwren.download` JS.
+- ✅ Tests: `EvidenceExportServiceTests` (3: per-section counts + R15 scoping, ZIP has a manifest + section CSVs with
+  data, cross-tenant data excluded) + `EvidenceApiTests` (2: module-off 403; summary + ZIP export).
+- ❗ **Follow-ups:** add competency (per-operative cards), inductions and form/inspection submissions as further
+  sections; an Excel (`XlsxWriter`) rendering and a combined PDF; a site/date filter on the pack. **Carbon** (social
+  value) stays **blocked** until the MC-26 travel/vehicle capture exists.
+
 ### Commercial expansion — Track C: HSE-5 company document library versioning (MC-27) (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **document library versioning/supersede** sub-slice
 — MC-27's "company file library, always at the current version" — by mirroring the proven `QualificationCard`

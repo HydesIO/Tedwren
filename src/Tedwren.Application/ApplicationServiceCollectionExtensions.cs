@@ -442,6 +442,13 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the unified compliance evidence-export service (PRD §8.2). It reads the existing evidence repositories, so it needs no store of its own.</summary>
+    public static IServiceCollection AddEvidenceCore(this IServiceCollection services)
+    {
+        services.AddScoped<IEvidenceExportService, Evidence.EvidenceExportService>();
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
     public static IServiceCollection AddSettingsCore(this IServiceCollection services)
     {

@@ -224,7 +224,10 @@ sell-before-build applies to each.
   upload; a `FamilyId` to simplify chain queries.
 - **Unified compliance evidence export** spanning inductions + acknowledgements + inspections + permits +
   competency (extend `PackComposer` / the `Export` writers) — the ISO 45001 / project-audit export.
-  *(queued — extends existing export machinery.)*
+  **✅ Delivered:** `EvidenceExportService` assembles permits, RAMS, plant, hazards, incidents, HAVs and
+  document acknowledgements into a ZIP (one CSV per section + manifest, via the shared `CsvWriter`); the
+  `hse`-gated `/api/evidence` (`/summary` + `/export`) and an **Evidence Export** page. *Follow-up:* add
+  competency/inductions/inspection sections, an Excel/PDF rendering, and a site/date filter.
 - **Hand-arm vibration (HAVs)** monitoring (exposure vs HSE action/limit values, proactive alerts) — a
   statutory duty and a standalone reason to buy the module. **✅ Delivered:** `HavsExposureRecord` +
   `HavsCalculator` (HSE A(8) methodology: EAV 2.5 m/s²/100 pts, ELV 5.0 m/s²/400 pts), the `hse`-gated

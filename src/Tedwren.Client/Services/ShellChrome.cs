@@ -37,6 +37,7 @@ public static class ShellChrome
         new("Documents",           Icons.Material.Outlined.Description,     "/documents"),
         new("Safety Events",       Icons.Material.Outlined.ReportProblem,  "/safety"),
         new("Vibration (HAVs)",    Icons.Material.Outlined.Vibration,      "/havs"),
+        new("Evidence Export",     Icons.Material.Outlined.Inventory,      "/evidence"),
         new("Reports & Analytics", Icons.Material.Outlined.BarChart,       "/reports"),
         new("Integrations",        Icons.Material.Outlined.Hub,            "/integrations"),
         new("Audit Log",           Icons.Material.Outlined.History,        "/audit-log"),
