@@ -33,4 +33,22 @@ public static class TwPalette
     /// <summary>Secondary text — light / dark.</summary>
     public static readonly Color TextSecondaryLight = Color.FromArgb("#667085");
     public static readonly Color TextSecondaryDark = Color.FromArgb("#94A0B4");
+
+    /// <summary>Success (solid + pale) — light / dark.</summary>
+    public static readonly Color SuccessLight = Color.FromArgb("#17B26A");
+    public static readonly Color SuccessDark = Color.FromArgb("#3CCB7F");
+    public static readonly Color SuccessPaleLight = Color.FromArgb("#ECFDF3");
+    public static readonly Color SuccessPaleDark = Color.FromArgb("#16281F");
+
+    /// <summary>Warning (solid + pale) — light / dark.</summary>
+    public static readonly Color WarningLight = Color.FromArgb("#F79009");
+    public static readonly Color WarningDark = Color.FromArgb("#F7A93D");
+    public static readonly Color WarningPaleLight = Color.FromArgb("#FFFAEB");
+    public static readonly Color WarningPaleDark = Color.FromArgb("#2C2313");
+
+    /// <summary>Danger (solid + pale) — light / dark.</summary>
+    public static readonly Color DangerLight = Color.FromArgb("#F04438");
+    public static readonly Color DangerDark = Color.FromArgb("#F5766B");
+    public static readonly Color DangerPaleLight = Color.FromArgb("#FEF3F2");
+    public static readonly Color DangerPaleDark = Color.FromArgb("#2E1B1A");
 }

@@ -423,6 +423,7 @@ app.MapOnboardingEndpoints();
 app.MapTradeOnboardingEndpoints();
 app.MapMobileAuthEndpoints();
 app.MapMobileEndpoints();
+app.MapMobileAttendanceEndpoints();
 app.MapLaunchListEndpoints();
 app.MapLeadEndpoints();
 app.MapAffiliateEndpoints();

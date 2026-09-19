@@ -50,11 +50,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<IReadCache>(_ => new JsonFileReadCache(Path.Combine(FileSystem.AppDataDirectory, "cache")));
         builder.Services.AddSingleton<OperativeDataService>();
 
+        // Attendance actions (M4): online-only sign-in/out over the same auth handler (never cached, R2/R3).
+        builder.Services.AddHttpClient<AttendanceApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl))
+            .AddHttpMessageHandler<OperativeAuthMessageHandler>();
+
         // Pages.
         builder.Services.AddTransient<LoadingPage>();
         builder.Services.AddTransient<SignInPage>();
         builder.Services.AddTransient<OperativeEnrolPage>();
         builder.Services.AddTransient<OperativeHomePage>();
+        builder.Services.AddTransient<SignInOutPage>();
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
         builder.Services.AddTransient<ProfilePage>();

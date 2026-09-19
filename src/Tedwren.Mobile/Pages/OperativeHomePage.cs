@@ -18,7 +18,6 @@ public class OperativeHomePage : ContentPage
     private readonly Label _statusLine = new() { FontAttributes = FontAttributes.Bold, Text = "Loading…" };
     private readonly Label _complianceLine = new() { FontSize = 13 };
     private readonly Label _metaLine = new() { Text = "Hours this week: —    ·    Forms due: —" };
-    private bool _loaded;
 
     /// <summary>Builds the operative overview dashboard and card menu.</summary>
     public OperativeHomePage(OperativeDataService data, IServiceProvider services)
@@ -50,16 +49,10 @@ public class OperativeHomePage : ContentPage
         };
     }
 
-    /// <summary>Loads the dashboard once when the page first appears.</summary>
+    /// <summary>Reloads the dashboard each time the page appears, so the live sign-in state refreshes on return from M4.</summary>
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        if (_loaded)
-        {
-            return;
-        }
-
-        _loaded = true;
         await LoadAsync();
     }
 
@@ -88,7 +81,7 @@ public class OperativeHomePage : ContentPage
     {
         var items = new (string Glyph, string Title, string Subtitle, Func<Page>? Destination)[]
         {
-            ("🕒", "Sign in / out", "Record arrival & departure", null),
+            ("🕒", "Sign in / out", "Record arrival & departure", () => _services.GetRequiredService<SignInOutPage>()),
             ("📋", "Forms due", "Checklists & inspections", null),
             ("📷", "Capture evidence", "Photos with location", null),
             ("⏱", "My hours", "This week's timesheet", () => _services.GetRequiredService<MyHoursPage>()),

@@ -83,11 +83,13 @@ operative "forms for me" query, immutable version caching, offline **draft/autos
 assign/review via the existing `/api/forms/*`.
 
 ## Phasing (M1–M8)
-- **M1 — Foundation / walking skeleton** *(this increment)*: projects, design-token port, brand splash + icon,
+- **M1 — Foundation / walking skeleton** *(landed)*: projects, design-token port, brand splash + icon,
   role-switch shell → two card-menu homes + dashboard shells, SQLite+SQLCipher planned, Core + tests green.
-- **M2 — Operative auth** (mobile + OTP + device bind + biometric).
-- **M3 — Operative surface + read caches + operative dashboard** (`/api/mobile/dashboard`).
-- **M4 — Attendance sign-in/out** (online-only, geofenced).
+- **M2 — Operative auth** (mobile + OTP + device bind + biometric) *(landed)*.
+- **M3 — Operative surface + read caches + operative dashboard** (`/api/mobile/dashboard`) *(landed)*.
+- **M4 — Attendance sign-in/out** (online-only, geofenced) *(this increment)*: token-scoped PersonId + R15 site
+  guard over the existing `IAttendanceService`; `/api/mobile/attendance/{sign-in,sign-out,current}`; live
+  dashboard on-site state; MAUI `SignInOutPage` (cached site, location + geofence hint, online-only, R18 wording).
 - **M5 — Offline capture & sync foundation** (encrypted outbox, multipart upload, background sync, photo+GPS).
 - **M6 — Forms & inspection engine (comprehensive).**
 - **M7 — Manager/admin mode** (dashboard via `IDashboardService`, muster, decisions, forms review).

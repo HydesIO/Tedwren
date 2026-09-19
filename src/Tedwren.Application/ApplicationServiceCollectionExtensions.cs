@@ -304,13 +304,14 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the operative (mobile) authentication service + one-time-code generator (M2) and the operative dashboard service (M3).</summary>
+    /// <summary>Registers the operative (mobile) authentication service + one-time-code generator (M2), the operative read surface + dashboard service (M3) and the operative attendance read (M4).</summary>
     public static IServiceCollection AddMobileAuthCore(this IServiceCollection services)
     {
         services.AddScoped<IOperativeAuthService, Mobile.OperativeAuthService>();
         services.AddSingleton<Mobile.IOtpCodeGenerator, Mobile.RandomOtpCodeGenerator>();
         services.AddScoped<IMobileSurfaceService, Mobile.MobileSurfaceService>();
         services.AddScoped<IOperativeDashboardService, Mobile.OperativeDashboardService>();
+        services.AddScoped<IMobileAttendanceService, Mobile.MobileAttendanceService>();
         return services;
     }
 

@@ -45,8 +45,23 @@ a workload machine (iOS needs macOS).
   9 Core — all green. ❗ Deferred: **site-documents (MC-27)** — no Site↔Document association exists (MC-27 is
   company-doc versioning); needs new modelling, raised as a gap. Read-cache **encryption-at-rest** lands in M5
   (SQLCipher replaces `JsonFileReadCache`).
-- ⏳ **M4** attendance (online-only, geofenced) · **M5** offline capture & sync · **M6** forms engine
-  (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
+- ✅ **M4 — Attendance sign-in/out (online-only, geofenced).** Server: `MobileAttendanceEndpoints`
+  (`/api/mobile/attendance/{sign-in,sign-out,current}`, RequireOperative) — thin wrappers over the existing
+  `IAttendanceService` with PersonId taken from the token (never the body) and an **R15 site guard** reusing the
+  tenant-scoped `ISiteService.GetSiteAsync` (cross-company/unknown site → 403 before any record). Every attempt is
+  recorded incl. refusals (SF-16, 200 body); the geofence decides the outcome (SF-14); no two sites at once
+  surfaces `SignedInElsewhere` (SF-18); sign-out returns duration (SF-17); `/current` is 204 when not signed in.
+  `IAttendanceService` left untouched (Blazor console implements it — SRP). New mobile-only `IMobileAttendanceService`
+  + `MobileAttendanceService` (current open sign-in + site name); `OperativeDashboardService` now populates live
+  `SignedIn`/`CurrentSiteId`/`CurrentSiteName` (M3 stubs removed). Client (Core): typed `AttendanceApiClient`
+  (online-only, 204→null) + `GeofenceHint` (reuses the domain `Geofence` for a pre-submit advisory; server stays
+  authoritative). MAUI head: `SignInOutPage` — pick a cached site, capture location, geofence hint, **online-only
+  guard** ("browser link still works" offline, R1/R2/R3), subcontractor-safe wording ("recorded"/"site-ready",
+  never "permitted"/"denied", R18/SUB-12), UK-local times (R11); operative-home tile routed + dashboard refreshes
+  on return. Status-colour tokens added to `TwPalette`. Tests: 7 API (inside/outside/cross-company/double-site/
+  sign-out/dashboard/console-403), 2 Application (`GetCurrentAsync`), 9 Core (client + geofence hint) — all green.
+- ⏳ **M5** offline capture & sync · **M6** forms engine (comprehensive) · **M7** manager/admin mode ·
+  **M8** hardening & store readiness.
 - ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
   workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and
