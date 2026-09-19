@@ -45,6 +45,10 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddQualificationCore(this IServiceCollection services)
     {
         services.AddScoped<IQualificationService, QualificationService>();
+        // CSCS live verification seam (PRD-Phase 1). The unconfigured default reports "unavailable" so callers use
+        // the human-check fallback (§8.1); the real client replaces it once the CSCS agreement is in place.
+        services.AddScoped<ICscsVerificationService, UnconfiguredCscsVerificationService>();
+        services.AddScoped<CscsVerificationCoordinator>();
         return services;
     }
 

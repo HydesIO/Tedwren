@@ -79,6 +79,29 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track B: CSCS verification seam (PRD-Phase 1) (this change)
+Plan: `docs/next-phases-plan.md` (Track B). The buildable half of live CSCS verification, behind the existing
+data-model seam; the real Smart Check client + induction/gate wiring are the post-agreement build (the CSCS
+agreement is the project's longest external lead time, §11 — start it now). Whole solution builds **0 warnings /
+0 errors**; all suites green (Domain 71, Application 258 incl. 6 new, Api 145 incl. 2 new, Web 178, Client 30;
+DataAccess 4 +18 LocalDB-skipped).
+- ✅ **`ICscsVerificationService`** (Abstractions) + `CscsVerificationResult` (Verified/Expired/NotFound/Unavailable).
+  Default **`UnconfiguredCscsVerificationService`** reports Unavailable so callers use the human-check fallback
+  (§8.1 — an unreachable third party must never block an induction); the real HTTP client replaces it once the
+  agreement lands (mirrors `UnconfiguredGoCardlessClient`).
+- ✅ **`CscsVerificationCoordinator`** encodes the §8.1 decision rules over a lookup: not-entitled → no call, the
+  card stays customer-checked (Q2, fails closed); verified → `CardVerificationState.CscsVerified`; expired →
+  blocks the induction; unrecognised → induction continues but entry blocked pending a manual check; unavailable →
+  human fallback, never blocks.
+- ✅ **`cscs` paid add-on module** in `ModuleCatalog` (default off) — sellable/toggleable now. `POST
+  /api/qualifications/cscs-check` (`RequireWrite`) resolves the caller's company server-side (R15), runs the
+  coordinator, and returns a string-enum `CscsCheckResponse`.
+- ✅ Tests: `CscsVerificationCoordinatorTests` (6: each §8.1 rule + the unconfigured default) + 2 API tests
+  (module-off → NotEntitled; module-on/unconfigured → HumanFallback).
+- ❗ **Post-agreement build (raised):** the real Smart Check HTTP client behind `ICscsVerificationService`; wiring
+  the coordinator into the induction take-flow + the site-entry decision; and the same-card/two-people flag (Q11,
+  needs a cross-person card lookup).
+
 ### Launch Readiness (Track A) — LR-6: Permit lifecycle + README (this change)
 Plan: `docs/next-phases-plan.md` (Track A). Completed the permit lifecycle beyond Draft/Issued (PRD §8.2) and
 rewrote the stale README. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71,

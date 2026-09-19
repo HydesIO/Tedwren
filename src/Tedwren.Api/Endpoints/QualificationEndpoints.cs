@@ -54,6 +54,20 @@ public static class QualificationEndpoints
                     Results.Ok(await service.GetShortfallAsync(personId, trade, cancellationToken)))
             .WithName("GetShortfall");
 
+        // CSCS live verification (PRD-Phase 1). Resolves the caller's company server-side (R15) and applies the
+        // §8.1 decision rules; the coordinator fails closed when the company does not hold the paid CSCS module.
+        group.MapPost("/cscs-check",
+                async (CscsCheckRequest request, ICurrentUserService currentUser,
+                    Tedwren.Application.Qualifications.CscsVerificationCoordinator coordinator, CancellationToken cancellationToken) =>
+                {
+                    var companyId = (await currentUser.GetCurrentAsync(cancellationToken)).CompanyId ?? Guid.Empty;
+                    var result = await coordinator.CheckAsync(companyId, request.CardNumber, request.Scheme, cancellationToken);
+                    return Results.Ok(new CscsCheckResponse(
+                        result.Outcome.ToString(), result.State.ToString(),
+                        result.BlocksInduction, result.BlocksEntry, result.Expiry, result.Message));
+                })
+            .WithName("CscsCheck").RequireAuthorization("RequireWrite");
+
         return app;
     }
 
