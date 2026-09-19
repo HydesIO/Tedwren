@@ -124,6 +124,7 @@ public sealed class OnboardingService : IOnboardingService
         string? imageReference = null;
         if (!string.IsNullOrWhiteSpace(request.ImageBase64))
         {
+            Common.UploadValidation.Validate(request.ImageBase64, request.ImageContentType, Common.UploadKind.Image);
             var bytes = Convert.FromBase64String(request.ImageBase64);
             imageReference = await _images.SaveAsync(bytes, request.ImageContentType ?? "image/jpeg", cancellationToken);
         }

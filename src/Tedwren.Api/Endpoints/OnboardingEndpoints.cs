@@ -45,8 +45,18 @@ public static class OnboardingEndpoints
             .WithName("SubmitOnboardingDetails");
 
         recipient.MapPost("/cards", async (string token, string? passcode, CaptureOnboardingCardRequest request, IOnboardingService service, CancellationToken cancellationToken) =>
-                await service.CaptureCardAsync(token, passcode, request, cancellationToken) is { } view
-                    ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden))
+            {
+                try
+                {
+                    return await service.CaptureCardAsync(token, passcode, request, cancellationToken) is { } view
+                        ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+                catch (ArgumentException ex)
+                {
+                    // Upload validation failed (size / content type, R9).
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
             .WithName("CaptureOnboardingCard");
 
         return app;

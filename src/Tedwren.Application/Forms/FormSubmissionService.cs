@@ -170,6 +170,13 @@ public sealed class FormSubmissionService : IFormSubmissionService
             SubmittedBy = name,
         };
 
+        // Validate uploaded files (size + content type, R9) before persisting anything, so an oversized or
+        // unexpected-type upload rejects the whole submit cleanly with nothing stored.
+        foreach (var upload in request.Files ?? new List<FormSubmissionFileInput>())
+        {
+            Common.UploadValidation.Validate(upload.ContentBase64, upload.ContentType, Common.UploadKind.Document);
+        }
+
         await _submissions.AddAsync(submission, cancellationToken);
 
         foreach (var file in request.Files ?? new List<FormSubmissionFileInput>())

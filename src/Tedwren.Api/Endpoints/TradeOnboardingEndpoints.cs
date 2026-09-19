@@ -54,7 +54,18 @@ public static class TradeOnboardingEndpoints
             .WithName("ViewTradeInvite").AllowAnonymous().RequireRateLimiting("kiosk");
 
         group.MapPost("/by-link/{token}/documents", async (string token, string? passcode, SubmitTradeDocumentRequest request, ITradeOnboardingService service, CancellationToken cancellationToken) =>
-                await service.SubmitDocumentAsync(token, passcode, request, cancellationToken) is { } view ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden))
+            {
+                try
+                {
+                    return await service.SubmitDocumentAsync(token, passcode, request, cancellationToken) is { } view
+                        ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+                catch (ArgumentException ex)
+                {
+                    // Upload validation failed (size / content type, R9).
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+            })
             .WithName("SubmitTradeDocument").AllowAnonymous().RequireRateLimiting("kiosk");
 
         group.MapPost("/by-link/{token}/submit", async (string token, string? passcode, ITradeOnboardingService service, CancellationToken cancellationToken) =>

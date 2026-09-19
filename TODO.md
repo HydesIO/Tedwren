@@ -79,6 +79,24 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Launch Readiness (Track A) — LR-3: anonymous attack-surface hardening (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Rate-limit the anonymous token/kiosk flows + validate uploads.
+Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 246 incl. 8 new, Api
+141, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Rate limiting (LR-3a).** New generous per-IP `kiosk` policy (300/min) applied to the previously
+  unthrottled anonymous flows: site-entry, the onboarding + pack recipient groups, and the induction/trade
+  by-link endpoints. The GUID-scoped induction *session* endpoints are deliberately excluded (a session id is not
+  brute-forceable and the take-flow is legitimately multi-request); the tight 60/min `public` policy stays on the
+  marketing endpoints.
+- ✅ **Upload validation (LR-3b, R9).** New `UploadValidation` (Application/Common): a size cap (10 MB, estimated
+  from the base64 length *before* decode) + a content-type allow-list (Image vs Document), applied at every point
+  that accepts client-supplied file bytes — the anonymous trade-document, induction-form-file and onboarding-card
+  paths especially. A violation throws `ArgumentException` → 400; the trade-document and onboarding-card endpoints
+  gained the catch (induction/forms already had it). Tests: `UploadValidationTests` (8).
+- ❗ **Follow-up (external):** the *independent* security review of the public pack link (PRD §11) remains an
+  outside-this-environment action; the concrete pack-link hardening (PBKDF2 passcode, per-token throttle,
+  no-store) already shipped (`docs/security-pack-link-review.md`).
+
 ### Launch Readiness (Track A) — LR-2: real SMS provider + R12 heartbeat/watchdog (this change)
 Plan: `docs/next-phases-plan.md` (Track A). Whole solution builds **0 warnings / 0 errors**; all suites green
 (Domain 71, Application 238 incl. 3 new, Api 141, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
