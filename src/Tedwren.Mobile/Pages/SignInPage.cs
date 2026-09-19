@@ -33,7 +33,7 @@ public class SignInPage : ContentPage
 
         var operativeBtn = new Button { Text = "I'm an operative" };
         operativeBtn.SetDynamicResource(VisualElement.StyleProperty, "TwPrimaryButton");
-        operativeBtn.Clicked += async (_, _) => await Navigation.PushAsync(services.GetRequiredService<OperativeHomePage>());
+        operativeBtn.Clicked += async (_, _) => await Navigation.PushAsync(services.GetRequiredService<OperativeEnrolPage>());
 
         var managerBtn = new Button { Text = "Site manager / admin" };
         managerBtn.SetDynamicResource(VisualElement.StyleProperty, "TwSecondaryButton");

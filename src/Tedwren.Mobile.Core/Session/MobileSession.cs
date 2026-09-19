@@ -12,6 +12,9 @@ public sealed record MobileSession(
     string Role,
     Guid CompanyId)
 {
+    /// <summary>The operative's person id when this is an operative session; null for a console (manager) session.</summary>
+    public Guid? PersonId { get; init; }
+
     /// <summary>The home experience this session lands on (operative vs manager), derived from <see cref="Role"/>.</summary>
     public RoleHome Home => RoleHomeResolver.Resolve(Role);
 

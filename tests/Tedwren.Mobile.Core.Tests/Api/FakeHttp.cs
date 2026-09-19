@@ -9,6 +9,10 @@ internal static class FakeHttp
     public static HttpClient Returning(HttpStatusCode status, HttpContent content)
         => new(new StubHandler(status, content)) { BaseAddress = new Uri("https://api.test/") };
 
+    /// <summary>An HttpClient that answers each request via the supplied responder (keyed on the request), for multi-call flows.</summary>
+    public static HttpClient Routed(Func<HttpRequestMessage, HttpResponseMessage> responder)
+        => new(new RoutedHandler(responder)) { BaseAddress = new Uri("https://api.test/") };
+
     private sealed class StubHandler : HttpMessageHandler
     {
         private readonly HttpStatusCode _status;
@@ -22,5 +26,15 @@ internal static class FakeHttp
 
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
             => Task.FromResult(new HttpResponseMessage(_status) { Content = _content });
+    }
+
+    private sealed class RoutedHandler : HttpMessageHandler
+    {
+        private readonly Func<HttpRequestMessage, HttpResponseMessage> _responder;
+
+        public RoutedHandler(Func<HttpRequestMessage, HttpResponseMessage> responder) => _responder = responder;
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+            => Task.FromResult(_responder(request));
     }
 }

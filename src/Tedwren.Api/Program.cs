@@ -45,6 +45,7 @@ builder.Services.AddHavsCore();
 builder.Services.AddEvidenceCore();
 builder.Services.AddOnboardingCore();
 builder.Services.AddTradeOnboardingCore();
+builder.Services.AddMobileAuthCore();
 builder.Services.AddLaunchListCore();
 builder.Services.AddLeadsCore();
 builder.Services.AddAffiliatesCore();
@@ -120,6 +121,8 @@ builder.Services.AddScoped<Tedwren.Application.Auth.AdminUserSeeder>();
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<Tedwren.Application.Auth.ITokenIssuer, Tedwren.Api.Auth.JwtTokenIssuer>();
+// Operative (mobile) access tokens: separate issuer, audience "tedwren-mobile", "Operative" role (M2).
+builder.Services.AddSingleton<Tedwren.Application.Auth.IOperativeTokenIssuer, Tedwren.Api.Auth.JwtOperativeTokenIssuer>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<Tedwren.Abstractions.Services.ICurrentUserService, Tedwren.Api.Auth.ClaimsCurrentUserService>();
 
@@ -202,6 +205,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryHavsStore();
     builder.Services.AddInMemoryOnboardingStore();
     builder.Services.AddInMemoryTradeOnboardingStore();
+    builder.Services.AddInMemoryMobileAuthStore();
     builder.Services.AddInMemoryLaunchListStore();
     builder.Services.AddInMemoryLeadsStore();
     builder.Services.AddInMemoryAffiliatesStore();
@@ -401,6 +405,7 @@ app.MapHavsEndpoints();
 app.MapEvidenceEndpoints();
 app.MapOnboardingEndpoints();
 app.MapTradeOnboardingEndpoints();
+app.MapMobileAuthEndpoints();
 app.MapLaunchListEndpoints();
 app.MapLeadEndpoints();
 app.MapAffiliateEndpoints();

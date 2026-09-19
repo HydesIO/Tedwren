@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Tedwren.Mobile.Core.Api;
 using Tedwren.Mobile.Core.Platform;
+using Tedwren.Mobile.Core.Session;
 using Tedwren.Mobile.Pages;
 using Tedwren.Mobile.Services;
 
@@ -34,9 +35,14 @@ public static class MauiProgram
 
         // API clients (typed HttpClient bound to the API root).
         builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl));
+        builder.Services.AddHttpClient<OperativeAuthApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl));
+
+        // Operative session (device id, enrolment, biometric-gated resume).
+        builder.Services.AddSingleton<OperativeSessionManager>();
 
         // Pages.
         builder.Services.AddTransient<SignInPage>();
+        builder.Services.AddTransient<OperativeEnrolPage>();
         builder.Services.AddTransient<OperativeHomePage>();
         builder.Services.AddTransient<ManagerHomePage>();
 

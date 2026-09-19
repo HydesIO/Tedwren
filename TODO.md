@@ -17,15 +17,24 @@ browser paths (R1); offline scoped to evidence/forms capture + read caches (R2/R
 `Tedwren.sln` builds `Tedwren.Mobile.Core` (+ tests) on Linux/CI; `Tedwren.Mobile.slnx` builds the MAUI heads on
 a workload machine (iOS needs macOS).
 
-- 🔄 **M1 — Foundation / walking skeleton.** New projects `Tedwren.Mobile` (MAUI head, android+ios),
+- ✅ **M1 — Foundation / walking skeleton.** New projects `Tedwren.Mobile` (MAUI head, android+ios),
   `Tedwren.Mobile.Controls` (design tokens ported from `tokens.css`; `TwCard`/`TwMenuTile`), `Tedwren.Mobile.Core`
   (role-switch resolver, session model, mobile-number normaliser reusing `PhoneNumber`, `AuthApiClient`, platform
   abstractions) + `Tedwren.Mobile.Core.Tests` (21 tests, green). Brand-orange splash + white/transparent-"T" app
   icon (from `logo-icon.svg`). Role-switch shell → two card-menu homes + dashboard shells. Core+tests wired into
   `Tedwren.sln` (whole solution builds clean, 0 warnings); MAUI heads in `Tedwren.Mobile.slnx`.
-- ⏳ **M2** operative auth (mobile+OTP+device bind+biometric) · **M3** operative surface + dashboards ·
-  **M4** attendance (online-only, geofenced) · **M5** offline capture & sync · **M6** forms engine
-  (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
+- ✅ **M2 — Operative auth (mobile + OTP + device bind + biometric).** Server: `OperativeDevice` / `OtpChallenge`
+  (+ `OperativeDeviceStatus`, Dapper repos, EF `AddMobileAuth` migration + raw scripts `035` both dialects, schema
+  parity green); `/api/mobile/auth/{request-otp,verify-otp,refresh}` (anonymous, kiosk-rate-limited) reusing the
+  existing `ISmsSender`; operative JWT issuer (`tedwren-mobile` audience, "Operative" role) + refresh-token
+  rotation; **PersonId taken from the token, never the request body**. One-operative-per-device + one-active-device
+  enforced (buddy-punching deterrent); archived engagement revokes refresh. Client (Core): `OperativeAuthApiClient`
+  + `OperativeSessionManager` (device-id, enrolment, biometric-gated resume) + `OperativeEnrolPage`. Tests: 9
+  Application, 3 API, 14 Core — all green. ❗ Deferred to M3 (land with the first protected operative endpoint):
+  the `RequireOperative` policy + accepting the `tedwren-mobile` audience in JwtBearer, and the console
+  device-revoke/re-bind admin action.
+- ⏳ **M3** operative surface + dashboards · **M4** attendance (online-only, geofenced) · **M5** offline capture &
+  sync · **M6** forms engine (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
 - ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
   workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and

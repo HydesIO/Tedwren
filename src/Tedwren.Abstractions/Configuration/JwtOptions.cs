@@ -27,4 +27,13 @@ public sealed class JwtOptions
 
     /// <summary>Token lifetime in minutes.</summary>
     public int LifetimeMinutes { get; set; } = 480;
+
+    /// <summary>Audience for operative (mobile) access tokens, kept distinct from the console audience (M2).</summary>
+    public string MobileAudience { get; set; } = "tedwren-mobile";
+
+    /// <summary>Operative access-token lifetime in minutes — short, because a device-bound refresh token renews it.</summary>
+    public int MobileLifetimeMinutes { get; set; } = 60;
+
+    /// <summary>Operative refresh-token lifetime in days — long-lived, device-bound and rotated on each use.</summary>
+    public int RefreshLifetimeDays { get; set; } = 30;
 }
