@@ -3,6 +3,7 @@ using Tedwren.Mobile.Core.Api;
 using Tedwren.Mobile.Core.Caching;
 using Tedwren.Mobile.Core.Platform;
 using Tedwren.Mobile.Core.Session;
+using Tedwren.Mobile.Core.Sync;
 using Tedwren.Mobile.Pages;
 using Tedwren.Mobile.Services;
 
@@ -47,12 +48,25 @@ public static class MauiProgram
         builder.Services.AddTransient<OperativeAuthMessageHandler>();
         builder.Services.AddHttpClient<OperativeApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl))
             .AddHttpMessageHandler<OperativeAuthMessageHandler>();
-        builder.Services.AddSingleton<IReadCache>(_ => new JsonFileReadCache(Path.Combine(FileSystem.AppDataDirectory, "cache")));
+
+        // Encrypted local store (M5): SQLCipher-backed, serving BOTH the read cache and the append-only outbox
+        // (replaces the M3 unencrypted JsonFileReadCache — encryption at rest, R13-adjacent).
+        builder.Services.AddSingleton<EncryptedStore>(sp =>
+            new EncryptedStore(sp.GetRequiredService<ISecureStore>(), Path.Combine(FileSystem.AppDataDirectory, "tedwren.db")));
+        builder.Services.AddSingleton<IReadCache>(sp => sp.GetRequiredService<EncryptedStore>());
+        builder.Services.AddSingleton<IOutboxStore>(sp => sp.GetRequiredService<EncryptedStore>());
         builder.Services.AddSingleton<OperativeDataService>();
 
         // Attendance actions (M4): online-only sign-in/out over the same auth handler (never cached, R2/R3).
         builder.Services.AddHttpClient<AttendanceApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl))
             .AddHttpMessageHandler<OperativeAuthMessageHandler>();
+
+        // Offline capture & sync (M5): the capture client, the item handlers and the connectivity-driven sync engine.
+        builder.Services.AddHttpClient<CaptureApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl))
+            .AddHttpMessageHandler<OperativeAuthMessageHandler>();
+        builder.Services.AddSingleton<IOutboxItemHandler, EvidenceOutboxHandler>();
+        builder.Services.AddSingleton<IOutboxItemHandler, HazardOutboxHandler>();
+        builder.Services.AddSingleton<SyncEngine>();
 
         // Pages.
         builder.Services.AddTransient<LoadingPage>();
@@ -60,6 +74,8 @@ public static class MauiProgram
         builder.Services.AddTransient<OperativeEnrolPage>();
         builder.Services.AddTransient<OperativeHomePage>();
         builder.Services.AddTransient<SignInOutPage>();
+        builder.Services.AddTransient<CaptureEvidencePage>();
+        builder.Services.AddTransient<ReportHazardPage>();
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
         builder.Services.AddTransient<ProfilePage>();

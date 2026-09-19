@@ -43,6 +43,10 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="10.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+    <!-- Encrypted local store (M5): SQLCipher-backed SQLite. .Core (no default bundle) + the e_sqlcipher bundle
+         so the DB is AES-256 encrypted at rest with the key held in the OS secure enclave (ISecureStore). -->
+    <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="10.0.0" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlcipher" Version="2.1.11" />
   </ItemGroup>
 
   <ItemGroup>

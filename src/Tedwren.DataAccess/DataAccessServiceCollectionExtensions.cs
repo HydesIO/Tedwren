@@ -64,6 +64,7 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<ITradeInviteRepository, TradeInviteRepository>();
         services.AddScoped<IOperativeDeviceRepository, OperativeDeviceRepository>();
         services.AddScoped<IOtpChallengeRepository, OtpChallengeRepository>();
+        services.AddScoped<IEvidenceItemRepository, EvidenceItemRepository>();
         services.AddScoped<IImageStore, ImageStore>();
         services.AddScoped<IEntitlementRepository, EntitlementRepository>();
         services.AddScoped<IAuditRepository, AuditRepository>();

@@ -72,4 +72,27 @@ public sealed class UploadValidationTests
         var dataUrl = "data:image/png;base64," + SmallBase64();
         UploadValidation.Validate(dataUrl, "image/png", UploadKind.Image);
     }
+
+    [Fact] // M5 multipart overload
+    public void ValidateFile_SmallAllowedImage_Passes()
+    {
+        UploadValidation.ValidateFile(1024, "image/jpeg", UploadKind.Image);
+        UploadValidation.ValidateFile(1024, null, UploadKind.Image); // missing type is size-checked only
+    }
+
+    [Fact] // M5 multipart overload
+    public void ValidateFile_Oversized_Throws()
+    {
+        var ex = Assert.Throws<ArgumentException>(() =>
+            UploadValidation.ValidateFile(UploadValidation.MaxFileBytes + 1, "image/png", UploadKind.Image));
+        Assert.Contains("exceeds", ex.Message);
+    }
+
+    [Fact] // M5 multipart overload
+    public void ValidateFile_DisallowedType_Throws()
+    {
+        var ex = Assert.Throws<ArgumentException>(() =>
+            UploadValidation.ValidateFile(1024, "application/pdf", UploadKind.Image));
+        Assert.Contains("not accepted", ex.Message);
+    }
 }

@@ -60,8 +60,30 @@ a workload machine (iOS needs macOS).
   never "permitted"/"denied", R18/SUB-12), UK-local times (R11); operative-home tile routed + dashboard refreshes
   on return. Status-colour tokens added to `TwPalette`. Tests: 7 API (inside/outside/cross-company/double-site/
   sign-out/dashboard/console-403), 2 Application (`GetCurrentAsync`), 9 Core (client + geofence hint) — all green.
-- ⏳ **M5** offline capture & sync · **M6** forms engine (comprehensive) · **M7** manager/admin mode ·
-  **M8** hardening & store readiness.
+- ✅ **M5 — Offline capture & sync foundation.** The shared offline plumbing + two consumers (user chose "Both").
+  Server: `POST /api/mobile/uploads` (multipart, RequireOperative, `DisableAntiforgery`) reusing `IImageStore` +
+  a new `UploadValidation.ValidateFile` overload; **generic evidence** (net-new, **ungated**) — `EvidenceItem`
+  domain + repo (InMemory + Dapper + EF `036_mobile_evidence.sql` both dialects + migration `AddMobileEvidence` +
+  schema-parity), `IMobileEvidenceService`, `POST /api/mobile/evidence`; **hazard/near-miss** (reuses the existing
+  HSE domain, **`hse`-gated**) — `IMobileHazardService` over `IHazardReportRepository` (shared `HazardReference`/
+  `HazardReportMapper` extracted from `HazardReportService`; `IHazardReportService` untouched — SRP), `POST
+  /api/mobile/hazards`. Both writes are **idempotent on a client-GUID = record Id** (get-by-id-then-insert,
+  company-guarded, R4/R16/R15); capture UTC preserved (R11). `OperativeDashboardDto.CanReportHazards` (from
+  `IEntitlementService`) gates the hazard UI. Client (Core): `Sync/` — `OutboxItem` + `IOutboxStore` +
+  `IOutboxItemHandler` + `SyncEngine` (ordered, idempotent, retry/backoff via `TimeProvider`, needs-attention,
+  offline no-op, connectivity-up trigger, progress, re-entrancy-coalescing) + evidence/hazard handlers with
+  **upload checkpointing** (photo uploads once across retries); `CaptureApiClient`. MAUI head: `EncryptedStore`
+  (SQLCipher via `Microsoft.Data.Sqlite.Core` + `bundle_e_sqlcipher`, key in `ISecureStore`) implementing
+  `IReadCache` **+** `IOutboxStore` (retires the unencrypted `JsonFileReadCache` from wiring); `CaptureEvidencePage`
+  + `ReportHazardPage` (camera via `MediaPicker`, GPS, offline-first enqueue), shared `CaptureForm`/`DeviceLocation`
+  helpers, home tiles + pending-sync badge + "Sync now", `App` resume-sync (session-gated). Tests (all green):
+  Core 66 (sync engine + handlers + client, native-free), Application 347 (evidence + hazard services + ValidateFile),
+  API 192 (upload/evidence/hazard incl. R9 image boundary, idempotency, module-gate 403, console 403, dashboard flag).
+  ❗ Deferred: operative "my captures" read-back (needs an operative image GET; R9); gallery pick; immediate manager
+  notification / push; OS background sync when closed (M8); orphan-image cleanup (M8); biometric-gated DB key
+  (until the real biometric integration lands). SQLCipher round-trip is CI/on-device only (kept out of the
+  native-free Core test project).
+- ⏳ **M6** forms engine (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
 - ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
   workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and

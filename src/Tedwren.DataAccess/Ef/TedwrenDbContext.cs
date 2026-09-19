@@ -46,6 +46,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
     public DbSet<OperativeDeviceRecord> OperativeDevices => Set<OperativeDeviceRecord>();
     public DbSet<OtpChallengeRecord> OtpChallenges => Set<OtpChallengeRecord>();
+    public DbSet<EvidenceItemRecord> EvidenceItems => Set<EvidenceItemRecord>();
     public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
@@ -226,6 +227,15 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.PhoneNumber).HasMaxLength(32);
             e.Property(x => x.CodeHash).HasMaxLength(512);
             e.HasIndex(x => x.PhoneNumber);
+        });
+
+        model.Entity<EvidenceItemRecord>(e =>
+        {
+            e.ToTable("EvidenceItems");
+            e.Property(x => x.Note).HasMaxLength(2000);
+            e.Property(x => x.PhotoReference).HasMaxLength(256);
+            e.HasIndex(x => x.CompanyId);  // a company's captures (review surface, M7)
+            e.HasIndex(x => x.PersonId);   // an operative's own captures
         });
 
         model.Entity<StoredImageRecord>(e =>

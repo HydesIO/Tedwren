@@ -222,6 +222,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryOnboardingStore();
     builder.Services.AddInMemoryTradeOnboardingStore();
     builder.Services.AddInMemoryMobileAuthStore();
+    builder.Services.AddInMemoryEvidenceStore();
     builder.Services.AddInMemoryLaunchListStore();
     builder.Services.AddInMemoryLeadsStore();
     builder.Services.AddInMemoryAffiliatesStore();
@@ -424,6 +425,9 @@ app.MapTradeOnboardingEndpoints();
 app.MapMobileAuthEndpoints();
 app.MapMobileEndpoints();
 app.MapMobileAttendanceEndpoints();
+app.MapMobileUploadEndpoints();
+app.MapMobileEvidenceEndpoints();
+app.MapMobileHazardEndpoints();
 app.MapLaunchListEndpoints();
 app.MapLeadEndpoints();
 app.MapAffiliateEndpoints();

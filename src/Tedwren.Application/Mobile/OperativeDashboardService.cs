@@ -13,13 +13,15 @@ public sealed class OperativeDashboardService : IOperativeDashboardService
     private readonly IMobileSurfaceService _surface;
     private readonly ITimesheetService _timesheets;
     private readonly IMobileAttendanceService _attendance;
+    private readonly IEntitlementService _entitlements;
 
-    /// <summary>Creates the service over the mobile surface (profile), the timesheet service and the mobile attendance read.</summary>
-    public OperativeDashboardService(IMobileSurfaceService surface, ITimesheetService timesheets, IMobileAttendanceService attendance)
+    /// <summary>Creates the service over the mobile surface (profile), the timesheet service, the mobile attendance read and the module entitlements.</summary>
+    public OperativeDashboardService(IMobileSurfaceService surface, ITimesheetService timesheets, IMobileAttendanceService attendance, IEntitlementService entitlements)
     {
         _surface = surface;
         _timesheets = timesheets;
         _attendance = attendance;
+        _entitlements = entitlements;
     }
 
     /// <summary>Composes the dashboard for one operative, or null when they have no engagement in the company.</summary>
@@ -33,6 +35,7 @@ public sealed class OperativeDashboardService : IOperativeDashboardService
 
         var hours = await _timesheets.GetOperativeHoursAsync(companyId, personId, CurrentWeekStart(), cancellationToken);
         var current = await _attendance.GetCurrentAsync(personId, cancellationToken);
+        var canReportHazards = await _entitlements.IsEnabledAsync(companyId, "hse", cancellationToken);
 
         // Soonest card expiry (earliest overall — a past date reads as overdue), mirroring the register roll-up.
         var nextExpiry = profile.Qualifications
@@ -50,7 +53,8 @@ public sealed class OperativeDashboardService : IOperativeDashboardService
             FormsDue: 0,
             SignedIn: current is not null,
             CurrentSiteId: current?.SiteId,
-            CurrentSiteName: current?.SiteName);
+            CurrentSiteName: current?.SiteName,
+            CanReportHazards: canReportHazards);
     }
 
     /// <summary>The Monday (UTC date) of the current week — the timesheet week boundary (SUB-8).</summary>

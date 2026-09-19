@@ -641,3 +641,17 @@ public sealed class OtpChallengeRecord
     public int Attempts { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
+
+/// <summary>Schema row for the <c>EvidenceItems</c> table (operative field evidence captures, M5).</summary>
+public sealed class EvidenceItemRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid PersonId { get; set; }
+    public string? Note { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? PhotoReference { get; set; }
+    public DateTimeOffset CapturedUtc { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}

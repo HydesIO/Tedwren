@@ -21,6 +21,8 @@ public sealed record MobileSiteDto(
 /// <summary>
 /// The operative home dashboard overview (M3): identity, compliance and hours this week (SUB-27). The signed-in
 /// state and current site are populated in M4 (attendance); the forms-due count in M6 (forms engine).
+/// <see cref="CanReportHazards"/> (M5) reflects the company's <c>hse</c> module entitlement, so the app can hide
+/// the hazard-reporting entry when it is off (generic evidence capture stays available to all).
 /// </summary>
 public sealed record OperativeDashboardDto(
     string Name,
@@ -31,4 +33,5 @@ public sealed record OperativeDashboardDto(
     int FormsDue,
     bool SignedIn,
     Guid? CurrentSiteId,
-    string? CurrentSiteName);
+    string? CurrentSiteName,
+    bool CanReportHazards = false);

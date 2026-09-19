@@ -87,10 +87,15 @@ assign/review via the existing `/api/forms/*`.
   role-switch shell → two card-menu homes + dashboard shells, SQLite+SQLCipher planned, Core + tests green.
 - **M2 — Operative auth** (mobile + OTP + device bind + biometric) *(landed)*.
 - **M3 — Operative surface + read caches + operative dashboard** (`/api/mobile/dashboard`) *(landed)*.
-- **M4 — Attendance sign-in/out** (online-only, geofenced) *(this increment)*: token-scoped PersonId + R15 site
+- **M4 — Attendance sign-in/out** (online-only, geofenced) *(landed)*: token-scoped PersonId + R15 site
   guard over the existing `IAttendanceService`; `/api/mobile/attendance/{sign-in,sign-out,current}`; live
   dashboard on-site state; MAUI `SignInOutPage` (cached site, location + geofence hint, online-only, R18 wording).
-- **M5 — Offline capture & sync foundation** (encrypted outbox, multipart upload, background sync, photo+GPS).
+- **M5 — Offline capture & sync foundation** (encrypted outbox, multipart upload, sync engine, photo+GPS) *(this
+  increment)*: SQLCipher `EncryptedStore` (read cache + append-only outbox); connectivity-driven `SyncEngine`
+  (ordered, idempotent, retry/backoff, upload-checkpointed); `POST /api/mobile/uploads` (multipart) reusing
+  `IImageStore`; **two consumers** — ungated generic **evidence** (`EvidenceItem`, net-new) for every operative,
+  and **`hse`-gated hazard/near-miss** reusing the existing HSE domain; MAUI `CaptureEvidencePage` +
+  `ReportHazardPage` (camera + GPS, offline-first) + a pending-sync badge.
 - **M6 — Forms & inspection engine (comprehensive).**
 - **M7 — Manager/admin mode** (dashboard via `IDashboardService`, muster, decisions, forms review).
 - **M8 — Hardening & store readiness** (perf, a11y, tablet, security review, store submission).

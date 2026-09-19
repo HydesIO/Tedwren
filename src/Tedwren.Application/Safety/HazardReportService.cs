@@ -49,7 +49,7 @@ public sealed class HazardReportService : IHazardReportService
         var report = new HazardReport
         {
             CompanyId = companyId,
-            Reference = BuildReference(),
+            Reference = HazardReference.New(),
             Kind = SafetyEnum.Parse(request.Kind, HazardKind.NearMiss),
             Description = request.Description.Trim(),
             Location = Clean(request.Location),
@@ -62,18 +62,18 @@ public sealed class HazardReportService : IHazardReportService
             ReportedBy = string.IsNullOrWhiteSpace(reportedBy) ? "System" : reportedBy.Trim(),
         };
         await _reports.AddAsync(report, cancellationToken);
-        return ToDto(report);
+        return HazardReportMapper.ToDto(report);
     }
 
     /// <summary>Returns a company's hazard reports, newest first.</summary>
     public async Task<IReadOnlyList<HazardReportDto>> ListAsync(Guid companyId, CancellationToken cancellationToken = default) =>
-        (await _reports.GetByCompanyAsync(companyId, cancellationToken)).Select(ToDto).ToList();
+        (await _reports.GetByCompanyAsync(companyId, cancellationToken)).Select(HazardReportMapper.ToDto).ToList();
 
     /// <summary>Returns a single hazard report, or null when missing/cross-tenant (R15).</summary>
     public async Task<HazardReportDto?> GetAsync(Guid companyId, Guid id, CancellationToken cancellationToken = default)
     {
         var report = await _reports.GetAsync(id, cancellationToken);
-        return report is null || report.CompanyId != companyId ? null : ToDto(report);
+        return report is null || report.CompanyId != companyId ? null : HazardReportMapper.ToDto(report);
     }
 
     /// <summary>Assigns a report to a responsible person (sets it to Assigned), scoped to the company (R15).</summary>
@@ -145,20 +145,10 @@ public sealed class HazardReportService : IHazardReportService
     /// <summary>Trims a value, mapping blank to null.</summary>
     private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    /// <summary>Builds a human-readable report reference (date + short random suffix).</summary>
-    private static string BuildReference() =>
-        $"HAZ-{DateTime.UtcNow:yyyyMMdd}-{Guid.NewGuid().ToString("N")[..6].ToUpperInvariant()}";
-
     /// <summary>Strips a "data:...;base64," prefix from a base64 payload, if present.</summary>
     private static string StripDataUrl(string base64)
     {
         var comma = base64.IndexOf(',');
         return base64.StartsWith("data:", StringComparison.OrdinalIgnoreCase) && comma >= 0 ? base64[(comma + 1)..] : base64;
     }
-
-    /// <summary>Maps a hazard report entity to its DTO (enum values as strings).</summary>
-    private static HazardReportDto ToDto(HazardReport r) => new(
-        r.Id, r.Reference, r.Kind.ToString(), r.Description, r.Location, r.Latitude, r.Longitude,
-        r.PhotoReference is not null, r.Severity.ToString(), r.Category, r.Status.ToString(), r.AssignedTo,
-        r.ReportedBy, r.ReportedUtc, r.ClosedUtc, r.ClosureNote);
 }

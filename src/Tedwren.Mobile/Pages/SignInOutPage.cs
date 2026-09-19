@@ -150,7 +150,7 @@ public class SignInOutPage : ContentPage
 
         await RunAsync(async () =>
         {
-            var location = await CaptureLocationAsync();
+            var location = await DeviceLocation.CaptureAsync();
             ShowGeofenceHint(site, location);
 
             var result = await _attendance.SignInAsync(
@@ -197,7 +197,7 @@ public class SignInOutPage : ContentPage
                 return;
             }
 
-            var location = await CaptureLocationAsync();
+            var location = await DeviceLocation.CaptureAsync();
             var result = await _attendance.SignOutAsync(new MobileSignOutRequest(id, location?.Latitude, location?.Longitude));
 
             ShowResult(
@@ -224,20 +224,6 @@ public class SignInOutPage : ContentPage
 
         ShowResult("You must be online to sign in — the browser link still works.", Severity.Warning);
         return false;
-    }
-
-    /// <summary>Captures the device location for the attempt, or null when it is unavailable/denied (SF-15).</summary>
-    private static async Task<Location?> CaptureLocationAsync()
-    {
-        try
-        {
-            return await Geolocation.Default.GetLocationAsync(
-                new GeolocationRequest(GeolocationAccuracy.Medium, TimeSpan.FromSeconds(10)));
-        }
-        catch (Exception ex) when (ex is FeatureNotSupportedException or FeatureNotEnabledException or PermissionException or OperationCanceledException)
-        {
-            return null;
-        }
     }
 
     /// <summary>Shows an advisory geofence hint (SF-14) before submit; the server remains authoritative (R2/R3).</summary>
