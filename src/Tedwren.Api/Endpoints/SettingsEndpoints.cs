@@ -23,7 +23,7 @@ public static class SettingsEndpoints
                 await service.SaveForCompanyAsync(companyId, settings, cancellationToken);
                 return Results.NoContent();
             })
-            .WithName("SaveCompanySettings");
+            .WithName("SaveCompanySettings").RequireAuthorization("RequireWrite");
 
         return app;
     }

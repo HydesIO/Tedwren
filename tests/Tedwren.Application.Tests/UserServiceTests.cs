@@ -236,4 +236,61 @@ public sealed class UserServiceTests
         Assert.Null(await service.SuspendUserAsync(Guid.NewGuid()));
         Assert.Null(await service.ReactivateUserAsync(Guid.NewGuid()));
     }
+
+    [Fact] // C1 (R15) — writes are tenant-scoped too: a caller cannot update/reset/suspend another company's user
+    public async Task Writes_AreScopedToCallerCompany()
+    {
+        var companyA = Guid.Parse("22222222-2222-4222-8222-00000000000A");
+        var companyB = Guid.Parse("22222222-2222-4222-8222-00000000000B");
+        var store = new InMemoryUserStore(seed: false);
+        var email = new OutboxEmailSender(new NotificationOutbox());
+
+        // Bob belongs to company B; the caller is scoped to company A.
+        var seeder = new UserService(new InMemoryUserRepository(store), email, new EmailOptions());
+        var bobId = (await seeder.InviteUserAsync(new InviteUserRequest(companyB, "Bob", "bob@b.com", "SiteManager"))).UserId;
+        var scoped = new UserService(new InMemoryUserRepository(store), email, new EmailOptions(), new FakeCurrentUser(companyA));
+
+        // Every write against the out-of-tenant user is refused as if it did not exist (no privilege escalation,
+        // no cross-tenant password reset, no cross-tenant suspend).
+        Assert.Null(await scoped.UpdateUserAsync(bobId, new UpdateUserRequest("Mallory", "Administrator")));
+        Assert.Null(await scoped.SetPasswordAsync(bobId, "new-strong-password"));
+        Assert.Null(await scoped.SuspendUserAsync(bobId));
+
+        // Bob is untouched — still a SiteManager, still active, original password unset.
+        Assert.Equal(AccessRole.SiteManager, store.Users[bobId].Role);
+        Assert.Equal(UserStatus.Invited, store.Users[bobId].Status);
+    }
+
+    [Fact] // C1 (R15) — a tenant-scoped caller's invite lands in their own company, ignoring a foreign company id
+    public async Task InviteUser_ScopedCaller_ForcesCallerCompany()
+    {
+        var callerCompany = Guid.Parse("22222222-2222-4222-8222-00000000000A");
+        var foreignCompany = Guid.Parse("22222222-2222-4222-8222-00000000000B");
+        var store = new InMemoryUserStore(seed: false);
+        var service = new UserService(new InMemoryUserRepository(store),
+            new OutboxEmailSender(new NotificationOutbox()), new EmailOptions(), new FakeCurrentUser(callerCompany));
+
+        var id = (await service.InviteUserAsync(new InviteUserRequest(foreignCompany, "Jo", "jo@a.com", "Auditor"))).UserId;
+
+        Assert.Equal(callerCompany, store.Users[id].CompanyId);
+    }
+
+    [Fact] // C1 — a platform administrator is still free to act across companies (admin area)
+    public async Task Writes_PlatformAdmin_NotTenantScoped()
+    {
+        var companyA = Guid.Parse("22222222-2222-4222-8222-00000000000A");
+        var companyB = Guid.Parse("22222222-2222-4222-8222-00000000000B");
+        var store = new InMemoryUserStore(seed: false);
+        var email = new OutboxEmailSender(new NotificationOutbox());
+
+        var seeder = new UserService(new InMemoryUserRepository(store), email, new EmailOptions());
+        var bobId = (await seeder.InviteUserAsync(new InviteUserRequest(companyB, "Bob", "bob@b.com", "SiteManager"))).UserId;
+        var platformAdmin = new UserService(new InMemoryUserRepository(store), email, new EmailOptions(),
+            new FakeCurrentUser(companyA, isPlatformAdmin: true));
+
+        var updated = await platformAdmin.UpdateUserAsync(bobId, new UpdateUserRequest("Bob B", "ComplianceManager"));
+
+        Assert.NotNull(updated);
+        Assert.Equal("ComplianceManager", updated!.Role);
+    }
 }

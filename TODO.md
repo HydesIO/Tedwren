@@ -9,6 +9,51 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+## API & UI review — endpoints, contracts, security, PostgreSQL parity (19 Sep 2026)
+
+A full sweep of every API endpoint/contract and the Blazor UI. The client↔API contract reconciled clean
+(≈130 calls, no route/verb/shape mismatches) and the route/nav inventory is consistent. Fixes delivered:
+
+- ✅ **PostgreSQL data-path bugs (production).** The whole test suite runs on the in-memory double, so the
+  Dapper/SQL path was unverified; booting the API against PostgreSQL surfaced two materialisation bugs.
+  (1) **`DateTimeOffset` reads** — Npgsql returns `timestamptz` as a UTC `DateTime`, which Dapper cannot bind
+  to a `DateTimeOffset` record constructor parameter (broke every read whose row has a timestamp, e.g.
+  `/api/qualifications/types`). Added `DateTimeOffsetTypeHandler` (mirrors the existing `DateOnly` handler) +
+  registered it + unit tests. (2) **`COUNT(*)` → `int`** — PostgreSQL `COUNT(*)` is `bigint` (Int64), which
+  won't bind to an `int` row field; cast to `int` in the two GROUP BY queries (`QualificationCardRepository`
+  held-by counts, `CompliancePackRepository` access tally). Verified end-to-end against a live PostgreSQL 16.
+- ✅ **Authorisation gates (secure-by-default gaps).** Endpoints that only had the authenticated-user fallback
+  policy are now gated: `/api/entitlements` PUT → `PlatformAdmin` (was: any user could grant themselves paid
+  modules — billing bypass); `/api/users` writes → `AdminOnly` (was: a low-privilege user could self-escalate
+  role or reset any account's password); `/api/jobs` triggers + `/outbox` → `PlatformAdmin` (platform-wide
+  notification jobs / cross-tenant outbox); `/api/auth` → per-IP rate limit (login/reset brute-force);
+  `RequireWrite` added to the ungated write endpoints on settings, timesheets, sites, organisation, permits,
+  compliance-pack sender routes, qualification-card capture/confirm/renew, onboarding-link create and induction
+  authoring; anonymous induction `POST /sessions` rate-limited.
+- ✅ **Server-side tenant scoping (R15) on the criticals.** `UserService` writes (update/set-password/suspend/
+  reactivate) now refuse an out-of-tenant target and invites are forced to the caller's company (platform admin
+  still unscoped); `SettingsService` reads/writes resolve to the caller's company. Unit tests added for both.
+- ✅ **UI.** Dark-mode dialog colour bug fixed — `FormField`/`FormSection` scoped CSS now uses `--mud-palette-*`
+  (which flips inside the dialog overlay) instead of `--color-*` (which does not). Added a global `ErrorBoundary`
+  in `MainLayout` so a page-load API failure shows a recoverable panel instead of blanking the app. Fixed the
+  compliance-pack share fields to `@bind-Value` (stale link/passcode on re-issue). `ApiSiteEntryService.DecideAsync`
+  now checks the response status before reading (fail-safe on the MC-8 entry-gate path).
+- ✅ **Verified NOT a gap:** password-reset completion — the `/reset-password` page reuses `/api/auth/accept-invite`
+  (the reset token is stored in `InviteToken` and consumed there), so the flow completes end-to-end.
+
+❗ **Outstanding — relationship-aware tenant scoping (follow-up).** Several company-scoped services still trust a
+client-supplied `companyId`/id for reads (and some writes): `TimesheetService`, `OrganisationService` (incl.
+`GetCompaniesAsync` returning all companies), `CompliancePackService`, `DecisionService`, the audit **write**
+path, and `PermitService` create/list; `/api/images/{id}` serves any image to any authenticated user (no
+ownership check). These now carry `RequireWrite`/`AdminOnly` gates as interim mitigation, but full closure needs
+a **main-contractor ↔ subcontractor relationship check** (a main contractor legitimately views a subcontractor's
+timesheets for QS reconciliation, MC-24, so a blanket own-company scope would break real cross-company access).
+Follow the `UserService`/`SettingsService` pattern where own-company scoping is correct, and add a relationship
+check where cross-company access is intended. Two anonymous surfaces are **by design** (confirm/accept): the
+site muster (`/api/site-entry/muster/{siteId}`, MC-8/R14) and the workforce by-engagement profile (UAT-007).
+
+---
+
 ## In progress
 
 ### UAT remediation (James Darby log, 18–19 Aug 2026) — 27 issues, phased

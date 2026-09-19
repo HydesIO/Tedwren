@@ -40,12 +40,15 @@
                     <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" Size="Size.Small" />
                     <span>Pack ready to share — send this link and passcode to the recipient.</span>
                 </div>
-                <MudTextField Value="@_sentLink" ReadOnly="true" Label="Recipient link" Variant="Variant.Outlined"
+                @* @bind-Value (not one-way Value=) so re-issuing a pack refreshes the displayed link/passcode
+                   instead of caching the first render's text — otherwise the field would show the previous link
+                   while the copy button copied the new one. *@
+                <MudTextField @bind-Value="_sentLink" ReadOnly="true" Label="Recipient link" Variant="Variant.Outlined"
                               Margin="Margin.Dense" Adornment="Adornment.End"
                               AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_sentLink!))" />
                 @if (_sentPasscode is not null)
                 {
-                    <MudTextField Value="@_sentPasscode" ReadOnly="true" Label="Passcode" Variant="Variant.Outlined"
+                    <MudTextField @bind-Value="_sentPasscode" ReadOnly="true" Label="Passcode" Variant="Variant.Outlined"
                                   Margin="Margin.Dense" Adornment="Adornment.End"
                                   AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_sentPasscode!))" />
                 }

@@ -31,11 +31,11 @@ public static class OrganisationEndpoints
                 var id = await service.CreateCompanyAsync(request, cancellationToken);
                 return Results.Created($"/api/organisation/companies/{id}", new { id });
             })
-            .WithName("CreateCompany");
+            .WithName("CreateCompany").RequireAuthorization("RequireWrite");
 
         group.MapPut("/companies/{id:guid}", async (Guid id, UpdateCompanyRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
                 await service.UpdateCompanyAsync(id, request, cancellationToken) ? Results.NoContent() : Results.NotFound())
-            .WithName("UpdateCompany");
+            .WithName("UpdateCompany").RequireAuthorization("RequireWrite");
 
         group.MapPost("/companies/{companyId:guid}/documents",
                 async (Guid companyId, CreateCompanyDocumentRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
@@ -43,7 +43,7 @@ public static class OrganisationEndpoints
                     var id = await service.AddCompanyDocumentAsync(request with { CompanyId = companyId }, cancellationToken);
                     return Results.Created($"/api/organisation/companies/{companyId}/documents/{id}", new { id });
                 })
-            .WithName("AddCompanyDocument");
+            .WithName("AddCompanyDocument").RequireAuthorization("RequireWrite");
 
         group.MapGet("/companies/{companyId:guid}/documents/{documentId:guid}/versions",
                 async (Guid companyId, Guid documentId, IOrganisationService service, CancellationToken cancellationToken) =>
@@ -66,42 +66,42 @@ public static class OrganisationEndpoints
                         return Results.BadRequest(new { error = ex.Message });
                     }
                 })
-            .WithName("SupersedeCompanyDocument");
+            .WithName("SupersedeCompanyDocument").RequireAuthorization("RequireWrite");
 
         group.MapPost("/operatives", async (AddOperativeRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
             {
                 var result = await service.AddOperativeAsync(request, cancellationToken);
                 return result.Succeeded ? Results.Ok(result) : Results.Conflict(result);
             })
-            .WithName("AddOperative");
+            .WithName("AddOperative").RequireAuthorization("RequireWrite");
 
         group.MapPut("/companies/{companyId:guid}/operatives/{engagementId:guid}",
                 async (Guid companyId, Guid engagementId, UpdateEngagementRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
                     await service.UpdateEngagementAsync(companyId, engagementId, request, cancellationToken)
                         ? Results.NoContent()
                         : Results.NotFound())
-            .WithName("UpdateEngagement");
+            .WithName("UpdateEngagement").RequireAuthorization("RequireWrite");
 
         group.MapPost("/companies/{companyId:guid}/operatives/{engagementId:guid}/archive",
                 async (Guid companyId, Guid engagementId, IOrganisationService service, CancellationToken cancellationToken) =>
                     await service.ArchiveEngagementAsync(companyId, engagementId, cancellationToken)
                         ? Results.NoContent()
                         : Results.NotFound())
-            .WithName("ArchiveEngagement");
+            .WithName("ArchiveEngagement").RequireAuthorization("RequireWrite");
 
         group.MapPost("/companies/{companyId:guid}/operatives/{engagementId:guid}/reactivate",
                 async (Guid companyId, Guid engagementId, IOrganisationService service, CancellationToken cancellationToken) =>
                     await service.ReactivateEngagementAsync(companyId, engagementId, cancellationToken)
                         ? Results.NoContent()
                         : Results.NotFound())
-            .WithName("ReactivateEngagement");
+            .WithName("ReactivateEngagement").RequireAuthorization("RequireWrite");
 
         group.MapPut("/persons/{personId:guid}/contact",
                 async (Guid personId, UpdatePersonContactRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
                     await service.UpdatePersonContactAsync(personId, request, cancellationToken)
                         ? Results.NoContent()
                         : Results.NotFound())
-            .WithName("UpdatePersonContact");
+            .WithName("UpdatePersonContact").RequireAuthorization("RequireWrite");
 
         return app;
     }

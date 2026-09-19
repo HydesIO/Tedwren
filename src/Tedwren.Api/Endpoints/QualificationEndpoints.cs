@@ -31,14 +31,14 @@ public static class QualificationEndpoints
                 var id = await service.CaptureCardAsync(request, cancellationToken);
                 return Results.Created($"/api/qualifications/cards/{id}", new { id });
             })
-            .WithName("CaptureCard");
+            .WithName("CaptureCard").RequireAuthorization("RequireWrite");
 
         group.MapPost("/cards/{cardId:guid}/confirm",
                 async (Guid cardId, ConfirmCardBody body, IQualificationService service, CancellationToken cancellationToken) =>
                     await service.ConfirmCardAsync(new ConfirmCardRequest(cardId, body.ConfirmedBy), cancellationToken)
                         ? Results.NoContent()
                         : Results.NotFound())
-            .WithName("ConfirmCard");
+            .WithName("ConfirmCard").RequireAuthorization("RequireWrite");
 
         group.MapPost("/cards/{cardId:guid}/renew",
                 async (Guid cardId, RenewCardBody body, IQualificationService service, CancellationToken cancellationToken) =>
@@ -47,7 +47,7 @@ public static class QualificationEndpoints
                         new RenewCardRequest(cardId, body.CardNumber, body.IssuedOn, body.ExpiresOn), cancellationToken);
                     return id is null ? Results.NotFound() : Results.Ok(new { id });
                 })
-            .WithName("RenewCard");
+            .WithName("RenewCard").RequireAuthorization("RequireWrite");
 
         group.MapGet("/people/{personId:guid}/shortfall",
                 async (Guid personId, string trade, IQualificationService service, CancellationToken cancellationToken) =>

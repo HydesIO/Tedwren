@@ -27,7 +27,7 @@ public static class InductionEndpoints
                 var id = await service.CreateDefaultTemplateAsync(request, cancellationToken);
                 return Results.Created($"/api/inductions/templates/{request.CompanyId}", new { id });
             })
-            .WithName("CreateInductionTemplate");
+            .WithName("CreateInductionTemplate").RequireAuthorization("RequireWrite");
 
         // Authoring (MC-15) — authorised admin only (fallback policy applies): fetch with answers, then update.
         group.MapGet("/templates/{templateId:guid}/edit", async (Guid templateId, IInductionService service, CancellationToken cancellationToken) =>
@@ -51,7 +51,7 @@ public static class InductionEndpoints
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
-            .WithName("UpdateInductionTemplate");
+            .WithName("UpdateInductionTemplate").RequireAuthorization("RequireWrite");
 
         // Admin creates a shareable, tokenised induction link (UAT-018) — authorised (the fallback policy applies).
         group.MapPost("/links", async (CreateInductionLinkRequest request, ClaimsPrincipal user, IInductionService service, CancellationToken cancellationToken) =>
@@ -66,7 +66,7 @@ public static class InductionEndpoints
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
-            .WithName("CreateInductionLink");
+            .WithName("CreateInductionLink").RequireAuthorization("RequireWrite");
 
         // The worker opens a shared link with no console account (MC-1/MC-2, UAT-018) — anonymous, token+passcode gated.
         group.MapGet("/by-link/{token}", async (string token, string? passcode, IInductionService service, CancellationToken cancellationToken) =>
@@ -90,7 +90,7 @@ public static class InductionEndpoints
         // The worker's take-flow runs from a link with no console account (MC-1/MC-2) — anonymous.
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.StartAsync(request, cancellationToken)))
-            .WithName("StartInduction").AllowAnonymous();
+            .WithName("StartInduction").AllowAnonymous().RequireRateLimiting("kiosk");
 
         group.MapGet("/sessions/{sessionId:guid}", async (Guid sessionId, IInductionService service, CancellationToken cancellationToken) =>
                 await service.GetSessionAsync(sessionId, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
@@ -140,7 +140,7 @@ public static class InductionEndpoints
 
         group.MapPost("/sessions/{sessionId:guid}/reset", async (Guid sessionId, ResetInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>
                 await service.ResetAsync(sessionId, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("ResetInduction");
+            .WithName("ResetInduction").RequireAuthorization("RequireWrite");
 
         group.MapGet("/company/{companyId:guid}", async (Guid companyId, IInductionService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.GetForCompanyAsync(companyId, cancellationToken)))

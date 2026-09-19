@@ -14,6 +14,9 @@ public static class UserEndpoints
     /// <summary>Registers the <c>/api/users</c> endpoint group.</summary>
     public static IEndpointRouteBuilder MapUserEndpoints(this IEndpointRouteBuilder app)
     {
+        // User management (invite, role change, password reset, suspend/reactivate) is an administrator function.
+        // Reads stay on the default policy (already tenant-scoped in the service); writes require Administrator so
+        // a lower-privilege role cannot escalate itself or reset another account's password (C1).
         var group = app.MapGroup("/api/users").WithTags("Users");
 
         group.MapGet("/", async (IUserService service, CancellationToken cancellationToken) =>
@@ -47,7 +50,7 @@ public static class UserEndpoints
                     return Results.Conflict(new { error = ex.Message });
                 }
             })
-            .WithName("InviteUser");
+            .WithName("InviteUser").RequireAuthorization("AdminOnly");
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateUserRequest request, IUserService service, CancellationToken cancellationToken) =>
             {
@@ -61,7 +64,7 @@ public static class UserEndpoints
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
-            .WithName("UpdateUser");
+            .WithName("UpdateUser").RequireAuthorization("AdminOnly");
 
         group.MapPut("/{id:guid}/password", async (Guid id, SetPasswordBody body, IUserService service, CancellationToken cancellationToken) =>
             {
@@ -75,21 +78,21 @@ public static class UserEndpoints
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
-            .WithName("SetUserPassword");
+            .WithName("SetUserPassword").RequireAuthorization("AdminOnly");
 
         group.MapPost("/{id:guid}/suspend", async (Guid id, IUserService service, CancellationToken cancellationToken) =>
             {
                 var user = await service.SuspendUserAsync(id, cancellationToken);
                 return user is null ? Results.NotFound() : Results.Ok(user);
             })
-            .WithName("SuspendUser");
+            .WithName("SuspendUser").RequireAuthorization("AdminOnly");
 
         group.MapPost("/{id:guid}/reactivate", async (Guid id, IUserService service, CancellationToken cancellationToken) =>
             {
                 var user = await service.ReactivateUserAsync(id, cancellationToken);
                 return user is null ? Results.NotFound() : Results.Ok(user);
             })
-            .WithName("ReactivateUser");
+            .WithName("ReactivateUser").RequireAuthorization("AdminOnly");
 
         return app;
     }

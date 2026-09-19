@@ -16,7 +16,7 @@ public static class PermitEndpoints
                 var id = await service.CreateAsync(request, cancellationToken);
                 return Results.Created($"/api/permits/{id}", id);
             })
-            .WithName("CreatePermit");
+            .WithName("CreatePermit").RequireAuthorization("RequireWrite");
 
         group.MapGet("/company/{companyId:guid}", async (Guid companyId, IPermitService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.ListForCompanyAsync(companyId, cancellationToken)))

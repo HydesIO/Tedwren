@@ -4,14 +4,18 @@
     gap: var(--spacing-4, 4px);
 }
 
+/* Theme-dependent colours use MudBlazor's --mud-palette-* variables, not the --color-* tokens: FormField is
+   rendered inside MudDialog overlays, which sit outside the .theme-dark shell where --color-* flips, so --color-*
+   would resolve to its light value in a dark dialog. --mud-palette-* is emitted globally by MudThemeProvider and
+   flips with IsDarkMode, so it is correct on pages AND in dialogs. */
 .form-field__label {
     font-size: .8125rem;
     font-weight: 600;
-    color: var(--color-text-primary, #101828);
+    color: var(--mud-palette-text-primary, #101828);
 }
 
 .form-field__required {
-    color: var(--color-danger, #F04438);
+    color: var(--mud-palette-error, #F04438);
     margin-left: 2px;
 }
 
@@ -27,10 +31,10 @@
 
 .form-field__helper {
     font-size: .75rem;
-    color: var(--color-text-secondary, #667085);
+    color: var(--mud-palette-text-secondary, #667085);
 }
 
 .form-field__error {
     font-size: .75rem;
-    color: var(--color-danger, #F04438);
+    color: var(--mud-palette-error, #F04438);
 }
