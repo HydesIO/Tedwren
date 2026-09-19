@@ -79,6 +79,27 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Launch readiness — LR-4: object-storage `IImageStore` (S3-compatible, iDrive e2) (this change)
+Plan: `docs/next-phases-plan.md` (Track A, LR-4). Added a production-grade object store behind the existing
+`IImageStore` (R9), selectable by config — the database BLOB store stays the default so nothing changes until S3 is
+configured. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 317, Api 167
+incl. 8 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Config.** `StorageOptions`/`StorageProvider` (Abstractions) bind a new `Storage` section: `Provider`
+  (`Database` default / `S3`) + `S3` sub-options (ServiceUrl, Region, Bucket, AccessKey, SecretKey, ForcePathStyle,
+  KeyPrefix). Credentials are **secrets from env / secret store, never source** (blank in `appsettings.json`).
+- ✅ **Store.** `S3ImageStore` (DataAccess, AWSSDK.S3 v4): `SaveAsync` PUTs a private object under
+  `<KeyPrefix><GUID>` with its content-type and returns the GUID reference (interchangeable with the DB store);
+  `GetAsync` streams it back, mapping content-type + last-modified, and **rejects any non-GUID reference before
+  touching S3** (R9). `AddS3ImageStore` builds an `IAmazonS3` for an S3-compatible endpoint (ServiceUrl +
+  ForcePathStyle for iDrive e2) and **fails fast** when Bucket/AccessKey/SecretKey are missing; its registration
+  overrides the DB `IImageStore` (last wins). Wired in `Program.cs` only in database mode.
+- ✅ **Docs.** `docs/object-storage.md` — the provider switch, the iDrive e2 setup (endpoint + path-style), and the
+  `Storage__*` env vars.
+- ✅ Tests: `StorageConfigurationTests` (8: defaults, `Storage` binding, fail-fast validation, S3 override wins,
+  key-prefix logic, non-GUID read guard) — no live bucket (a real round-trip is a deployment-time check).
+- ❗ **Operator action:** to switch on, set `Storage__Provider=S3` + the iDrive e2 endpoint/bucket/keys server-side.
+  Existing DB-stored images are not migrated (new uploads go to S3); a backfill copy is a follow-up if needed.
+
 ### Commercial expansion — Track C: HSE-5 unified compliance evidence export (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **unified evidence export** — the ISO 45001 /
 project-audit pack that assembles a company's compliance evidence across modules into one download. This completes

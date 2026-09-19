@@ -11,6 +11,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- S3-compatible object store for private binary assets behind IImageStore (iDrive e2 / AWS S3; LR-4, R9). -->
+    <PackageReference Include="AWSSDK.S3" Version="4.0.103.3" />
     <!-- Dapper over both engines; provider-specific ADO.NET drivers for SQL Server and PostgreSQL.
          Wired here in Phase 7; consumed by the shared repository base and dialects in Phase 8. -->
     <PackageReference Include="Dapper" Version="2.1.79" />

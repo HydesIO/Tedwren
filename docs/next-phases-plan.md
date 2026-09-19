@@ -123,11 +123,15 @@ audits surfaced. Each workstream is independently shippable and testable. Priori
   minimisation, single-use links). *External dependency — schedule the reviewer now.*
 - **Testable:** rate-limit tests per anonymous group; upload-guard unit/integration tests.
 
-### LR-4 — Storage strategy **(P1)**
+### LR-4 — Storage strategy **(P1)** *(delivered)*
 - Introduce an object-storage `IImageStore` implementation (Azure Blob / S3-compatible) behind the
   existing interface, keeping DB-BLOB as the fallback/default; UK region only (R13). Removes the DB
   bloat/backup pressure of card photos, avatars and form files living as SQL rows.
 - **Testable:** the blob implementation passes the same `IImageStore` contract tests as the DB one.
+- **✅ Delivered:** `S3ImageStore` (AWSSDK.S3) behind the interface, selected by `Storage:Provider=S3`
+  (default stays `Database`); iDrive e2 supported via `ServiceUrl` + path-style. Fail-fast on missing
+  credentials; non-GUID references rejected on read (R9); `docs/object-storage.md` covers setup.
+  *Follow-up:* a one-off backfill of existing DB-stored images into the bucket if desired.
 
 ### LR-5 — Load, accessibility & backup **(P1, partly external)**
 - Sustained **load/soak** test against R14 (<3 s site-entry decision); extend the existing

@@ -4,6 +4,7 @@ using Tedwren.Api.Endpoints;
 using Tedwren.Api.Hosting;
 using Tedwren.Application;
 using Tedwren.DataAccess;
+using Tedwren.DataAccess.Storage;
 
 // Composition root for the Tedwren Web API. This API is deliberately a separate deployable from
 // the Blazor WebAssembly client and is CORS-enabled, so the same contracts can later serve a
@@ -211,6 +212,16 @@ else
     var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
     productConnectionString = connectionString;
     builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
+
+    // Private binary assets (card photos, uploaded documents; R9) default to the database BLOB store registered
+    // above. When "Storage:Provider" is S3, register the S3-compatible store instead (iDrive e2 / AWS S3 / MinIO) —
+    // this later registration overrides the database IImageStore. Credentials come from config, never source (LR-4).
+    var storage = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
+    builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+    if (storage.Provider == StorageProvider.S3)
+    {
+        builder.Services.AddS3ImageStore(storage.S3);
+    }
 
     // The commercial/admin plane persists to a separate database (its own connection string, "*Commercial").
     // Falls back to the product connection string when unset, so a single-database dev setup still runs.
