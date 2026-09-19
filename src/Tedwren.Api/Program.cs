@@ -147,6 +147,8 @@ builder.Services.AddAuthorization(options =>
 // Whether the commercial/admin plane has its own database. When false, it falls back to the product database
 // (a single-database dev setup); logged at startup so an operator can confirm the separation is actually active.
 var commercialDbSeparate = false;
+// Captured for the fail-closed startup security check below (stays null in the test-only InMemory mode).
+string? productConnectionString = null;
 if (backend.Mode == DataSourceMode.InMemory)
 {
     builder.Services.AddInMemoryOrganisationStore();
@@ -174,6 +176,7 @@ else
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
     var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
+    productConnectionString = connectionString;
     builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
 
     // The commercial/admin plane persists to a separate database (its own connection string, "*Commercial").
@@ -227,6 +230,12 @@ builder.Services.AddCors(options =>
     }));
 
 var app = builder.Build();
+
+// Fail closed on insecure production configuration before serving any request: refuse to boot Production while a
+// committed development default (JWT signing key, seed admin password), the auth test-bypass, or a missing
+// database secret is in effect. Non-production environments (and the test host) are unaffected.
+Tedwren.Api.Security.StartupSecurity.Validate(
+    app.Environment, jwtOptions, seedAdminOptions, testBypass, backend, productConnectionString);
 
 if (app.Environment.IsDevelopment())
 {

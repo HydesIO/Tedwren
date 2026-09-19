@@ -93,6 +93,13 @@ public sealed class SeedAdminOptions
     /// <summary>Configuration section name.</summary>
     public const string SectionName = "Seed";
 
+    /// <summary>
+    /// The committed local-development bootstrap password. Fine for local runs and tests, but insecure for a real
+    /// deployment (it is public in source), so startup validation refuses to boot Production while this value — or
+    /// an unset password — is in effect. Named here so that check has a single source.
+    /// </summary>
+    public const string DevelopmentPassword = "ChangeMe12345";
+
     /// <summary>Bootstrap admin email (sign-in identity).</summary>
     public string Email { get; set; } = "admin@tedwren.local";
 
@@ -100,5 +107,5 @@ public sealed class SeedAdminOptions
     /// Password used for every seeded master administrator. Override with a strong value in any real
     /// deployment; seeded admins should change it on first sign-in.
     /// </summary>
-    public string Password { get; set; } = "ChangeMe12345";
+    public string Password { get; set; } = DevelopmentPassword;
 }

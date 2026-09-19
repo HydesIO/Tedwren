@@ -79,6 +79,26 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Launch Readiness (Track A) — LR-1: secrets & auth hardening (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Fail-closed production config guard + removal of the committed DB
+credential. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 235,
+Api 141 incl. 7 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Fail-closed startup guard** (`src/Tedwren.Api/Security/StartupSecurity.cs`, wired in `Program.cs` after
+  `builder.Build()`): in **Production** the API refuses to boot while a committed dev default is in effect — the
+  JWT signing key (`JwtOptions.DevelopmentSigningKey`; also rejects a <256-bit key), the seed admin password
+  (`SeedAdminOptions.DevelopmentPassword`), `Auth:TestBypass=true` (authenticates every request as Administrator),
+  or a missing DB connection string in Database mode. Non-production (Development + the InMemory/TestBypass test
+  host) is unaffected. Dev defaults named as constants so the check has one source.
+- ✅ **Removed the committed live SQL Server credential** from `src/Tedwren.Api/appsettings.json` (blanked
+  `SqlServer`/`SqlServerCommercial`); supply via env/secret. `docs/operations.md` §1 now lists the required
+  secrets + `Section__Key` env-var forms, the rotation note, and the DB-free local-run switch
+  (`DataSource__Mode=InMemory`).
+- ✅ Tests: `StartupSecurityTests` (7) — default/short JWT key, default seed password, test-bypass, missing conn
+  string → throw in Production; strong config and non-prod defaults → ok.
+- ❗ **Operator actions (raised, not code):** rotate the exposed DB password on the server (it is in git history);
+  set `Jwt__SigningKey`, `Seed__Password`, `ConnectionStrings__SqlServer[Commercial]` in the deployment
+  environment. Force-change-on-first-login for seeded admins is a deliberate follow-up.
+
 ### Console data-viewing code sweep — fixes + hardening (this change)
 Whole-solution build **0 warnings / 0 errors**; all suites green (652 passed, 18 SQL LocalDB tests skipped
 in CI without a database). Full sweep of the console (tenant/commercial) pages after a team review reported

@@ -3,7 +3,36 @@
 Deployment/operational steps for the commercial (admin) plane. See `docs/ef-migrations.md §8` for the
 database-topology background.
 
-## 1. Provisioning the commercial database
+## 1. Required secrets & the production startup guard
+
+The API is **secure-by-default and fails closed**: in the `Production` environment it refuses to start while any
+committed development default is still in effect. Supply these from the environment or a secret store (never
+commit them). Environment variables use the standard ASP.NET `Section__Key` form.
+
+| Setting | Env var | Why it's required in Production |
+|---|---|---|
+| `Jwt:SigningKey` | `Jwt__SigningKey` | Signs/validates console JWTs (HMAC-SHA256). Must be a unique secret of at least 32 bytes; the committed dev key is rejected, so a leaked source tree cannot forge Administrator tokens. |
+| `Seed:Password` | `Seed__Password` | The bootstrap/master-admin seed password. Must be a strong non-default value; each seeded admin should change it on first sign-in. |
+| `ConnectionStrings:SqlServer` | `ConnectionStrings__SqlServer` | Product database. No credential is committed — supply it here. |
+| `ConnectionStrings:SqlServerCommercial` | `ConnectionStrings__SqlServerCommercial` | Commercial plane DB (see §2). Falls back to the product DB when unset. |
+
+`Auth:TestBypass` must be **unset/false** in Production — it authenticates every request as an Administrator and
+exists for the test host only; startup refuses to boot if it is true.
+
+If any required value is missing or still a dev default, the API throws at startup with a message naming each
+problem (e.g. *"Refusing to start: insecure production configuration. Jwt:SigningKey is unset or the committed
+development default…"*). This is intentional — fix the configuration rather than bypass the check.
+
+> **Rotate the previously-committed credential.** Earlier revisions committed a live SQL Server credential in
+> `src/Tedwren.Api/appsettings.json`. It has been removed from source, but because it remains in git history it
+> must be **rotated on the database server** and supplied only via the environment/secret store from now on.
+
+**Local development / running without a database.** The committed `appsettings.json` now ships empty connection
+strings, so `dotnet run --project src/Tedwren.Api` needs either a connection string (via `dotnet user-secrets`
+or `ConnectionStrings__SqlServer`) or the database-free test double — set `DataSource__Mode=InMemory` for a local
+run against the in-memory repositories. (The production default remains `Database`.)
+
+## 2. Provisioning the commercial database
 
 The commercial/admin plane (subscriptions, payments, mandates, payouts, webhook events, launch list, leads,
 affiliates) lives in a **separate database** from the product/compliance data.
@@ -26,7 +55,7 @@ Commercial/admin database is SHARED with (fallback) the product database. ...
 
 If you expect separation and see `SHARED`, the `*Commercial` connection string is missing.
 
-## 2. Relocating existing billing data (one-off)
+## 3. Relocating existing billing data (one-off)
 
 Only needed for an environment whose **product** database already held billing data before the split. Fresh
 environments get empty commercial tables directly and need nothing here.
@@ -45,7 +74,7 @@ environments get empty commercial tables directly and need nothing here.
 
 Take a backup first and run inside a transaction.
 
-## 3. Enabling outbound email (Resend)
+## 4. Enabling outbound email (Resend)
 
 Launch-list and affiliate emails do **not** send until a real provider is configured — the default is the
 no-op outbox (`Email:Provider = "Outbox"`). To dispatch for real, set in `appsettings.json` (or environment):
