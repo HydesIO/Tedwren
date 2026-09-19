@@ -18,7 +18,7 @@ public static class CompliancePackEndpoints
 
         group.MapPost("/readiness", async (ReadinessPreviewRequest request, ICompliancePackService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.PreviewReadinessAsync(request.CompanyId, request.OperativeIds, cancellationToken)))
-            .WithName("PreviewPackReadiness");
+            .WithName("PreviewPackReadiness").RequireAuthorization("RequireWrite");
 
         group.MapPost("/", async (BuildPackRequest request, ICompliancePackService service, CancellationToken cancellationToken) =>
             {
@@ -26,7 +26,7 @@ public static class CompliancePackEndpoints
                 // SUB-14: a build blocked by unacknowledged readiness issues is a 409 carrying the issues.
                 return result.Sent ? Results.Ok(result) : Results.Conflict(result);
             })
-            .WithName("BuildPack");
+            .WithName("BuildPack").RequireAuthorization("RequireWrite");
 
         group.MapGet("/company/{companyId:guid}", async (Guid companyId, ICompliancePackService service, CancellationToken cancellationToken) =>
                 Results.Ok(await service.ListForCompanyAsync(companyId, cancellationToken)))
@@ -34,7 +34,7 @@ public static class CompliancePackEndpoints
 
         group.MapPost("/company/{companyId:guid}/{packId:guid}/revoke", async (Guid companyId, Guid packId, ICompliancePackService service, CancellationToken cancellationToken) =>
                 await service.RevokeAsync(companyId, packId, cancellationToken) ? Results.NoContent() : Results.NotFound())
-            .WithName("RevokePack");
+            .WithName("RevokePack").RequireAuthorization("RequireWrite");
 
         // Recipient access — token + passcode only, no account (R8). These carry personal data, so responses
         // must never be cached by browsers or intermediaries.

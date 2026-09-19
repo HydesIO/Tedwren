@@ -21,7 +21,7 @@ public static class OnboardingEndpoints
                 Guid? userId = Guid.TryParse(user.FindFirstValue(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Sub), out var uid) ? uid : null;
                 return Results.Ok(await service.CreateAsync(request, userId, cancellationToken));
             })
-            .WithName("CreateOnboardingLink");
+            .WithName("CreateOnboardingLink").RequireAuthorization("RequireWrite");
 
         // Recipient flow — anonymous, token+passcode gated (SF-4, R9).
         var recipient = app.MapGroup("/api/onboarding").WithTags("Onboarding").AllowAnonymous().RequireRateLimiting("kiosk");

@@ -38,19 +38,19 @@ public static class TimesheetEndpoints
 
         group.MapPost("/{id:guid}/submit", async (Guid id, ITimesheetService service, CancellationToken cancellationToken) =>
                 await service.SubmitAsync(id, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("SubmitTimesheet");
+            .WithName("SubmitTimesheet").RequireAuthorization("RequireWrite");
 
         group.MapPost("/{id:guid}/approve", async (Guid id, ApproveTimesheetRequest request, ITimesheetService service, CancellationToken cancellationToken) =>
                 await service.ApproveAsync(id, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("ApproveTimesheet");
+            .WithName("ApproveTimesheet").RequireAuthorization("RequireWrite");
 
         group.MapPost("/{id:guid}/return", async (Guid id, ReturnTimesheetRequest request, ITimesheetService service, CancellationToken cancellationToken) =>
                 await service.ReturnAsync(id, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("ReturnTimesheet");
+            .WithName("ReturnTimesheet").RequireAuthorization("RequireWrite");
 
         group.MapPost("/{id:guid}/correct", async (Guid id, CorrectLineRequest request, ITimesheetService service, CancellationToken cancellationToken) =>
                 await service.CorrectLineAsync(id, request, cancellationToken) is { } dto ? Results.Ok(dto) : Results.NotFound())
-            .WithName("CorrectTimesheetLine");
+            .WithName("CorrectTimesheetLine").RequireAuthorization("RequireWrite");
 
         group.MapGet("/{id:guid}/export.csv", async (Guid id, ITimesheetService service, CancellationToken cancellationToken) =>
             {

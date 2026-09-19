@@ -84,6 +84,14 @@ public sealed class UserService : IUserService
         return current.IsPlatformAdmin ? null : current.CompanyId;
     }
 
+    /// <summary>
+    /// True when the target user sits outside the caller's tenant scope (R15), so a write must be refused as if the
+    /// user did not exist. A platform administrator, or an unscoped caller (unit tests / no current user), is never
+    /// blocked — mirroring how <see cref="GetUserAsync"/> hides cross-tenant users on the read side.
+    /// </summary>
+    private async Task<bool> IsOutsideTenantScopeAsync(User user, CancellationToken cancellationToken) =>
+        await TenantScopeAsync(cancellationToken) is { } companyId && user.CompanyId != companyId;
+
     /// <summary>Returns the selectable access roles, in a stable order, from the single source (the enum).</summary>
     public Task<IReadOnlyList<RoleOption>> GetRolesAsync(CancellationToken cancellationToken = default)
     {
@@ -111,7 +119,10 @@ public sealed class UserService : IUserService
             throw new ArgumentException("A valid email address is required.", nameof(request));
         }
 
-        if (request.CompanyId == Guid.Empty)
+        // R15: a tenant-scoped caller (a company Administrator) may only invite into their own company; the
+        // requested company id is honoured only for the unscoped platform-admin / admin-area path.
+        var companyId = await TenantScopeAsync(cancellationToken) ?? request.CompanyId;
+        if (companyId == Guid.Empty)
         {
             throw new ArgumentException("A company id is required to invite a user.", nameof(request));
         }
@@ -125,7 +136,7 @@ public sealed class UserService : IUserService
         var acceptToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
         var user = new User
         {
-            CompanyId = request.CompanyId,
+            CompanyId = companyId,
             Name = name,
             Email = email,
             Role = ParseRole(request.Role),
@@ -165,7 +176,7 @@ public sealed class UserService : IUserService
     public async Task<UserDto?> UpdateUserAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
         var user = await _users.GetByIdAsync(id, cancellationToken);
-        if (user is null)
+        if (user is null || await IsOutsideTenantScopeAsync(user, cancellationToken))
         {
             return null;
         }
@@ -198,7 +209,7 @@ public sealed class UserService : IUserService
         }
 
         var user = await _users.GetByIdAsync(id, cancellationToken);
-        if (user is null)
+        if (user is null || await IsOutsideTenantScopeAsync(user, cancellationToken))
         {
             return null;
         }
@@ -229,7 +240,7 @@ public sealed class UserService : IUserService
     private async Task<UserDto?> SetStatusAsync(Guid id, UserStatus status, CancellationToken cancellationToken)
     {
         var user = await _users.GetByIdAsync(id, cancellationToken);
-        if (user is null)
+        if (user is null || await IsOutsideTenantScopeAsync(user, cancellationToken))
         {
             return null;
         }

@@ -26,7 +26,9 @@ public static class EntitlementEndpoints
                 await service.SetEnabledAsync(companyId, moduleKey, body.Enabled, cancellationToken);
                 return Results.NoContent();
             })
-            .WithName("SetModuleEntitlement");
+            // Entitlements are a commercial-plane decision (what a customer has bought). Only a platform admin may
+            // toggle them — otherwise any authenticated user could grant themselves paid modules (billing bypass, C2).
+            .WithName("SetModuleEntitlement").RequireAuthorization("PlatformAdmin");
 
         return app;
     }

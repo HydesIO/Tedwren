@@ -72,7 +72,9 @@ public sealed class CompliancePackRepository : RepositoryBase, ICompliancePackRe
     public async Task<(int Opened, int Downloaded)> GetAccessTallyAsync(Guid packId, CancellationToken cancellationToken = default)
     {
         var rows = await QueryAsync<TallyRow>(
-            "SELECT Kind, COUNT(*) AS Count FROM PackAccessEvents WHERE PackId = @PackId GROUP BY Kind",
+            // CAST the count to int for cross-engine parity: PostgreSQL's COUNT(*) is bigint (Int64), which Dapper
+            // cannot bind to the int constructor parameter on TallyRow (SQL Server COUNT is already int).
+            "SELECT Kind, CAST(COUNT(*) AS int) AS Count FROM PackAccessEvents WHERE PackId = @PackId GROUP BY Kind",
             new { PackId = packId }, cancellationToken);
         var opened = rows.FirstOrDefault(r => r.Kind == (int)PackAccessKind.Opened)?.Count ?? 0;
         var downloaded = rows.FirstOrDefault(r => r.Kind == (int)PackAccessKind.Downloaded)?.Count ?? 0;

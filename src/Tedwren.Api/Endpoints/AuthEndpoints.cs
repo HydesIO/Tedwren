@@ -12,7 +12,9 @@ public static class AuthEndpoints
     /// <summary>Registers the <c>/api/auth</c> endpoint group.</summary>
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        var group = app.MapGroup("/api/auth").WithTags("Auth").AllowAnonymous();
+        // Anonymous by necessity (this is how a caller obtains a token), but rate-limited per client IP so the
+        // login/reset surface can't be used for online password guessing or reset-email flooding (H4).
+        var group = app.MapGroup("/api/auth").WithTags("Auth").AllowAnonymous().RequireRateLimiting("public");
 
         group.MapPost("/login", async (LoginRequest request, IAuthService service, CancellationToken cancellationToken) =>
             {

@@ -66,7 +66,9 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
     public async Task<IReadOnlyDictionary<Guid, int>> GetHeldByCountsAsync(CancellationToken cancellationToken = default)
     {
         var rows = await QueryAsync<HeldByRow>(
-            "SELECT QualificationTypeId AS TypeId, COUNT(*) AS Count FROM QualificationCards " +
+            // CAST the count to int for cross-engine parity: PostgreSQL's COUNT(*) is bigint (Int64), which
+            // Dapper cannot bind to the int constructor parameter on HeldByRow (SQL Server COUNT is already int).
+            "SELECT QualificationTypeId AS TypeId, CAST(COUNT(*) AS int) AS Count FROM QualificationCards " +
             "WHERE SupersededByCardId IS NULL GROUP BY QualificationTypeId",
             null, cancellationToken);
         return rows.ToDictionary(r => r.TypeId, r => r.Count);

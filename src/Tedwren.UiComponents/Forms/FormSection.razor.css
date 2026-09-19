@@ -1,6 +1,11 @@
+/* Theme-dependent colours use MudBlazor's --mud-palette-* variables (not the --color-* tokens): FormSection is
+   rendered inside MudDialog overlays, which sit outside the .theme-dark shell where --color-* flips, so --color-*
+   would leave the section a white card with dark text inside a dark dialog. --mud-palette-* is emitted globally by
+   MudThemeProvider and flips with IsDarkMode, so it is correct on pages AND in dialogs. Spacing/radius/shadow are
+   theme-independent and keep their tokens. */
 .form-section {
-    background: var(--color-surface, #FFFFFF);
-    border: 1px solid var(--color-border, #E4E7EC);
+    background: var(--mud-palette-surface, #FFFFFF);
+    border: 1px solid var(--mud-palette-lines-default, #E4E7EC);
     border-radius: var(--radius-card, 10px);
     box-shadow: var(--shadow-card);
     overflow: hidden;
@@ -8,20 +13,20 @@
 
 .form-section__head {
     padding: var(--spacing-20, 20px) var(--spacing-20, 20px) var(--spacing-12, 12px);
-    border-bottom: 1px solid var(--color-border, #E4E7EC);
+    border-bottom: 1px solid var(--mud-palette-lines-default, #E4E7EC);
 }
 
 .form-section__title {
     margin: 0;
     font-size: 1rem;
     font-weight: 600;
-    color: var(--color-text-primary, #101828);
+    color: var(--mud-palette-text-primary, #101828);
 }
 
 .form-section__description {
     margin: 2px 0 0;
     font-size: .8125rem;
-    color: var(--color-text-secondary, #667085);
+    color: var(--mud-palette-text-secondary, #667085);
 }
 
 .form-section__body {

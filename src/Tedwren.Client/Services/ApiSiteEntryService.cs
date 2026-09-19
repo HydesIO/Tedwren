@@ -16,9 +16,15 @@ public sealed class ApiSiteEntryService : ISiteEntryService
     public ApiSiteEntryService(HttpClient http) => _http = http;
 
     /// <summary>Runs the site-entry decision via the API (MC-8).</summary>
-    public async Task<EntryDecisionResultDto> DecideAsync(DecideEntryRequest request, CancellationToken cancellationToken = default) =>
-        (await (await _http.PostAsJsonAsync("api/site-entry/decide", request, cancellationToken))
-            .Content.ReadFromJsonAsync<EntryDecisionResultDto>(cancellationToken))!;
+    public async Task<EntryDecisionResultDto> DecideAsync(DecideEntryRequest request, CancellationToken cancellationToken = default)
+    {
+        // Fail safe on the entry-gate path: check the status before reading, so an error response is never
+        // deserialized into a default (all-false) decision that could read as a spurious allow/deny (MC-8).
+        using var response = await _http.PostAsJsonAsync("api/site-entry/decide", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<EntryDecisionResultDto>(cancellationToken)
+            ?? throw new InvalidOperationException("The site-entry decision could not be read from the server.");
+    }
 
     /// <summary>Gets the live muster for a site via the API (MC-12–MC-14).</summary>
     public async Task<MusterDto> GetMusterAsync(Guid siteId, CancellationToken cancellationToken = default)

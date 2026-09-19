@@ -20,6 +20,11 @@ public static class JobEndpoints
     {
         var jobs = app.MapGroup("/api/jobs").WithTags("Jobs");
 
+        // The manual job triggers and the notification outbox are platform-operations surfaces: they run
+        // across ALL companies and dispatch real notifications, so they must not be reachable by an ordinary
+        // authenticated tenant user (M7). GET /runs stays on the default policy — the console dashboard shows
+        // recent runs to signed-in users (SF-21).
+
         // Runs the expiry-warning scan now (SF-9), recorded as a job run (SF-21).
         jobs.MapPost("/expiry-scan", async (JobRunner runner, ExpiryWarningJob job, CancellationToken cancellationToken) =>
             {
@@ -32,7 +37,7 @@ public static class JobEndpoints
                 }, cancellationToken);
                 return Results.Ok(result);
             })
-            .WithName("RunExpiryScan");
+            .WithName("RunExpiryScan").RequireAuthorization("PlatformAdmin");
 
         // Runs the weekly digest now (SUB-5), recorded as a job run (SF-21).
         jobs.MapPost("/weekly-digest", async (JobRunner runner, WeeklyDigestJob job, CancellationToken cancellationToken) =>
@@ -46,7 +51,7 @@ public static class JobEndpoints
                 }, cancellationToken);
                 return Results.Ok(result);
             })
-            .WithName("RunWeeklyDigest");
+            .WithName("RunWeeklyDigest").RequireAuthorization("PlatformAdmin");
 
         // Flags workers left signed in overnight and alerts their manager (SF-19).
         jobs.MapPost("/overnight-check", async (JobRunner runner, OvernightSignInJob job, CancellationToken cancellationToken) =>
@@ -61,7 +66,7 @@ public static class JobEndpoints
                 }, cancellationToken);
                 return Results.Ok(new { flagged, notifications });
             })
-            .WithName("RunOvernightCheck");
+            .WithName("RunOvernightCheck").RequireAuthorization("PlatformAdmin");
 
         // Reminds admins of recurring forms not completed this period (PRD-Phase 2, R12), recorded as a job run.
         jobs.MapPost("/form-reminders", async (JobRunner runner, RecurringFormReminderJob job, CancellationToken cancellationToken) =>
@@ -74,12 +79,12 @@ public static class JobEndpoints
                 }, cancellationToken);
                 return Results.Ok(result);
             })
-            .WithName("RunFormReminders");
+            .WithName("RunFormReminders").RequireAuthorization("PlatformAdmin");
 
         // Checks each job's heartbeat and alerts ops on a silent stop (R12).
         jobs.MapPost("/heartbeat-check", async (JobHeartbeatMonitor monitor, CancellationToken cancellationToken) =>
                 Results.Ok(new HeartbeatResultDto(await monitor.CheckAsync(DateTimeOffset.UtcNow, cancellationToken))))
-            .WithName("RunHeartbeatCheck");
+            .WithName("RunHeartbeatCheck").RequireAuthorization("PlatformAdmin");
 
         // Recent job runs (SF-21 visibility).
         jobs.MapGet("/runs", async (IExpiryQueryService query, CancellationToken cancellationToken) =>
@@ -88,7 +93,7 @@ public static class JobEndpoints
 
         // What the stub senders "sent" (dev/mock observability).
         jobs.MapGet("/outbox", (INotificationOutbox outbox) => Results.Ok(outbox.Messages))
-            .WithName("GetOutbox");
+            .WithName("GetOutbox").RequireAuthorization("PlatformAdmin");
 
         var expiry = app.MapGroup("/api/expiry").WithTags("Expiry");
         expiry.MapGet("/upcoming", async (int? withinDays, IExpiryQueryService query, CancellationToken cancellationToken) =>

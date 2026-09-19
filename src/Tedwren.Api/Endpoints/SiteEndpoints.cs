@@ -31,14 +31,14 @@ public static class SiteEndpoints
                 var id = await service.CreateSiteAsync(request, cancellationToken);
                 return Results.Created($"/api/sites/{id}", new { id });
             })
-            .WithName("CreateSite");
+            .WithName("CreateSite").RequireAuthorization("RequireWrite");
 
         group.MapPut("/{siteId:guid}", async (Guid siteId, UpdateSiteRequest request, ISiteService service, CancellationToken cancellationToken) =>
             {
                 var updated = await service.UpdateSiteAsync(siteId, request, cancellationToken);
                 return updated ? Results.NoContent() : Results.NotFound();
             })
-            .WithName("UpdateSite");
+            .WithName("UpdateSite").RequireAuthorization("RequireWrite");
 
         group.MapPost("/{siteId:guid}/properties",
                 async (Guid siteId, AddPropertyBody body, ISiteService service, CancellationToken cancellationToken) =>
@@ -47,7 +47,7 @@ public static class SiteEndpoints
                         new AddSitePropertyRequest(siteId, body.Address, body.Units, body.Boundary), cancellationToken);
                     return id is null ? Results.NotFound() : Results.Created($"/api/sites/{siteId}/properties/{id}", new { id });
                 })
-            .WithName("AddSiteProperty");
+            .WithName("AddSiteProperty").RequireAuthorization("RequireWrite");
 
         // A console user's assigned sites (MC-21/UAT-011): a site manager sees only these.
         group.MapGet("/assignments/{userId:guid}",
@@ -61,7 +61,7 @@ public static class SiteEndpoints
                     await service.SetAssignedSitesAsync(userId, body.SiteIds, cancellationToken);
                     return Results.NoContent();
                 })
-            .WithName("SetSiteAssignments");
+            .WithName("SetSiteAssignments").RequireAuthorization("RequireWrite");
 
         return app;
     }
