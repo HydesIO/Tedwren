@@ -1,0 +1,38 @@
+name: CI
+
+# Continuous integration for the Tedwren solution: restore, build and test on
+# every push and pull request against the main branches.
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+# Cancel in-progress runs for the same ref when a new commit is pushed.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore Tedwren.sln
+
+      - name: Build
+        run: dotnet build Tedwren.sln --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test Tedwren.sln --configuration Release --no-build --verbosity normal
