@@ -40,6 +40,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<DocumentAcknowledgementRecord> DocumentAcknowledgements => Set<DocumentAcknowledgementRecord>();
     public DbSet<HazardReportRecord> HazardReports => Set<HazardReportRecord>();
     public DbSet<IncidentReportRecord> IncidentReports => Set<IncidentReportRecord>();
+    public DbSet<HavsExposureRow> HavsExposureRecords => Set<HavsExposureRow>();
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
     public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
@@ -293,6 +294,14 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ReportedBy).HasMaxLength(256);
             e.Property(x => x.InvestigatedBy).HasMaxLength(256);
             e.HasIndex(x => new { x.CompanyId, x.ReportedUtc });
+        });
+
+        model.Entity<HavsExposureRow>(e =>
+        {
+            e.ToTable("HavsExposureRecords");
+            e.Property(x => x.PersonName).HasMaxLength(256);
+            e.Property(x => x.RecordedBy).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.RecordedUtc });
         });
 
         model.Entity<AuditEntryRecord>(e =>

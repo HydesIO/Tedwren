@@ -415,6 +415,18 @@ public sealed class IncidentReportRecord
     public DateTimeOffset? ClosedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>HavsExposureRecords</c> table (hand-arm vibration monitoring, PRD §8.2).</summary>
+public sealed class HavsExposureRow
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string PersonName { get; set; } = string.Empty;
+    public DateOnly ExposureDate { get; set; }
+    public string ToolUsagesJson { get; set; } = string.Empty;
+    public string RecordedBy { get; set; } = string.Empty;
+    public DateTimeOffset RecordedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {

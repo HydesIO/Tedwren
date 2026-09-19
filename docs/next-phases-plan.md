@@ -215,15 +215,20 @@ sell-before-build applies to each.
   manager notification on report (reuse the notification engine); resolving reporter/assignee from the
   people roster; and RIDDOR export.
 
-### HSE-5 — Library versioning, unified evidence export, HAVs & carbon
+### HSE-5 — Library versioning, unified evidence export, HAVs & carbon *(HAVs delivered; rest queued/blocked)*
 - Add **versioning/supersede** to `CompanyDocument` (mirror `QualificationCard`'s supersede chain) →
-  the "company file library, always at the current version" that supersedes MC-27.
+  the "company file library, always at the current version" that supersedes MC-27. *(queued — touches the
+  shared SUB-4 document surface; best as its own focused change.)*
 - **Unified compliance evidence export** spanning inductions + acknowledgements + inspections + permits +
   competency (extend `PackComposer` / the `Export` writers) — the ISO 45001 / project-audit export.
+  *(queued — extends existing export machinery.)*
 - **Hand-arm vibration (HAVs)** monitoring (exposure vs HSE action/limit values, proactive alerts) — a
-  statutory duty and a standalone reason to buy the module.
-- **Social value / carbon** reporting — *depends on the MC-26 travel/vehicle capture; flag as a
-  prerequisite* rather than assume it.
+  statutory duty and a standalone reason to buy the module. **✅ Delivered:** `HavsExposureRecord` +
+  `HavsCalculator` (HSE A(8) methodology: EAV 2.5 m/s²/100 pts, ELV 5.0 m/s²/400 pts), the `hse`-gated
+  `/api/havs` group, the **Vibration (HAVs)** page (dynamic per-tool entry + band-aware result +
+  breakdown), and unit/API tests. *Follow-up:* proactive over-EAV/ELV alerts via the notification engine.
+- **Social value / carbon** reporting — **blocked:** depends on the MC-26 travel/vehicle capture, which
+  is not built. Do not build until MC-26 exists.
 
 ---
 

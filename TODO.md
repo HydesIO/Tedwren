@@ -79,6 +79,33 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-5 hand-arm vibration (HAVs) monitoring (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **HAVs** sub-slice of HSE-5 — the statutory
+Control of Vibration at Work duty and a standalone reason to buy the module. Whole solution builds **0 warnings /
+0 errors**; all suites green (Domain 71, Application 311 incl. 12 new, Api 156 incl. 2 new, Web 178, Client 30;
+DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** `HavsExposureRecord` (a person's tool usages for a day, held as **JSON**; the daily
+  A(8)/points/band are always derived, never stored) + `HavsExposureBand` (Below/Above action value / Above limit
+  value). `IHavsExposureRepository` — Dapper (dual-engine) + in-memory. Migration `028_havs.sql` (SQL Server +
+  Postgres), EF `AddHavsExposure` + `HavsExposureRow` + mapping.
+- ✅ **Calculator + service + API.** `HavsCalculator` implements the **HSE methodology** — each tool's partial
+  A(8) = a·√(t/8), combined by root-sum-of-squares; points = (A(8)/EAV)²·100 so the **EAV (2.5 m/s²) = 100 pts**
+  and **ELV (5.0 m/s²) = 400 pts**. `IHavsExposureService`/`HavsExposureService` records usages, derives the band,
+  scopes to the company (R15). `/api/havs` (list / `{id}` / create) is **entitlement-gated on `hse`** (fails
+  closed, Q2), writes `RequireWrite` (SF-23), company + recorder resolved server-side (R15).
+- ✅ **Client.** `ApiHavsExposureService`; a **Vibration (HAVs)** page (`/havs`, nav-gated on `hse`) — a
+  `DataTable` of exposure records (A(8)/points/band), a **Record exposure** dialog with dynamic per-tool rows
+  (tool + magnitude + trigger time) and a band-aware result, and a read-only breakdown dialog.
+- ✅ Tests: `HavsCalculatorTests` (6: EAV/ELV thresholds, sub-8h scaling, root-sum-of-squares) +
+  `HavsExposureServiceTests` (6: derivation, validation, invalid-usage filtering, R15) + `HavsApiTests`
+  (2: module-off 403; record→derive→list→get).
+- ❗ **HSE-5 remaining (not this change):** **library versioning/supersede** on `CompanyDocument` (mirror the
+  `QualificationCard` supersede chain, pays down MC-27); **unified compliance evidence export** (extend
+  `PackComposer`/export writers across inductions + acknowledgements + inspections + permits + competency);
+  **social value / carbon** — **blocked** on the MC-26 travel/vehicle capture prerequisite (do not build until
+  MC-26 exists). HAVs follow-ups: proactive over-EAV/ELV alerts via the notification engine; roster-linked person;
+  a rolling 7-day exposure view.
+
 ### Commercial expansion — Track C: HSE-4 near-miss/hazard reporting + accident/incident (RIDDOR) (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C). The fourth HSE slice — two coherent features under one `hse`-gated
 `/api/safety` group and one tabbed **Safety Events** page (§8.2). Whole solution builds **0 warnings / 0 errors**;

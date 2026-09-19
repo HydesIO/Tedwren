@@ -427,6 +427,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic HAVs exposure service (PRD §8.2).</summary>
+    public static IServiceCollection AddHavsCore(this IServiceCollection services)
+    {
+        services.AddScoped<IHavsExposureService, Havs.HavsExposureService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory HAVs repository (singleton so it persists across test requests).</summary>
+    public static IServiceCollection AddInMemoryHavsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryHavsExposureRepository>();
+        services.AddScoped<IHavsExposureRepository>(sp => sp.GetRequiredService<InMemoryHavsExposureRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
     public static IServiceCollection AddSettingsCore(this IServiceCollection services)
     {

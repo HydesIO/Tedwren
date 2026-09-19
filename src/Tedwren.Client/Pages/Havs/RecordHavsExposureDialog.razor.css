@@ -1,0 +1,34 @@
+/* One editable tool-usage row: tool name (wider) + magnitude + trigger time + remove button, aligned along the base. */
+.havs-tool-row {
+    display: flex;
+    gap: var(--spacing-12);
+    align-items: flex-end;
+    margin-bottom: var(--spacing-12);
+}
+
+.havs-tool-row__tool {
+    flex: 2 1 0;
+    min-width: 0;
+}
+
+.havs-tool-row__num {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.havs-tool-row__remove {
+    flex: 0 0 auto;
+    padding-bottom: var(--spacing-4);
+}
+
+/* Stack the row on narrow screens so fields stay usable. */
+@media (max-width: 720px) {
+    .havs-tool-row {
+        flex-wrap: wrap;
+    }
+
+    .havs-tool-row__tool,
+    .havs-tool-row__num {
+        flex: 1 1 100%;
+    }
+}

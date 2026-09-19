@@ -1,0 +1,80 @@
+@using Tedwren.Abstractions.Contracts.Havs
+@using Tedwren.Abstractions.Services
+@inject IHavsExposureService HavsSvc
+@inject ISnackbar Snackbar
+
+@* Read-only view of a HAVs exposure record: the tool usages and the derived daily A(8), points and band. *@
+
+<MudDialog>
+    <DialogContent>
+        @if (_record is null)
+        {
+            <MudText>Loading…</MudText>
+        }
+        else
+        {
+            <div class="tw-dialog-body">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2">@_record.PersonName · @_record.ExposureDate.ToString("dd MMM yyyy")</MudText>
+                    <MudText Typo="Typo.h6">A(8) @_record.DailyExposureA8.ToString("0.0") m/s² · @_record.ExposurePoints points</MudText>
+                    <MudText Typo="Typo.body2">Exposure: @HavsFormat.BandLabel(_record.Band)</MudText>
+                    <MudText Typo="Typo.caption">HSE action value 2.5 m/s² (100 points) · limit value 5.0 m/s² (400 points)</MudText>
+                </MudStack>
+
+                <section class="tw-dialog-section">
+                    <h3 class="tw-dialog-section__title">Tool usages</h3>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Tool</th>
+                                <th>Magnitude (m/s²)</th>
+                                <th>Trigger time (min)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var usage in _record.ToolUsages)
+                            {
+                                <tr>
+                                    <td>@usage.ToolName</td>
+                                    <td>@usage.MagnitudeMs2.ToString("0.0")</td>
+                                    <td>@usage.TriggerMinutes</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </section>
+
+                <MudText Typo="Typo.caption">Recorded by @_record.RecordedBy · @_record.RecordedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</MudText>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Close())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid ExposureId { get; set; }
+
+    private HavsExposureRecordDto? _record;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _record = await HavsSvc.GetAsync(Guid.Empty, ExposureId);
+            if (_record is null)
+            {
+                Snackbar.Add("This exposure record could not be loaded.", Severity.Error);
+                MudDialog.Cancel();
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Snackbar.Add("This exposure record could not be loaded.", Severity.Error);
+            MudDialog.Cancel();
+        }
+    }
+}
