@@ -80,6 +80,28 @@ if (!string.IsNullOrWhiteSpace(goCardlessOptions.AccessToken))
     });
 }
 
+// Worker SMS (SF-9 expiry warnings + onboarding links). Bind the "Sms" section and, when configured for Twilio
+// with credentials, register the real transport as a typed HttpClient (base address + HTTP basic auth). With no
+// provider the Application-layer OutboxSmsSender default stands, so nothing sends until configured — mirroring the
+// Resend email override above.
+var smsOptions = builder.Configuration.GetSection(SmsOptions.SectionName).Get<SmsOptions>() ?? new SmsOptions();
+builder.Services.AddSingleton(smsOptions);
+if (smsOptions.Provider == SmsProvider.Twilio &&
+    !string.IsNullOrWhiteSpace(smsOptions.AccountSid) &&
+    !string.IsNullOrWhiteSpace(smsOptions.AuthToken) &&
+    !string.IsNullOrWhiteSpace(smsOptions.FromNumber))
+{
+    builder.Services.AddHttpClient<Tedwren.Abstractions.Notifications.ISmsSender,
+        Tedwren.Application.Notifications.TwilioSmsSender>(client =>
+    {
+        client.BaseAddress = new Uri(smsOptions.ApiBaseUrl.TrimEnd('/') + "/");
+        var basic = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes($"{smsOptions.AccountSid}:{smsOptions.AuthToken}"));
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+    });
+}
+
 // Bootstrap admin so a fresh install can be signed into (idempotent). Credentials from the "Seed" section.
 var seedAdminOptions = builder.Configuration.GetSection(Tedwren.Application.Auth.SeedAdminOptions.SectionName)
     .Get<Tedwren.Application.Auth.SeedAdminOptions>() ?? new Tedwren.Application.Auth.SeedAdminOptions();

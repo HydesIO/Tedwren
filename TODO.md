@@ -79,6 +79,25 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Launch Readiness (Track A) — LR-2: real SMS provider + R12 heartbeat/watchdog (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Whole solution builds **0 warnings / 0 errors**; all suites green
+(Domain 71, Application 238 incl. 3 new, Api 141, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Real SMS sender (Twilio) behind config.** New `SmsOptions`/`SmsProvider` (Abstractions.Configuration) +
+  `TwilioSmsSender` (typed HttpClient, form-encoded Twilio Messages API), conditionally registered in `Program.cs`
+  only when `Sms:Provider=Twilio` + credentials are set — otherwise the `OutboxSmsSender` default stands (mirrors
+  the Resend email override). Closes the silent drop of SF-9 worker warnings; `ISmsSender` stays pluggable (a
+  different provider e.g. Vonage is a small addition). `appsettings.json` gains an outbox-default `Sms` section;
+  `operations.md §5` documents it. Tests: `TwilioSmsSenderTests` (endpoint/form-body; throw on failure).
+- ✅ **R12 heartbeat broadened + independent watchdog.** `JobHeartbeatMonitor` now checks all four scheduled jobs
+  (expiry-scan, weekly-digest, form-reminder, overnight-check); new `JobHeartbeatHostedService` runs the check on
+  its own cadence (`Jobs:HeartbeatIntervalHours`, default 6h) independently of the job-execution loop — so a job
+  failure can't suppress its own alert — and logs a warning as a second channel. The ops-alert address is now
+  configurable (`Jobs:OpsEmail`) so it reaches a real inbox. `operations.md §6` documents it. Heartbeat tests
+  updated + an all-healthy no-alerts case added.
+- ❗ **Operator actions (raised):** set `Sms:*` (Twilio) and `Jobs:OpsEmail` + the email provider (§4) in the
+  deployment environment so SF-9 SMS and R12 alerts actually deliver. Billing reconciliation is a self-healing
+  backstop (no-ops when GoCardless is unconfigured), so it is deliberately left outside the heartbeat.
+
 ### Launch Readiness (Track A) — LR-1: secrets & auth hardening (this change)
 Plan: `docs/next-phases-plan.md` (Track A). Fail-closed production config guard + removal of the committed DB
 credential. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 235,

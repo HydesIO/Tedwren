@@ -93,3 +93,34 @@ no-op outbox (`Email:Provider = "Outbox"`). To dispatch for real, set in `appset
 The API registers the real Resend HTTP sender only when `Provider = Resend` and `ApiKey` is non-empty;
 otherwise the outbox stands and nothing is dispatched. `PublicBaseUrl` must be the API's public origin (it
 backs `{PublicBaseUrl}/api/launch-signups/unsubscribe` and `{PublicBaseUrl}/api/email-assets/logo.png`).
+
+## 5. Enabling outbound SMS (Twilio)
+
+Worker SMS (SF-9 expiry warnings; the onboarding link that is the natural route to a worker's phone) does **not**
+send until a provider is configured — the default is the no-op outbox (`Sms:Provider = "Outbox"`). To dispatch
+for real, set in the environment (secrets — do not commit):
+
+```json
+"Sms": {
+  "Provider": "Twilio",
+  "AccountSid": "<twilio-account-sid>",
+  "AuthToken": "<twilio-auth-token>",
+  "FromNumber": "+44..."             // a Twilio number in E.164, or a messaging-service SID
+}
+```
+
+The API registers the real Twilio HTTP sender only when `Provider = Twilio` and the SID, token and from-number
+are all set; otherwise the outbox stands and nothing is dispatched. The sender is pluggable behind
+`ISmsSender` — a different provider (e.g. Vonage) is a small addition following the same pattern. Until this is
+configured, worker expiry warnings are recorded to the outbox but not delivered, so configure it before relying
+on SF-9 SMS in production.
+
+## 6. R12 job heartbeat & ops alerts
+
+The scheduled compliance jobs (expiry scan, weekly digest, recurring-form reminders, overnight still-signed-in
+check) each record a run, and a **heartbeat watchdog** (`JobHeartbeatHostedService`) checks — independently of
+the job-execution loop, on its own `Jobs:HeartbeatIntervalHours` cadence (default 6h) — that each has succeeded
+within its interval, emailing an alert and logging a warning if one has silently stopped (R12). Set
+`Jobs:OpsEmail` to the address those alerts go to (defaults to a non-deliverable `ops@tedwren.local`), and
+ensure email is configured (§4) so the alert actually leaves the building. `Jobs:SchedulerEnabled=false` turns
+off both the jobs and the watchdog (used by the test host).
