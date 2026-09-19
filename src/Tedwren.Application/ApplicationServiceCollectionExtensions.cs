@@ -304,6 +304,37 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the operative (mobile) services: authentication + one-time-code generator (M2), the read surface + dashboard (M3), the attendance read (M4) and the offline-capture evidence + hazard writes (M5).</summary>
+    public static IServiceCollection AddMobileAuthCore(this IServiceCollection services)
+    {
+        services.AddScoped<IOperativeAuthService, Mobile.OperativeAuthService>();
+        services.AddSingleton<Mobile.IOtpCodeGenerator, Mobile.RandomOtpCodeGenerator>();
+        services.AddScoped<IMobileSurfaceService, Mobile.MobileSurfaceService>();
+        services.AddScoped<IOperativeDashboardService, Mobile.OperativeDashboardService>();
+        services.AddScoped<IMobileAttendanceService, Mobile.MobileAttendanceService>();
+        services.AddScoped<IMobileEvidenceService, Mobile.MobileEvidenceService>();
+        services.AddScoped<IMobileHazardService, Mobile.MobileHazardService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory operative-device + OTP-challenge stores (singletons so they persist across test requests, M2).</summary>
+    public static IServiceCollection AddInMemoryMobileAuthStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryOperativeDeviceRepository>();
+        services.AddScoped<IOperativeDeviceRepository>(sp => sp.GetRequiredService<InMemoryOperativeDeviceRepository>());
+        services.AddSingleton<InMemoryOtpChallengeRepository>();
+        services.AddScoped<IOtpChallengeRepository>(sp => sp.GetRequiredService<InMemoryOtpChallengeRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the in-memory operative evidence-capture store (singleton so captures persist across test requests, M5).</summary>
+    public static IServiceCollection AddInMemoryEvidenceStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryEvidenceItemRepository>();
+        services.AddScoped<IEvidenceItemRepository>(sp => sp.GetRequiredService<InMemoryEvidenceItemRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic launch-list service (Web Content Spec §6.9). Uses the ambient email sender.</summary>
     public static IServiceCollection AddLaunchListCore(this IServiceCollection services)
     {

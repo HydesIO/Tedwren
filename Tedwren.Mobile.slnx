@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Tedwren.Abstractions/Tedwren.Abstractions.csproj" />
+    <Project Path="src/Tedwren.Domain/Tedwren.Domain.csproj" />
+    <Project Path="src/Tedwren.Mobile.Controls/Tedwren.Mobile.Controls.csproj" />
+    <Project Path="src/Tedwren.Mobile.Core/Tedwren.Mobile.Core.csproj" />
+    <Project Path="src/Tedwren.Mobile/Tedwren.Mobile.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Tedwren.Mobile.Core.Tests/Tedwren.Mobile.Core.Tests.csproj" />
+  </Folder>
+</Solution>

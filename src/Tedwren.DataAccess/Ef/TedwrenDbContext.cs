@@ -44,6 +44,9 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
     public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
+    public DbSet<OperativeDeviceRecord> OperativeDevices => Set<OperativeDeviceRecord>();
+    public DbSet<OtpChallengeRecord> OtpChallenges => Set<OtpChallengeRecord>();
+    public DbSet<EvidenceItemRecord> EvidenceItems => Set<EvidenceItemRecord>();
     public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
     public DbSet<DecisionRecord> Decisions => Set<DecisionRecord>();
@@ -206,6 +209,33 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ReviewNote).HasMaxLength(1024);
             e.HasIndex(x => x.Token).IsUnique();
             e.HasIndex(x => x.InviterCompanyId);   // the review queue is scoped to the inviting tenant (R15)
+        });
+
+        model.Entity<OperativeDeviceRecord>(e =>
+        {
+            e.ToTable("OperativeDevices");
+            e.Property(x => x.DeviceId).HasMaxLength(128);
+            e.Property(x => x.DeviceName).HasMaxLength(256);
+            e.Property(x => x.RefreshTokenHash).HasMaxLength(512);
+            e.HasIndex(x => x.DeviceId).IsUnique();  // one binding per install (M2)
+            e.HasIndex(x => x.PersonId);             // look up an operative's active device
+        });
+
+        model.Entity<OtpChallengeRecord>(e =>
+        {
+            e.ToTable("OtpChallenges");
+            e.Property(x => x.PhoneNumber).HasMaxLength(32);
+            e.Property(x => x.CodeHash).HasMaxLength(512);
+            e.HasIndex(x => x.PhoneNumber);
+        });
+
+        model.Entity<EvidenceItemRecord>(e =>
+        {
+            e.ToTable("EvidenceItems");
+            e.Property(x => x.Note).HasMaxLength(2000);
+            e.Property(x => x.PhotoReference).HasMaxLength(256);
+            e.HasIndex(x => x.CompanyId);  // a company's captures (review surface, M7)
+            e.HasIndex(x => x.PersonId);   // an operative's own captures
         });
 
         model.Entity<StoredImageRecord>(e =>

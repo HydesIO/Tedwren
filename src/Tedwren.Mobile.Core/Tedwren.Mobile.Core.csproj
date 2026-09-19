@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Tedwren.Mobile.Core — the non-UI heart of the MAUI field app (M-track, docs/mobile-app-plan.md).
+    Deliberately a plain net10.0 library (no MAUI workload) so all logic — API clients, offline store,
+    sync engine, the form model/validation engine, session/auth and view models — is unit-testable off
+    device and builds in the same CI as the rest of the solution. The MAUI head (Tedwren.Mobile) and the
+    control kit (Tedwren.Mobile.Controls) reference this and stay thin.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tedwren.Abstractions\Tedwren.Abstractions.csproj" />
+    <ProjectReference Include="..\Tedwren.Domain\Tedwren.Domain.csproj" />
+  </ItemGroup>
+
+</Project>

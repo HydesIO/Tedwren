@@ -66,4 +66,25 @@ public static class UploadValidation
             throw new ArgumentException($"The uploaded file type '{contentType}' is not accepted.");
         }
     }
+
+    /// <summary>
+    /// Validates an already-decoded (streamed) upload's length and content type — the multipart counterpart to
+    /// <see cref="Validate"/>, used by the mobile <c>/api/mobile/uploads</c> endpoint so a file is checked without
+    /// base64-encoding it first. Throws <see cref="ArgumentException"/> when it exceeds <see cref="MaxFileBytes"/> or
+    /// declares a content type not allowed for <paramref name="kind"/>. A missing content type is size-checked but
+    /// not type-checked, mirroring <see cref="Validate"/>.
+    /// </summary>
+    public static void ValidateFile(long lengthBytes, string? contentType, UploadKind kind)
+    {
+        if (lengthBytes > MaxFileBytes)
+        {
+            throw new ArgumentException($"The uploaded file exceeds the {MaxFileBytes / (1024 * 1024)} MB limit.");
+        }
+
+        var allowed = kind == UploadKind.Image ? ImageTypes : DocumentTypes;
+        if (!string.IsNullOrWhiteSpace(contentType) && !allowed.Contains(contentType.Trim()))
+        {
+            throw new ArgumentException($"The uploaded file type '{contentType}' is not accepted.");
+        }
+    }
 }

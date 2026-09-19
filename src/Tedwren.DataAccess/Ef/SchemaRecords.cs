@@ -615,3 +615,43 @@ public sealed class FormAssignmentRecord
     public DateTimeOffset CreatedUtc { get; set; }
     public DateTimeOffset? LastReminderUtc { get; set; }
 }
+
+/// <summary>Schema row for the <c>OperativeDevices</c> table (operative device binding, M2).</summary>
+public sealed class OperativeDeviceRecord
+{
+    public Guid Id { get; set; }
+    public Guid PersonId { get; set; }
+    public Guid CompanyId { get; set; }
+    public string DeviceId { get; set; } = string.Empty;
+    public string? DeviceName { get; set; }
+    public int Status { get; set; }
+    public string? RefreshTokenHash { get; set; }
+    public DateTimeOffset? RefreshTokenExpiresUtc { get; set; }
+    public DateTimeOffset EnrolledUtc { get; set; }
+    public DateTimeOffset LastSeenUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>OtpChallenges</c> table (operative one-time-code challenges, M2).</summary>
+public sealed class OtpChallengeRecord
+{
+    public Guid Id { get; set; }
+    public string PhoneNumber { get; set; } = string.Empty;
+    public string CodeHash { get; set; } = string.Empty;
+    public DateTimeOffset ExpiresUtc { get; set; }
+    public int Attempts { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>EvidenceItems</c> table (operative field evidence captures, M5).</summary>
+public sealed class EvidenceItemRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid PersonId { get; set; }
+    public string? Note { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? PhotoReference { get; set; }
+    public DateTimeOffset CapturedUtc { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
