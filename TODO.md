@@ -1808,14 +1808,12 @@ Phase M1 delivers the shared foundations and the first page migrations:
   statuses; `OrganisationService` now reports it instead of `Pending`. (Done this change.)
 - ✅ **Company edit persists** — `UpdateCompanyAsync` across the stack + an `EditCompanyDialog`; the
   CompanyDetail "Edit" action now saves. (Done this change.)
-- ⏳ **Follow-ups (non-blocking), remaining:**
-  - **Persist the other demo write actions**: operative "Edit"/"Send update link", **site** "Edit", System
-    Configuration **general settings**, and Permits "Save" — each needs a dedicated write endpoint/service
-    (company edit + module entitlements persist today; site repo already has `UpdateAsync` so site edit is a
-    small next step).
-  - Real **SMS** provider (PRD-Phase 7) — email is done (Resend + branded template + invite delivery, see
-    Completed); SMS is the remaining channel (and the natural route for onboarding links). Company
-    insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
+- ✅ **Demo write-actions now persist** (delivered incrementally across the UAT/dialog work and LR-6): **site**
+  edit (`ISiteService.UpdateSiteAsync` + `EditSiteDialog`), **general settings** (`/api/settings` PUT round-trip),
+  **operative** contact edit (UAT-010a, `UpdatePersonContactAsync`), company edit + module entitlements, and
+  **permits** (create/issue + the LR-6 approve/close lifecycle).
+- ✅ **Real SMS provider** delivered in LR-2 (Twilio behind config; outbox default). Remaining PRD-Phase items:
+  company insurance/accreditation docs in the digest (needs SUB-4); object-storage for card images (R9 — LR-4).
 - ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
   `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default; Mock mode removed.
 
