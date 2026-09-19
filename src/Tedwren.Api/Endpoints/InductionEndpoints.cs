@@ -71,7 +71,7 @@ public static class InductionEndpoints
         // The worker opens a shared link with no console account (MC-1/MC-2, UAT-018) — anonymous, token+passcode gated.
         group.MapGet("/by-link/{token}", async (string token, string? passcode, IInductionService service, CancellationToken cancellationToken) =>
                 await service.GetLinkAsync(token, passcode, cancellationToken) is { } view ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden))
-            .WithName("ViewInductionLink").AllowAnonymous();
+            .WithName("ViewInductionLink").AllowAnonymous().RequireRateLimiting("kiosk");
 
         group.MapPost("/by-link/{token}/session", async (string token, StartInductionFromLinkRequest request, IInductionService service, CancellationToken cancellationToken) =>
             {
@@ -85,7 +85,7 @@ public static class InductionEndpoints
                     return Results.BadRequest(new { error = ex.Message });
                 }
             })
-            .WithName("StartInductionFromLink").AllowAnonymous();
+            .WithName("StartInductionFromLink").AllowAnonymous().RequireRateLimiting("kiosk");
 
         // The worker's take-flow runs from a link with no console account (MC-1/MC-2) — anonymous.
         group.MapPost("/sessions", async (StartInductionRequest request, IInductionService service, CancellationToken cancellationToken) =>

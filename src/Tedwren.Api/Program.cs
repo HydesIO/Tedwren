@@ -235,6 +235,7 @@ builder.Services.AddOpenApi();
 // A fixed window per client IP, so a bot can't spam signups/leads or hammer the sign endpoint. Authenticated
 // admin surfaces are unaffected. 429 on rejection.
 const string publicRateLimitPolicy = "public";
+const string kioskRateLimitPolicy = "kiosk";
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -245,6 +246,19 @@ builder.Services.AddRateLimiter(options =>
             {
                 // Generous enough for a shared/NAT'd origin, tight enough to stop a bot hammering the endpoint.
                 PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+    // A more generous per-IP limit for the anonymous on-site / token flows (site entry, onboarding and pack
+    // recipient, induction/trade by-link). High enough not to reject legitimate bursts from a whole site behind
+    // one NAT'd IP, low enough to stop a script brute-forcing tokens/passcodes or flooding the gate. The
+    // GUID-scoped induction *session* endpoints are deliberately left off it (not brute-forceable, multi-request).
+    options.AddPolicy(kioskRateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));

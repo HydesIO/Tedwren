@@ -24,7 +24,7 @@ public static class OnboardingEndpoints
             .WithName("CreateOnboardingLink");
 
         // Recipient flow — anonymous, token+passcode gated (SF-4, R9).
-        var recipient = app.MapGroup("/api/onboarding").WithTags("Onboarding").AllowAnonymous();
+        var recipient = app.MapGroup("/api/onboarding").WithTags("Onboarding").AllowAnonymous().RequireRateLimiting("kiosk");
 
         recipient.MapGet("/view", async (string token, string? passcode, IOnboardingService service, CancellationToken cancellationToken) =>
                 await service.GetByTokenAsync(token, passcode, cancellationToken) is { } view ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden))
