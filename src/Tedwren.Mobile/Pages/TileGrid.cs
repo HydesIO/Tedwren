@@ -33,16 +33,57 @@ internal static class TileGrid
                 Command = new Command(() => page.DisplayAlert(item.Title, "Coming in a later phase.", "OK")),
             };
 
-            var row = i / 2;
-            var col = i % 2;
-            if (grid.RowDefinitions.Count <= row)
-            {
-                grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            }
-
-            grid.Add(tile, col, row);
+            Place(grid, tile, i);
         }
 
         return grid;
+    }
+
+    /// <summary>
+    /// Builds a two-column grid of menu tiles where each item may carry a destination-page factory: tiles with a
+    /// destination navigate to it; tiles without one show the "coming in a later phase" prompt.
+    /// </summary>
+    public static Grid Build(Page page, IReadOnlyList<(string Glyph, string Title, string Subtitle, Func<Page>? Destination)> items)
+    {
+        var grid = new Grid
+        {
+            ColumnSpacing = 12,
+            RowSpacing = 12,
+            ColumnDefinitions =
+            {
+                new ColumnDefinition(GridLength.Star),
+                new ColumnDefinition(GridLength.Star),
+            },
+        };
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            var item = items[i];
+            var tile = new TwMenuTile
+            {
+                Glyph = item.Glyph,
+                Title = item.Title,
+                Subtitle = item.Subtitle,
+                Command = item.Destination is null
+                    ? new Command(() => page.DisplayAlert(item.Title, "Coming in a later phase.", "OK"))
+                    : new Command(async () => await page.Navigation.PushAsync(item.Destination())),
+            };
+
+            Place(grid, tile, i);
+        }
+
+        return grid;
+    }
+
+    private static void Place(Grid grid, IView tile, int index)
+    {
+        var row = index / 2;
+        var col = index % 2;
+        if (grid.RowDefinitions.Count <= row)
+        {
+            grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+        }
+
+        grid.Add(tile, col, row);
     }
 }

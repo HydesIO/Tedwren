@@ -46,7 +46,7 @@ public sealed record ResumeResult(ResumeStatus Status, MobileSession? Session);
 /// refresh token lives only in encrypted secure storage (never in plain app state); biometrics are a local
 /// unlock, not identity verification (R17).
 /// </summary>
-public sealed class OperativeSessionManager
+public sealed class OperativeSessionManager : ISessionRefresher
 {
     private const string DeviceIdKey = "tw.device_id";
     private const string RefreshTokenKey = "tw.operative.refresh";
@@ -150,6 +150,32 @@ public sealed class OperativeSessionManager
 
         await _store.SetAsync(RefreshTokenKey, result.RefreshToken);
         return new ResumeResult(ResumeStatus.Resumed, ToSession(result));
+    }
+
+    /// <summary>
+    /// Silently rotates the stored refresh token for a fresh access token — no biometric prompt (used by the
+    /// auth handler when an access token expires mid-session). Clears the stored token and returns null when the
+    /// server rejects it, so the app re-enrols. Distinct from <see cref="TryResumeAsync"/>, which biometric-gates
+    /// on launch.
+    /// </summary>
+    public async Task<string?> RefreshAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        var refreshToken = await _store.GetAsync(RefreshTokenKey);
+        if (string.IsNullOrEmpty(refreshToken))
+        {
+            return null;
+        }
+
+        var deviceId = await GetOrCreateDeviceIdAsync();
+        var result = await _auth.RefreshAsync(refreshToken, deviceId, cancellationToken);
+        if (result is null)
+        {
+            _store.Remove(RefreshTokenKey);
+            return null;
+        }
+
+        await _store.SetAsync(RefreshTokenKey, result.RefreshToken);
+        return result.AccessToken;
     }
 
     /// <summary>Signs out on this device by discarding the stored refresh token (the device stays bound server-side until revoked).</summary>

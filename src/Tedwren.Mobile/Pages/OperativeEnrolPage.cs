@@ -13,6 +13,7 @@ namespace Tedwren.Mobile.Pages;
 public class OperativeEnrolPage : ContentPage
 {
     private readonly OperativeSessionManager _session;
+    private readonly AccessTokenStore _tokens;
     private readonly IServiceProvider _services;
 
     private readonly Entry _mobileEntry;
@@ -23,9 +24,10 @@ public class OperativeEnrolPage : ContentPage
     private string? _mobile;
 
     /// <summary>Builds the enrolment page over the session manager.</summary>
-    public OperativeEnrolPage(OperativeSessionManager session, IServiceProvider services)
+    public OperativeEnrolPage(OperativeSessionManager session, AccessTokenStore tokens, IServiceProvider services)
     {
         _session = session;
+        _tokens = tokens;
         _services = services;
         Title = "Operative sign in";
 
@@ -112,7 +114,9 @@ public class OperativeEnrolPage : ContentPage
         switch (result.Status)
         {
             case EnrolStatus.Success:
-                // Replace the navigation root so the operative lands on their home and cannot navigate "back" to sign-in.
+                // Make the access token available to the authenticated API handler, then replace the navigation
+                // root so the operative lands on their home and cannot navigate "back" to sign-in.
+                _tokens.AccessToken = result.Session!.Token;
                 if (Window is not null)
                 {
                     Window.Page = new NavigationPage(_services.GetRequiredService<OperativeHomePage>());

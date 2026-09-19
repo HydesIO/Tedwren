@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Tedwren.Mobile.Core.Api;
+using Tedwren.Mobile.Core.Caching;
 using Tedwren.Mobile.Core.Platform;
 using Tedwren.Mobile.Core.Session;
 using Tedwren.Mobile.Pages;
@@ -37,13 +38,26 @@ public static class MauiProgram
         builder.Services.AddHttpClient<AuthApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl));
         builder.Services.AddHttpClient<OperativeAuthApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl));
 
-        // Operative session (device id, enrolment, biometric-gated resume).
+        // Operative session (device id, enrolment, biometric-gated resume) + silent refresh for the auth handler.
         builder.Services.AddSingleton<OperativeSessionManager>();
+        builder.Services.AddSingleton<ISessionRefresher>(sp => sp.GetRequiredService<OperativeSessionManager>());
+
+        // Authenticated operative read surface (M3): token store + auth handler + typed client + read cache.
+        builder.Services.AddSingleton<AccessTokenStore>();
+        builder.Services.AddTransient<OperativeAuthMessageHandler>();
+        builder.Services.AddHttpClient<OperativeApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl))
+            .AddHttpMessageHandler<OperativeAuthMessageHandler>();
+        builder.Services.AddSingleton<IReadCache>(_ => new JsonFileReadCache(Path.Combine(FileSystem.AppDataDirectory, "cache")));
+        builder.Services.AddSingleton<OperativeDataService>();
 
         // Pages.
+        builder.Services.AddTransient<LoadingPage>();
         builder.Services.AddTransient<SignInPage>();
         builder.Services.AddTransient<OperativeEnrolPage>();
         builder.Services.AddTransient<OperativeHomePage>();
+        builder.Services.AddTransient<MyHoursPage>();
+        builder.Services.AddTransient<MyCardsPage>();
+        builder.Services.AddTransient<ProfilePage>();
         builder.Services.AddTransient<ManagerHomePage>();
 
 #if DEBUG

@@ -19,10 +19,13 @@ public class App : Application
         Resources.MergedDictionaries.Add(new TedwrenStyles());
     }
 
-    /// <summary>Creates the app window with the sign-in page as the navigation root.</summary>
+    /// <summary>
+    /// Creates the app window with the loading page as the root; it attempts a biometric-gated session resume
+    /// and routes to the operative home or the sign-in page.
+    /// </summary>
     protected override Window CreateWindow(IActivationState? activationState)
     {
-        var signIn = _services.GetRequiredService<SignInPage>();
-        return new Window(new NavigationPage(signIn)) { Title = "Tedwren" };
+        var loading = _services.GetRequiredService<LoadingPage>();
+        return new Window(loading) { Title = "Tedwren" };
     }
 }

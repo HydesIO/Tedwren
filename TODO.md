@@ -33,8 +33,20 @@ a workload machine (iOS needs macOS).
   Application, 3 API, 14 Core — all green. ❗ Deferred to M3 (land with the first protected operative endpoint):
   the `RequireOperative` policy + accepting the `tedwren-mobile` audience in JwtBearer, and the console
   device-revoke/re-bind admin action.
-- ⏳ **M3** operative surface + dashboards · **M4** attendance (online-only, geofenced) · **M5** offline capture &
-  sync · **M6** forms engine (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
+- ✅ **M3 — Operative surface + read caches + dashboard.** Server: **auth plane separation** — JwtBearer accepts
+  the `tedwren-mobile` audience; new `RequireOperative` policy (Operative role + device claim); the fallback
+  policy now requires a console role so operative tokens can't reach console endpoints. `/api/mobile/{me,my-hours,
+  sites,dashboard}` (RequireOperative), reading PersonId/CompanyId from the token, never the body; a dedicated
+  `MobileSurfaceService` + `OperativeDashboardService` compose over the existing workforce/timesheet/site services
+  + repos (console `IWorkforceService`/`ISiteService` left untouched — SRP). Client (Core): `AccessTokenStore` +
+  silent-refresh `OperativeAuthMessageHandler` (401→refresh→retry once) + typed `OperativeApiClient` +
+  `IReadCache`/`JsonFileReadCache` + cache-then-network `OperativeDataService`. MAUI head: launch resume router,
+  operative dashboard populated, My hours / My cards / Profile pages. Tests: 3 API (plane separation + own-data),
+  9 Core — all green. ❗ Deferred: **site-documents (MC-27)** — no Site↔Document association exists (MC-27 is
+  company-doc versioning); needs new modelling, raised as a gap. Read-cache **encryption-at-rest** lands in M5
+  (SQLCipher replaces `JsonFileReadCache`).
+- ⏳ **M4** attendance (online-only, geofenced) · **M5** offline capture & sync · **M6** forms engine
+  (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
 - ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
   workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and
