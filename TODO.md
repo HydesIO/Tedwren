@@ -41,6 +41,38 @@ A full sweep of every API endpoint/contract and the Blazor UI. The client↔API 
 - ✅ **Verified NOT a gap:** password-reset completion — the `/reset-password` page reuses `/api/auth/accept-invite`
   (the reset token is stored in `InviteToken` and consumed there), so the flow completes end-to-end.
 
+### SQL Server parity — verified against a live SQL Server 2022 (previously the DB path never ran here)
+
+Booting the API against real SQL Server (and running the DataAccess integration suite, `TEDWREN_TEST_SQLSERVER`)
+surfaced defects the in-memory suite and the PostgreSQL run could not:
+
+- ✅ **SQL Server startup crash — commercial migration `031_launch_unsubscribe` (SqlServer).** The `CREATE UNIQUE
+  INDEX` on the just-added `UnsubscribeToken` compiled in the same batch as its `ALTER … ADD` (the runner executes
+  each script as one batch, no `GO`), so SQL Server failed with 207 *"Invalid column name 'UnsubscribeToken'"* and
+  the API **could not start** on a fresh commercial database. Wrapped the index in `EXEC(N'…')` (the established
+  pattern from `023_company_orgtype`). PostgreSQL was unaffected (sequential statement execution).
+- ✅ **Schema drift: raw `MigrationRunner` scripts vs EF migrations (both providers) — CORE FLOW BREAK.**
+  `PersonRepository` reads/writes `Persons.EmergencyContactName/EmergencyContactPhone` and `CompanyDocumentRepository`
+  reads/writes `CompanyDocuments.FileReference/Version/SupersedesDocumentId/SupersededByDocumentId`, but those columns
+  were only ever added by **EF migrations** — never backported to the idempotent `Migrations/Scripts/**` set that the
+  API actually runs at startup. On a database provisioned by the startup runner alone (the default path, both engines)
+  the columns were missing, so **adding an operative 500'd** with *"Invalid column name 'EmergencyContactName'"* and
+  company-document read/write failed. Added idempotent backport scripts `030_person_emergency_contact` and
+  `031_company_document_versioning` for **both** SqlServer and Postgres, restoring the doc's stated invariant that the
+  startup runner "stays a no-op over EF-created tables (matching names)". Verified: fresh SQL Server + PostgreSQL both
+  boot clean and add operatives (HTTP 200); DataAccess integration suite is **26/26** on SQL Server.
+- ✅ **DataAccess test harness.** Added a module initializer registering the Dapper type handlers once (the repo
+  integration tests construct repositories directly and previously depended on another test registering handlers
+  first — a `DateOnly`/`DateTimeOffset` parameter otherwise throws), and disabled assembly test-parallelization (the
+  tests share one `TEDWREN_TEST_SQLSERVER` database and racing `MigrationRunner` runs produced spurious
+  "object already exists" failures). The migration runner itself is idempotent on restart (verified).
+
+❗ **Outstanding — full EF ↔ raw-script parity guard.** Two drifted tables were found and fixed via the DataAccess
+integration suite (which covers most repos). A belt-and-braces follow-up: add a CI check that runs `dotnet ef
+migrations script --idempotent` and diffs it against the `Migrations/Scripts/**` set (or generates one from the
+other), so a future EF migration can never again ship without its raw-script counterpart. Also run the PostgreSQL
+parity suite (the DataAccess integration tests are SQL-Server-only today).
+
 ❗ **Outstanding — relationship-aware tenant scoping (follow-up).** Several company-scoped services still trust a
 client-supplied `companyId`/id for reads (and some writes): `TimesheetService`, `OrganisationService` (incl.
 `GetCompaniesAsync` returning all companies), `CompliancePackService`, `DecisionService`, the audit **write**
