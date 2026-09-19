@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    Tedwren base styles — spacing/radius tokens and the semantic control styles that flip with the theme.
+    Colours come from TedwrenColors (merged in below so StaticResource lookups resolve here). Spacing scale and
+    radii mirror tokens.css (4/8/12/16/20/24/32; card 10, control 8). The app merges only this dictionary.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                    xmlns:res="clr-namespace:Tedwren.Mobile.Controls.Resources"
+                    x:Class="Tedwren.Mobile.Controls.Resources.TedwrenStyles">
+
+    <ResourceDictionary.MergedDictionaries>
+        <res:TedwrenColors />
+    </ResourceDictionary.MergedDictionaries>
+
+    <!-- Spacing scale (tokens.css) -->
+    <x:Double x:Key="TwSpace4">4</x:Double>
+    <x:Double x:Key="TwSpace8">8</x:Double>
+    <x:Double x:Key="TwSpace12">12</x:Double>
+    <x:Double x:Key="TwSpace16">16</x:Double>
+    <x:Double x:Key="TwSpace20">20</x:Double>
+    <x:Double x:Key="TwSpace24">24</x:Double>
+    <x:Double x:Key="TwSpace32">32</x:Double>
+
+    <!-- Radii -->
+    <x:Double x:Key="TwRadiusCard">10</x:Double>
+    <x:Double x:Key="TwRadiusControl">8</x:Double>
+
+    <!-- Page background flips with theme -->
+    <Style TargetType="ContentPage" ApplyToDerivedTypes="True">
+        <Setter Property="BackgroundColor"
+                Value="{AppThemeBinding Light={StaticResource TwBg-L}, Dark={StaticResource TwBg-D}}" />
+    </Style>
+
+    <!-- Default label -->
+    <Style TargetType="Label">
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light={StaticResource TwTextPrimary-L}, Dark={StaticResource TwTextPrimary-D}}" />
+        <Setter Property="FontSize" Value="15" />
+    </Style>
+
+    <!-- Typography -->
+    <Style x:Key="TwH1" TargetType="Label">
+        <Setter Property="FontSize" Value="26" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light={StaticResource TwTextPrimary-L}, Dark={StaticResource TwTextPrimary-D}}" />
+    </Style>
+    <Style x:Key="TwH2" TargetType="Label">
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light={StaticResource TwTextPrimary-L}, Dark={StaticResource TwTextPrimary-D}}" />
+    </Style>
+    <Style x:Key="TwCaption" TargetType="Label">
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light={StaticResource TwTextSecondary-L}, Dark={StaticResource TwTextSecondary-D}}" />
+    </Style>
+
+    <!-- Primary button: filled brand -->
+    <Style x:Key="TwPrimaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="{StaticResource TwBrand}" />
+        <Setter Property="TextColor" Value="{StaticResource TwOnBrand}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="HeightRequest" Value="48" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+
+    <!-- Secondary button: outlined -->
+    <Style x:Key="TwSecondaryButton" TargetType="Button">
+        <Setter Property="BackgroundColor" Value="Transparent" />
+        <Setter Property="TextColor"
+                Value="{AppThemeBinding Light={StaticResource TwTextPrimary-L}, Dark={StaticResource TwTextPrimary-D}}" />
+        <Setter Property="BorderColor"
+                Value="{AppThemeBinding Light={StaticResource TwBorder-L}, Dark={StaticResource TwBorder-D}}" />
+        <Setter Property="BorderWidth" Value="1" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="HeightRequest" Value="48" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+
+    <!-- Destructive button: filled danger (MudDialog standard: destructive is visually distinct) -->
+    <Style x:Key="TwDestructiveButton" TargetType="Button">
+        <Setter Property="BackgroundColor"
+                Value="{AppThemeBinding Light={StaticResource TwDanger-L}, Dark={StaticResource TwDanger-D}}" />
+        <Setter Property="TextColor" Value="{StaticResource TwOnBrand}" />
+        <Setter Property="CornerRadius" Value="8" />
+        <Setter Property="HeightRequest" Value="48" />
+        <Setter Property="FontAttributes" Value="Bold" />
+        <Setter Property="FontSize" Value="16" />
+    </Style>
+
+</ResourceDictionary>

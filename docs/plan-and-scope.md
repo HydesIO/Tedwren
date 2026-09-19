@@ -18,6 +18,12 @@ seven numbered commercial modules. The definitive brief is **PRD v6.4**
 > rotating the committed DB credential). **The stage after the MVPs is scoped in
 > [`next-phases-plan.md`](next-phases-plan.md)** (Launch Readiness → CSCS seam → Health, Safety &
 > Compliance), proposed for review. The original UI-phase context below is retained for history.
+>
+> **Mobile (M-track):** a separate native **.NET MAUI** field app (Android + iOS) for operatives (primary) and
+> site managers/admins (secondary) is now planned and under way — see
+> [`mobile-app-plan.md`](mobile-app-plan.md) and [`mobile-app-build.md`](mobile-app-build.md). It is an optional
+> layer beside the mandatory browser paths (R1/Q8/Q14). **M1 (foundation) has landed**: `Tedwren.Mobile.Core`
+> (+ tests) builds in `Tedwren.sln`; the MAUI heads build from `Tedwren.Mobile.slnx`.
 
 The repository began as a **UI/UX foundation only**. **Six UI phases were complete on `origin/main`**
 (PRs #1–#10), all of them **front-end/component work over mock data**:

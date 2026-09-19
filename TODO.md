@@ -9,6 +9,31 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+## Mobile app (.NET MAUI, Android + iOS) — M-track (19 Sep 2026)
+
+New native field app for operatives (primary) + site managers/admins (secondary). Plan & scope in
+`docs/mobile-app-plan.md`; build/toolchain in `docs/mobile-app-build.md`. Optional layer beside the mandatory
+browser paths (R1); offline scoped to evidence/forms capture + read caches (R2/R3). Two solutions:
+`Tedwren.sln` builds `Tedwren.Mobile.Core` (+ tests) on Linux/CI; `Tedwren.Mobile.slnx` builds the MAUI heads on
+a workload machine (iOS needs macOS).
+
+- 🔄 **M1 — Foundation / walking skeleton.** New projects `Tedwren.Mobile` (MAUI head, android+ios),
+  `Tedwren.Mobile.Controls` (design tokens ported from `tokens.css`; `TwCard`/`TwMenuTile`), `Tedwren.Mobile.Core`
+  (role-switch resolver, session model, mobile-number normaliser reusing `PhoneNumber`, `AuthApiClient`, platform
+  abstractions) + `Tedwren.Mobile.Core.Tests` (21 tests, green). Brand-orange splash + white/transparent-"T" app
+  icon (from `logo-icon.svg`). Role-switch shell → two card-menu homes + dashboard shells. Core+tests wired into
+  `Tedwren.sln` (whole solution builds clean, 0 warnings); MAUI heads in `Tedwren.Mobile.slnx`.
+- ⏳ **M2** operative auth (mobile+OTP+device bind+biometric) · **M3** operative surface + dashboards ·
+  **M4** attendance (online-only, geofenced) · **M5** offline capture & sync · **M6** forms engine
+  (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
+- ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
+  workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
+- ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and
+  one-device-per-operative are SF-1 design choices, not mandates; geotagged photos + push for due forms are
+  enhancements beyond the forms spec.
+
+---
+
 ## API & UI review — endpoints, contracts, security, PostgreSQL parity (19 Sep 2026)
 
 A full sweep of every API endpoint/contract and the Blazor UI. The client↔API contract reconciled clean

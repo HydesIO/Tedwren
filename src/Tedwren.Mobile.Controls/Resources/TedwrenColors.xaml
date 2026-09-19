@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+    Tedwren design tokens — colours, ported verbatim from src/Tedwren.Client/wwwroot/css/tokens.css so the
+    native app matches the web console exactly. Light and dark variants are keyed with -L / -D suffixes; the
+    semantic styles in TedwrenStyles.xaml pick the right one per theme via AppThemeBinding. The brand orange is
+    intentionally identical in both themes. Do not introduce colour literals elsewhere in the app.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                    x:Class="Tedwren.Mobile.Controls.Resources.TedwrenColors">
+
+    <!-- Brand -->
+    <Color x:Key="TwBrand">#E8590C</Color>
+    <Color x:Key="TwBrandPale-L">#FFF1E8</Color>
+    <Color x:Key="TwBrandPale-D">#3A2317</Color>
+    <Color x:Key="TwBrandDark-L">#B8430C</Color>
+    <Color x:Key="TwBrandDark-D">#F5926A</Color>
+    <Color x:Key="TwOnBrand">#FFFFFF</Color>
+
+    <!-- Surfaces & text (light) -->
+    <Color x:Key="TwBg-L">#F7F8FA</Color>
+    <Color x:Key="TwSurface-L">#FFFFFF</Color>
+    <Color x:Key="TwTextPrimary-L">#101828</Color>
+    <Color x:Key="TwTextSecondary-L">#667085</Color>
+    <Color x:Key="TwTextMuted-L">#98A2B3</Color>
+    <Color x:Key="TwBorder-L">#E4E7EC</Color>
+
+    <!-- Surfaces & text (dark) -->
+    <Color x:Key="TwBg-D">#0C111D</Color>
+    <Color x:Key="TwSurface-D">#161B26</Color>
+    <Color x:Key="TwTextPrimary-D">#F5F6F8</Color>
+    <Color x:Key="TwTextSecondary-D">#94A0B4</Color>
+    <Color x:Key="TwTextMuted-D">#697586</Color>
+    <Color x:Key="TwBorder-D">#2A3140</Color>
+
+    <!-- Status — solid + pale pairs (light) -->
+    <Color x:Key="TwSuccess-L">#17B26A</Color>
+    <Color x:Key="TwSuccessPale-L">#ECFDF3</Color>
+    <Color x:Key="TwWarning-L">#F79009</Color>
+    <Color x:Key="TwWarningPale-L">#FFFAEB</Color>
+    <Color x:Key="TwDanger-L">#F04438</Color>
+    <Color x:Key="TwDangerPale-L">#FEF3F2</Color>
+    <Color x:Key="TwInfo-L">#2E90FA</Color>
+    <Color x:Key="TwInfoPale-L">#EFF8FF</Color>
+    <Color x:Key="TwPermit-L">#7F56D9</Color>
+    <Color x:Key="TwPermitPale-L">#F4F3FF</Color>
+
+    <!-- Status — solid + pale pairs (dark) -->
+    <Color x:Key="TwSuccess-D">#3CCB7F</Color>
+    <Color x:Key="TwSuccessPale-D">#16281F</Color>
+    <Color x:Key="TwWarning-D">#F7A93D</Color>
+    <Color x:Key="TwWarningPale-D">#2C2313</Color>
+    <Color x:Key="TwDanger-D">#F5766B</Color>
+    <Color x:Key="TwDangerPale-D">#2E1B1A</Color>
+    <Color x:Key="TwInfo-D">#5AA9FB</Color>
+    <Color x:Key="TwInfoPale-D">#16233A</Color>
+    <Color x:Key="TwPermit-D">#A98BE6</Color>
+    <Color x:Key="TwPermitPale-D">#241F35</Color>
+
+    <!-- RAG (inspection) — reuse status solids -->
+    <Color x:Key="TwRagRed">#F04438</Color>
+    <Color x:Key="TwRagAmber">#F79009</Color>
+    <Color x:Key="TwRagGreen">#17B26A</Color>
+
+</ResourceDictionary>
