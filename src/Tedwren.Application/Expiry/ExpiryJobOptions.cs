@@ -14,4 +14,10 @@ public sealed class ExpiryJobOptions
 
     /// <summary>How long the weekly digest may go without a successful run before it is flagged overdue (R12).</summary>
     public TimeSpan WeeklyDigestMaxInterval { get; init; } = TimeSpan.FromDays(8);
+
+    /// <summary>How long the recurring-form reminder scan may go without a successful run before it is flagged overdue (R12).</summary>
+    public TimeSpan FormReminderMaxInterval { get; init; } = TimeSpan.FromHours(25);
+
+    /// <summary>How long the overnight still-signed-in check may go without a successful run before it is flagged overdue (R12).</summary>
+    public TimeSpan OvernightCheckMaxInterval { get; init; } = TimeSpan.FromHours(25);
 }

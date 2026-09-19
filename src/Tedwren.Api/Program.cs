@@ -195,6 +195,18 @@ builder.Services.AddHostedService<ExpirySchedulerHostedService>();
 // Backstops GoCardless webhooks by reconciling billing status on a schedule (gated by Jobs:SchedulerEnabled).
 builder.Services.AddHostedService<BillingReconciliationHostedService>();
 
+// R12 heartbeat watchdog: checks that the scheduled jobs are running, independently of the job-execution loop
+// above, so a failure that stops the jobs cannot also stop the check that is meant to notice.
+builder.Services.AddHostedService<JobHeartbeatHostedService>();
+
+// R12 ops-alert address (where "a scheduled job may have stopped" emails go). Configurable so the alert reaches a
+// real inbox in production; the Application-layer default intervals + address stand when unset.
+var opsEmail = builder.Configuration.GetValue<string>("Jobs:OpsEmail");
+if (!string.IsNullOrWhiteSpace(opsEmail))
+{
+    builder.Services.AddSingleton(new Tedwren.Application.Expiry.ExpiryJobOptions { OpsEmail = opsEmail });
+}
+
 builder.Services.AddOpenApi();
 
 // Rate limiting for the public (anonymous) endpoints — launch signup, lead capture, agreement view/sign/pdf.

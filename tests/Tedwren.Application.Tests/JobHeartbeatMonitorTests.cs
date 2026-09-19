@@ -22,19 +22,20 @@ public sealed class JobHeartbeatMonitorTests
     }
 
     [Fact]
-    public async Task NoRunsEver_BothJobsAlerted()
+    public async Task NoRunsEver_EveryScheduledJobAlerted()
     {
         var (monitor, _, outbox) = CreateSut();
 
         var alerts = await monitor.CheckAsync(DateTimeOffset.UtcNow);
 
-        Assert.Equal(2, alerts);   // expiry-scan + weekly-digest both never ran
-        Assert.Equal(2, outbox.Messages.Count);
+        // All four monitored jobs never ran: expiry-scan, weekly-digest, form-reminder, overnight-check.
+        Assert.Equal(4, alerts);
+        Assert.Equal(4, outbox.Messages.Count);
         Assert.All(outbox.Messages, m => Assert.Equal("ops@tedwren.local", m.Recipient));
     }
 
     [Fact]
-    public async Task RecentExpiryScanSuccess_OnlyDigestAlerted()
+    public async Task RecentExpiryScanSuccess_OtherThreeAlerted()
     {
         var (monitor, store, outbox) = CreateSut();
         var now = DateTimeOffset.UtcNow;
@@ -47,7 +48,32 @@ public sealed class JobHeartbeatMonitorTests
 
         var alerts = await monitor.CheckAsync(now);
 
-        Assert.Equal(1, alerts);   // only the weekly digest is overdue
-        Assert.Contains(outbox.Messages, m => m.Subject.Contains("weekly-digest"));
+        // Only the expiry scan is recent; digest, form-reminder and overnight-check are all overdue.
+        Assert.Equal(3, alerts);
+        Assert.DoesNotContain(outbox.Messages, m => m.Subject.Contains(JobNames.ExpiryScan));
+        Assert.Contains(outbox.Messages, m => m.Subject.Contains(JobNames.WeeklyDigest));
+        Assert.Contains(outbox.Messages, m => m.Subject.Contains(JobNames.FormReminder));
+        Assert.Contains(outbox.Messages, m => m.Subject.Contains(JobNames.OvernightCheck));
+    }
+
+    [Fact]
+    public async Task AllJobsRecentlySucceeded_NoAlerts()
+    {
+        var (monitor, store, outbox) = CreateSut();
+        var now = DateTimeOffset.UtcNow;
+        foreach (var jobName in new[] { JobNames.ExpiryScan, JobNames.WeeklyDigest, JobNames.FormReminder, JobNames.OvernightCheck })
+        {
+            store.JobRuns[Guid.NewGuid()] = new JobRun
+            {
+                JobName = jobName,
+                Status = JobRunStatus.Succeeded,
+                FinishedUtc = now.AddMinutes(-5),
+            };
+        }
+
+        var alerts = await monitor.CheckAsync(now);
+
+        Assert.Equal(0, alerts);
+        Assert.Empty(outbox.Messages);
     }
 }
