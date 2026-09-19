@@ -1,3 +1,4 @@
+using System.Linq;
 using Tedwren.Domain.Enums;
 
 namespace Tedwren.Application.Entitlements;
@@ -22,6 +23,11 @@ public static class ProductModuleBundles
     {
         "workforce", "compliance", "inductions", "reports",
     };
+
+    /// <summary>Every module key referenced by any product bundle — for consistency checks against the catalogue
+    /// (a bundle key that is not a real <see cref="ModuleCatalog"/> key would be a dead default that never resolves).</summary>
+    public static IReadOnlyCollection<string> AllConfiguredKeys { get; } =
+        new HashSet<string>(Subcontractor.Concat(MainContractor), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Whether <paramref name="moduleKey"/> is on by default for the given product. <c>permits</c>, <c>forms</c>

@@ -67,6 +67,24 @@ surfaced defects the in-memory suite and the PostgreSQL run could not:
   tests share one `TEDWREN_TEST_SQLSERVER` database and racing `MigrationRunner` runs produced spurious
   "object already exists" failures). The migration runner itself is idempotent on restart (verified).
 
+### Module entitlement gates (SF-22) — dead-gate fixes + consistency guard
+
+Auditing the gated module selection (Admin → Company Modules) for correctness and completeness surfaced two
+"dead gate" bugs where a gate keyed on a **non-catalogue** module key silently fails closed (`IsEnabledAsync`
+returns false for unknown keys), so the gate never fires:
+
+- ✅ **Site-entry RAMS check keyed on a non-existent `"rams"` module** (`SiteEntryService.CheckRamsAsync`). RAMS is
+  part of the `hse` catalogue module, so the check recorded "not held / not run" for **every** company, including HSE
+  customers (R10 / MC-8 entry decision). Fixed to `"hse"`; added a test proving the check passes when HSE is held.
+- ✅ **Demo seed enabled `"timesheets"`/`"compliance-packs"`** — not catalogue keys, so those overrides were dead
+  writes and the demo never actually switched Time & Attendance on for main-contractor demo companies. Fixed to
+  the real keys `"time"`/`"compliance"`.
+- ✅ **Consistency guard** (`ModuleEntitlementConsistencyTests`, no DB): asserts every product-bundle key and every
+  demo-seed key is a real `ModuleCatalog` key, and that the admin list (`GetForCompanyAsync`) surfaces **every**
+  catalogue module — so all modules, new and old, are toggleable, and a future typo'd/renamed gate key fails CI.
+  (The nav gate keys and the server `ModuleGate.Require` keys — `forms`/`hse` — were verified valid and are already
+  exercised end-to-end by the Forms/HSE API entitlement tests.)
+
 ❗ **Outstanding — full EF ↔ raw-script parity guard.** Two drifted tables were found and fixed via the DataAccess
 integration suite (which covers most repos). A belt-and-braces follow-up: add a CI check that runs `dotnet ef
 migrations script --idempotent` and diffs it against the `Migrations/Scripts/**` set (or generates one from the

@@ -21,7 +21,9 @@ public static class DemoDataPlanBuilder
     private static readonly Guid FirstAid = new("11111111-1111-4111-8111-000000000004");
     private static readonly Guid WorkingAtHeight = new("11111111-1111-4111-8111-000000000006");
 
-    private static readonly string[] ModuleKeys = { "forms", "permits", "timesheets", "inductions", "compliance-packs" };
+    // Catalogue module keys (ModuleCatalog): "time" and "compliance", NOT "timesheets"/"compliance-packs" — the
+    // latter were dead overrides for non-existent modules, so the demo never actually switched Time & Attendance on.
+    private static readonly string[] ModuleKeys = { "forms", "permits", "time", "inductions", "compliance" };
 
     private static readonly string[] Trades =
     {
