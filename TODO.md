@@ -79,6 +79,26 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Launch Readiness (Track A) — LR-6: Permit lifecycle + README (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Completed the permit lifecycle beyond Draft/Issued (PRD §8.2) and
+rewrote the stale README. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71,
+Application 252 incl. 6 new, Api 143 incl. 2 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Approve / close + expiry.** `PermitStatus` gains `Approved`, `Closed`, `Expired`. `PermitService`
+  `ApproveAsync`/`CloseAsync` transition Draft/Issued→Approved and Issued/Approved→Closed, **scoped to the
+  caller's company server-side (R15)** via `ICurrentUserService`, and record each transition to the audit trail
+  (best-effort, optional deps mirroring `OrganisationService`). A wrong-state transition → **409**; an
+  unknown/cross-tenant permit → **404**. `Expired` is **derived at read time** from `ValidTo` (no job, no schema
+  change — the status column already stores the enum).
+- ✅ **API + client + UI.** `POST /api/permits/{id}/approve|close` (`RequireWrite`, SF-23); `ClosePermitRequest`
+  carries the optional reason. `ApiPermitService` + an **Actions** column on the Permits page with Approve/Close
+  gated by status, each via the shared `ConfirmDialog`. Repo gains `GetAsync`/`UpdateStatusAsync` (Dapper
+  dual-engine + in-memory).
+- ✅ **README** rewritten to match the current platform (was a stale "UI/UX Base Project").
+- ✅ Tests: `PermitServiceTests` (6) + 2 API tests (approve→close→list, invalid-transition 409, cross-company 404).
+- ❗ **Follow-ups:** a close-reason capture dialog (service/API already accept a reason; the UI passes none yet);
+  module-wide server-side company resolution for permit create/list (create still takes a client-supplied
+  companyId); and the remaining demo write-actions (operative/site edit, general settings) — the other half of LR-6.
+
 ### Launch Readiness (Track A) — LR-3: anonymous attack-surface hardening (this change)
 Plan: `docs/next-phases-plan.md` (Track A). Rate-limit the anonymous token/kiosk flows + validate uploads.
 Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 246 incl. 8 new, Api

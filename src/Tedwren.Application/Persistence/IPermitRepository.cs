@@ -10,4 +10,10 @@ public interface IPermitRepository
 
     /// <summary>Returns a company's permits, newest first.</summary>
     Task<IReadOnlyList<Permit>> GetByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns a single permit by id, or null if none exists.</summary>
+    Task<Permit?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Updates a permit's lifecycle status.</summary>
+    Task UpdateStatusAsync(Guid id, Domain.Enums.PermitStatus status, CancellationToken cancellationToken = default);
 }

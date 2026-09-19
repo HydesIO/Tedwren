@@ -3,6 +3,8 @@
 @using Tedwren.Abstractions.Services
 @inject IPermitService PermitSvc
 @inject ITenantState Tenant
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
 
 <PageTitle>Permits · Tedwren</PageTitle>
 
@@ -59,7 +61,57 @@
                 CellTemplate = p => @<span>@FormatPeriod(p)</span>
             },
             new() { Title = "Status", Value = p => p.Status, Filterable = true },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = p => @<div class="permit-row-actions">
+                    @if (p.Status is "Draft" or "Issued")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                   OnClick="@(() => ApprovePermit(p))">Approve</MudButton>
+                    }
+                    @if (p.Status is "Issued" or "Approved")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error"
+                                   OnClick="@(() => ClosePermit(p))">Close</MudButton>
+                    }
+                </div>
+            },
         };
+    }
+
+    private async Task ApprovePermit(PermitDto p)
+    {
+        var at = string.IsNullOrWhiteSpace(p.SiteName) ? "" : $" at {p.SiteName}";
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Approve the {p.PermitType} permit{at}?" },
+            { x => x.ConfirmText, "Approve" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Approve permit", parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false })
+        {
+            var ok = await PermitSvc.ApproveAsync(p.Id);
+            Snackbar.Add(ok ? "Permit approved." : "Could not approve the permit.", ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadPermitsAsync();
+        }
+    }
+
+    private async Task ClosePermit(PermitDto p)
+    {
+        var at = string.IsNullOrWhiteSpace(p.SiteName) ? "" : $" at {p.SiteName}";
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Close the {p.PermitType} permit{at}? This marks the work complete." },
+            { x => x.ConfirmText, "Close permit" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Close permit", parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false })
+        {
+            var ok = await PermitSvc.CloseAsync(p.Id, null);
+            Snackbar.Add(ok ? "Permit closed." : "Could not close the permit.", ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadPermitsAsync();
+        }
     }
 
     private static string FormatPeriod(PermitDto p)

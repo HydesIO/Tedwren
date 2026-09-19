@@ -45,22 +45,42 @@ public sealed class PermitRepository : RepositoryBase, IPermitRepository
             "WHERE CompanyId = @CompanyId ORDER BY CreatedUtc DESC",
             new { CompanyId = companyId }, cancellationToken);
 
-        return rows.Select(r => new Permit
-        {
-            Id = r.Id,
-            CompanyId = r.CompanyId,
-            PermitType = r.PermitType,
-            SiteName = r.SiteName,
-            ResponsiblePerson = r.ResponsiblePerson,
-            ValidFrom = r.ValidFrom,
-            ValidTo = r.ValidTo,
-            Description = r.Description,
-            HighRisk = r.HighRisk,
-            RamsAttached = r.RamsAttached,
-            Status = (PermitStatus)r.Status,
-            CreatedUtc = r.CreatedUtc,
-        }).ToList();
+        return rows.Select(Map).ToList();
     }
+
+    /// <summary>Returns a single permit by id, or null if none exists.</summary>
+    public async Task<Permit?> GetAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            "SELECT Id, CompanyId, PermitType, SiteName, ResponsiblePerson, ValidFrom, ValidTo, " +
+            "Description, HighRisk, RamsAttached, Status, CreatedUtc FROM Permits WHERE Id = @Id",
+            new { Id = id }, cancellationToken);
+        var row = rows.FirstOrDefault();
+        return row is null ? null : Map(row);
+    }
+
+    /// <summary>Updates a permit's lifecycle status.</summary>
+    public async Task UpdateStatusAsync(Guid id, PermitStatus status, CancellationToken cancellationToken = default) =>
+        await ExecuteAsync(
+            "UPDATE Permits SET Status = @Status WHERE Id = @Id",
+            new { Id = id, Status = (int)status }, cancellationToken);
+
+    /// <summary>Maps a flat row to a permit entity.</summary>
+    private static Permit Map(Row r) => new()
+    {
+        Id = r.Id,
+        CompanyId = r.CompanyId,
+        PermitType = r.PermitType,
+        SiteName = r.SiteName,
+        ResponsiblePerson = r.ResponsiblePerson,
+        ValidFrom = r.ValidFrom,
+        ValidTo = r.ValidTo,
+        Description = r.Description,
+        HighRisk = r.HighRisk,
+        RamsAttached = r.RamsAttached,
+        Status = (PermitStatus)r.Status,
+        CreatedUtc = r.CreatedUtc,
+    };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
     private sealed record Row(

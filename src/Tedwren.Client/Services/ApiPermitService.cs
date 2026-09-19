@@ -27,4 +27,18 @@ public sealed class ApiPermitService : IPermitService
     public async Task<IReadOnlyList<PermitDto>> ListForCompanyAsync(Guid companyId, CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<IReadOnlyList<PermitDto>>($"api/permits/company/{companyId}", cancellationToken)
         ?? Array.Empty<PermitDto>();
+
+    /// <summary>Approves a permit via the API; returns true on success.</summary>
+    public async Task<bool> ApproveAsync(Guid permitId, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsync($"api/permits/{permitId}/approve", content: null, cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    /// <summary>Closes a permit (optional reason) via the API; returns true on success.</summary>
+    public async Task<bool> CloseAsync(Guid permitId, string? reason, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync($"api/permits/{permitId}/close", new ClosePermitRequest(reason), cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
 }
