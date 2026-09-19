@@ -45,6 +45,29 @@ public static class OrganisationEndpoints
                 })
             .WithName("AddCompanyDocument");
 
+        group.MapGet("/companies/{companyId:guid}/documents/{documentId:guid}/versions",
+                async (Guid companyId, Guid documentId, IOrganisationService service, CancellationToken cancellationToken) =>
+                    Results.Ok(await service.GetCompanyDocumentVersionsAsync(companyId, documentId, cancellationToken)))
+            .WithName("CompanyDocumentVersions");
+
+        group.MapPost("/companies/{companyId:guid}/documents/{documentId:guid}/versions",
+                async (Guid companyId, Guid documentId, SupersedeCompanyDocumentRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
+                {
+                    try
+                    {
+                        var id = await service.SupersedeCompanyDocumentAsync(
+                            request with { CompanyId = companyId, DocumentId = documentId }, cancellationToken);
+                        return id is { } newId
+                            ? Results.Created($"/api/organisation/companies/{companyId}/documents/{newId}", new { id = newId })
+                            : Results.NotFound();
+                    }
+                    catch (ArgumentException ex)
+                    {
+                        return Results.BadRequest(new { error = ex.Message });
+                    }
+                })
+            .WithName("SupersedeCompanyDocument");
+
         group.MapPost("/operatives", async (AddOperativeRequest request, IOrganisationService service, CancellationToken cancellationToken) =>
             {
                 var result = await service.AddOperativeAsync(request, cancellationToken);

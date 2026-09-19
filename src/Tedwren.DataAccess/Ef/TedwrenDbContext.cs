@@ -70,6 +70,7 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.Type).HasMaxLength(128);
             e.Property(x => x.Reference).HasMaxLength(128);
             e.Property(x => x.FileReference).HasMaxLength(128);
+            e.Property(x => x.Version).HasDefaultValue(1);      // MC-27: existing rows are version 1
             e.HasIndex(x => x.CompanyId);                       // SUB-4
         });
 

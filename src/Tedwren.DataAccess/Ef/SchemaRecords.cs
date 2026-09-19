@@ -31,6 +31,9 @@ public sealed class CompanyDocumentRecord
     public DateOnly? ExpiresOn { get; set; }
     public string? Reference { get; set; }
     public string? FileReference { get; set; }
+    public int Version { get; set; }
+    public Guid? SupersedesDocumentId { get; set; }
+    public Guid? SupersededByDocumentId { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 

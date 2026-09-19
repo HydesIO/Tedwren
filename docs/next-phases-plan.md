@@ -217,8 +217,11 @@ sell-before-build applies to each.
 
 ### HSE-5 — Library versioning, unified evidence export, HAVs & carbon *(HAVs delivered; rest queued/blocked)*
 - Add **versioning/supersede** to `CompanyDocument` (mirror `QualificationCard`'s supersede chain) →
-  the "company file library, always at the current version" that supersedes MC-27. *(queued — touches the
-  shared SUB-4 document surface; best as its own focused change.)*
+  the "company file library, always at the current version" that supersedes MC-27. **✅ Delivered:**
+  `CompanyDocument` supersede chain (`Version`/`Supersedes`/`SupersededBy`, retained history), the company
+  detail lists current versions only, `/api/organisation/.../documents/{id}/versions` (history + new
+  version), and the Documents tab's **New version** + **History** actions. *Follow-up:* per-version file
+  upload; a `FamilyId` to simplify chain queries.
 - **Unified compliance evidence export** spanning inductions + acknowledgements + inspections + permits +
   competency (extend `PackComposer` / the `Export` writers) — the ISO 45001 / project-audit export.
   *(queued — extends existing export machinery.)*

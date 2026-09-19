@@ -6,12 +6,11 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">Add document</MudText>
+        <MudText Typo="Typo.h6">@Heading</MudText>
     </TitleContent>
     <DialogContent>
         <div class="tw-dialog-body">
-            <DialogGuidance Severity="StatusKind.Info"
-                            Text="Record a company document — insurance, accreditation, policy or certificate — with its expiry so it feeds the compliance roll-up and the compliance pack. Uploading the file itself is coming; for now this records the document's details." />
+            <DialogGuidance Severity="StatusKind.Info" Text="@GuidanceText" />
             <FormSection Title="Document details">
                 <TedwrenTextField Label="Document name" @bind-Value="_name" Required="true"
                                   Placeholder="e.g. Employer's Liability Insurance"
@@ -25,7 +24,7 @@
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Outlined" Color="Color.Default" OnClick="Cancel">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">Save</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="Save">@ConfirmText</MudButton>
     </DialogActions>
 </MudDialog>
 
@@ -35,6 +34,21 @@
     /// <summary>The company the document belongs to.</summary>
     [Parameter] public Guid CompanyId { get; set; }
 
+    /// <summary>Heading shown in the dialog (defaults to the add flow; overridden for a new-version flow, MC-27).</summary>
+    [Parameter] public string Heading { get; set; } = "Add document";
+
+    /// <summary>The primary button label.</summary>
+    [Parameter] public string ConfirmText { get; set; } = "Save";
+
+    /// <summary>The guidance panel text.</summary>
+    [Parameter] public string GuidanceText { get; set; } =
+        "Record a company document — insurance, accreditation, policy or certificate — with its expiry so it feeds the compliance roll-up and the compliance pack. Uploading the file itself is coming; for now this records the document's details.";
+
+    /// <summary>Prefill values (used when recording a new version of an existing document, MC-27).</summary>
+    [Parameter] public string? InitialName { get; set; }
+    [Parameter] public string? InitialType { get; set; }
+    [Parameter] public DateOnly? InitialExpires { get; set; }
+
     private string? _name;
     private string _type = "Insurance";
     private string? _reference;
@@ -42,6 +56,24 @@
     private bool _submitted;
 
     private readonly IReadOnlyList<string> _types = new[] { "Insurance", "Accreditation", "Policy", "Certificate", "Document" };
+
+    protected override void OnInitialized()
+    {
+        if (!string.IsNullOrWhiteSpace(InitialName))
+        {
+            _name = InitialName;
+        }
+
+        if (!string.IsNullOrWhiteSpace(InitialType))
+        {
+            _type = InitialType!;
+        }
+
+        if (InitialExpires is { } expires)
+        {
+            _expires = expires.ToDateTime(TimeOnly.MinValue);
+        }
+    }
 
     private void Cancel() => MudDialog.Cancel();
 

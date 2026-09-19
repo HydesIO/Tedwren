@@ -79,6 +79,31 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-5 company document library versioning (MC-27) (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **document library versioning/supersede** sub-slice
+— MC-27's "company file library, always at the current version" — by mirroring the proven `QualificationCard`
+supersede chain onto the existing `CompanyDocument` (SUB-4) surface. Whole solution builds **0 warnings / 0
+errors**; all suites green (Domain 71, Application 314 incl. 3 new, Api 157 incl. 1 new, Web 178, Client 30;
+DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** `CompanyDocument` gains `Version` + `SupersedesDocumentId`/`SupersededByDocumentId`
+  + derived `IsSuperseded` (a new version supersedes the prior; the prior is **retained, never deleted** —
+  append-only, R4/R16). `ICompanyDocumentRepository` gains `GetAsync`/`UpdateAsync` (Dapper + in-memory). Idempotent
+  ALTER script `029_company_document_versioning.sql` (SQL Server + Postgres); EF `AddCompanyDocumentVersioning`
+  (Version defaults to 1 so existing rows backfill) + schema record + mapping.
+- ✅ **Service + API.** `OrganisationService`: the company detail now lists **only current versions** (superseded
+  ones are hidden but retained); `SupersedeCompanyDocumentAsync` always branches off the chain **head** (robust to
+  an old id) and `GetCompanyDocumentVersionsAsync` returns the whole chain oldest-first — both tenant-scoped (R15).
+  New `/api/organisation/companies/{id}/documents/{docId}/versions` (GET history, POST new version; 404 cross-tenant,
+  400 on validation).
+- ✅ **Client.** `ApiOrganisationService` gains the two methods; the company **Documents** tab shows a **version**
+  column with **New version** (reuses `AddCompanyDocumentDialog`, now prefill-aware) and **History** (new read-only
+  `DocumentHistoryDialog`) actions.
+- ✅ Tests: `OrganisationServiceTests` (+3: current-only listing, oldest-first history with superseded flags,
+  R15 scoping) + `OrganisationApiTests` (+1: create→version→detail-shows-current→history round-trip).
+- ❗ **Remaining HSE-5:** **unified compliance evidence export** (extend `PackComposer`/export writers); **carbon**
+  still **blocked** on the unbuilt MC-26 travel/vehicle prerequisite. Versioning follow-up: file-binary upload per
+  version (metadata-only today), and a document `FamilyId` to simplify chain queries.
+
 ### Commercial expansion — Track C: HSE-5 hand-arm vibration (HAVs) monitoring (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **HAVs** sub-slice of HSE-5 — the statutory
 Control of Vibration at Work duty and a standalone reason to buy the module. Whole solution builds **0 warnings /
