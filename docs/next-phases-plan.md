@@ -41,9 +41,6 @@ A read of the code — not just the tracker — puts the build well beyond the M
   qualification-expiry warnings (SF-9) are dropped to an outbox in every environment. The R12
   heartbeat monitor (`JobHeartbeatMonitor`) watches only 2 of the 5 scheduled jobs and runs *inside*
   the scheduler loop it is meant to watch — no independent watchdog.
-- **Dual-engine promise unproven.** PostgreSQL migration scripts exist and match the SQL Server set
-  1:1, but there is **zero** automated Postgres coverage; the persistence suite runs green by
-  *skipping* unless `TEDWREN_TEST_SQLSERVER` is set (SQL Server only).
 - **Public attack surface.** The token/kiosk anonymous groups (induction, site-entry, onboarding,
   packs) are **not** rate-limited (only signups/leads/affiliate-agreements are), and two anonymous
   **file-upload** endpoints (trade document, induction form) accept binary from unauthenticated
@@ -115,14 +112,7 @@ audits surfaced. Each workstream is independently shippable and testable. Priori
 - **Testable:** SMS path unit-tested; heartbeat asserts coverage of every `JobName`; watchdog fires
   when the scheduler is disabled/dead.
 
-### LR-3 — PostgreSQL parity gate **(P1)**
-- Stand up a `TEDWREN_TEST_POSTGRES` integration suite mirroring the SQL Server one; run the full
-  repository suite green against Postgres in CI. Proves the dual-engine promise before a customer
-  chooses Postgres. (This is the deferred half of Phase 18 — a run/verify task, not new build; scripts
-  already exist for both engines and the commercial plane.)
-- **Testable:** DataAccess suite passes against **both** engines in CI.
-
-### LR-4 — Public attack-surface hardening **(P0/P1, security)**
+### LR-3 — Public attack-surface hardening **(P0/P1, security)**
 - Apply the existing `"public"` rate-limit policy to the currently-unthrottled anonymous groups
   (`/api/inductions`, `/api/site-entry`, `/api/onboarding`, `/api/packs`).
 - Harden the two anonymous **file-upload** endpoints (trade document, induction form): size caps,
@@ -133,19 +123,19 @@ audits surfaced. Each workstream is independently shippable and testable. Priori
   minimisation, single-use links). *External dependency — schedule the reviewer now.*
 - **Testable:** rate-limit tests per anonymous group; upload-guard unit/integration tests.
 
-### LR-5 — Storage strategy **(P1)**
+### LR-4 — Storage strategy **(P1)**
 - Introduce an object-storage `IImageStore` implementation (Azure Blob / S3-compatible) behind the
   existing interface, keeping DB-BLOB as the fallback/default; UK region only (R13). Removes the DB
   bloat/backup pressure of card photos, avatars and form files living as SQL rows.
 - **Testable:** the blob implementation passes the same `IImageStore` contract tests as the DB one.
 
-### LR-6 — Load, accessibility & backup **(P1, partly external)**
+### LR-5 — Load, accessibility & backup **(P1, partly external)**
 - Sustained **load/soak** test against R14 (<3 s site-entry decision); extend the existing
   `SiteEntryLatencyTests` single-shot assertion into a load profile.
 - **Accessibility** audit (WCAG 2.2 AA) across the console; fix findings.
 - **Backup/restore** rehearsal for both engines.
 
-### LR-7 — Governance & finish-the-edges **(P2, quick wins)**
+### LR-6 — Governance & finish-the-edges **(P2, quick wins)**
 - Rewrite the stale `README.md` to match reality; re-sync any drifted docs.
 - Persist the remaining demo write-actions flagged in `TODO.md` (operative edit, site edit, general
   settings, permits save) — each a small dedicated write endpoint.
@@ -232,11 +222,10 @@ formal estimate per component, which this plan enables but does not replace).
 |---|---|---|---|
 | LR-1 Secrets & auth | S–M | — | Do first. Highest risk, mostly config + startup guards. |
 | LR-2 SMS & job resilience | M | SMS provider account | Closes a silent promise-vs-reality gap. |
-| LR-3 Postgres gate | M | CI Postgres | Run/verify, not new build. |
-| LR-4 Attack surface | M | security reviewer | Reviewer is the long pole. |
-| LR-5 Storage | M | blob account | Behind existing interface. |
-| LR-6 Load/a11y/backup | M–L | — | Partly manual/rehearsal. |
-| LR-7 Governance edges | S | — | Quick wins; permit lifecycle. |
+| LR-3 Attack surface | M | security reviewer | Reviewer is the long pole. |
+| LR-4 Storage | M | blob account | Behind existing interface. |
+| LR-5 Load/a11y/backup | M–L | — | Partly manual/rehearsal. |
+| LR-6 Governance edges | S | — | Quick wins; permit lifecycle. |
 | B CSCS seam | S (build) | **CSCS agreement (long)** | Start the agreement now. |
 | HSE-1 Asset register | M | — | Pays down PRD debt. |
 | HSE-2 RAMS | M | — | Reuses trade-onboarding. |
@@ -244,7 +233,7 @@ formal estimate per component, which this plan enables but does not replace).
 | HSE-4 Near-miss/incident | M–L | — | New workflow entities. |
 | HSE-5 Versioning/export/HAVs/carbon | L | MC-26 data (carbon) | Bundle; carbon gated on travel data. |
 
-Recommended order: **LR-1 → LR-4 → LR-2 → LR-3 → (LR-5, LR-6, LR-7 as capacity allows)**, with **B's
+Recommended order: **LR-1 → LR-3 → LR-2 → (LR-4, LR-5, LR-6 as capacity allows)**, with **B's
 agreement kicked off on day one**, then **HSE-1 → HSE-2 → HSE-3 → HSE-4 → HSE-5**.
 
 ---
@@ -267,6 +256,9 @@ agreement kicked off on day one**, then **HSE-1 → HSE-2 → HSE-3 → HSE-4 �
 - **Worker Passport (third product):** planning-complete (`worker-passport-plan.md`) but **gated on
   legal** (PRD Q1 data controller, Q2 identity collision, a DPIA, consumer contract terms) — held for
   Leigh's sign-off, not an engineering decision.
+- **PostgreSQL parity gate:** deferred at the product owner's direction. **SQL Server is the launch
+  engine**; the Postgres migration scripts are kept current, but standing up a Postgres test suite and
+  running the parity gate is out of scope for this stage — revisit only if a customer requires Postgres.
 
 ## 8. Open decisions to put to Leigh & James (PRD §10.1)
 

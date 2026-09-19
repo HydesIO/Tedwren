@@ -1689,10 +1689,10 @@ Phase M1 delivers the shared foundations and the first page migrations:
   A grounded scope of the stage after the MVPs, biased to *robustness* (launch-readiness first). Three
   tracks: **Track A — Launch Readiness** (LR-1 secrets & auth hardening [P0: committed live DB credential,
   forgeable JWT signing-key default, seeded-admin default password, `Auth:TestBypass` guard]; LR-2 real SMS
-  + broaden the R12 heartbeat to all jobs + independent watchdog; LR-3 the PostgreSQL parity gate; LR-4
+  + broaden the R12 heartbeat to all jobs + independent watchdog; LR-3
   rate-limit the anonymous induction/site-entry/onboarding/packs groups + harden the anonymous file uploads +
-  the independent pack-link review; LR-5 object-storage `IImageStore`; LR-6 load/a11y/backup; LR-7 README +
-  demo write-actions + Permit lifecycle). **Track B — CSCS verification (PRD-Phase 1)**: start the CSCS
+  the independent pack-link review; LR-4 object-storage `IImageStore`; LR-5 load/a11y/backup; LR-6 README +
+  demo write-actions + Permit lifecycle; PostgreSQL parity gate left out of scope per request). **Track B — CSCS verification (PRD-Phase 1)**: start the CSCS
   agreement now (longest lead time), build `ICscsVerificationService` behind the existing
   `CardVerificationState.CscsVerified`/`IsCscsVerifiable` seam with an unconfigured no-op + human fallback.
   **Track C — Health, Safety & Compliance (PRD-Phase 2)** on the already-built Forms spine: HSE-1 Asset/Plant
