@@ -344,6 +344,30 @@ public sealed class RamsSubmissionRecord
     public DateTimeOffset SubmittedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>DocumentDistributions</c> table (document distribution, PRD §8.2).</summary>
+public sealed class DocumentDistributionRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public string? Audience { get; set; }
+    public string? FileReference { get; set; }
+    public string SentBy { get; set; } = string.Empty;
+    public DateTimeOffset SentUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>DocumentAcknowledgements</c> table (completion matrix, PRD §8.2).</summary>
+public sealed class DocumentAcknowledgementRecord
+{
+    public Guid Id { get; set; }
+    public Guid DistributionId { get; set; }
+    public Guid CompanyId { get; set; }
+    public string RecipientName { get; set; } = string.Empty;
+    public Guid? PersonId { get; set; }
+    public DateTimeOffset? AcknowledgedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {

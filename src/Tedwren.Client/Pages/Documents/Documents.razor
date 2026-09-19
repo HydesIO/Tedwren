@@ -1,0 +1,93 @@
+@page "/documents"
+@using Tedwren.Abstractions.Contracts.Documents
+@using Tedwren.Abstractions.Services
+@inject IDocumentDistributionService DocumentsSvc
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Documents · Tedwren</PageTitle>
+
+<PageHeader Title="Documents" Subtitle="Distribute a document and track who has acknowledged it">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Send"
+                   OnClick="Distribute">Distribute document</MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="DocumentDistributionDto"
+                   Items="_items"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search documents…"
+                   EmptyTitle="No documents distributed yet"
+                   EmptyDescription="Distribute a document to record who has acknowledged it."
+                   EmptyIcon="@Icons.Material.Outlined.Description" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private bool _loading = true;
+
+    private IReadOnlyList<DocumentDistributionDto> _items = Array.Empty<DocumentDistributionDto>();
+    private List<DataColumn<DocumentDistributionDto>> _columns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _items = await DocumentsSvc.ListAsync(Tenant.CurrentCompanyId);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Document", Value = d => d.Title, Filterable = true },
+            new() { Title = "Category", Value = d => d.Category ?? "—", Filterable = true },
+            new() { Title = "Audience", Value = d => d.Audience ?? "—" },
+            new() { Title = "Sent by", Value = d => d.SentBy },
+            new() { Title = "Sent", Value = d => d.SentUtc.ToLocalTime().ToString("dd MMM yyyy"), Searchable = false },
+            new()
+            {
+                Title = "Acknowledged", Value = d => $"{d.SignedCount} / {d.TotalCount}", Searchable = false,
+                CellTemplate = d => @<span>@d.SignedCount / @d.TotalCount@(d.TotalCount > 0 && d.SignedCount == d.TotalCount ? " · complete" : "")</span>
+            },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = d => @<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                OnClick="@(() => ViewMatrix(d))">View</MudButton>
+            },
+        };
+    }
+
+    private async Task Distribute()
+    {
+        var parameters = new DialogParameters<DistributeDocumentDialog> { { x => x.CompanyId, Tenant.CurrentCompanyId } };
+        var dialog = await Dialogs.ShowAsync<DistributeDocumentDialog>("Distribute document", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task ViewMatrix(DocumentDistributionDto d)
+    {
+        var parameters = new DialogParameters<DocumentMatrixDialog> { { x => x.DistributionId, d.Id } };
+        var dialog = await Dialogs.ShowAsync<DocumentMatrixDialog>(d.Title, parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+}

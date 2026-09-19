@@ -188,12 +188,19 @@ sell-before-build applies to each.
   review" view. Fold the **RAMS check into the site-entry decision** when the module is held — this is
   what §8.2 means by "completes the site-entry decision".
 
-### HSE-3 — Document distribution & acknowledgement
+### HSE-3 — Document distribution & acknowledgement *(delivered — core; targeting/schedule deferred)*
 - Upload any document and distribute to individuals / a site / a trade / a skill group / the whole
   company in one action; a **digital signature records receipt and acceptance**; re-acknowledgement on a
   schedule or at next clock-in; a **completion matrix** (who has and hasn't signed) that becomes a
   further proof point in the compliance pack. Reuses `CompanyDocument`, the induction signature capture,
   and the notification engine.
+- **Delivered:** `DocumentDistribution` + `DocumentAcknowledgement` (append-only receipt), the
+  `/api/documents` group (`hse`-gated, fails closed), the **Documents** page with the distribute dialog
+  and the **completion matrix** + per-recipient sign action, and unit/API tests.
+- **Deferred (follow-ups):** structured targeting (resolve a site / trade / skill group / whole-company
+  roster into recipients — `PersonId` column provisioned); the anonymous **emailed acknowledgement link**
+  (token pattern) so a recipient signs without a login; scheduled/at-clock-in **re-acknowledgement**; and
+  folding the matrix into the compliance pack as a proof point.
 
 ### HSE-4 — Near-miss / hazard reporting + accident/incident (RIDDOR)
 - Worker reports from their phone with photo + location (reuse SF-14 geolocation + `IImageStore`);

@@ -79,6 +79,33 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-3 document distribution & acknowledgement (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The third HSE slice — distribute a document to a set of recipients in
+one action and track who has acknowledged it (§8.2). Whole solution builds **0 warnings / 0 errors**; all suites
+green (Domain 71, Application 284 incl. 7 new, Api 151 incl. 2 new, Web 178, Client 30; DataAccess 4 +18
+LocalDB-skipped).
+- ✅ **Domain + persistence.** `DocumentDistribution` + `DocumentAcknowledgement` entities (one acknowledgement
+  row per recipient = the **completion matrix**; append-only receipt — a signed row's timestamp is set once,
+  R4/R16). `IDocumentDistributionRepository` (Add[+acks]/GetByCompany/Get/GetAcknowledgements[ForCompany]/
+  GetAcknowledgement/UpdateAcknowledgement) — Dapper (dual-engine) + in-memory. Migration `026_document_distribution.sql`
+  (SQL Server + Postgres), EF `AddDocumentDistribution` + `DocumentDistributionRecord`/`DocumentAcknowledgementRecord`
+  + mappings.
+- ✅ **Service + API.** `IDocumentDistributionService`/`DocumentDistributionService`: distributing de-duplicates
+  recipients (case-insensitive), stores the optional document via `IImageStore` (validated size/type, R9), and
+  builds the matrix; acknowledgement is **idempotent** and R15-scoped. `/api/documents` (list / `{id}` matrix /
+  create / `acknowledgements/{ackId}/sign`) is **entitlement-gated on the paid `hse` module** (fails closed, Q2),
+  writes `RequireWrite` (SF-23), company + sender resolved server-side (R15).
+- ✅ **Client.** `ApiDocumentDistributionService`; a **Documents** page (`/documents`, nav-gated on `hse`) — a
+  `DataTable` with per-document acknowledged/total counts, a **Distribute document** dialog (recipients one-per-line
+  + optional file) and a **completion matrix** viewer with a per-recipient *Mark signed* action.
+- ✅ Tests: `DocumentDistributionServiceTests` (7: matrix build, recipient de-dupe, validation, idempotent
+  acknowledgement, R15 scoping, list counts) + `DocumentApiTests` (2: module-off 403; distribute→matrix→sign).
+- ❗ **HSE-3 follow-ups (raised):** resolve recipients from real people/site rosters (currently free-text names,
+  `PersonId` column already provisioned for this); the **anonymous emailed acknowledgement link** (reuse the
+  `InductionLink`/`TradeInvite` token pattern so a recipient signs without a login); document download from the
+  matrix; and manager notification when everyone has / has not signed. Next: **HSE-4** near-miss/hazard reporting
+  & accident/incident (RIDDOR).
+
 ### Commercial expansion — Track C: HSE-2 RAMS submission & approval (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C). The second HSE slice — the RAMS review workflow (§8.2), reusing the
 trade-onboarding review shape. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71,

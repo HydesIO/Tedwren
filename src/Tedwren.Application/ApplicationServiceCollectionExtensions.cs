@@ -394,6 +394,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic document distribution &amp; acknowledgement service (PRD §8.2).</summary>
+    public static IServiceCollection AddDocumentDistributionCore(this IServiceCollection services)
+    {
+        services.AddScoped<IDocumentDistributionService, Documents.DocumentDistributionService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory document-distribution repository (singleton so it persists across test requests).</summary>
+    public static IServiceCollection AddInMemoryDocumentDistributionStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryDocumentDistributionRepository>();
+        services.AddScoped<IDocumentDistributionRepository>(sp => sp.GetRequiredService<InMemoryDocumentDistributionRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic per-company general-settings service (System Configuration).</summary>
     public static IServiceCollection AddSettingsCore(this IServiceCollection services)
     {

@@ -36,6 +36,8 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<PermitRecord> Permits => Set<PermitRecord>();
     public DbSet<AssetRecord> Assets => Set<AssetRecord>();
     public DbSet<RamsSubmissionRecord> RamsSubmissions => Set<RamsSubmissionRecord>();
+    public DbSet<DocumentDistributionRecord> DocumentDistributions => Set<DocumentDistributionRecord>();
+    public DbSet<DocumentAcknowledgementRecord> DocumentAcknowledgements => Set<DocumentAcknowledgementRecord>();
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
     public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
@@ -239,6 +241,25 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ReviewedBy).HasMaxLength(256);
             e.HasIndex(x => new { x.CompanyId, x.SubmittedUtc });
             e.HasIndex(x => new { x.CompanyId, x.FamilyId });
+        });
+
+        model.Entity<DocumentDistributionRecord>(e =>
+        {
+            e.ToTable("DocumentDistributions");
+            e.Property(x => x.Title).HasMaxLength(256);
+            e.Property(x => x.Category).HasMaxLength(128);
+            e.Property(x => x.Audience).HasMaxLength(256);
+            e.Property(x => x.FileReference).HasMaxLength(256);
+            e.Property(x => x.SentBy).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.SentUtc });
+        });
+
+        model.Entity<DocumentAcknowledgementRecord>(e =>
+        {
+            e.ToTable("DocumentAcknowledgements");
+            e.Property(x => x.RecipientName).HasMaxLength(256);
+            e.HasIndex(x => x.DistributionId);
+            e.HasIndex(x => x.CompanyId);
         });
 
         model.Entity<AuditEntryRecord>(e =>
