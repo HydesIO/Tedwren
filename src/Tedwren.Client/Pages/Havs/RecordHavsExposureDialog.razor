@@ -1,0 +1,110 @@
+@using Tedwren.Abstractions.Contracts.Havs
+@using Tedwren.Abstractions.Services
+@inject IHavsExposureService HavsSvc
+@inject ISnackbar Snackbar
+
+@* Record a person's daily HAVs exposure from their tool usages; persists via IHavsExposureService, which derives
+   the daily A(8), points and band (HSE methodology) and returns them. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Add each vibrating tool the person used today, its vibration magnitude (m/s², from the tool data or a measurement) and how long the trigger was actually held (minutes). Tedwren calculates the daily A(8) exposure against the HSE action value (2.5 m/s²) and limit value (5.0 m/s²)." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Person &amp; day</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenTextField Label="Person" @bind-Value="_personName" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_personName)" ErrorText="A person name is required." />
+                    <MudDatePicker Label="Date" @bind-Date="_date" MaxDate="DateTime.Today" />
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Tool usages</h3>
+                @foreach (var row in _rows)
+                {
+                    <div class="havs-tool-row">
+                        <div class="havs-tool-row__tool"><TedwrenTextField Label="Tool" @bind-Value="row.Name" /></div>
+                        <div class="havs-tool-row__num"><TedwrenNumericField Label="Magnitude (m/s²)" @bind-Value="row.Magnitude" Min="0" /></div>
+                        <div class="havs-tool-row__num"><TedwrenNumericField Label="Trigger time (min)" @bind-Value="row.Minutes" Min="0" /></div>
+                        <div class="havs-tool-row__remove">
+                            <MudIconButton Icon="@Icons.Material.Outlined.Delete" Color="Color.Error" Size="Size.Small"
+                                           Disabled="_rows.Count == 1" OnClick="@(() => RemoveRow(row))" aria-label="Remove tool" />
+                        </div>
+                    </div>
+                }
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Add"
+                           OnClick="AddRow">Add tool</MudButton>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitAsync" Disabled="_busy">Calculate &amp; record</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid CompanyId { get; set; }
+
+    private string? _personName;
+    private DateTime? _date = DateTime.Today;
+    private readonly List<ToolRow> _rows = new() { new ToolRow() };
+    private bool _submitted;
+    private bool _busy;
+
+    private void AddRow() => _rows.Add(new ToolRow());
+
+    private void RemoveRow(ToolRow row)
+    {
+        if (_rows.Count > 1)
+        {
+            _rows.Remove(row);
+        }
+    }
+
+    private async Task SubmitAsync()
+    {
+        _submitted = true;
+        var usages = _rows
+            .Where(r => !string.IsNullOrWhiteSpace(r.Name) && r.Magnitude is > 0 && r.Minutes is > 0)
+            .Select(r => new HavsToolUsageDto(r.Name!.Trim(), (double)r.Magnitude!.Value, (int)r.Minutes!.Value))
+            .ToList();
+
+        if (string.IsNullOrWhiteSpace(_personName) || usages.Count == 0)
+        {
+            Snackbar.Add("A person and at least one complete tool usage are required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var date = DateOnly.FromDateTime(_date ?? DateTime.Today);
+            var dto = await HavsSvc.RecordAsync(CompanyId, string.Empty,
+                new CreateHavsExposureRequest(_personName!, date, usages));
+            Snackbar.Add($"Recorded — A(8) {dto.DailyExposureA8:0.0} m/s² ({dto.ExposurePoints} points, {HavsFormat.BandLabel(dto.Band)}).",
+                dto.Band == "AboveLimitValue" ? Severity.Error : dto.Band == "AboveActionValue" ? Severity.Warning : Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch
+        {
+            Snackbar.Add("Could not record the exposure.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>An editable tool-usage row in the dialog.</summary>
+    private sealed class ToolRow
+    {
+        public string? Name { get; set; }
+        public decimal? Magnitude { get; set; }
+        public decimal? Minutes { get; set; }
+    }
+}

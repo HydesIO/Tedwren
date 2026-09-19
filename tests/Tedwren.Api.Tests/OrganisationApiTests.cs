@@ -60,6 +60,35 @@ public sealed class OrganisationApiTests : IClassFixture<WebApplicationFactory<P
         Assert.Contains(detail!.Documents, d => d.Name == "Public Liability Insurance");
     }
 
+    [Fact] // MC-27 — a new version supersedes the prior; the library shows the current version and history returns the chain
+    public async Task SupersedeCompanyDocument_VersionsTheLibrary()
+    {
+        var client = _factory.CreateClient();
+        var name = "VerCo " + Guid.NewGuid().ToString("N");
+
+        var created = await client.PostAsJsonAsync("/api/organisation/companies",
+            new CreateCompanyRequest(name, "Subcontractor", null, null, null, null, null, null));
+        var companyId = (await created.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+        var slug = (await client.GetFromJsonAsync<List<CompanySummary>>("/api/organisation/companies"))!
+            .Single(c => c.Name == name).Slug;
+
+        var addDoc = await client.PostAsJsonAsync($"/api/organisation/companies/{companyId}/documents",
+            new CreateCompanyDocumentRequest(companyId, "Waste Carrier Licence", "Certificate", null, "WC-1"));
+        var docId = (await addDoc.Content.ReadFromJsonAsync<CreatedResponse>())!.Id;
+
+        var supersede = await client.PostAsJsonAsync($"/api/organisation/companies/{companyId}/documents/{docId}/versions",
+            new SupersedeCompanyDocumentRequest(companyId, docId, "Waste Carrier Licence", "Certificate", null, "WC-2"));
+        Assert.Equal(HttpStatusCode.Created, supersede.StatusCode);
+
+        var detail = await client.GetFromJsonAsync<CompanyDetailDto>($"/api/organisation/companies/{slug}");
+        var current = detail!.Documents.Single(d => d.Name == "Waste Carrier Licence");
+        Assert.Equal(2, current.Version);                          // the library shows the current version only
+
+        var versions = await client.GetFromJsonAsync<List<CompanyDocumentDto>>(
+            $"/api/organisation/companies/{companyId}/documents/{docId}/versions");
+        Assert.Equal(2, versions!.Count);                          // both versions are retained in the history
+    }
+
     [Fact]
     public async Task AddOperative_DuplicateInSameCompany_ReturnsConflict()
     {

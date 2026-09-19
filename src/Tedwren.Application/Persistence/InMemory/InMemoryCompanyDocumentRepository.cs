@@ -20,8 +20,19 @@ public sealed class InMemoryCompanyDocumentRepository : ICompanyDocumentReposito
         return Task.FromResult(documents);
     }
 
+    /// <summary>Returns a single document by id, or null if none exists (MC-27 versioning).</summary>
+    public Task<CompanyDocument?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_store.CompanyDocuments.TryGetValue(id, out var document) ? document : null);
+
     /// <summary>Adds a document to the store.</summary>
     public Task AddAsync(CompanyDocument document, CancellationToken cancellationToken = default)
+    {
+        _store.CompanyDocuments[document.Id] = document;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Updates a document in the store (MC-27: marking it superseded).</summary>
+    public Task UpdateAsync(CompanyDocument document, CancellationToken cancellationToken = default)
     {
         _store.CompanyDocuments[document.Id] = document;
         return Task.CompletedTask;

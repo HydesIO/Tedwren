@@ -22,6 +22,34 @@ public static class PermitEndpoints
                 Results.Ok(await service.ListForCompanyAsync(companyId, cancellationToken)))
             .WithName("ListCompanyPermits");
 
+        // Lifecycle transitions (PRD §8.2). Writes, so gated to non-Auditor roles (SF-23); the caller's company is
+        // resolved server-side (R15). A wrong-state transition is a 409; an unknown/cross-tenant permit is a 404.
+        group.MapPost("/{id:guid}/approve", async (Guid id, IPermitService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.ApproveAsync(id, cancellationToken) ? Results.Ok() : Results.NotFound();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { reason = ex.Message });
+                }
+            })
+            .WithName("ApprovePermit").RequireAuthorization("RequireWrite");
+
+        group.MapPost("/{id:guid}/close", async (Guid id, ClosePermitRequest request, IPermitService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.CloseAsync(id, request?.Reason, cancellationToken) ? Results.Ok() : Results.NotFound();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { reason = ex.Message });
+                }
+            })
+            .WithName("ClosePermit").RequireAuthorization("RequireWrite");
+
         return app;
     }
 }

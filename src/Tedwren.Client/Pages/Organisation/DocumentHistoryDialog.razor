@@ -1,0 +1,50 @@
+@using Tedwren.Abstractions.Contracts.Organisation
+
+@* Read-only version history for a company document (MC-27): every version, oldest first, with the current one
+   marked. Superseded versions are retained, never deleted. *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">Version history — @DocumentName</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>Version</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Expires</th>
+                        <th>State</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var version in Versions)
+                    {
+                        <tr>
+                            <td>v@version.Version</td>
+                            <td>@version.Name</td>
+                            <td>@version.Type</td>
+                            <td>@(version.ExpiresOn?.ToString("dd MMM yyyy") ?? "—")</td>
+                            <td>@(version.IsSuperseded ? "Superseded" : "Current")</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Close())">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The document's display name (for the heading).</summary>
+    [Parameter] public string DocumentName { get; set; } = string.Empty;
+
+    /// <summary>The version chain, oldest first.</summary>
+    [Parameter] public IReadOnlyList<CompanyDocumentDto> Versions { get; set; } = Array.Empty<CompanyDocumentDto>();
+}

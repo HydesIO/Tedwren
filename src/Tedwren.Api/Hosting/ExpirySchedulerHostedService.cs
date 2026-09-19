@@ -100,8 +100,8 @@ public sealed class ExpirySchedulerHostedService : BackgroundService
                 return (flagged, notifications);
             }, cancellationToken);
 
-            var monitor = provider.GetRequiredService<JobHeartbeatMonitor>();
-            await monitor.CheckAsync(DateTimeOffset.UtcNow, cancellationToken);
+            // The heartbeat check runs in its own independent JobHeartbeatHostedService (R12), so a failure in
+            // this job-execution loop can never suppress the "a job may have stopped" alert.
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

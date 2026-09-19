@@ -34,17 +34,30 @@ public sealed record CompanyDetailDto(
     IReadOnlyList<CompanyOperativeDto> Operatives,
     OrgType? OrgType = null);
 
-/// <summary>A company-held document (insurance, accreditation, policy) shown on the detail page.</summary>
+/// <summary>A company-held document (insurance, accreditation, policy) shown on the detail page (SUB-4). Carries its
+/// version in the supersede chain (MC-27) so the library can show the current version and offer a history.</summary>
 public sealed record CompanyDocumentDto(
+    Guid Id,
     string Name,
     string Type,
     ComplianceState State,
     string StatusLabel,
-    DateOnly? ExpiresOn);
+    DateOnly? ExpiresOn,
+    int Version,
+    bool IsSuperseded);
 
 /// <summary>Request to add a company-held document — insurance, accreditation or policy (SUB-4).</summary>
 public sealed record CreateCompanyDocumentRequest(
     Guid CompanyId,
+    string Name,
+    string Type,
+    DateOnly? ExpiresOn,
+    string? Reference);
+
+/// <summary>Request to supersede a document with a new version (MC-27). The prior version is retained.</summary>
+public sealed record SupersedeCompanyDocumentRequest(
+    Guid CompanyId,
+    Guid DocumentId,
     string Name,
     string Type,
     DateOnly? ExpiresOn,

@@ -1,0 +1,89 @@
+@page "/havs"
+@using Tedwren.Abstractions.Contracts.Havs
+@using Tedwren.Abstractions.Services
+@inject IHavsExposureService HavsSvc
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+
+<PageTitle>Vibration (HAVs) · Tedwren</PageTitle>
+
+<PageHeader Title="Vibration (HAVs)" Subtitle="Daily hand-arm vibration exposure against the HSE action & limit values">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Vibration"
+                   OnClick="Record">Record exposure</MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="HavsExposureRecordDto"
+                   Items="_items"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search by person…"
+                   EmptyTitle="No exposure recorded yet"
+                   EmptyDescription="Record a person's daily tool usage to calculate their hand-arm vibration exposure."
+                   EmptyIcon="@Icons.Material.Outlined.Vibration" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private bool _loading = true;
+
+    private IReadOnlyList<HavsExposureRecordDto> _items = Array.Empty<HavsExposureRecordDto>();
+    private List<DataColumn<HavsExposureRecordDto>> _columns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _items = await HavsSvc.ListAsync(Tenant.CurrentCompanyId);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Person", Value = r => r.PersonName, Filterable = true },
+            new() { Title = "Date", Value = r => r.ExposureDate.ToString("dd MMM yyyy"), Searchable = false },
+            new() { Title = "Tools", Value = r => r.ToolUsages.Count.ToString(), Searchable = false },
+            new() { Title = "A(8) m/s²", Value = r => r.DailyExposureA8.ToString("0.0"), Searchable = false },
+            new() { Title = "Points", Value = r => r.ExposurePoints.ToString(), Searchable = false },
+            new()
+            {
+                Title = "Exposure", Value = r => HavsFormat.BandLabel(r.Band), Filterable = true,
+                CellTemplate = r => @<span>@HavsFormat.BandLabel(r.Band)</span>
+            },
+            new() { Title = "Recorded", Value = r => r.RecordedUtc.ToLocalTime().ToString("dd MMM yyyy"), Searchable = false },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = r => @<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                OnClick="@(() => View(r))">View</MudButton>
+            },
+        };
+    }
+
+    private async Task Record()
+    {
+        var parameters = new DialogParameters<RecordHavsExposureDialog> { { x => x.CompanyId, Tenant.CurrentCompanyId } };
+        var dialog = await Dialogs.ShowAsync<RecordHavsExposureDialog>("Record HAVs exposure", parameters, TedwrenDialog.Large());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task View(HavsExposureRecordDto r)
+    {
+        var parameters = new DialogParameters<HavsDetailDialog> { { x => x.ExposureId, r.Id } };
+        await Dialogs.ShowAsync<HavsDetailDialog>($"HAVs — {r.PersonName}", parameters, TedwrenDialog.Medium());
+    }
+}

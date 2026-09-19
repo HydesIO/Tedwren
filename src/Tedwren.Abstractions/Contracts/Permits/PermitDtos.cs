@@ -14,6 +14,9 @@ public sealed record PermitDto(
     string Status,
     DateTimeOffset CreatedUtc);
 
+/// <summary>Request to close a permit, with an optional closure reason recorded in the audit trail.</summary>
+public sealed record ClosePermitRequest(string? Reason);
+
 /// <summary>Request to raise a permit. <see cref="Issue"/> distinguishes a draft from an issued permit.</summary>
 public sealed record CreatePermitRequest(
     Guid CompanyId,

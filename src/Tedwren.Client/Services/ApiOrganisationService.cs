@@ -68,6 +68,25 @@ public sealed class ApiOrganisationService : IOrganisationService
         return created?.Id ?? Guid.Empty;
     }
 
+    /// <summary>Supersedes a document with a new version via the API (MC-27); returns the new version's id, or null on failure.</summary>
+    public async Task<Guid?> SupersedeCompanyDocumentAsync(SupersedeCompanyDocumentRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync(
+            $"api/organisation/companies/{request.CompanyId}/documents/{request.DocumentId}/versions", request, cancellationToken);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+
+        var created = await response.Content.ReadFromJsonAsync<CreatedResponse>(cancellationToken);
+        return created?.Id;
+    }
+
+    /// <summary>Gets a document's full version chain (oldest first) via the API (MC-27).</summary>
+    public async Task<IReadOnlyList<CompanyDocumentDto>> GetCompanyDocumentVersionsAsync(Guid companyId, Guid documentId, CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<IReadOnlyList<CompanyDocumentDto>>(
+            $"api/organisation/companies/{companyId}/documents/{documentId}/versions", cancellationToken) ?? Array.Empty<CompanyDocumentDto>();
+
     /// <summary>Adds an operative via the API, returning the outcome (success or SF-2 refusal).</summary>
     public async Task<AddOperativeResult> AddOperativeAsync(AddOperativeRequest request, CancellationToken cancellationToken = default)
     {

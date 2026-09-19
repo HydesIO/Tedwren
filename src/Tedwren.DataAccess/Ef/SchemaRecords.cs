@@ -31,6 +31,9 @@ public sealed class CompanyDocumentRecord
     public DateOnly? ExpiresOn { get; set; }
     public string? Reference { get; set; }
     public string? FileReference { get; set; }
+    public int Version { get; set; }
+    public Guid? SupersedesDocumentId { get; set; }
+    public Guid? SupersededByDocumentId { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
@@ -305,6 +308,126 @@ public sealed class PermitRecord
     public bool RamsAttached { get; set; }
     public int Status { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>Assets</c> table (plant &amp; equipment register, PRD §8.2).</summary>
+public sealed class AssetRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? AssetType { get; set; }
+    public string? SerialNumber { get; set; }
+    public string? Location { get; set; }
+    public string? OwnerName { get; set; }
+    public DateOnly? CertificationExpiry { get; set; }
+    public DateOnly? NextInspectionDue { get; set; }
+    public string? Notes { get; set; }
+    public int Status { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>RamsSubmissions</c> table (RAMS review, PRD §8.2).</summary>
+public sealed class RamsSubmissionRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FamilyId { get; set; }
+    public int Version { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string ContractorName { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public Guid? SiteId { get; set; }
+    public string? SiteName { get; set; }
+    public string? FileReference { get; set; }
+    public int Status { get; set; }
+    public string? ReviewNote { get; set; }
+    public string? ReviewedBy { get; set; }
+    public DateTimeOffset? ReviewedUtc { get; set; }
+    public DateTimeOffset SubmittedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>DocumentDistributions</c> table (document distribution, PRD §8.2).</summary>
+public sealed class DocumentDistributionRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Title { get; set; } = string.Empty;
+    public string? Category { get; set; }
+    public string? Audience { get; set; }
+    public string? FileReference { get; set; }
+    public string SentBy { get; set; } = string.Empty;
+    public DateTimeOffset SentUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>DocumentAcknowledgements</c> table (completion matrix, PRD §8.2).</summary>
+public sealed class DocumentAcknowledgementRecord
+{
+    public Guid Id { get; set; }
+    public Guid DistributionId { get; set; }
+    public Guid CompanyId { get; set; }
+    public string RecipientName { get; set; } = string.Empty;
+    public Guid? PersonId { get; set; }
+    public DateTimeOffset? AcknowledgedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>HazardReports</c> table (hazard / near-miss reporting, PRD §8.2).</summary>
+public sealed class HazardReportRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public int Kind { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+    public string? PhotoReference { get; set; }
+    public int Severity { get; set; }
+    public string? Category { get; set; }
+    public int Status { get; set; }
+    public string? AssignedTo { get; set; }
+    public string ReportedBy { get; set; } = string.Empty;
+    public DateTimeOffset ReportedUtc { get; set; }
+    public DateTimeOffset? ClosedUtc { get; set; }
+    public string? ClosureNote { get; set; }
+}
+
+/// <summary>Schema row for the <c>IncidentReports</c> table (accident / incident record + RIDDOR, PRD §8.2).</summary>
+public sealed class IncidentReportRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public int Kind { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string? Location { get; set; }
+    public DateTimeOffset OccurredUtc { get; set; }
+    public string? InjuredPersonName { get; set; }
+    public string? InjuryDetail { get; set; }
+    public int Severity { get; set; }
+    public string? ImmediateCause { get; set; }
+    public string? RootCause { get; set; }
+    public string? CorrectiveActions { get; set; }
+    public int Status { get; set; }
+    public bool RiddorReportable { get; set; }
+    public string? RiddorCategory { get; set; }
+    public string ReportedBy { get; set; } = string.Empty;
+    public DateTimeOffset ReportedUtc { get; set; }
+    public string? InvestigatedBy { get; set; }
+    public DateTimeOffset? ClosedUtc { get; set; }
+}
+
+/// <summary>Schema row for the <c>HavsExposureRecords</c> table (hand-arm vibration monitoring, PRD §8.2).</summary>
+public sealed class HavsExposureRow
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public string PersonName { get; set; } = string.Empty;
+    public DateOnly ExposureDate { get; set; }
+    public string ToolUsagesJson { get; set; } = string.Empty;
+    public string RecordedBy { get; set; } = string.Empty;
+    public DateTimeOffset RecordedUtc { get; set; }
 }
 
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>

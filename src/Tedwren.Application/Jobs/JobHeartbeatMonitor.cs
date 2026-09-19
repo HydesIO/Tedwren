@@ -32,6 +32,8 @@ public sealed class JobHeartbeatMonitor
         var alerts = 0;
         alerts += await CheckJobAsync(JobNames.ExpiryScan, _options.ExpiryScanMaxInterval, asOf, cancellationToken);
         alerts += await CheckJobAsync(JobNames.WeeklyDigest, _options.WeeklyDigestMaxInterval, asOf, cancellationToken);
+        alerts += await CheckJobAsync(JobNames.FormReminder, _options.FormReminderMaxInterval, asOf, cancellationToken);
+        alerts += await CheckJobAsync(JobNames.OvernightCheck, _options.OvernightCheckMaxInterval, asOf, cancellationToken);
         return alerts;
     }
 
@@ -51,7 +53,8 @@ public sealed class JobHeartbeatMonitor
             _options.OpsEmail,
             $"Scheduled job '{jobName}' may have stopped",
             $"The job '{jobName}' has no successful run within its expected interval (last success: {lastText}). " +
-            "Expiry warnings depend on it — please investigate.",
+            "Scheduled compliance jobs (expiry warnings, weekly digest, form reminders, overnight checks) depend on " +
+            "running on time — please investigate.",
             cancellationToken);
         return 1;
     }

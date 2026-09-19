@@ -105,7 +105,8 @@ public sealed class JobApiTests : IClassFixture<WebApplicationFactory<Program>>
 
         var result = await (await client.PostAsync("/api/jobs/heartbeat-check", content: null)).Content.ReadFromJsonAsync<HeartbeatResultDto>();
 
-        Assert.Equal(2, result!.AlertsRaised);
+        // All four monitored jobs never ran on this isolated host: expiry-scan, weekly-digest, form-reminder, overnight-check.
+        Assert.Equal(4, result!.AlertsRaised);
         var outbox = await client.GetFromJsonAsync<List<OutboxMessage>>("/api/jobs/outbox");
         Assert.Contains(outbox!, m => m.Recipient == "ops@tedwren.local");
     }

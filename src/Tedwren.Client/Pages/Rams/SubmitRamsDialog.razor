@@ -1,0 +1,71 @@
+@using Tedwren.Abstractions.Contracts.Rams
+@using Tedwren.Abstractions.Services
+@inject IRamsService RamsSvc
+@inject ISnackbar Snackbar
+
+@* Submit a RAMS for review; persists via IRamsService and shows the reference on success. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Record a RAMS submission for review. The submitter gets an immediate reference as proof of when it was submitted; the site manager then approves, rejects or returns it. A resubmission of a returned RAMS becomes a new version, leaving earlier versions intact." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">RAMS details</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenTextField Label="Contractor" @bind-Value="_contractor" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_contractor)" ErrorText="A contractor name is required." />
+                    <TedwrenTextField Label="Site" @bind-Value="_siteName" />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Title / description" @bind-Value="_title" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_title)" ErrorText="A RAMS title is required." />
+                    </div>
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitAsync" Disabled="_busy">Submit RAMS</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid CompanyId { get; set; }
+    [Parameter] public Guid? FamilyId { get; set; }   // set when resubmitting a returned/rejected RAMS
+
+    private string? _contractor;
+    private string? _title;
+    private string? _siteName;
+    private bool _submitted;
+    private bool _busy;
+
+    private async Task SubmitAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_contractor) || string.IsNullOrWhiteSpace(_title))
+        {
+            Snackbar.Add("A contractor and a RAMS title are required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var dto = await RamsSvc.SubmitAsync(CompanyId,
+                new SubmitRamsRequest(_contractor!, _title!, null, _siteName, null, null, FamilyId));
+            Snackbar.Add($"RAMS submitted — reference {dto.Reference}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch
+        {
+            Snackbar.Add("Could not submit the RAMS.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

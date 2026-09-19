@@ -1,0 +1,141 @@
+@using Tedwren.Abstractions.Contracts.Safety
+@using Tedwren.Abstractions.Services
+@inject IHazardReportService HazardsSvc
+@inject ISnackbar Snackbar
+
+@* View a hazard / near-miss and triage it — assign to a responsible person, then close out with a note. *@
+
+<MudDialog>
+    <DialogContent>
+        @if (_hazard is null)
+        {
+            <MudText>Loading…</MudText>
+        }
+        else
+        {
+            <div class="tw-dialog-body">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2">@Humanize(_hazard.Kind) · @_hazard.Severity severity · @_hazard.Status</MudText>
+                    <MudText Typo="Typo.body1">@_hazard.Description</MudText>
+                    <MudText Typo="Typo.body2">Location: @(_hazard.Location ?? "—") · Category: @(_hazard.Category ?? "—")</MudText>
+                    <MudText Typo="Typo.body2">Reported by @_hazard.ReportedBy · @_hazard.ReportedUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</MudText>
+                    @if (_hazard.ClosedUtc is { } closed)
+                    {
+                        <MudText Typo="Typo.body2">Closed @closed.ToLocalTime().ToString("dd MMM yyyy HH:mm") — @_hazard.ClosureNote</MudText>
+                    }
+                </MudStack>
+
+                @if (_hazard.Status != "Closed")
+                {
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Assign</h3>
+                        <div class="tw-dialog-section__grid">
+                            <TedwrenTextField Label="Assign to" @bind-Value="_assignee" Placeholder="Responsible person" />
+                            <TedwrenTextField Label="Category" @bind-Value="_category" Placeholder="Optional" />
+                        </div>
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Class="mt-2"
+                                   Disabled="_busy" OnClick="AssignAsync">Assign</MudButton>
+                    </section>
+
+                    <section class="tw-dialog-section">
+                        <h3 class="tw-dialog-section__title">Close out</h3>
+                        <MudTextField @bind-Value="_closeNote" Label="Closure note" Variant="Variant.Outlined" Lines="2"
+                                      Placeholder="What was done to resolve it" />
+                    </section>
+                }
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Close(DialogResult.Ok(_changed)))">Close</MudButton>
+        @if (_hazard is not null && _hazard.Status != "Closed")
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="_busy" OnClick="CloseOutAsync">Close out hazard</MudButton>
+        }
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid HazardId { get; set; }
+
+    private HazardReportDto? _hazard;
+    private string? _assignee;
+    private string? _category;
+    private string? _closeNote;
+    private bool _busy;
+    private bool _changed;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _hazard = await HazardsSvc.GetAsync(Guid.Empty, HazardId);
+            if (_hazard is null)
+            {
+                Snackbar.Add("This hazard could not be loaded.", Severity.Error);
+                MudDialog.Cancel();
+                return;
+            }
+
+            _assignee = _hazard.AssignedTo;
+            _category = _hazard.Category;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Snackbar.Add("This hazard could not be loaded.", Severity.Error);
+            MudDialog.Cancel();
+        }
+    }
+
+    private async Task AssignAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_assignee))
+        {
+            Snackbar.Add("An assignee is required.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var ok = await HazardsSvc.AssignAsync(Guid.Empty, HazardId, _assignee!, _category);
+            Snackbar.Add(ok ? "Hazard assigned." : "Could not assign the hazard.", ok ? Severity.Success : Severity.Error);
+            if (ok)
+            {
+                _changed = true;
+                await LoadAsync();
+            }
+        }
+        finally { _busy = false; }
+    }
+
+    private async Task CloseOutAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_closeNote))
+        {
+            Snackbar.Add("A closure note is required.", Severity.Warning);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var ok = await HazardsSvc.CloseAsync(Guid.Empty, HazardId, _closeNote!);
+            Snackbar.Add(ok ? "Hazard closed out." : "Could not close the hazard.", ok ? Severity.Success : Severity.Error);
+            if (ok)
+            {
+                _changed = true;
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        finally { _busy = false; }
+    }
+
+    /// <summary>Inserts spaces before internal capitals so an enum name reads as words.</summary>
+    private static string Humanize(string value) =>
+        string.IsNullOrEmpty(value) ? value : System.Text.RegularExpressions.Regex.Replace(value, "(?<=[a-z])([A-Z])", " $1");
+}

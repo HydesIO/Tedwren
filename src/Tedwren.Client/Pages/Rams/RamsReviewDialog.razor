@@ -1,0 +1,41 @@
+@* Capture the required note to reject or return a RAMS (R18). Returns the note text via DialogResult. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="@Guidance" />
+            <TedwrenTextField Label="Reason / note" @bind-Value="_note" Required="true"
+                              Error="_submitted && string.IsNullOrWhiteSpace(_note)" ErrorText="A note is required." />
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@(IsReject ? Color.Error : Color.Primary)" OnClick="Confirm">@ConfirmText</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public bool IsReject { get; set; }
+
+    private string? _note;
+    private bool _submitted;
+
+    private string ConfirmText => IsReject ? "Reject RAMS" : "Return for changes";
+
+    private string Guidance => IsReject
+        ? "Rejecting requires a written reason (R18). The contractor can resubmit a corrected RAMS as a new version."
+        : "Returning for changes requires a note explaining what is needed; the contractor resubmits a new version.";
+
+    private void Confirm()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_note))
+        {
+            return;
+        }
+
+        MudDialog.Close(DialogResult.Ok(_note!.Trim()));
+    }
+}

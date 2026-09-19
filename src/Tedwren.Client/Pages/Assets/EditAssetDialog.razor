@@ -1,0 +1,116 @@
+@using Tedwren.Abstractions.Contracts.Assets
+@using Tedwren.Abstractions.Services
+@inject IAssetService AssetSvc
+@inject ISnackbar Snackbar
+
+@* Add or edit a plant/equipment asset; persists via IAssetService. A null Asset parameter is add mode. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Record a plant or equipment item and its certification and inspection dates. A certificate due within 30 days is flagged in the register so it can be renewed before it lapses." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Asset details</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Name" @bind-Value="_name" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_name)" ErrorText="An asset name is required." />
+                    </div>
+                    <TedwrenTextField Label="Type" @bind-Value="_assetType" />
+                    <TedwrenTextField Label="Serial / fleet number" @bind-Value="_serialNumber" />
+                    <TedwrenTextField Label="Location" @bind-Value="_location" />
+                    <TedwrenTextField Label="Owner / custodian" @bind-Value="_ownerName" />
+                </div>
+            </section>
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Certification &amp; inspection</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenDatePicker Label="Certification expiry" @bind-Date="_certExpiry" />
+                    <TedwrenDatePicker Label="Next inspection due" @bind-Date="_nextInspection" />
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Notes" @bind-Value="_notes" />
+                    </div>
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">@(_isEdit ? "Save changes" : "Add asset")</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid CompanyId { get; set; }
+    [Parameter] public AssetDto? Asset { get; set; }
+
+    private bool _isEdit;
+    private string? _name;
+    private string? _assetType;
+    private string? _serialNumber;
+    private string? _location;
+    private string? _ownerName;
+    private DateTime? _certExpiry;
+    private DateTime? _nextInspection;
+    private string? _notes;
+    private bool _submitted;
+    private bool _busy;
+
+    protected override void OnInitialized()
+    {
+        _isEdit = Asset is not null;
+        if (Asset is { } a)
+        {
+            _name = a.Name;
+            _assetType = a.AssetType;
+            _serialNumber = a.SerialNumber;
+            _location = a.Location;
+            _ownerName = a.OwnerName;
+            _certExpiry = a.CertificationExpiry?.ToDateTime(TimeOnly.MinValue);
+            _nextInspection = a.NextInspectionDue?.ToDateTime(TimeOnly.MinValue);
+            _notes = a.Notes;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_name))
+        {
+            Snackbar.Add("An asset name is required.", Severity.Error);
+            return;
+        }
+
+        var certExpiry = _certExpiry.HasValue ? DateOnly.FromDateTime(_certExpiry.Value) : (DateOnly?)null;
+        var nextInspection = _nextInspection.HasValue ? DateOnly.FromDateTime(_nextInspection.Value) : (DateOnly?)null;
+
+        _busy = true;
+        bool ok;
+        if (_isEdit)
+        {
+            ok = await AssetSvc.UpdateAsync(CompanyId, Asset!.Id, new UpdateAssetRequest(
+                _name!, _assetType, _serialNumber, _location, _ownerName, certExpiry, nextInspection, _notes));
+        }
+        else
+        {
+            var id = await AssetSvc.CreateAsync(CompanyId, new CreateAssetRequest(
+                _name!, _assetType, _serialNumber, _location, _ownerName, certExpiry, nextInspection, _notes));
+            ok = id != Guid.Empty;
+        }
+        _busy = false;
+
+        if (ok)
+        {
+            Snackbar.Add(_isEdit ? "Asset updated." : "Asset added.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        else
+        {
+            Snackbar.Add(_isEdit ? "Could not update the asset." : "Could not add the asset.", Severity.Error);
+        }
+    }
+}

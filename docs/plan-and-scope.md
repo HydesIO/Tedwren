@@ -15,7 +15,9 @@ seven numbered commercial modules. The definitive brief is **PRD v6.4**
 > operative onboarding link (SF-4/SUB-2), **D3** induction template authoring (MC-15), **D4** real per-site
 > operatives/compliance (MC-12/13), **D5** removal of the last demo constants, **D6** N+1 batching. See
 > `TODO.md` for the running log and the outstanding production hardening items (secrets, invite email,
-> rotating the committed DB credential). The original UI-phase context below is retained for history.
+> rotating the committed DB credential). **The stage after the MVPs is scoped in
+> [`next-phases-plan.md`](next-phases-plan.md)** (Launch Readiness → CSCS seam → Health, Safety &
+> Compliance), proposed for review. The original UI-phase context below is retained for history.
 
 The repository began as a **UI/UX foundation only**. **Six UI phases were complete on `origin/main`**
 (PRs #1–#10), all of them **front-end/component work over mock data**:

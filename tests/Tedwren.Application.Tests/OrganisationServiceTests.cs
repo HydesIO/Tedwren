@@ -211,6 +211,54 @@ public sealed class OrganisationServiceTests
             service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(Guid.Empty, "Doc", "Insurance", null, null)));
     }
 
+    [Fact] // MC-27 — a new version becomes the current library entry; the prior version is hidden but retained
+    public async Task SupersedeCompanyDocument_ShowsNewCurrent_HidesPrior()
+    {
+        var (service, _) = CreateSut();
+        var companyId = await AddCompanyAsync(service, "Alpha Ltd");
+        var v1 = await service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(
+            companyId, "Employer's Liability Insurance", "Insurance", null, "EL-1"));
+
+        var newId = await service.SupersedeCompanyDocumentAsync(new SupersedeCompanyDocumentRequest(
+            companyId, v1, "Employer's Liability Insurance", "Insurance", DateOnly.FromDateTime(DateTime.UtcNow).AddYears(1), "EL-2"));
+
+        Assert.NotNull(newId);
+        var detail = await service.GetCompanyAsync("alpha-ltd");
+        var current = Assert.Single(detail!.Documents);        // only the current version is listed
+        Assert.Equal(2, current.Version);
+        Assert.False(current.IsSuperseded);
+    }
+
+    [Fact] // MC-27 — the version history returns the whole chain, oldest first, with prior versions marked superseded
+    public async Task DocumentVersions_ReturnChain_OldestFirst()
+    {
+        var (service, _) = CreateSut();
+        var companyId = await AddCompanyAsync(service, "Alpha Ltd");
+        var v1 = await service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(companyId, "Policy", "Policy", null, null));
+        var v2 = await service.SupersedeCompanyDocumentAsync(new SupersedeCompanyDocumentRequest(companyId, v1, "Policy", "Policy", null, null));
+        // Superseding from the original (now-old) id must still branch off the current head → v3.
+        await service.SupersedeCompanyDocumentAsync(new SupersedeCompanyDocumentRequest(companyId, v1, "Policy", "Policy", null, null));
+
+        var versions = await service.GetCompanyDocumentVersionsAsync(companyId, v2!.Value);
+
+        Assert.Equal(new[] { 1, 2, 3 }, versions.Select(v => v.Version));
+        Assert.True(versions[0].IsSuperseded);
+        Assert.True(versions[1].IsSuperseded);
+        Assert.False(versions[2].IsSuperseded);              // the head is current
+    }
+
+    [Fact] // R15 — a document cannot be superseded or its history read from another tenant
+    public async Task Supersede_And_History_ScopedToCompany()
+    {
+        var (service, _) = CreateSut();
+        var companyId = await AddCompanyAsync(service, "Alpha Ltd");
+        var docId = await service.AddCompanyDocumentAsync(new CreateCompanyDocumentRequest(companyId, "Doc", "Insurance", null, null));
+        var otherCompany = Guid.NewGuid();
+
+        Assert.Null(await service.SupersedeCompanyDocumentAsync(new SupersedeCompanyDocumentRequest(otherCompany, docId, "Doc", "Insurance", null, null)));
+        Assert.Empty(await service.GetCompanyDocumentVersionsAsync(otherCompany, docId));
+    }
+
     [Fact]
     public async Task GetCompanies_ReturnsCreatedCompany_WithOperativeCount()
     {

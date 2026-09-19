@@ -45,6 +45,10 @@ public static class ApplicationServiceCollectionExtensions
     public static IServiceCollection AddQualificationCore(this IServiceCollection services)
     {
         services.AddScoped<IQualificationService, QualificationService>();
+        // CSCS live verification seam (PRD-Phase 1). The unconfigured default reports "unavailable" so callers use
+        // the human-check fallback (§8.1); the real client replaces it once the CSCS agreement is in place.
+        services.AddScoped<ICscsVerificationService, UnconfiguredCscsVerificationService>();
+        services.AddScoped<CscsVerificationCoordinator>();
         return services;
     }
 
@@ -357,6 +361,91 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<InMemoryPermitRepository>();
         services.AddScoped<IPermitRepository>(sp => sp.GetRequiredService<InMemoryPermitRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic plant &amp; equipment register service (PRD §8.2).</summary>
+    public static IServiceCollection AddAssetCore(this IServiceCollection services)
+    {
+        services.AddScoped<IAssetService, Assets.AssetService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory asset repository (singleton so added assets persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryAssetStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryAssetRepository>();
+        services.AddScoped<IAssetRepository>(sp => sp.GetRequiredService<InMemoryAssetRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic RAMS review service (PRD §8.2).</summary>
+    public static IServiceCollection AddRamsCore(this IServiceCollection services)
+    {
+        services.AddScoped<IRamsService, Rams.RamsService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory RAMS repository (singleton so submissions persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryRamsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryRamsRepository>();
+        services.AddScoped<IRamsRepository>(sp => sp.GetRequiredService<InMemoryRamsRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic document distribution &amp; acknowledgement service (PRD §8.2).</summary>
+    public static IServiceCollection AddDocumentDistributionCore(this IServiceCollection services)
+    {
+        services.AddScoped<IDocumentDistributionService, Documents.DocumentDistributionService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory document-distribution repository (singleton so it persists across test requests).</summary>
+    public static IServiceCollection AddInMemoryDocumentDistributionStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryDocumentDistributionRepository>();
+        services.AddScoped<IDocumentDistributionRepository>(sp => sp.GetRequiredService<InMemoryDocumentDistributionRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic safety-events services: hazard/near-miss reporting + accident/incident (PRD §8.2).</summary>
+    public static IServiceCollection AddSafetyCore(this IServiceCollection services)
+    {
+        services.AddScoped<IHazardReportService, Safety.HazardReportService>();
+        services.AddScoped<IIncidentReportService, Safety.IncidentReportService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory safety-events repositories (singletons so they persist across test requests).</summary>
+    public static IServiceCollection AddInMemorySafetyStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryHazardReportRepository>();
+        services.AddScoped<IHazardReportRepository>(sp => sp.GetRequiredService<InMemoryHazardReportRepository>());
+        services.AddSingleton<InMemoryIncidentReportRepository>();
+        services.AddScoped<IIncidentReportRepository>(sp => sp.GetRequiredService<InMemoryIncidentReportRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the store-agnostic HAVs exposure service (PRD §8.2).</summary>
+    public static IServiceCollection AddHavsCore(this IServiceCollection services)
+    {
+        services.AddScoped<IHavsExposureService, Havs.HavsExposureService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory HAVs repository (singleton so it persists across test requests).</summary>
+    public static IServiceCollection AddInMemoryHavsStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryHavsExposureRepository>();
+        services.AddScoped<IHavsExposureRepository>(sp => sp.GetRequiredService<InMemoryHavsExposureRepository>());
+        return services;
+    }
+
+    /// <summary>Registers the unified compliance evidence-export service (PRD §8.2). It reads the existing evidence repositories, so it needs no store of its own.</summary>
+    public static IServiceCollection AddEvidenceCore(this IServiceCollection services)
+    {
+        services.AddScoped<IEvidenceExportService, Evidence.EvidenceExportService>();
         return services;
     }
 

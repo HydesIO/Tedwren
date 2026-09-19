@@ -124,8 +124,10 @@ public sealed class OrganisationService : IOrganisationService
 
         var (companyState, companyPercent) = ComplianceRollup.FromCards(allCurrentCards, Today);
 
+        // The library shows the current version of each document; superseded versions are retained but hidden
+        // here and reachable via the version history (MC-27).
         var documents = await _documents.GetByCompanyAsync(company.Id, cancellationToken);
-        var documentDtos = documents.Select(ToDocumentDto).ToList();
+        var documentDtos = documents.Where(d => !d.IsSuperseded).Select(ToDocumentDto).ToList();
 
         return new CompanyDetailDto(
             company.Id,
@@ -210,11 +212,106 @@ public sealed class OrganisationService : IOrganisationService
         return document.Id;
     }
 
-    /// <summary>Maps a company document to its DTO, deriving a compliance state from its expiry (SUB-4).</summary>
+    /// <summary>Supersedes a document with a new version, retaining the prior one (MC-27). Scoped to the company (R15).</summary>
+    public async Task<Guid?> SupersedeCompanyDocumentAsync(SupersedeCompanyDocumentRequest request, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            throw new ArgumentException("A document name is required.", nameof(request));
+        }
+
+        var existing = await _documents.GetAsync(request.DocumentId, cancellationToken);
+        if (existing is null || existing.CompanyId != request.CompanyId)
+        {
+            return null;   // R15 — missing or cross-tenant
+        }
+
+        // Always supersede the current head of the chain, even if an older version was passed in.
+        var head = await ResolveHeadAsync(existing, cancellationToken);
+
+        var newVersion = new CompanyDocument
+        {
+            CompanyId = head.CompanyId,
+            Name = request.Name.Trim(),
+            Type = string.IsNullOrWhiteSpace(request.Type) ? head.Type : request.Type.Trim(),
+            ExpiresOn = request.ExpiresOn,
+            Reference = string.IsNullOrWhiteSpace(request.Reference) ? null : request.Reference.Trim(),
+            Version = head.Version + 1,
+            SupersedesDocumentId = head.Id,
+        };
+        await _documents.AddAsync(newVersion, cancellationToken);
+
+        head.SupersededByDocumentId = newVersion.Id;
+        await _documents.UpdateAsync(head, cancellationToken);
+
+        await AuditAsync(head.CompanyId, "Document re-versioned", newVersion.Name, newVersion.Reference, "Documents", cancellationToken);
+        return newVersion.Id;
+    }
+
+    /// <summary>Returns a document's full version chain (oldest first), scoped to the company (R15) (MC-27).</summary>
+    public async Task<IReadOnlyList<CompanyDocumentDto>> GetCompanyDocumentVersionsAsync(Guid companyId, Guid documentId, CancellationToken cancellationToken = default)
+    {
+        var document = await _documents.GetAsync(documentId, cancellationToken);
+        if (document is null || document.CompanyId != companyId)
+        {
+            return Array.Empty<CompanyDocumentDto>();   // R15
+        }
+
+        // Walk back to the root (oldest) then forward to the head, collecting the whole chain.
+        var root = document;
+        while (root.SupersedesDocumentId is { } prevId)
+        {
+            var prev = await _documents.GetAsync(prevId, cancellationToken);
+            if (prev is null || prev.CompanyId != companyId)
+            {
+                break;
+            }
+
+            root = prev;
+        }
+
+        var chain = new List<CompanyDocument> { root };
+        var current = root;
+        while (current.SupersededByDocumentId is { } nextId)
+        {
+            var next = await _documents.GetAsync(nextId, cancellationToken);
+            if (next is null || next.CompanyId != companyId)
+            {
+                break;
+            }
+
+            chain.Add(next);
+            current = next;
+        }
+
+        return chain.OrderBy(d => d.Version).Select(ToDocumentDto).ToList();
+    }
+
+    /// <summary>Walks the supersede chain forward to its current head (MC-27), staying within the company (R15).</summary>
+    private async Task<CompanyDocument> ResolveHeadAsync(CompanyDocument document, CancellationToken cancellationToken)
+    {
+        var head = document;
+        while (head.SupersededByDocumentId is { } nextId)
+        {
+            var next = await _documents.GetAsync(nextId, cancellationToken);
+            if (next is null || next.CompanyId != head.CompanyId)
+            {
+                break;
+            }
+
+            head = next;
+        }
+
+        return head;
+    }
+
+    /// <summary>Maps a company document to its DTO, deriving a compliance state from its expiry (SUB-4) and carrying its version (MC-27).</summary>
     private static CompanyDocumentDto ToDocumentDto(CompanyDocument document)
     {
         var state = DocumentState(document.ExpiresOn);
-        return new CompanyDocumentDto(document.Name, document.Type, state, ComplianceRollup.Label(state), document.ExpiresOn);
+        return new CompanyDocumentDto(
+            document.Id, document.Name, document.Type, state, ComplianceRollup.Label(state), document.ExpiresOn,
+            document.Version, document.IsSuperseded);
     }
 
     /// <summary>Derives a document's compliance state from its expiry: expired, at risk near expiry, else compliant.</summary>

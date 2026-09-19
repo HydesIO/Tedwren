@@ -1,0 +1,119 @@
+@using Tedwren.Abstractions.Contracts.Documents
+@using Tedwren.Abstractions.Services
+@inject IDocumentDistributionService DocumentsSvc
+@inject ISnackbar Snackbar
+
+@* Shows a distribution's completion matrix — who has and has not acknowledged the document — and lets a
+   recipient's acknowledgement be recorded (idempotent). *@
+
+<MudDialog>
+    <DialogContent>
+        @if (_detail is null)
+        {
+            <MudText>Loading…</MudText>
+        }
+        else
+        {
+            <div class="tw-dialog-body">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2">Category: @(_detail.Distribution.Category ?? "—") · Audience: @(_detail.Distribution.Audience ?? "—")</MudText>
+                    <MudText Typo="Typo.body2">Sent by @_detail.Distribution.SentBy · @_detail.Distribution.SentUtc.ToLocalTime().ToString("dd MMM yyyy HH:mm")</MudText>
+                    <MudText Typo="Typo.body2">@_detail.Distribution.SignedCount / @_detail.Distribution.TotalCount acknowledged</MudText>
+                </MudStack>
+
+                <section class="tw-dialog-section">
+                    <h3 class="tw-dialog-section__title">Completion matrix</h3>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <thead>
+                            <tr>
+                                <th>Recipient</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var row in _detail.Acknowledgements)
+                            {
+                                <tr>
+                                    <td>@row.RecipientName</td>
+                                    <td>
+                                        @if (row.Acknowledged)
+                                        {
+                                            <span>Acknowledged @(row.AcknowledgedUtc?.ToLocalTime().ToString("dd MMM yyyy HH:mm"))</span>
+                                        }
+                                        else
+                                        {
+                                            <span>Awaiting acknowledgement</span>
+                                        }
+                                    </td>
+                                    <td>
+                                        @if (!row.Acknowledged)
+                                        {
+                                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                       Disabled="_busy" OnClick="@(() => AcknowledgeAsync(row))">Mark signed</MudButton>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </section>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Close(DialogResult.Ok(_changed)))">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid DistributionId { get; set; }
+
+    private DocumentDistributionDetailDto? _detail;
+    private bool _busy;
+    private bool _changed;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _detail = await DocumentsSvc.GetAsync(Guid.Empty, DistributionId);
+            if (_detail is null)
+            {
+                Snackbar.Add("This document could not be loaded.", Severity.Error);
+                MudDialog.Cancel();
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            Snackbar.Add("This document could not be loaded.", Severity.Error);
+            MudDialog.Cancel();
+        }
+    }
+
+    private async Task AcknowledgeAsync(DocumentAcknowledgementDto row)
+    {
+        _busy = true;
+        try
+        {
+            var ok = await DocumentsSvc.AcknowledgeAsync(Guid.Empty, row.Id);
+            if (ok)
+            {
+                _changed = true;
+                await LoadAsync();
+            }
+            else
+            {
+                Snackbar.Add("Could not record the acknowledgement.", Severity.Error);
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

@@ -4,6 +4,7 @@ using Tedwren.Api.Endpoints;
 using Tedwren.Api.Hosting;
 using Tedwren.Application;
 using Tedwren.DataAccess;
+using Tedwren.DataAccess.Storage;
 
 // Composition root for the Tedwren Web API. This API is deliberately a separate deployable from
 // the Blazor WebAssembly client and is CORS-enabled, so the same contracts can later serve a
@@ -36,6 +37,12 @@ builder.Services.AddDashboardCore();
 builder.Services.AddReferenceDataCore();
 builder.Services.AddSettingsCore();
 builder.Services.AddPermitCore();
+builder.Services.AddAssetCore();
+builder.Services.AddRamsCore();
+builder.Services.AddDocumentDistributionCore();
+builder.Services.AddSafetyCore();
+builder.Services.AddHavsCore();
+builder.Services.AddEvidenceCore();
 builder.Services.AddOnboardingCore();
 builder.Services.AddTradeOnboardingCore();
 builder.Services.AddLaunchListCore();
@@ -77,6 +84,28 @@ if (!string.IsNullOrWhiteSpace(goCardlessOptions.AccessToken))
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", goCardlessOptions.AccessToken);
         client.DefaultRequestHeaders.Add("GoCardless-Version", goCardlessOptions.ApiVersion);
+    });
+}
+
+// Worker SMS (SF-9 expiry warnings + onboarding links). Bind the "Sms" section and, when configured for Twilio
+// with credentials, register the real transport as a typed HttpClient (base address + HTTP basic auth). With no
+// provider the Application-layer OutboxSmsSender default stands, so nothing sends until configured — mirroring the
+// Resend email override above.
+var smsOptions = builder.Configuration.GetSection(SmsOptions.SectionName).Get<SmsOptions>() ?? new SmsOptions();
+builder.Services.AddSingleton(smsOptions);
+if (smsOptions.Provider == SmsProvider.Twilio &&
+    !string.IsNullOrWhiteSpace(smsOptions.AccountSid) &&
+    !string.IsNullOrWhiteSpace(smsOptions.AuthToken) &&
+    !string.IsNullOrWhiteSpace(smsOptions.FromNumber))
+{
+    builder.Services.AddHttpClient<Tedwren.Abstractions.Notifications.ISmsSender,
+        Tedwren.Application.Notifications.TwilioSmsSender>(client =>
+    {
+        client.BaseAddress = new Uri(smsOptions.ApiBaseUrl.TrimEnd('/') + "/");
+        var basic = Convert.ToBase64String(
+            System.Text.Encoding.UTF8.GetBytes($"{smsOptions.AccountSid}:{smsOptions.AuthToken}"));
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
     });
 }
 
@@ -147,6 +176,8 @@ builder.Services.AddAuthorization(options =>
 // Whether the commercial/admin plane has its own database. When false, it falls back to the product database
 // (a single-database dev setup); logged at startup so an operator can confirm the separation is actually active.
 var commercialDbSeparate = false;
+// Captured for the fail-closed startup security check below (stays null in the test-only InMemory mode).
+string? productConnectionString = null;
 if (backend.Mode == DataSourceMode.InMemory)
 {
     builder.Services.AddInMemoryOrganisationStore();
@@ -164,6 +195,11 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryReferenceDataStore();
     builder.Services.AddInMemorySettingsStore();
     builder.Services.AddInMemoryPermitStore();
+    builder.Services.AddInMemoryAssetStore();
+    builder.Services.AddInMemoryRamsStore();
+    builder.Services.AddInMemoryDocumentDistributionStore();
+    builder.Services.AddInMemorySafetyStore();
+    builder.Services.AddInMemoryHavsStore();
     builder.Services.AddInMemoryOnboardingStore();
     builder.Services.AddInMemoryTradeOnboardingStore();
     builder.Services.AddInMemoryLaunchListStore();
@@ -174,7 +210,18 @@ else
 {
     var connectionStringName = backend.Provider == DatabaseProvider.PostgreSql ? "PostgreSql" : "SqlServer";
     var connectionString = builder.Configuration.GetConnectionString(connectionStringName) ?? string.Empty;
+    productConnectionString = connectionString;
     builder.Services.AddSqlDataAccess(backend.Provider, connectionString);
+
+    // Private binary assets (card photos, uploaded documents; R9) default to the database BLOB store registered
+    // above. When "Storage:Provider" is S3, register the S3-compatible store instead (iDrive e2 / AWS S3 / MinIO) —
+    // this later registration overrides the database IImageStore. Credentials come from config, never source (LR-4).
+    var storage = builder.Configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
+    builder.Services.Configure<StorageOptions>(builder.Configuration.GetSection(StorageOptions.SectionName));
+    if (storage.Provider == StorageProvider.S3)
+    {
+        builder.Services.AddS3ImageStore(storage.S3);
+    }
 
     // The commercial/admin plane persists to a separate database (its own connection string, "*Commercial").
     // Falls back to the product connection string when unset, so a single-database dev setup still runs.
@@ -192,12 +239,25 @@ builder.Services.AddHostedService<ExpirySchedulerHostedService>();
 // Backstops GoCardless webhooks by reconciling billing status on a schedule (gated by Jobs:SchedulerEnabled).
 builder.Services.AddHostedService<BillingReconciliationHostedService>();
 
+// R12 heartbeat watchdog: checks that the scheduled jobs are running, independently of the job-execution loop
+// above, so a failure that stops the jobs cannot also stop the check that is meant to notice.
+builder.Services.AddHostedService<JobHeartbeatHostedService>();
+
+// R12 ops-alert address (where "a scheduled job may have stopped" emails go). Configurable so the alert reaches a
+// real inbox in production; the Application-layer default intervals + address stand when unset.
+var opsEmail = builder.Configuration.GetValue<string>("Jobs:OpsEmail");
+if (!string.IsNullOrWhiteSpace(opsEmail))
+{
+    builder.Services.AddSingleton(new Tedwren.Application.Expiry.ExpiryJobOptions { OpsEmail = opsEmail });
+}
+
 builder.Services.AddOpenApi();
 
 // Rate limiting for the public (anonymous) endpoints — launch signup, lead capture, agreement view/sign/pdf.
 // A fixed window per client IP, so a bot can't spam signups/leads or hammer the sign endpoint. Authenticated
 // admin surfaces are unaffected. 429 on rejection.
 const string publicRateLimitPolicy = "public";
+const string kioskRateLimitPolicy = "kiosk";
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -208,6 +268,19 @@ builder.Services.AddRateLimiter(options =>
             {
                 // Generous enough for a shared/NAT'd origin, tight enough to stop a bot hammering the endpoint.
                 PermitLimit = 60,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+    // A more generous per-IP limit for the anonymous on-site / token flows (site entry, onboarding and pack
+    // recipient, induction/trade by-link). High enough not to reject legitimate bursts from a whole site behind
+    // one NAT'd IP, low enough to stop a script brute-forcing tokens/passcodes or flooding the gate. The
+    // GUID-scoped induction *session* endpoints are deliberately left off it (not brute-forceable, multi-request).
+    options.AddPolicy(kioskRateLimitPolicy, httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 300,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
@@ -227,6 +300,12 @@ builder.Services.AddCors(options =>
     }));
 
 var app = builder.Build();
+
+// Fail closed on insecure production configuration before serving any request: refuse to boot Production while a
+// committed development default (JWT signing key, seed admin password), the auth test-bypass, or a missing
+// database secret is in effect. Non-production environments (and the test host) are unaffected.
+Tedwren.Api.Security.StartupSecurity.Validate(
+    app.Environment, jwtOptions, seedAdminOptions, testBypass, backend, productConnectionString);
 
 if (app.Environment.IsDevelopment())
 {
@@ -314,6 +393,12 @@ app.MapWorkforceEndpoints();
 app.MapDashboardEndpoints();
 app.MapSettingsEndpoints();
 app.MapPermitEndpoints();
+app.MapAssetEndpoints();
+app.MapRamsEndpoints();
+app.MapDocumentEndpoints();
+app.MapSafetyEndpoints();
+app.MapHavsEndpoints();
+app.MapEvidenceEndpoints();
 app.MapOnboardingEndpoints();
 app.MapTradeOnboardingEndpoints();
 app.MapLaunchListEndpoints();

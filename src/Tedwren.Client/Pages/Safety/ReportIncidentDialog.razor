@@ -1,0 +1,86 @@
+@using Tedwren.Abstractions.Contracts.Safety
+@using Tedwren.Abstractions.Services
+@inject IIncidentReportService IncidentsSvc
+@inject ISnackbar Snackbar
+
+@* Record an accident / incident; persists via IIncidentReportService. The investigation + RIDDOR flag are added
+   afterwards from the incident's detail view. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Record what happened as soon as possible. Capture the facts now — who, what, where and when, and any injury. The investigation (causes, corrective actions) and the RIDDOR-reportable decision are recorded next, from the incident's detail view." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">What happened?</h3>
+                <div class="tw-dialog-section__grid">
+                    <TedwrenSelect T="string" Label="Kind" @bind-Value="_kind" Options="_kinds" OptionText="Humanize" />
+                    <TedwrenSelect T="string" Label="Severity" @bind-Value="_severity" Options="_severities" />
+                    <div class="tw-dialog-body__full">
+                        <MudTextField @bind-Value="_description" Label="Description" Variant="Variant.Outlined" Lines="3" Required="true"
+                                      Error="_submitted && string.IsNullOrWhiteSpace(_description)" ErrorText="A description is required." />
+                    </div>
+                    <TedwrenTextField Label="Location" @bind-Value="_location" Placeholder="Where it happened" />
+                    <MudDatePicker Label="Date it occurred" @bind-Date="_occurred" MaxDate="DateTime.Today" />
+                    <TedwrenTextField Label="Injured person (if any)" @bind-Value="_injuredName" />
+                    <TedwrenTextField Label="Injury detail (if any)" @bind-Value="_injuryDetail" Placeholder="e.g. Laceration to left hand" />
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitAsync" Disabled="_busy">Record incident</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid CompanyId { get; set; }
+
+    private readonly string[] _kinds = { "Accident", "Incident", "DangerousOccurrence" };
+    private readonly string[] _severities = { "Low", "Medium", "High" };
+
+    private string _kind = "Accident";
+    private string _severity = "Medium";
+    private string? _description;
+    private string? _location;
+    private DateTime? _occurred = DateTime.Today;
+    private string? _injuredName;
+    private string? _injuryDetail;
+    private bool _submitted;
+    private bool _busy;
+
+    private async Task SubmitAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_description))
+        {
+            Snackbar.Add("A description is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            DateTimeOffset? occurred = _occurred is { } d ? new DateTimeOffset(d, TimeSpan.Zero) : null;
+            var dto = await IncidentsSvc.ReportAsync(CompanyId, string.Empty,
+                new ReportIncidentRequest(_kind, _description!, _location, occurred, _injuredName, _injuryDetail, _severity));
+            Snackbar.Add($"Recorded — reference {dto.Reference}.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch
+        {
+            Snackbar.Add("Could not record the incident.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Inserts spaces before internal capitals so an enum name reads as words.</summary>
+    private static string Humanize(string value) =>
+        string.IsNullOrEmpty(value) ? value : System.Text.RegularExpressions.Regex.Replace(value, "(?<=[a-z])([A-Z])", " $1");
+}

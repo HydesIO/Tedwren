@@ -1,0 +1,125 @@
+@page "/rams"
+@using Tedwren.Abstractions.Contracts.Rams
+@using Tedwren.Abstractions.Services
+@inject IRamsService RamsSvc
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>RAMS · Tedwren</PageTitle>
+
+<PageHeader Title="RAMS" Subtitle="Risk assessment & method statement review">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.UploadFile"
+                   OnClick="SubmitRams">Submit RAMS</MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard>
+    <Body>
+        <DataTable TItem="RamsSubmissionDto"
+                   Items="_items"
+                   Columns="_columns"
+                   Loading="_loading"
+                   SearchPlaceholder="Search RAMS…"
+                   EmptyTitle="No RAMS yet"
+                   EmptyDescription="Submit a RAMS to start the review workflow."
+                   EmptyIcon="@Icons.Material.Outlined.Rule" />
+    </Body>
+</DashboardCard>
+
+@code {
+    private bool _loading = true;
+
+    private IReadOnlyList<RamsSubmissionDto> _items = Array.Empty<RamsSubmissionDto>();
+    private List<DataColumn<RamsSubmissionDto>> _columns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _items = await RamsSvc.ListAsync(Tenant.CurrentCompanyId);
+        _loading = false;
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Reference", Value = r => r.Reference, Filterable = true },
+            new() { Title = "Contractor", Value = r => r.ContractorName, Filterable = true },
+            new() { Title = "Title", Value = r => r.Title },
+            new() { Title = "Site", Value = r => r.SiteName ?? "—" },
+            new() { Title = "Version", Value = r => r.Version, Searchable = false },
+            new()
+            {
+                Title = "Status", Value = r => r.Status, Filterable = true,
+                CellTemplate = r => @<span>@r.Status@(r.Overdue ? " · overdue" : "")</span>
+            },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = r => @<div class="rams-row-actions">
+                    @if (r.Status == "Submitted")
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => ApproveRams(r))">Approve</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RejectRams(r))">Reject</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ReturnRams(r))">Return</MudButton>
+                    }
+                </div>
+            },
+        };
+    }
+
+    private async Task SubmitRams()
+    {
+        var parameters = new DialogParameters<SubmitRamsDialog> { { x => x.CompanyId, Tenant.CurrentCompanyId } };
+        var dialog = await Dialogs.ShowAsync<SubmitRamsDialog>("Submit RAMS", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    private async Task ApproveRams(RamsSubmissionDto r)
+    {
+        var parameters = new DialogParameters<ConfirmDialog>
+        {
+            { x => x.ContentText, $"Approve RAMS {r.Reference} from {r.ContractorName}? Their workers may then start on the site." },
+            { x => x.ConfirmText, "Approve" },
+        };
+        var dialog = await Dialogs.ShowAsync<ConfirmDialog>("Approve RAMS", parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false })
+        {
+            var ok = await RamsSvc.ApproveAsync(Tenant.CurrentCompanyId, r.Id, string.Empty);
+            Snackbar.Add(ok ? "RAMS approved." : "Could not approve the RAMS.", ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadAsync();
+        }
+    }
+
+    private Task RejectRams(RamsSubmissionDto r) => ReviewRams(r, isReject: true);
+
+    private Task ReturnRams(RamsSubmissionDto r) => ReviewRams(r, isReject: false);
+
+    private async Task ReviewRams(RamsSubmissionDto r, bool isReject)
+    {
+        var parameters = new DialogParameters<RamsReviewDialog> { { x => x.IsReject, isReject } };
+        var title = isReject ? "Reject RAMS" : "Return RAMS";
+        var dialog = await Dialogs.ShowAsync<RamsReviewDialog>(title, parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false, Data: string note })
+        {
+            var ok = isReject
+                ? await RamsSvc.RejectAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note)
+                : await RamsSvc.ReturnAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note);
+            Snackbar.Add(ok ? (isReject ? "RAMS rejected." : "RAMS returned.") : "Could not update the RAMS.",
+                ok ? Severity.Success : Severity.Error);
+            if (ok) await LoadAsync();
+        }
+    }
+}

@@ -127,6 +127,7 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
         string? fileReference = null;
         if (!string.IsNullOrWhiteSpace(request.FileBase64))
         {
+            Common.UploadValidation.Validate(request.FileBase64, request.FileContentType, Common.UploadKind.Document);
             var bytes = Convert.FromBase64String(request.FileBase64);
             fileReference = await _images.SaveAsync(bytes, request.FileContentType ?? "application/octet-stream", cancellationToken);
         }

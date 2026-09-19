@@ -79,6 +79,298 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Launch readiness — LR-4: object-storage `IImageStore` (S3-compatible, iDrive e2) (this change)
+Plan: `docs/next-phases-plan.md` (Track A, LR-4). Added a production-grade object store behind the existing
+`IImageStore` (R9), selectable by config — the database BLOB store stays the default so nothing changes until S3 is
+configured. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 317, Api 167
+incl. 8 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Config.** `StorageOptions`/`StorageProvider` (Abstractions) bind a new `Storage` section: `Provider`
+  (`Database` default / `S3`) + `S3` sub-options (ServiceUrl, Region, Bucket, AccessKey, SecretKey, ForcePathStyle,
+  KeyPrefix). Credentials are **secrets from env / secret store, never source** (blank in `appsettings.json`).
+- ✅ **Store.** `S3ImageStore` (DataAccess, AWSSDK.S3 v4): `SaveAsync` PUTs a private object under
+  `<KeyPrefix><GUID>` with its content-type and returns the GUID reference (interchangeable with the DB store);
+  `GetAsync` streams it back, mapping content-type + last-modified, and **rejects any non-GUID reference before
+  touching S3** (R9). `AddS3ImageStore` builds an `IAmazonS3` for an S3-compatible endpoint (ServiceUrl +
+  ForcePathStyle for iDrive e2) and **fails fast** when Bucket/AccessKey/SecretKey are missing; its registration
+  overrides the DB `IImageStore` (last wins). Wired in `Program.cs` only in database mode.
+- ✅ **Docs.** `docs/object-storage.md` — the provider switch, the iDrive e2 setup (endpoint + path-style), and the
+  `Storage__*` env vars.
+- ✅ Tests: `StorageConfigurationTests` (8: defaults, `Storage` binding, fail-fast validation, S3 override wins,
+  key-prefix logic, non-GUID read guard) — no live bucket (a real round-trip is a deployment-time check).
+- ❗ **Operator action:** to switch on, set `Storage__Provider=S3` + the iDrive e2 endpoint/bucket/keys server-side.
+  Existing DB-stored images are not migrated (new uploads go to S3); a backfill copy is a follow-up if needed.
+
+### Commercial expansion — Track C: HSE-5 unified compliance evidence export (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **unified evidence export** — the ISO 45001 /
+project-audit pack that assembles a company's compliance evidence across modules into one download. This completes
+every **buildable** HSE-5 item (carbon remains **blocked** on the unbuilt MC-26 prerequisite). Whole solution builds
+**0 warnings / 0 errors**; all suites green (Domain 71, Application 317 incl. 3 new, Api 159 incl. 2 new, Web 178,
+Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Service.** `IEvidenceExportService`/`EvidenceExportService` reads the **existing** evidence repositories
+  (permits, RAMS, plant, hazards, incidents, HAVs, document acknowledgements — no new tables) and renders each to a
+  shared `TabularSheet` → CSV via the existing `CsvWriter`, so every format shows identical content (SUB-16 reuse).
+  `GetSummaryAsync` returns the per-section counts; `BuildZipAsync` packs one CSV per section + a `manifest.txt`
+  fixed-snapshot into a ZIP. Everything is company-scoped (R15). HAVs rows carry the derived A(8)/points/band.
+- ✅ **API.** `/api/evidence` (`/summary` + `/export`) is **entitlement-gated on the paid `hse` module** (fails
+  closed, Q2); the company is resolved server-side (R15). `/export` streams the ZIP via `Results.File`.
+- ✅ **Client.** `ApiEvidenceExportService`; an **Evidence Export** page (`/evidence`, nav-gated on `hse`) that shows
+  what the pack covers (sections + counts + total) and downloads the ZIP via the shared `tedwren.download` JS.
+- ✅ Tests: `EvidenceExportServiceTests` (3: per-section counts + R15 scoping, ZIP has a manifest + section CSVs with
+  data, cross-tenant data excluded) + `EvidenceApiTests` (2: module-off 403; summary + ZIP export).
+- ❗ **Follow-ups:** add competency (per-operative cards), inductions and form/inspection submissions as further
+  sections; an Excel (`XlsxWriter`) rendering and a combined PDF; a site/date filter on the pack. **Carbon** (social
+  value) stays **blocked** until the MC-26 travel/vehicle capture exists.
+
+### Commercial expansion — Track C: HSE-5 company document library versioning (MC-27) (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **document library versioning/supersede** sub-slice
+— MC-27's "company file library, always at the current version" — by mirroring the proven `QualificationCard`
+supersede chain onto the existing `CompanyDocument` (SUB-4) surface. Whole solution builds **0 warnings / 0
+errors**; all suites green (Domain 71, Application 314 incl. 3 new, Api 157 incl. 1 new, Web 178, Client 30;
+DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** `CompanyDocument` gains `Version` + `SupersedesDocumentId`/`SupersededByDocumentId`
+  + derived `IsSuperseded` (a new version supersedes the prior; the prior is **retained, never deleted** —
+  append-only, R4/R16). `ICompanyDocumentRepository` gains `GetAsync`/`UpdateAsync` (Dapper + in-memory). Idempotent
+  ALTER script `029_company_document_versioning.sql` (SQL Server + Postgres); EF `AddCompanyDocumentVersioning`
+  (Version defaults to 1 so existing rows backfill) + schema record + mapping.
+- ✅ **Service + API.** `OrganisationService`: the company detail now lists **only current versions** (superseded
+  ones are hidden but retained); `SupersedeCompanyDocumentAsync` always branches off the chain **head** (robust to
+  an old id) and `GetCompanyDocumentVersionsAsync` returns the whole chain oldest-first — both tenant-scoped (R15).
+  New `/api/organisation/companies/{id}/documents/{docId}/versions` (GET history, POST new version; 404 cross-tenant,
+  400 on validation).
+- ✅ **Client.** `ApiOrganisationService` gains the two methods; the company **Documents** tab shows a **version**
+  column with **New version** (reuses `AddCompanyDocumentDialog`, now prefill-aware) and **History** (new read-only
+  `DocumentHistoryDialog`) actions.
+- ✅ Tests: `OrganisationServiceTests` (+3: current-only listing, oldest-first history with superseded flags,
+  R15 scoping) + `OrganisationApiTests` (+1: create→version→detail-shows-current→history round-trip).
+- ❗ **Remaining HSE-5:** **unified compliance evidence export** (extend `PackComposer`/export writers); **carbon**
+  still **blocked** on the unbuilt MC-26 travel/vehicle prerequisite. Versioning follow-up: file-binary upload per
+  version (metadata-only today), and a document `FamilyId` to simplify chain queries.
+
+### Commercial expansion — Track C: HSE-5 hand-arm vibration (HAVs) monitoring (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C, HSE-5). Delivered the **HAVs** sub-slice of HSE-5 — the statutory
+Control of Vibration at Work duty and a standalone reason to buy the module. Whole solution builds **0 warnings /
+0 errors**; all suites green (Domain 71, Application 311 incl. 12 new, Api 156 incl. 2 new, Web 178, Client 30;
+DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** `HavsExposureRecord` (a person's tool usages for a day, held as **JSON**; the daily
+  A(8)/points/band are always derived, never stored) + `HavsExposureBand` (Below/Above action value / Above limit
+  value). `IHavsExposureRepository` — Dapper (dual-engine) + in-memory. Migration `028_havs.sql` (SQL Server +
+  Postgres), EF `AddHavsExposure` + `HavsExposureRow` + mapping.
+- ✅ **Calculator + service + API.** `HavsCalculator` implements the **HSE methodology** — each tool's partial
+  A(8) = a·√(t/8), combined by root-sum-of-squares; points = (A(8)/EAV)²·100 so the **EAV (2.5 m/s²) = 100 pts**
+  and **ELV (5.0 m/s²) = 400 pts**. `IHavsExposureService`/`HavsExposureService` records usages, derives the band,
+  scopes to the company (R15). `/api/havs` (list / `{id}` / create) is **entitlement-gated on `hse`** (fails
+  closed, Q2), writes `RequireWrite` (SF-23), company + recorder resolved server-side (R15).
+- ✅ **Client.** `ApiHavsExposureService`; a **Vibration (HAVs)** page (`/havs`, nav-gated on `hse`) — a
+  `DataTable` of exposure records (A(8)/points/band), a **Record exposure** dialog with dynamic per-tool rows
+  (tool + magnitude + trigger time) and a band-aware result, and a read-only breakdown dialog.
+- ✅ Tests: `HavsCalculatorTests` (6: EAV/ELV thresholds, sub-8h scaling, root-sum-of-squares) +
+  `HavsExposureServiceTests` (6: derivation, validation, invalid-usage filtering, R15) + `HavsApiTests`
+  (2: module-off 403; record→derive→list→get).
+- ❗ **HSE-5 remaining (not this change):** **library versioning/supersede** on `CompanyDocument` (mirror the
+  `QualificationCard` supersede chain, pays down MC-27); **unified compliance evidence export** (extend
+  `PackComposer`/export writers across inductions + acknowledgements + inspections + permits + competency);
+  **social value / carbon** — **blocked** on the MC-26 travel/vehicle capture prerequisite (do not build until
+  MC-26 exists). HAVs follow-ups: proactive over-EAV/ELV alerts via the notification engine; roster-linked person;
+  a rolling 7-day exposure view.
+
+### Commercial expansion — Track C: HSE-4 near-miss/hazard reporting + accident/incident (RIDDOR) (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The fourth HSE slice — two coherent features under one `hse`-gated
+`/api/safety` group and one tabbed **Safety Events** page (§8.2). Whole solution builds **0 warnings / 0 errors**;
+all suites green (Domain 71, Application 299 incl. 15 new, Api 154 incl. 3 new, Web 178, Client 30; DataAccess 4
++18 LocalDB-skipped).
+- ✅ **Domain + persistence.** Two SRP entities — `HazardReport` (near-miss/hazard/unsafe-act/-condition, with an
+  optional photo + coordinates and a triage lifecycle) and `IncidentReport` (accident/incident/dangerous-occurrence
+  with investigation fields + a **RIDDOR-reportable flag/category**). Enums `HazardKind`/`HazardStatus`/
+  `SafetySeverity`/`IncidentKind`/`IncidentStatus`. `IHazardReportRepository`/`IIncidentReportRepository` — Dapper
+  (dual-engine) + in-memory. Migration `027_safety_events.sql` (SQL Server + Postgres), EF `AddSafetyEvents` +
+  `HazardReportRecord`/`IncidentReportRecord` + mappings.
+- ✅ **Service + API.** `IHazardReportService`/`HazardReportService` (report→assign→close with a required note;
+  photo stored via `IImageStore`, validated, R9; **leading-indicator stats** by status/kind) and
+  `IIncidentReportService`/`IncidentReportService` (report→investigate→close; RIDDOR category cleared when not
+  reportable). `/api/safety` (`/hazards*` + `/incidents*`) is **entitlement-gated on `hse`** (fails closed, Q2),
+  writes `RequireWrite` (SF-23), company + reporter resolved server-side (R15). Enum values are strings on the wire
+  (parsed leniently server-side), matching the DTO convention. Validation errors → 400.
+- ✅ **Client.** `ApiHazardReportService`/`ApiIncidentReportService`; a **Safety Events** page (`/safety`, nav-gated
+  on `hse`) with two tabs — hazards (leading-indicator tiles + `DataTable` + report dialog with photo + a
+  view/triage dialog) and incidents (`DataTable` + record dialog + an investigation dialog with the RIDDOR switch).
+- ✅ Tests: `HazardReportServiceTests` (9) + `IncidentReportServiceTests` (6) + `SafetyApiTests` (3: module-off
+  403; hazard report→assign→close→stats; incident report→investigate-with-RIDDOR→close).
+- ❗ **HSE-4 follow-ups (raised):** device geolocation capture on the phone report (lat/lng columns provisioned);
+  immediate manager notification on report (reuse the notification engine); resolving reporter/assignee from the
+  people roster; and RIDDOR export. Next: **HSE-5** doc versioning + unified evidence export + HAVs + carbon.
+
+### Commercial expansion — Track C: HSE-3 document distribution & acknowledgement (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The third HSE slice — distribute a document to a set of recipients in
+one action and track who has acknowledged it (§8.2). Whole solution builds **0 warnings / 0 errors**; all suites
+green (Domain 71, Application 284 incl. 7 new, Api 151 incl. 2 new, Web 178, Client 30; DataAccess 4 +18
+LocalDB-skipped).
+- ✅ **Domain + persistence.** `DocumentDistribution` + `DocumentAcknowledgement` entities (one acknowledgement
+  row per recipient = the **completion matrix**; append-only receipt — a signed row's timestamp is set once,
+  R4/R16). `IDocumentDistributionRepository` (Add[+acks]/GetByCompany/Get/GetAcknowledgements[ForCompany]/
+  GetAcknowledgement/UpdateAcknowledgement) — Dapper (dual-engine) + in-memory. Migration `026_document_distribution.sql`
+  (SQL Server + Postgres), EF `AddDocumentDistribution` + `DocumentDistributionRecord`/`DocumentAcknowledgementRecord`
+  + mappings.
+- ✅ **Service + API.** `IDocumentDistributionService`/`DocumentDistributionService`: distributing de-duplicates
+  recipients (case-insensitive), stores the optional document via `IImageStore` (validated size/type, R9), and
+  builds the matrix; acknowledgement is **idempotent** and R15-scoped. `/api/documents` (list / `{id}` matrix /
+  create / `acknowledgements/{ackId}/sign`) is **entitlement-gated on the paid `hse` module** (fails closed, Q2),
+  writes `RequireWrite` (SF-23), company + sender resolved server-side (R15).
+- ✅ **Client.** `ApiDocumentDistributionService`; a **Documents** page (`/documents`, nav-gated on `hse`) — a
+  `DataTable` with per-document acknowledged/total counts, a **Distribute document** dialog (recipients one-per-line
+  + optional file) and a **completion matrix** viewer with a per-recipient *Mark signed* action.
+- ✅ Tests: `DocumentDistributionServiceTests` (7: matrix build, recipient de-dupe, validation, idempotent
+  acknowledgement, R15 scoping, list counts) + `DocumentApiTests` (2: module-off 403; distribute→matrix→sign).
+- ❗ **HSE-3 follow-ups (raised):** resolve recipients from real people/site rosters (currently free-text names,
+  `PersonId` column already provisioned for this); the **anonymous emailed acknowledgement link** (reuse the
+  `InductionLink`/`TradeInvite` token pattern so a recipient signs without a login); document download from the
+  matrix; and manager notification when everyone has / has not signed. Next: **HSE-4** near-miss/hazard reporting
+  & accident/incident (RIDDOR).
+
+### Commercial expansion — Track C: HSE-2 RAMS submission & approval (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The second HSE slice — the RAMS review workflow (§8.2), reusing the
+trade-onboarding review shape. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71,
+Application 277 incl. 10 new, Api 149 incl. 2 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** `RamsSubmission` entity + `RamsStatus` (Submitted/Approved/Rejected/Returned),
+  **versioned by `FamilyId`+`Version`** (a resubmission is a new record; earlier versions stay intact — append-only,
+  R4/R16). `IRamsRepository` (Add/GetByCompany/Get/Update/GetMaxVersion) — Dapper (dual-engine) + in-memory.
+  Migration `025_rams.sql` (SQL Server + Postgres), EF `AddRamsSubmissions` + `RamsSubmissionRecord` + mapping.
+- ✅ **Service + API.** `IRamsService`/`RamsService`: submit assigns an immediate **reference** (proof of when) and
+  stores the document via `IImageStore` (validated, R9); the **review queue** flags anything awaiting **>48h**;
+  approve/reject/return are R15-scoped and append-only, with **reject/return requiring a written note** (R18).
+  `/api/rams` (list/queue/submit/approve/reject/return) is **entitlement-gated on `hse`** (fails closed), writes
+  `RequireWrite` (SF-23), company + reviewer resolved server-side (R15). Wrong-state → 409, missing note → 400.
+- ✅ **Client.** `ApiRamsService`; a **RAMS** page (`/rams`, nav-gated on `hse`) — a `DataTable` with an overdue
+  flag, a **Submit RAMS** dialog, and Approve (confirm) / Reject / Return (note-capture `RamsReviewDialog`) actions.
+- ✅ Tests: `RamsServiceTests` (10: reference/versioning, queue, approve/reject/return, note-required, R15,
+  wrong-state) + `RamsApiTests` (2: module-off 403; submit→queue→reject-needs-note→approve).
+- ❗ **HSE-2 follow-ups (raised):** fold the RAMS check into the **site-entry decision** ("until approved, workers
+  can't start on that site" — completes the five-check, §8.2); the **anonymous emailed submission link** (reuse the
+  `InductionLink`/`TradeInvite` token pattern + a recipient page) and a document-upload UI; and manager email
+  notification on submit/decision. Next: **HSE-3** document distribution & acknowledgement.
+
+### Commercial expansion — Track C: HSE-1 plant & equipment register (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The first HSE slice — the Asset/Plant register the PRD said should
+exist "from the MVP so this is an addition, not a rewrite" (§8.2), now added. Metered **per active site** (Q18,
+per the product owner). Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application
+267 incl. 9 new, Api 147 incl. 2 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** New `Asset` entity + `AssetStatus` (Active/Retired). `IAssetRepository`
+  (Add/GetByCompany/Get/Update) — Dapper (dual-engine) + in-memory. Migration: idempotent `024_assets.sql`
+  (SQL Server + Postgres), EF `AddAssetRegister` migration + `AssetRecord` schema record + `TedwrenDbContext`
+  mapping.
+- ✅ **Service + API.** `IAssetService`/`AssetService` (list/create/update/retire, tenant-scoped R15) derives a
+  display **certification status** (Valid / Expiring soon [≤30d] / Expired / No certificate) from the expiry date,
+  reusing the card warning-window idea (SF-9). `/api/assets` (GET/POST/PUT/`{id}/retire`): the whole group is
+  **entitlement-gated on the paid `hse` module** (`ModuleGate.Require("hse")`, fails closed, Q2), writes
+  `RequireWrite` (SF-23), the caller's company resolved server-side (R15).
+- ✅ **Module + client + UI.** New `hse` module in `ModuleCatalog` (default off, billed per active site).
+  `ApiAssetService`; a **Plant & Equipment** page (`/assets`, nav-gated on `hse`) — a `DataTable` with cert-status,
+  Add/Edit via `EditAssetDialog` (MudDialog standard, two-way binds) and confirm-gated Retire.
+- ✅ Tests: `AssetServiceTests` (9: CRUD, R15, cert-status derivation) + `AssetApiTests` (2: module-off 403,
+  create→list→update→retire round-trip).
+- ❗ **Follow-ups:** wire asset certification/inspection expiry into `ExpiryWarningJob` (SMS/email warnings;
+  in-list only for now); an asset-type reference list; inspection records via the Forms engine. The rest of
+  Track C — **HSE-2 RAMS** onward — is the next work.
+
+### Commercial expansion — Track B: CSCS verification seam (PRD-Phase 1) (this change)
+Plan: `docs/next-phases-plan.md` (Track B). The buildable half of live CSCS verification, behind the existing
+data-model seam; the real Smart Check client + induction/gate wiring are the post-agreement build (the CSCS
+agreement is the project's longest external lead time, §11 — start it now). Whole solution builds **0 warnings /
+0 errors**; all suites green (Domain 71, Application 258 incl. 6 new, Api 145 incl. 2 new, Web 178, Client 30;
+DataAccess 4 +18 LocalDB-skipped).
+- ✅ **`ICscsVerificationService`** (Abstractions) + `CscsVerificationResult` (Verified/Expired/NotFound/Unavailable).
+  Default **`UnconfiguredCscsVerificationService`** reports Unavailable so callers use the human-check fallback
+  (§8.1 — an unreachable third party must never block an induction); the real HTTP client replaces it once the
+  agreement lands (mirrors `UnconfiguredGoCardlessClient`).
+- ✅ **`CscsVerificationCoordinator`** encodes the §8.1 decision rules over a lookup: not-entitled → no call, the
+  card stays customer-checked (Q2, fails closed); verified → `CardVerificationState.CscsVerified`; expired →
+  blocks the induction; unrecognised → induction continues but entry blocked pending a manual check; unavailable →
+  human fallback, never blocks.
+- ✅ **`cscs` paid add-on module** in `ModuleCatalog` (default off) — sellable/toggleable now. `POST
+  /api/qualifications/cscs-check` (`RequireWrite`) resolves the caller's company server-side (R15), runs the
+  coordinator, and returns a string-enum `CscsCheckResponse`.
+- ✅ Tests: `CscsVerificationCoordinatorTests` (6: each §8.1 rule + the unconfigured default) + 2 API tests
+  (module-off → NotEntitled; module-on/unconfigured → HumanFallback).
+- ❗ **Post-agreement build (raised):** the real Smart Check HTTP client behind `ICscsVerificationService`; wiring
+  the coordinator into the induction take-flow + the site-entry decision; and the same-card/two-people flag (Q11,
+  needs a cross-person card lookup).
+
+### Launch Readiness (Track A) — LR-6: Permit lifecycle + README (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Completed the permit lifecycle beyond Draft/Issued (PRD §8.2) and
+rewrote the stale README. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71,
+Application 252 incl. 6 new, Api 143 incl. 2 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Approve / close + expiry.** `PermitStatus` gains `Approved`, `Closed`, `Expired`. `PermitService`
+  `ApproveAsync`/`CloseAsync` transition Draft/Issued→Approved and Issued/Approved→Closed, **scoped to the
+  caller's company server-side (R15)** via `ICurrentUserService`, and record each transition to the audit trail
+  (best-effort, optional deps mirroring `OrganisationService`). A wrong-state transition → **409**; an
+  unknown/cross-tenant permit → **404**. `Expired` is **derived at read time** from `ValidTo` (no job, no schema
+  change — the status column already stores the enum).
+- ✅ **API + client + UI.** `POST /api/permits/{id}/approve|close` (`RequireWrite`, SF-23); `ClosePermitRequest`
+  carries the optional reason. `ApiPermitService` + an **Actions** column on the Permits page with Approve/Close
+  gated by status, each via the shared `ConfirmDialog`. Repo gains `GetAsync`/`UpdateStatusAsync` (Dapper
+  dual-engine + in-memory).
+- ✅ **README** rewritten to match the current platform (was a stale "UI/UX Base Project").
+- ✅ Tests: `PermitServiceTests` (6) + 2 API tests (approve→close→list, invalid-transition 409, cross-company 404).
+- ❗ **Follow-ups:** a close-reason capture dialog (service/API already accept a reason; the UI passes none yet);
+  module-wide server-side company resolution for permit create/list (create still takes a client-supplied
+  companyId); and the remaining demo write-actions (operative/site edit, general settings) — the other half of LR-6.
+
+### Launch Readiness (Track A) — LR-3: anonymous attack-surface hardening (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Rate-limit the anonymous token/kiosk flows + validate uploads.
+Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 246 incl. 8 new, Api
+141, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Rate limiting (LR-3a).** New generous per-IP `kiosk` policy (300/min) applied to the previously
+  unthrottled anonymous flows: site-entry, the onboarding + pack recipient groups, and the induction/trade
+  by-link endpoints. The GUID-scoped induction *session* endpoints are deliberately excluded (a session id is not
+  brute-forceable and the take-flow is legitimately multi-request); the tight 60/min `public` policy stays on the
+  marketing endpoints.
+- ✅ **Upload validation (LR-3b, R9).** New `UploadValidation` (Application/Common): a size cap (10 MB, estimated
+  from the base64 length *before* decode) + a content-type allow-list (Image vs Document), applied at every point
+  that accepts client-supplied file bytes — the anonymous trade-document, induction-form-file and onboarding-card
+  paths especially. A violation throws `ArgumentException` → 400; the trade-document and onboarding-card endpoints
+  gained the catch (induction/forms already had it). Tests: `UploadValidationTests` (8).
+- ❗ **Follow-up (external):** the *independent* security review of the public pack link (PRD §11) remains an
+  outside-this-environment action; the concrete pack-link hardening (PBKDF2 passcode, per-token throttle,
+  no-store) already shipped (`docs/security-pack-link-review.md`).
+
+### Launch Readiness (Track A) — LR-2: real SMS provider + R12 heartbeat/watchdog (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Whole solution builds **0 warnings / 0 errors**; all suites green
+(Domain 71, Application 238 incl. 3 new, Api 141, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Real SMS sender (Twilio) behind config.** New `SmsOptions`/`SmsProvider` (Abstractions.Configuration) +
+  `TwilioSmsSender` (typed HttpClient, form-encoded Twilio Messages API), conditionally registered in `Program.cs`
+  only when `Sms:Provider=Twilio` + credentials are set — otherwise the `OutboxSmsSender` default stands (mirrors
+  the Resend email override). Closes the silent drop of SF-9 worker warnings; `ISmsSender` stays pluggable (a
+  different provider e.g. Vonage is a small addition). `appsettings.json` gains an outbox-default `Sms` section;
+  `operations.md §5` documents it. Tests: `TwilioSmsSenderTests` (endpoint/form-body; throw on failure).
+- ✅ **R12 heartbeat broadened + independent watchdog.** `JobHeartbeatMonitor` now checks all four scheduled jobs
+  (expiry-scan, weekly-digest, form-reminder, overnight-check); new `JobHeartbeatHostedService` runs the check on
+  its own cadence (`Jobs:HeartbeatIntervalHours`, default 6h) independently of the job-execution loop — so a job
+  failure can't suppress its own alert — and logs a warning as a second channel. The ops-alert address is now
+  configurable (`Jobs:OpsEmail`) so it reaches a real inbox. `operations.md §6` documents it. Heartbeat tests
+  updated + an all-healthy no-alerts case added.
+- ❗ **Operator actions (raised):** set `Sms:*` (Twilio) and `Jobs:OpsEmail` + the email provider (§4) in the
+  deployment environment so SF-9 SMS and R12 alerts actually deliver. Billing reconciliation is a self-healing
+  backstop (no-ops when GoCardless is unconfigured), so it is deliberately left outside the heartbeat.
+
+### Launch Readiness (Track A) — LR-1: secrets & auth hardening (this change)
+Plan: `docs/next-phases-plan.md` (Track A). Fail-closed production config guard + removal of the committed DB
+credential. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71, Application 235,
+Api 141 incl. 7 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Fail-closed startup guard** (`src/Tedwren.Api/Security/StartupSecurity.cs`, wired in `Program.cs` after
+  `builder.Build()`): in **Production** the API refuses to boot while a committed dev default is in effect — the
+  JWT signing key (`JwtOptions.DevelopmentSigningKey`; also rejects a <256-bit key), the seed admin password
+  (`SeedAdminOptions.DevelopmentPassword`), `Auth:TestBypass=true` (authenticates every request as Administrator),
+  or a missing DB connection string in Database mode. Non-production (Development + the InMemory/TestBypass test
+  host) is unaffected. Dev defaults named as constants so the check has one source.
+- ✅ **Removed the committed live SQL Server credential** from `src/Tedwren.Api/appsettings.json` (blanked
+  `SqlServer`/`SqlServerCommercial`); supply via env/secret. `docs/operations.md` §1 now lists the required
+  secrets + `Section__Key` env-var forms, the rotation note, and the DB-free local-run switch
+  (`DataSource__Mode=InMemory`).
+- ✅ Tests: `StartupSecurityTests` (7) — default/short JWT key, default seed password, test-bypass, missing conn
+  string → throw in Production; strong config and non-prod defaults → ok.
+- ❗ **Operator actions (raised, not code):** rotate the exposed DB password on the server (it is in git history);
+  set `Jwt__SigningKey`, `Seed__Password`, `ConnectionStrings__SqlServer[Commercial]` in the deployment
+  environment. Force-change-on-first-login for seeded admins is a deliberate follow-up.
+
 ### Console data-viewing code sweep — fixes + hardening (this change)
 Whole-solution build **0 warnings / 0 errors**; all suites green (652 passed, 18 SQL LocalDB tests skipped
 in CI without a database). Full sweep of the console (tenant/commercial) pages after a team review reported
@@ -1685,6 +1977,21 @@ Phase M1 delivers the shared foundations and the first page migrations:
   a bUnit/Playwright smoke test of the Organisation page in `DataSource=Api` is a small follow-up.
 
 ## Planned (next)
+- 📋 **Next-phases scope — [`docs/next-phases-plan.md`](docs/next-phases-plan.md) (proposed, for review).**
+  A grounded scope of the stage after the MVPs, biased to *robustness* (launch-readiness first). Three
+  tracks: **Track A — Launch Readiness** (LR-1 secrets & auth hardening [P0: committed live DB credential,
+  forgeable JWT signing-key default, seeded-admin default password, `Auth:TestBypass` guard]; LR-2 real SMS
+  + broaden the R12 heartbeat to all jobs + independent watchdog; LR-3
+  rate-limit the anonymous induction/site-entry/onboarding/packs groups + harden the anonymous file uploads +
+  the independent pack-link review; LR-4 object-storage `IImageStore`; LR-5 load/a11y/backup; LR-6 README +
+  demo write-actions + Permit lifecycle; PostgreSQL parity gate left out of scope per request). **Track B — CSCS verification (PRD-Phase 1)**: start the CSCS
+  agreement now (longest lead time), build `ICscsVerificationService` behind the existing
+  `CardVerificationState.CscsVerified`/`IsCscsVerifiable` seam with an unconfigured no-op + human fallback.
+  **Track C — Health, Safety & Compliance (PRD-Phase 2)** on the already-built Forms spine: HSE-1 Asset/Plant
+  register (the PRD §8.2 data-model debt — never stubbed), HSE-2 RAMS (reuse the trade-onboarding pattern +
+  fold into the site-entry decision), HSE-3 document distribution & acknowledgement, HSE-4 near-miss/incident
+  (RIDDOR), HSE-5 doc versioning + unified evidence export + HAVs + carbon. Deferred with reasons: PRD-Phases
+  3–7, Worker Passport. Decisions for Leigh/James: PRD Q14, Q18/§9 metering, Q21/Q22 default libraries, Q3.
 - ⏸️ **PostgreSQL launch gate — deferred for now (per request).** The full PostgreSQL parity suite and the
   dual-engine pre-launch gate are intentionally out of scope for the current push. The EF model already
   lower-cases identifiers for PostgreSQL and the migration scripts exist, so this is a run/verify task when
@@ -1716,14 +2023,12 @@ Phase M1 delivers the shared foundations and the first page migrations:
   statuses; `OrganisationService` now reports it instead of `Pending`. (Done this change.)
 - ✅ **Company edit persists** — `UpdateCompanyAsync` across the stack + an `EditCompanyDialog`; the
   CompanyDetail "Edit" action now saves. (Done this change.)
-- ⏳ **Follow-ups (non-blocking), remaining:**
-  - **Persist the other demo write actions**: operative "Edit"/"Send update link", **site** "Edit", System
-    Configuration **general settings**, and Permits "Save" — each needs a dedicated write endpoint/service
-    (company edit + module entitlements persist today; site repo already has `UpdateAsync` so site edit is a
-    small next step).
-  - Real **SMS** provider (PRD-Phase 7) — email is done (Resend + branded template + invite delivery, see
-    Completed); SMS is the remaining channel (and the natural route for onboarding links). Company
-    insurance/accreditation docs in the digest (needs SUB-4); real card-image storage (R9).
+- ✅ **Demo write-actions now persist** (delivered incrementally across the UAT/dialog work and LR-6): **site**
+  edit (`ISiteService.UpdateSiteAsync` + `EditSiteDialog`), **general settings** (`/api/settings` PUT round-trip),
+  **operative** contact edit (UAT-010a, `UpdatePersonContactAsync`), company edit + module entitlements, and
+  **permits** (create/issue + the LR-6 approve/close lifecycle).
+- ✅ **Real SMS provider** delivered in LR-2 (Twilio behind config; outbox default). Remaining PRD-Phase items:
+  company insurance/accreditation docs in the digest (needs SUB-4); object-storage for card images (R9 — LR-4).
 - ✅ *Done previously:* audit "Export CSV"; SiteDetail over `ISiteService`; Users management page;
   `/sites/add`; Dashboard export/date-range; EF migrations tooling; Mock→Database default; Mock mode removed.
 

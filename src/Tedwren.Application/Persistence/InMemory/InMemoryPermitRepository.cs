@@ -24,4 +24,19 @@ public sealed class InMemoryPermitRepository : IPermitRepository
             .ToList();
         return Task.FromResult(rows);
     }
+
+    /// <summary>Returns a single permit by id, or null if none exists.</summary>
+    public Task<Permit?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_permits.TryGetValue(id, out var permit) ? permit : null);
+
+    /// <summary>Updates a permit's lifecycle status.</summary>
+    public Task UpdateStatusAsync(Guid id, Domain.Enums.PermitStatus status, CancellationToken cancellationToken = default)
+    {
+        if (_permits.TryGetValue(id, out var permit))
+        {
+            permit.Status = status;
+        }
+
+        return Task.CompletedTask;
+    }
 }

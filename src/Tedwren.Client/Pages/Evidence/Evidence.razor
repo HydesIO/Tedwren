@@ -1,0 +1,103 @@
+@page "/evidence"
+@using Tedwren.Abstractions.Contracts.Evidence
+@using Tedwren.Abstractions.Services
+@inject IEvidenceExportService EvidenceSvc
+@inject ITenantState Tenant
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<PageTitle>Evidence Export · Tedwren</PageTitle>
+
+<PageHeader Title="Evidence Export" Subtitle="Assemble a company-wide compliance evidence pack for an ISO 45001 / project audit">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Download"
+                   Disabled="_busy || _summary is null || _summary.TotalRecords == 0" OnClick="DownloadAsync">
+            Download evidence pack (ZIP)
+        </MudButton>
+    </Actions>
+</PageHeader>
+
+<DashboardCard Title="What's included">
+    <Body>
+        @if (_loading)
+        {
+            <MudText>Loading…</MudText>
+        }
+        else if (_summary is null)
+        {
+            <MudText>The evidence summary could not be loaded.</MudText>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Class="mb-3">
+                The pack is a fixed snapshot of the sections below — one CSV per section plus a manifest — generated at download.
+                @_summary.TotalRecords record(s) across @_summary.Sections.Count section(s).
+            </MudText>
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>Section</th>
+                        <th>Records</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in _summary.Sections)
+                    {
+                        <tr>
+                            <td>@row.Name</td>
+                            <td>@row.Count</td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+    </Body>
+</DashboardCard>
+
+@code {
+    private bool _loading = true;
+    private bool _busy;
+    private EvidenceSummaryDto? _summary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _summary = await EvidenceSvc.GetSummaryAsync(Tenant.CurrentCompanyId);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _summary = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task DownloadAsync()
+    {
+        _busy = true;
+        try
+        {
+            var file = await EvidenceSvc.BuildZipAsync(Tenant.CurrentCompanyId);
+            await JS.InvokeVoidAsync("tedwren.download", file.FileName, Convert.ToBase64String(file.Content), file.ContentType);
+            Snackbar.Add("Evidence pack downloaded.", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Could not generate the evidence pack.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

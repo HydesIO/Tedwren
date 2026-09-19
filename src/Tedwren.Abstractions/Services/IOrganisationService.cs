@@ -25,6 +25,12 @@ public interface IOrganisationService
     /// <summary>Adds a company-held document (insurance, accreditation or policy) and returns its new id (SUB-4).</summary>
     Task<Guid> AddCompanyDocumentAsync(CreateCompanyDocumentRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>Supersedes a document with a new version, retaining the prior one (MC-27). Returns the new version's id, or null when the document is missing/cross-tenant (R15).</summary>
+    Task<Guid?> SupersedeCompanyDocumentAsync(SupersedeCompanyDocumentRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>Returns a document's full version chain (oldest first), or an empty list when missing/cross-tenant (MC-27, R15).</summary>
+    Task<IReadOnlyList<CompanyDocumentDto>> GetCompanyDocumentVersionsAsync(Guid companyId, Guid documentId, CancellationToken cancellationToken = default);
+
     /// <summary>
     /// Adds an operative to a company: reuses the existing person for that mobile number or creates one
     /// (SF-1), and refuses a second engagement of the same person in the same company (SF-2).

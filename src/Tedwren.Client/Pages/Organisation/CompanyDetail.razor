@@ -138,6 +138,26 @@ else
                 Title = "Status", Text = d => d.StatusLabel, Sortable = false, Filterable = true,
                 CellTemplate = d => @<StatusPill Label="@d.StatusLabel" Status="ComplianceStatusView.ToStatusKind(d.State)" />
             },
+            new()
+            {
+                Title = "Version", Value = d => d.Version, Searchable = false,
+                CellTemplate = d => @<span>v@d.Version</span>
+            },
+            new()
+            {
+                Title = "", Value = _ => string.Empty, Searchable = false, Sortable = false,
+                CellTemplate = d => @<div class="op-actions">
+                    <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                               StartIcon="@Icons.Material.Outlined.Upgrade"
+                               OnClick="@(() => NewVersionAsync(d))">New version</MudButton>
+                    @if (d.Version > 1)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Default"
+                                   StartIcon="@Icons.Material.Outlined.History"
+                                   OnClick="@(() => ShowHistoryAsync(d))">History</MudButton>
+                    }
+                </div>
+            },
         };
 
         _opColumns = new()
@@ -189,6 +209,56 @@ else
             Snackbar.Add($"Added \"{request.Name}\".", Severity.Success);
             await OnParametersSetAsync();   // reload so the new document shows and the count updates
         }
+    }
+
+    // Records a new version of a document (MC-27): the prior version is retained and hidden from the library,
+    // reachable via History. Prefills the dialog from the current version so only the changed details are edited.
+    private async Task NewVersionAsync(CompanyDocumentDto document)
+    {
+        if (_company is null)
+        {
+            return;
+        }
+
+        var parameters = new DialogParameters<AddCompanyDocumentDialog>
+        {
+            { x => x.CompanyId, _company.Id },
+            { x => x.Heading, $"New version of \"{document.Name}\"" },
+            { x => x.ConfirmText, "Save new version" },
+            { x => x.GuidanceText, "Record the replacement document. It becomes the current version in the library; the previous version is kept and remains available under History." },
+            { x => x.InitialName, document.Name },
+            { x => x.InitialType, document.Type },
+            { x => x.InitialExpires, document.ExpiresOn },
+        };
+        var dialog = await Dialogs.ShowAsync<AddCompanyDocumentDialog>("New version", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false, Data: CreateCompanyDocumentRequest request })
+        {
+            var newId = await Org.SupersedeCompanyDocumentAsync(new SupersedeCompanyDocumentRequest(
+                _company.Id, document.Id, request.Name, request.Type, request.ExpiresOn, request.Reference));
+            Snackbar.Add(newId is not null ? $"Saved version {document.Version + 1} of \"{request.Name}\"." : "Could not save the new version.",
+                newId is not null ? Severity.Success : Severity.Error);
+            if (newId is not null)
+            {
+                await OnParametersSetAsync();
+            }
+        }
+    }
+
+    // Shows a document's full version history (MC-27) in a read-only dialog.
+    private async Task ShowHistoryAsync(CompanyDocumentDto document)
+    {
+        if (_company is null)
+        {
+            return;
+        }
+
+        var versions = await Org.GetCompanyDocumentVersionsAsync(_company.Id, document.Id);
+        var parameters = new DialogParameters<DocumentHistoryDialog>
+        {
+            { x => x.DocumentName, document.Name },
+            { x => x.Versions, versions },
+        };
+        await Dialogs.ShowAsync<DocumentHistoryDialog>("Version history", parameters, TedwrenDialog.Medium());
     }
 
     // Opens the edit dialog and reloads on save (persists via IOrganisationService.UpdateCompanyAsync).

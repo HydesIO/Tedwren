@@ -1,0 +1,190 @@
+@page "/safety"
+@using Tedwren.Abstractions.Contracts.Safety
+@using Tedwren.Abstractions.Services
+@inject IHazardReportService HazardsSvc
+@inject IIncidentReportService IncidentsSvc
+@inject ITenantState Tenant
+@inject IDialogService Dialogs
+
+<PageTitle>Safety Events · Tedwren</PageTitle>
+
+<PageHeader Title="Safety Events" Subtitle="Hazard & near-miss reporting and accident / incident records (RIDDOR)" />
+
+<MudTabs Elevation="0" Rounded="true" Border="true" ApplyEffectsToContainer="true" Class="safety-tabs">
+    <MudTabPanel Text="Hazards & near-misses">
+        <div class="safety-stats">
+            @foreach (var (label, value) in Tiles())
+            {
+                <MudPaper Outlined="true" Class="safety-stats__tile pa-3">
+                    <MudText Typo="Typo.h5">@value</MudText>
+                    <MudText Typo="Typo.caption">@label</MudText>
+                </MudPaper>
+            }
+        </div>
+
+        <DashboardCard>
+            <Body>
+                <div class="safety-toolbar">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.AddAlert"
+                               OnClick="ReportHazard">Report hazard / near-miss</MudButton>
+                </div>
+                <DataTable TItem="HazardReportDto"
+                           Items="_hazards"
+                           Columns="_hazardColumns"
+                           Loading="_loadingHazards"
+                           SearchPlaceholder="Search hazards…"
+                           EmptyTitle="No hazards reported yet"
+                           EmptyDescription="Report a hazard or near-miss to start the register."
+                           EmptyIcon="@Icons.Material.Outlined.ReportProblem" />
+            </Body>
+        </DashboardCard>
+    </MudTabPanel>
+
+    <MudTabPanel Text="Accidents & incidents">
+        <DashboardCard>
+            <Body>
+                <div class="safety-toolbar">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.MedicalServices"
+                               OnClick="ReportIncident">Record accident / incident</MudButton>
+                </div>
+                <DataTable TItem="IncidentReportDto"
+                           Items="_incidents"
+                           Columns="_incidentColumns"
+                           Loading="_loadingIncidents"
+                           SearchPlaceholder="Search incidents…"
+                           EmptyTitle="No incidents recorded yet"
+                           EmptyDescription="Record an accident or incident to open an investigation."
+                           EmptyIcon="@Icons.Material.Outlined.MedicalServices" />
+            </Body>
+        </DashboardCard>
+    </MudTabPanel>
+</MudTabs>
+
+@code {
+    private bool _loadingHazards = true;
+    private bool _loadingIncidents = true;
+
+    private IReadOnlyList<HazardReportDto> _hazards = Array.Empty<HazardReportDto>();
+    private IReadOnlyList<IncidentReportDto> _incidents = Array.Empty<IncidentReportDto>();
+    private HazardStatsDto _stats = new(0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+    private List<DataColumn<HazardReportDto>> _hazardColumns = new();
+    private List<DataColumn<IncidentReportDto>> _incidentColumns = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Tenant.InitializeAsync();
+        BuildColumns();
+        await Task.WhenAll(LoadHazardsAsync(), LoadIncidentsAsync());
+    }
+
+    private async Task LoadHazardsAsync()
+    {
+        _loadingHazards = true;
+        _hazards = await HazardsSvc.ListAsync(Tenant.CurrentCompanyId);
+        _stats = await HazardsSvc.GetStatsAsync(Tenant.CurrentCompanyId);
+        _loadingHazards = false;
+    }
+
+    private async Task LoadIncidentsAsync()
+    {
+        _loadingIncidents = true;
+        _incidents = await IncidentsSvc.ListAsync(Tenant.CurrentCompanyId);
+        _loadingIncidents = false;
+    }
+
+    private void BuildColumns()
+    {
+        _hazardColumns = new()
+        {
+            new() { Title = "Reference", Value = h => h.Reference, Filterable = true },
+            new() { Title = "Kind", Value = h => Humanize(h.Kind), Filterable = true },
+            new() { Title = "Description", Value = h => h.Description },
+            new() { Title = "Severity", Value = h => h.Severity, Filterable = true },
+            new() { Title = "Status", Value = h => h.Status, Filterable = true },
+            new() { Title = "Assigned to", Value = h => h.AssignedTo ?? "—" },
+            new() { Title = "Reported", Value = h => h.ReportedUtc.ToLocalTime().ToString("dd MMM yyyy"), Searchable = false },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = h => @<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                OnClick="@(() => ViewHazard(h))">View</MudButton>
+            },
+        };
+
+        _incidentColumns = new()
+        {
+            new() { Title = "Reference", Value = i => i.Reference, Filterable = true },
+            new() { Title = "Kind", Value = i => Humanize(i.Kind), Filterable = true },
+            new() { Title = "Description", Value = i => i.Description },
+            new() { Title = "Occurred", Value = i => i.OccurredUtc.ToLocalTime().ToString("dd MMM yyyy"), Searchable = false },
+            new() { Title = "Severity", Value = i => i.Severity, Filterable = true },
+            new()
+            {
+                Title = "RIDDOR", Value = i => i.RiddorReportable ? "Reportable" : "—", Filterable = true,
+                CellTemplate = i => @<span>@(i.RiddorReportable ? "Reportable" : "—")</span>
+            },
+            new() { Title = "Status", Value = i => Humanize(i.Status), Filterable = true },
+            new()
+            {
+                Title = "Actions", Value = _ => string.Empty, Searchable = false,
+                CellTemplate = i => @<MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
+                                                OnClick="@(() => ViewIncident(i))">View</MudButton>
+            },
+        };
+    }
+
+    private async Task ReportHazard()
+    {
+        var parameters = new DialogParameters<ReportHazardDialog> { { x => x.CompanyId, Tenant.CurrentCompanyId } };
+        var dialog = await Dialogs.ShowAsync<ReportHazardDialog>("Report hazard / near-miss", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadHazardsAsync();
+        }
+    }
+
+    private async Task ViewHazard(HazardReportDto h)
+    {
+        var parameters = new DialogParameters<HazardDetailDialog> { { x => x.HazardId, h.Id } };
+        var dialog = await Dialogs.ShowAsync<HazardDetailDialog>($"Hazard {h.Reference}", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadHazardsAsync();
+        }
+    }
+
+    private async Task ReportIncident()
+    {
+        var parameters = new DialogParameters<ReportIncidentDialog> { { x => x.CompanyId, Tenant.CurrentCompanyId } };
+        var dialog = await Dialogs.ShowAsync<ReportIncidentDialog>("Record accident / incident", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadIncidentsAsync();
+        }
+    }
+
+    private async Task ViewIncident(IncidentReportDto i)
+    {
+        var parameters = new DialogParameters<IncidentDetailDialog> { { x => x.IncidentId, i.Id } };
+        var dialog = await Dialogs.ShowAsync<IncidentDetailDialog>($"Incident {i.Reference}", parameters, TedwrenDialog.Large());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadIncidentsAsync();
+        }
+    }
+
+    /// <summary>The leading-indicator tiles shown above the hazard register.</summary>
+    private IEnumerable<(string Label, int Value)> Tiles() => new[]
+    {
+        ("Total", _stats.Total),
+        ("Open", _stats.Open),
+        ("Assigned", _stats.Assigned),
+        ("Closed", _stats.Closed),
+        ("High severity", _stats.High),
+    };
+
+    /// <summary>Inserts spaces before internal capitals so an enum name reads as words (e.g. "NearMiss" → "Near Miss").</summary>
+    private static string Humanize(string value) =>
+        string.IsNullOrEmpty(value) ? value : System.Text.RegularExpressions.Regex.Replace(value, "(?<=[a-z])([A-Z])", " $1");
+}

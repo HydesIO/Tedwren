@@ -1,0 +1,102 @@
+@using Tedwren.Abstractions.Contracts.Documents
+@using Tedwren.Abstractions.Services
+@inject IDocumentDistributionService DocumentsSvc
+@inject ISnackbar Snackbar
+
+@* Distribute a document to a set of recipients for acknowledgement; persists via IDocumentDistributionService.
+   Each recipient becomes a line in the completion matrix (who has / has not signed). *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="Send a document to a group of people and track who has acknowledged it. Enter one recipient per line — each becomes a line in the completion matrix. Attaching the document itself is optional; the matrix works either way." />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Document</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Title" @bind-Value="_title" Required="true"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_title)" ErrorText="A document title is required." />
+                    </div>
+                    <TedwrenTextField Label="Category" @bind-Value="_category" Placeholder="e.g. Policy, Toolbox talk" />
+                    <TedwrenTextField Label="Audience" @bind-Value="_audience" Placeholder="e.g. All site operatives" />
+                    <div class="tw-dialog-body__full">
+                        <MudTextField @bind-Value="_recipientsText" Label="Recipients (one per line)" Variant="Variant.Outlined"
+                                      Lines="5" Placeholder="Jane Smith&#10;John Doe" Required="true"
+                                      Error="_submitted && ParseRecipients().Count == 0" ErrorText="At least one recipient is required." />
+                    </div>
+                    <div class="tw-dialog-body__full">
+                        <MudText Typo="Typo.body2" Class="mb-1">Attach the document (optional)</MudText>
+                        <InputFile OnChange="OnFileSelected" accept=".pdf,image/*" />
+                        @if (_file is not null)
+                        {
+                            <MudText Typo="Typo.caption">@_file.Name</MudText>
+                        }
+                    </div>
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SubmitAsync" Disabled="_busy">Distribute</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public Guid CompanyId { get; set; }
+
+    private string? _title;
+    private string? _category;
+    private string? _audience;
+    private string _recipientsText = string.Empty;
+    private IBrowserFile? _file;
+    private bool _submitted;
+    private bool _busy;
+
+    private void OnFileSelected(InputFileChangeEventArgs e) => _file = e.File;
+
+    private List<string> ParseRecipients() => _recipientsText
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private async Task SubmitAsync()
+    {
+        _submitted = true;
+        var recipients = ParseRecipients();
+        if (string.IsNullOrWhiteSpace(_title) || recipients.Count == 0)
+        {
+            Snackbar.Add("A title and at least one recipient are required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            string? fileB64 = null, fileType = null;
+            if (_file is not null)
+            {
+                using var ms = new MemoryStream();
+                await _file.OpenReadStream(10 * 1024 * 1024).CopyToAsync(ms);
+                fileB64 = Convert.ToBase64String(ms.ToArray());
+                fileType = _file.ContentType;
+            }
+
+            var dto = await DocumentsSvc.CreateAsync(CompanyId, string.Empty,
+                new CreateDistributionRequest(_title!, _category, _audience, fileB64, fileType, recipients));
+            Snackbar.Add($"Distributed to {dto.TotalCount} recipient(s).", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch
+        {
+            Snackbar.Add("Could not distribute the document.", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}
