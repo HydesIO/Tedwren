@@ -32,10 +32,14 @@ public sealed class SiteEntryServiceTests
         public InMemorySiteStore Sites { get; } = new(seed: false);
         public InMemoryDecisionRepository Decisions { get; } = new();
         public FakeQualifications Qualifications { get; } = new();
+        public InMemoryEntitlementRepository Entitlements { get; } = new();
+
+        /// <summary>Grants the caller company a module (catalogue key) so entitlement-gated checks apply.</summary>
+        public Task EnableModuleAsync(string moduleKey) => Entitlements.SetAsync(Company, moduleKey, true);
 
         public SiteEntryService Build()
         {
-            var entitlements = new EntitlementService(new InMemoryEntitlementRepository());
+            var entitlements = new EntitlementService(Entitlements);
             var decisionService = new DecisionService(Decisions);
             return new SiteEntryService(
                 new InMemoryEngagementRepository(Org),
@@ -82,6 +86,21 @@ public sealed class SiteEntryServiceTests
         var recorded = Assert.Single(await new DecisionService(fx.Decisions).GetForPersonAsync(person));
         Assert.True(recorded.Admitted);
         Assert.Equal(5, recorded.Checks.Count);
+    }
+
+    [Fact] // MC-8 + R10 — the RAMS check actually applies when the company holds the HSE module (regression guard:
+           // it was keyed on a non-existent "rams" module, so it always recorded NotRun even for HSE customers)
+    public async Task RamsCheck_Passes_WhenHseModuleHeld()
+    {
+        var fx = new Fixture();
+        await fx.EnableModuleAsync("hse");
+        var person = fx.Register();
+        fx.Induct(person);
+        fx.Qualifications.SetCards(person);
+
+        var result = await fx.Build().DecideAsync(Request(person));
+
+        Assert.Contains(result.Checks, c => c.Name == "RAMS" && c.Outcome == "Passed");
     }
 
     [Fact] // MC-9 — an expired card blocks with a specific reason

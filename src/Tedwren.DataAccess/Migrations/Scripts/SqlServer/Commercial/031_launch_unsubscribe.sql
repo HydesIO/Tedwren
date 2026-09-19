@@ -7,6 +7,8 @@ ALTER TABLE dbo.LaunchSignups ADD Unsubscribed BIT NOT NULL CONSTRAINT DF_Launch
 IF COL_LENGTH(N'dbo.LaunchSignups', N'UnsubscribeToken') IS NULL
 ALTER TABLE dbo.LaunchSignups ADD UnsubscribeToken NVARCHAR(64) NULL;
 
--- The unsubscribe token is the lookup key for the one-click link; unique where present.
+-- The unsubscribe token is the lookup key for the one-click link; unique where present. Created via EXEC so it
+-- is compiled after the ALTER above has added the column (single-batch runner, no GO support — see 023). Without
+-- this, SQL Server compiles the whole batch up front and fails with "Invalid column name 'UnsubscribeToken'".
 IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_LaunchSignups_Unsub')
-CREATE UNIQUE INDEX UX_LaunchSignups_Unsub ON dbo.LaunchSignups (UnsubscribeToken) WHERE UnsubscribeToken IS NOT NULL;
+EXEC(N'CREATE UNIQUE INDEX UX_LaunchSignups_Unsub ON dbo.LaunchSignups (UnsubscribeToken) WHERE UnsubscribeToken IS NOT NULL;');

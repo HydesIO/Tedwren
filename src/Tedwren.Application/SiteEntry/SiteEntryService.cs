@@ -183,10 +183,12 @@ public sealed class SiteEntryService : ISiteEntryService
         return new DecisionCheck("Cards in date & confirmed", DecisionCheckOutcome.Passed, "All cards in date and confirmed");
     }
 
-    /// <summary>RAMS where the module is held; recorded as not-run when the customer does not hold it (R10).</summary>
+    /// <summary>RAMS where the module is held; recorded as not-run when the customer does not hold it (R10). RAMS is
+    /// part of the "hse" module (ModuleCatalog: "Plant register, RAMS and safety records") — checking a non-existent
+    /// "rams" key here made the entitlement always fail closed, so the check never applied even for HSE customers.</summary>
     private async Task<DecisionCheck> CheckRamsAsync(Guid companyId, CancellationToken cancellationToken)
     {
-        var held = await _entitlements.IsEnabledAsync(companyId, "rams", cancellationToken);
+        var held = await _entitlements.IsEnabledAsync(companyId, "hse", cancellationToken);
         return held
             ? new DecisionCheck("RAMS", DecisionCheckOutcome.Passed, "RAMS acknowledged")
             : new DecisionCheck("RAMS", DecisionCheckOutcome.NotRun, "RAMS module not held — check does not apply");
