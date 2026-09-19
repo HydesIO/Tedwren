@@ -324,6 +324,26 @@ public sealed class AssetRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>RamsSubmissions</c> table (RAMS review, PRD §8.2).</summary>
+public sealed class RamsSubmissionRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid FamilyId { get; set; }
+    public int Version { get; set; }
+    public string Reference { get; set; } = string.Empty;
+    public string ContractorName { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public Guid? SiteId { get; set; }
+    public string? SiteName { get; set; }
+    public string? FileReference { get; set; }
+    public int Status { get; set; }
+    public string? ReviewNote { get; set; }
+    public string? ReviewedBy { get; set; }
+    public DateTimeOffset? ReviewedUtc { get; set; }
+    public DateTimeOffset SubmittedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>AuditEntries</c> table (SF-20).</summary>
 public sealed class AuditEntryRecord
 {

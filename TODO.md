@@ -79,6 +79,28 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Commercial expansion — Track C: HSE-2 RAMS submission & approval (PRD-Phase 2) (this change)
+Plan: `docs/next-phases-plan.md` (Track C). The second HSE slice — the RAMS review workflow (§8.2), reusing the
+trade-onboarding review shape. Whole solution builds **0 warnings / 0 errors**; all suites green (Domain 71,
+Application 277 incl. 10 new, Api 149 incl. 2 new, Web 178, Client 30; DataAccess 4 +18 LocalDB-skipped).
+- ✅ **Domain + persistence.** `RamsSubmission` entity + `RamsStatus` (Submitted/Approved/Rejected/Returned),
+  **versioned by `FamilyId`+`Version`** (a resubmission is a new record; earlier versions stay intact — append-only,
+  R4/R16). `IRamsRepository` (Add/GetByCompany/Get/Update/GetMaxVersion) — Dapper (dual-engine) + in-memory.
+  Migration `025_rams.sql` (SQL Server + Postgres), EF `AddRamsSubmissions` + `RamsSubmissionRecord` + mapping.
+- ✅ **Service + API.** `IRamsService`/`RamsService`: submit assigns an immediate **reference** (proof of when) and
+  stores the document via `IImageStore` (validated, R9); the **review queue** flags anything awaiting **>48h**;
+  approve/reject/return are R15-scoped and append-only, with **reject/return requiring a written note** (R18).
+  `/api/rams` (list/queue/submit/approve/reject/return) is **entitlement-gated on `hse`** (fails closed), writes
+  `RequireWrite` (SF-23), company + reviewer resolved server-side (R15). Wrong-state → 409, missing note → 400.
+- ✅ **Client.** `ApiRamsService`; a **RAMS** page (`/rams`, nav-gated on `hse`) — a `DataTable` with an overdue
+  flag, a **Submit RAMS** dialog, and Approve (confirm) / Reject / Return (note-capture `RamsReviewDialog`) actions.
+- ✅ Tests: `RamsServiceTests` (10: reference/versioning, queue, approve/reject/return, note-required, R15,
+  wrong-state) + `RamsApiTests` (2: module-off 403; submit→queue→reject-needs-note→approve).
+- ❗ **HSE-2 follow-ups (raised):** fold the RAMS check into the **site-entry decision** ("until approved, workers
+  can't start on that site" — completes the five-check, §8.2); the **anonymous emailed submission link** (reuse the
+  `InductionLink`/`TradeInvite` token pattern + a recipient page) and a document-upload UI; and manager email
+  notification on submit/decision. Next: **HSE-3** document distribution & acknowledgement.
+
 ### Commercial expansion — Track C: HSE-1 plant & equipment register (PRD-Phase 2) (this change)
 Plan: `docs/next-phases-plan.md` (Track C). The first HSE slice — the Asset/Plant register the PRD said should
 exist "from the MVP so this is an addition, not a rewrite" (§8.2), now added. Metered **per active site** (Q18,
