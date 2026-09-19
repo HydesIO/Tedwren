@@ -9,6 +9,67 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+## Mobile app (.NET MAUI, Android + iOS) — M-track (19 Sep 2026)
+
+New native field app for operatives (primary) + site managers/admins (secondary). Plan & scope in
+`docs/mobile-app-plan.md`; build/toolchain in `docs/mobile-app-build.md`. Optional layer beside the mandatory
+browser paths (R1); offline scoped to evidence/forms capture + read caches (R2/R3). Two solutions:
+`Tedwren.sln` builds `Tedwren.Mobile.Core` (+ tests) on Linux/CI; `Tedwren.Mobile.slnx` builds the MAUI heads on
+a workload machine (iOS needs macOS).
+
+- ✅ **M1 — Foundation / walking skeleton.** New projects `Tedwren.Mobile` (MAUI head, android+ios),
+  `Tedwren.Mobile.Controls` (design tokens ported from `tokens.css`; `TwCard`/`TwMenuTile`), `Tedwren.Mobile.Core`
+  (role-switch resolver, session model, mobile-number normaliser reusing `PhoneNumber`, `AuthApiClient`, platform
+  abstractions) + `Tedwren.Mobile.Core.Tests` (21 tests, green). Brand-orange splash + white/transparent-"T" app
+  icon (from `logo-icon.svg`). Role-switch shell → two card-menu homes + dashboard shells. Core+tests wired into
+  `Tedwren.sln` (whole solution builds clean, 0 warnings); MAUI heads in `Tedwren.Mobile.slnx`.
+- ✅ **M2 — Operative auth (mobile + OTP + device bind + biometric).** Server: `OperativeDevice` / `OtpChallenge`
+  (+ `OperativeDeviceStatus`, Dapper repos, EF `AddMobileAuth` migration + raw scripts `035` both dialects, schema
+  parity green); `/api/mobile/auth/{request-otp,verify-otp,refresh}` (anonymous, kiosk-rate-limited) reusing the
+  existing `ISmsSender`; operative JWT issuer (`tedwren-mobile` audience, "Operative" role) + refresh-token
+  rotation; **PersonId taken from the token, never the request body**. One-operative-per-device + one-active-device
+  enforced (buddy-punching deterrent); archived engagement revokes refresh. Client (Core): `OperativeAuthApiClient`
+  + `OperativeSessionManager` (device-id, enrolment, biometric-gated resume) + `OperativeEnrolPage`. Tests: 9
+  Application, 3 API, 14 Core — all green. ❗ Deferred to M3 (land with the first protected operative endpoint):
+  the `RequireOperative` policy + accepting the `tedwren-mobile` audience in JwtBearer, and the console
+  device-revoke/re-bind admin action.
+- ✅ **M3 — Operative surface + read caches + dashboard.** Server: **auth plane separation** — JwtBearer accepts
+  the `tedwren-mobile` audience; new `RequireOperative` policy (Operative role + device claim); the fallback
+  policy now requires a console role so operative tokens can't reach console endpoints. `/api/mobile/{me,my-hours,
+  sites,dashboard}` (RequireOperative), reading PersonId/CompanyId from the token, never the body; a dedicated
+  `MobileSurfaceService` + `OperativeDashboardService` compose over the existing workforce/timesheet/site services
+  + repos (console `IWorkforceService`/`ISiteService` left untouched — SRP). Client (Core): `AccessTokenStore` +
+  silent-refresh `OperativeAuthMessageHandler` (401→refresh→retry once) + typed `OperativeApiClient` +
+  `IReadCache`/`JsonFileReadCache` + cache-then-network `OperativeDataService`. MAUI head: launch resume router,
+  operative dashboard populated, My hours / My cards / Profile pages. Tests: 3 API (plane separation + own-data),
+  9 Core — all green. ❗ Deferred: **site-documents (MC-27)** — no Site↔Document association exists (MC-27 is
+  company-doc versioning); needs new modelling, raised as a gap. Read-cache **encryption-at-rest** lands in M5
+  (SQLCipher replaces `JsonFileReadCache`).
+- ✅ **M4 — Attendance sign-in/out (online-only, geofenced).** Server: `MobileAttendanceEndpoints`
+  (`/api/mobile/attendance/{sign-in,sign-out,current}`, RequireOperative) — thin wrappers over the existing
+  `IAttendanceService` with PersonId taken from the token (never the body) and an **R15 site guard** reusing the
+  tenant-scoped `ISiteService.GetSiteAsync` (cross-company/unknown site → 403 before any record). Every attempt is
+  recorded incl. refusals (SF-16, 200 body); the geofence decides the outcome (SF-14); no two sites at once
+  surfaces `SignedInElsewhere` (SF-18); sign-out returns duration (SF-17); `/current` is 204 when not signed in.
+  `IAttendanceService` left untouched (Blazor console implements it — SRP). New mobile-only `IMobileAttendanceService`
+  + `MobileAttendanceService` (current open sign-in + site name); `OperativeDashboardService` now populates live
+  `SignedIn`/`CurrentSiteId`/`CurrentSiteName` (M3 stubs removed). Client (Core): typed `AttendanceApiClient`
+  (online-only, 204→null) + `GeofenceHint` (reuses the domain `Geofence` for a pre-submit advisory; server stays
+  authoritative). MAUI head: `SignInOutPage` — pick a cached site, capture location, geofence hint, **online-only
+  guard** ("browser link still works" offline, R1/R2/R3), subcontractor-safe wording ("recorded"/"site-ready",
+  never "permitted"/"denied", R18/SUB-12), UK-local times (R11); operative-home tile routed + dashboard refreshes
+  on return. Status-colour tokens added to `TwPalette`. Tests: 7 API (inside/outside/cross-company/double-site/
+  sign-out/dashboard/console-403), 2 Application (`GetCurrentAsync`), 9 Core (client + geofence hint) — all green.
+- ⏳ **M5** offline capture & sync · **M6** forms engine (comprehensive) · **M7** manager/admin mode ·
+  **M8** hardening & store readiness.
+- ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
+  workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
+- ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and
+  one-device-per-operative are SF-1 design choices, not mandates; geotagged photos + push for due forms are
+  enhancements beyond the forms spec.
+
+---
+
 ## API & UI review — endpoints, contracts, security, PostgreSQL parity (19 Sep 2026)
 
 A full sweep of every API endpoint/contract and the Blazor UI. The client↔API contract reconciled clean

@@ -304,6 +304,27 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the operative (mobile) authentication service + one-time-code generator (M2), the operative read surface + dashboard service (M3) and the operative attendance read (M4).</summary>
+    public static IServiceCollection AddMobileAuthCore(this IServiceCollection services)
+    {
+        services.AddScoped<IOperativeAuthService, Mobile.OperativeAuthService>();
+        services.AddSingleton<Mobile.IOtpCodeGenerator, Mobile.RandomOtpCodeGenerator>();
+        services.AddScoped<IMobileSurfaceService, Mobile.MobileSurfaceService>();
+        services.AddScoped<IOperativeDashboardService, Mobile.OperativeDashboardService>();
+        services.AddScoped<IMobileAttendanceService, Mobile.MobileAttendanceService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory operative-device + OTP-challenge stores (singletons so they persist across test requests, M2).</summary>
+    public static IServiceCollection AddInMemoryMobileAuthStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryOperativeDeviceRepository>();
+        services.AddScoped<IOperativeDeviceRepository>(sp => sp.GetRequiredService<InMemoryOperativeDeviceRepository>());
+        services.AddSingleton<InMemoryOtpChallengeRepository>();
+        services.AddScoped<IOtpChallengeRepository>(sp => sp.GetRequiredService<InMemoryOtpChallengeRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic launch-list service (Web Content Spec §6.9). Uses the ambient email sender.</summary>
     public static IServiceCollection AddLaunchListCore(this IServiceCollection services)
     {

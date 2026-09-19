@@ -45,6 +45,7 @@ builder.Services.AddHavsCore();
 builder.Services.AddEvidenceCore();
 builder.Services.AddOnboardingCore();
 builder.Services.AddTradeOnboardingCore();
+builder.Services.AddMobileAuthCore();
 builder.Services.AddLaunchListCore();
 builder.Services.AddLeadsCore();
 builder.Services.AddAffiliatesCore();
@@ -120,6 +121,8 @@ builder.Services.AddScoped<Tedwren.Application.Auth.AdminUserSeeder>();
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddSingleton(jwtOptions);
 builder.Services.AddSingleton<Tedwren.Application.Auth.ITokenIssuer, Tedwren.Api.Auth.JwtTokenIssuer>();
+// Operative (mobile) access tokens: separate issuer, audience "tedwren-mobile", "Operative" role (M2).
+builder.Services.AddSingleton<Tedwren.Application.Auth.IOperativeTokenIssuer, Tedwren.Api.Auth.JwtOperativeTokenIssuer>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<Tedwren.Abstractions.Services.ICurrentUserService, Tedwren.Api.Auth.ClaimsCurrentUserService>();
 
@@ -143,7 +146,8 @@ else
             ValidateIssuer = true,
             ValidIssuer = jwtOptions.Issuer,
             ValidateAudience = true,
-            ValidAudience = jwtOptions.Audience,
+            // Accept both the console audience and the operative (mobile) audience (M3) — same issuer + key.
+            ValidAudiences = new[] { jwtOptions.Audience, jwtOptions.MobileAudience },
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
                 System.Text.Encoding.UTF8.GetBytes(jwtOptions.SigningKey)),
@@ -157,8 +161,23 @@ else
 // (auth, health and the recipient/kiosk flows). Named policies gate writes (SF-23) and admin-only surfaces.
 builder.Services.AddAuthorization(options =>
 {
+    // Secure by default, and keep the console and operative (mobile) planes separate (M3): the fallback now
+    // requires a console role, so an operative token (role "Operative", accepted via the mobile audience) can
+    // never satisfy a console endpoint that only relies on the fallback. Every console user has an AccessRole
+    // (TestBypass authenticates as Administrator), so existing console access is unchanged; operative endpoints
+    // opt in with the "RequireOperative" policy below.
     options.FallbackPolicy = new Microsoft.AspNetCore.Authorization.AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser().Build();
+        .RequireAuthenticatedUser()
+        .RequireRole(
+            Tedwren.Domain.Enums.AccessRole.Administrator.ToString(),
+            Tedwren.Domain.Enums.AccessRole.ComplianceManager.ToString(),
+            Tedwren.Domain.Enums.AccessRole.SiteManager.ToString(),
+            Tedwren.Domain.Enums.AccessRole.Auditor.ToString())
+        .Build();
+    // Operative (mobile) endpoints: a device-bound operative token only (kept off every console surface).
+    options.AddPolicy("RequireOperative", p => p
+        .RequireRole(Tedwren.Api.Auth.JwtOperativeTokenIssuer.OperativeRole)
+        .RequireClaim(Tedwren.Api.Auth.JwtOperativeTokenIssuer.DeviceClaim));
     options.AddPolicy("RequireWrite", p => p.RequireRole(
         Tedwren.Domain.Enums.AccessRole.Administrator.ToString(),
         Tedwren.Domain.Enums.AccessRole.ComplianceManager.ToString(),
@@ -202,6 +221,7 @@ if (backend.Mode == DataSourceMode.InMemory)
     builder.Services.AddInMemoryHavsStore();
     builder.Services.AddInMemoryOnboardingStore();
     builder.Services.AddInMemoryTradeOnboardingStore();
+    builder.Services.AddInMemoryMobileAuthStore();
     builder.Services.AddInMemoryLaunchListStore();
     builder.Services.AddInMemoryLeadsStore();
     builder.Services.AddInMemoryAffiliatesStore();
@@ -401,6 +421,9 @@ app.MapHavsEndpoints();
 app.MapEvidenceEndpoints();
 app.MapOnboardingEndpoints();
 app.MapTradeOnboardingEndpoints();
+app.MapMobileAuthEndpoints();
+app.MapMobileEndpoints();
+app.MapMobileAttendanceEndpoints();
 app.MapLaunchListEndpoints();
 app.MapLeadEndpoints();
 app.MapAffiliateEndpoints();
