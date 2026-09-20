@@ -474,10 +474,11 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the unified compliance evidence-export service (PRD §8.2). It reads the existing evidence repositories, so it needs no store of its own.</summary>
+    /// <summary>Registers the unified compliance evidence-export service (PRD §8.2) and the manager evidence-capture review service (M7). Both read existing repositories, so they need no store of their own.</summary>
     public static IServiceCollection AddEvidenceCore(this IServiceCollection services)
     {
         services.AddScoped<IEvidenceExportService, Evidence.EvidenceExportService>();
+        services.AddScoped<IEvidenceCaptureQueryService, Evidence.EvidenceCaptureQueryService>();
         return services;
     }
 

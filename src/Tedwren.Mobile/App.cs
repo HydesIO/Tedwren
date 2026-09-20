@@ -16,12 +16,26 @@ public class App : Application
 {
     private readonly IServiceProvider _services;
 
-    /// <summary>Wires the design system and captures the service provider used to resolve the first page.</summary>
+    /// <summary>Wires the design system, captures the service provider, and re-prompts for manager sign-in on expiry.</summary>
     public App(IServiceProvider services)
     {
         _services = services;
         Resources.MergedDictionaries.Add(new TedwrenStyles());
+
+        // The console token has no refresh: when a manager call returns 401, route back to manager sign-in (M7).
+        _services.GetRequiredService<ManagerSessionManager>().SessionExpired += OnManagerSessionExpired;
     }
+
+    /// <summary>Swaps the window root to the manager sign-in page when the console session expires.</summary>
+    private void OnManagerSessionExpired(object? sender, EventArgs e) =>
+        MainThread.BeginInvokeOnMainThread(() =>
+        {
+            var window = Windows.FirstOrDefault();
+            if (window is not null)
+            {
+                window.Page = new NavigationPage(_services.GetRequiredService<ManagerSignInPage>());
+            }
+        });
 
     /// <summary>Nudges a sync when the app starts (a session may already be resumable).</summary>
     protected override void OnStart() => TryRequestSync();

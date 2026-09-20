@@ -107,7 +107,38 @@ a workload machine (iOS needs macOS).
   enforcement (unused; client mirrors required-only); operative submission-history read-back (needs an operative
   file GET, R9); offline form-capture time preserved on the submission (uses server-receipt time for M6); manager
   assign/review UI (M7). Native renderer + pages are CI/on-device only (kept out of the native-free Core tests).
-- ⏳ **M7** manager/admin mode · **M8** hardening & store readiness.
+- ✅ **M7 — Manager/admin mode (comprehensive).** A role-switched native manager experience reusing the console
+  plane: managers sign in with console email + password (`/api/auth/login`), which already satisfies the API's
+  secure-by-default fallback policy, so the dashboard / forms / workforce / decisions endpoints are reused **as-is**.
+  Delivered all-in-one (server + Core + native UI); no new tables / EF migration. Server: read-only evidence
+  review — `IEvidenceCaptureQueryService` + `EvidenceCaptureQueryService` (company-scoped R15, capturer name from
+  the engagement per §5.1) over the M5 `EvidenceItem` store; `EvidenceCaptureEndpoints` (`/api/evidence-captures`,
+  fallback policy, tenant via `ICurrentUserService`; photo via the authorised `/api/images/{id}`, R9). Authenticated
+  manager site-entry — `ManagerSiteEntryEndpoints`: `GET /api/manager/muster/{siteId}` (fallback + R15 site guard,
+  MC-12/13/14) and `POST /api/manager/entry/decide` (RequireWrite; `CompanyId` from token + override `By` = the
+  signed-in manager, MC-11) + `ManagerDecideRequest`. The console token has **no refresh** (none exists), so the app
+  re-logs-in on expiry. Client (Core): `ManagerSessionManager` (console login + persisted biometric-gated resume;
+  `Current` role; `SessionExpired` on 401), `ManagerAuthMessageHandler` (attaches the console token; 401 → clear +
+  signal, no refresh/retry), five typed clients (`ManagerApiClient` dashboard/expiry/audit,
+  `ManagerSiteEntryApiClient` sites/muster/decide, `ManagerWorkforceApiClient`, `ManagerFormsApiClient`
+  templates/assign/review + template/file fetch, `ManagerEvidenceApiClient` captures + pack summary) +
+  `ManagerImageApiClient` (authorised image bytes), `ManagerDataService` (cache-then-network, MC-14 muster age from
+  `MusterDto.GeneratedUtc`), a pure R18 `SiteGateResultPresenter` (ported from the console) and `FormAnswerFormatter`.
+  MAUI head: controls `TwKpiCard` / `TwStatusPill` / `TwEmptyState` (+ RAG tokens); live `ManagerHomePage` (KPIs +
+  compliance bar + expiring + activity + 7 wired tiles); pages `ManagerSignInPage`, `MusterPage`, `SiteEntryPage`
+  (check + reason-captured override, online-only R2/R3, R18 wording), `OperativesPage`/`OperativeDetailPage` (cards +
+  qualification photos), `FormsManagePage`/`FormAssignPage`, `FormReviewListPage`/`FormReviewPage` (RAG chips,
+  signatures, attachments, approve/reject — hidden for a read-only Auditor, RequireWrite), `EvidenceReviewPage`/
+  `EvidenceDetailPage`, `ReportsPage`; shell routes the manager button → sign-in, `LoadingPage` resumes a manager
+  session, `App` re-prompts on `SessionExpired`. Tests (all green): Application (`EvidenceCaptureQueryService` — R15 +
+  engagement name), API (`ManagerSiteEntryApiTests`, `EvidenceCaptureApiTests` — R15, RequireWrite/Auditor 403,
+  operative 403, unauth 401), Core (`ManagerSessionManager`, `ManagerAuthMessageHandler`, client mapping,
+  `ManagerDataService`, `SiteGateResultPresenter` R18, `FormAnswerFormatter`). ❗ Deferred: configurable competency
+  cover MC-13 (reuses the muster's existing cover; raise with PRD); a console **refresh** endpoint so managers don't
+  re-login at expiry (M8); full evidence-pack ZIP on device (summary only; ZIP stays on console); a Blazor console
+  evidence-review page (the API serves it); drawn compliance donut / skeletons (M8). Native pages/controls are
+  CI/on-device only (kept out of the native-free Core tests).
+- ⏳ **M8** hardening & store readiness.
 - ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
   workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and

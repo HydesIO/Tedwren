@@ -96,13 +96,23 @@ assign/review via the existing `/api/forms/*`.
   `IImageStore`; **two consumers** — ungated generic **evidence** (`EvidenceItem`, net-new) for every operative,
   and **`hse`-gated hazard/near-miss** reusing the existing HSE domain; MAUI `CaptureEvidencePage` +
   `ReportHazardPage` (camera + GPS, offline-first) + a pending-sync badge.
-- **M6 — Forms & inspection engine (comprehensive)** *(this increment)*: operatives complete assigned forms
+- **M6 — Forms & inspection engine (comprehensive)** *(landed)*: operatives complete assigned forms
   offline (all 14 field kinds, photos, signatures, RAG) with draft autosave/resume, syncing idempotently. Reuses
   the server engine (`SubmitForContextAsync` + `GetTemplateForFillAsync`; client-implemented interfaces untouched);
   idempotency via a `ClientId` on `CreateFormSubmissionRequest` (no new table); mobile-only `IMobileFormService`
   resolves "forms for me"; `/api/mobile/forms/*` (RequireOperative + `ModuleGate("forms")`); native `TwDynamicForm`
   renderer + `FormsInboxPage`/`FormFillPage`; forms outbox handler + draft store in `EncryptedStore`.
-- **M7 — Manager/admin mode** (dashboard via `IDashboardService`, muster, decisions, forms review).
+- **M7 — Manager/admin mode (comprehensive)** *(this increment)*: a role-switched native manager experience over the
+  **console** plane — managers sign in with console email + password (`/api/auth/login`), which satisfies the API's
+  secure-by-default fallback policy, so the dashboard, forms, workforce and decision endpoints are reused **as-is**.
+  New server (no tables/migration): read-only evidence review (`IEvidenceCaptureQueryService` + `/api/evidence-captures`,
+  R15, photo via `/api/images/{id}`) over the M5 `EvidenceItem`; authenticated muster + decide/override
+  (`/api/manager/muster/{siteId}`, `/api/manager/entry/decide` — `CompanyId` from token, override attributed to the
+  signed-in manager, MC-11). Console token has no refresh → re-login on expiry. Client: `ManagerSessionManager`
+  (persisted biometric-gated resume) + `ManagerAuthMessageHandler` (no refresh); manager API clients +
+  `ManagerDataService` (cache-then-network, MC-14 muster age); ported R18 `SiteGateResultPresenter`. MAUI head:
+  `TwKpiCard`/`TwStatusPill`/`TwEmptyState`; live `ManagerHomePage` + muster / site-entry / operatives / forms
+  (assign + review) / evidence / reports pages. Auditor role is read-only (RequireWrite gates review + override).
 - **M8 — Hardening & store readiness** (perf, a11y, tablet, security review, store submission).
 
 Out of scope: in-app AI; face-match-at-sign-in (PRD Phase 5, DPIA-gated).

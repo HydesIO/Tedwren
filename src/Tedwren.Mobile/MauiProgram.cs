@@ -76,6 +76,20 @@ public static class MauiProgram
         builder.Services.AddSingleton<IOutboxItemHandler, FormsOutboxHandler>();
         builder.Services.AddSingleton<IFormDraftStore>(sp => sp.GetRequiredService<EncryptedStore>());
 
+        // Manager / admin surface (M7): console-token session + its auth handler (no silent refresh — re-login on
+        // expiry), the manager API clients over that handler, and the cache-then-network reader. Managers call the
+        // existing console endpoints; the shared AccessTokenStore holds the console token (one role at a time).
+        builder.Services.AddSingleton<ManagerSessionManager>();
+        builder.Services.AddSingleton<IManagerSessionExpiredHandler>(sp => sp.GetRequiredService<ManagerSessionManager>());
+        builder.Services.AddTransient<ManagerAuthMessageHandler>();
+        builder.Services.AddHttpClient<ManagerApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl)).AddHttpMessageHandler<ManagerAuthMessageHandler>();
+        builder.Services.AddHttpClient<ManagerSiteEntryApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl)).AddHttpMessageHandler<ManagerAuthMessageHandler>();
+        builder.Services.AddHttpClient<ManagerWorkforceApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl)).AddHttpMessageHandler<ManagerAuthMessageHandler>();
+        builder.Services.AddHttpClient<ManagerFormsApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl)).AddHttpMessageHandler<ManagerAuthMessageHandler>();
+        builder.Services.AddHttpClient<ManagerEvidenceApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl)).AddHttpMessageHandler<ManagerAuthMessageHandler>();
+        builder.Services.AddHttpClient<ManagerImageApiClient>(client => client.BaseAddress = new Uri(ApiBaseUrl)).AddHttpMessageHandler<ManagerAuthMessageHandler>();
+        builder.Services.AddSingleton<ManagerDataService>();
+
         // Pages.
         builder.Services.AddTransient<LoadingPage>();
         builder.Services.AddTransient<SignInPage>();
@@ -89,7 +103,21 @@ public static class MauiProgram
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
         builder.Services.AddTransient<ProfilePage>();
+
+        // Manager / admin pages (M7).
+        builder.Services.AddTransient<ManagerSignInPage>();
         builder.Services.AddTransient<ManagerHomePage>();
+        builder.Services.AddTransient<MusterPage>();
+        builder.Services.AddTransient<SiteEntryPage>();
+        builder.Services.AddTransient<OperativesPage>();
+        builder.Services.AddTransient<OperativeDetailPage>();
+        builder.Services.AddTransient<FormsManagePage>();
+        builder.Services.AddTransient<FormAssignPage>();
+        builder.Services.AddTransient<FormReviewListPage>();
+        builder.Services.AddTransient<FormReviewPage>();
+        builder.Services.AddTransient<EvidenceReviewPage>();
+        builder.Services.AddTransient<EvidenceDetailPage>();
+        builder.Services.AddTransient<ReportsPage>();
 
 #if DEBUG
         builder.Logging.AddDebug();

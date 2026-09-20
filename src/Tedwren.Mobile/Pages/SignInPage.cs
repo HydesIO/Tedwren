@@ -4,9 +4,9 @@ using Tedwren.Mobile.Controls.Theme;
 namespace Tedwren.Mobile.Pages;
 
 /// <summary>
-/// The app entry page: choose the operative or the manager/admin experience (the role-switch shell). Real auth —
-/// mobile-number + one-time code for operatives (M2), console email + password for managers (M7) — replaces the
-/// direct navigation here; this M1 skeleton demonstrates the two role homes.
+/// The app entry page: choose the operative or the manager/admin experience (the role-switch shell). Operatives
+/// enrol with their mobile number + one-time code (M2); managers/admins sign in with their console email + password
+/// (M7). Each button routes to its real authentication flow.
 /// </summary>
 public class SignInPage : ContentPage
 {
@@ -37,7 +37,7 @@ public class SignInPage : ContentPage
 
         var managerBtn = new Button { Text = "Site manager / admin" };
         managerBtn.SetDynamicResource(VisualElement.StyleProperty, "TwSecondaryButton");
-        managerBtn.Clicked += async (_, _) => await Navigation.PushAsync(services.GetRequiredService<ManagerHomePage>());
+        managerBtn.Clicked += async (_, _) => await Navigation.PushAsync(services.GetRequiredService<ManagerSignInPage>());
 
         Content = new ScrollView
         {
