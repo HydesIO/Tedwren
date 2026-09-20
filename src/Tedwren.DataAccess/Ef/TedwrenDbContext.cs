@@ -46,6 +46,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
     public DbSet<OperativeDeviceRecord> OperativeDevices => Set<OperativeDeviceRecord>();
     public DbSet<OtpChallengeRecord> OtpChallenges => Set<OtpChallengeRecord>();
+    public DbSet<UserRefreshTokenRecord> UserRefreshTokens => Set<UserRefreshTokenRecord>();
     public DbSet<EvidenceItemRecord> EvidenceItems => Set<EvidenceItemRecord>();
     public DbSet<StoredImageRecord> StoredImages => Set<StoredImageRecord>();
     public DbSet<AuditEntryRecord> AuditEntries => Set<AuditEntryRecord>();
@@ -227,6 +228,13 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.PhoneNumber).HasMaxLength(32);
             e.Property(x => x.CodeHash).HasMaxLength(512);
             e.HasIndex(x => x.PhoneNumber);
+        });
+
+        model.Entity<UserRefreshTokenRecord>(e =>
+        {
+            e.ToTable("UserRefreshTokens");
+            e.Property(x => x.TokenHash).HasMaxLength(512);
+            e.HasIndex(x => x.UserId);  // renew/revoke a user's sessions (M8)
         });
 
         model.Entity<EvidenceItemRecord>(e =>

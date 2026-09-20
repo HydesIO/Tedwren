@@ -36,4 +36,24 @@ public sealed class AuthApiClient
 
         return await response.Content.ReadFromJsonAsync<AuthResultDto>(cancellationToken);
     }
+
+    /// <summary>
+    /// Exchanges a console refresh token for a fresh access token (M8). Returns the new auth result on success, or
+    /// null when the refresh token is rejected (HTTP 401 — the app must re-login). Other non-success statuses throw.
+    /// </summary>
+    public async Task<AuthResultDto?> RefreshAsync(string refreshToken, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/auth/refresh", new RefreshConsoleTokenRequest(refreshToken), cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException((int)response.StatusCode, $"Session refresh failed ({(int)response.StatusCode}).");
+        }
+
+        return await response.Content.ReadFromJsonAsync<AuthResultDto>(cancellationToken);
+    }
 }

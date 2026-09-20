@@ -115,6 +115,9 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<InMemoryUserStore>();
         services.AddScoped<IUserRepository, InMemoryUserRepository>();
+        // Console refresh tokens (M8) — a singleton so issued tokens persist across test requests.
+        services.AddSingleton<InMemoryUserRefreshTokenRepository>();
+        services.AddScoped<IUserRefreshTokenRepository>(sp => sp.GetRequiredService<InMemoryUserRefreshTokenRepository>());
         return services;
     }
 

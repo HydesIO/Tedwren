@@ -138,9 +138,48 @@ a workload machine (iOS needs macOS).
   re-login at expiry (M8); full evidence-pack ZIP on device (summary only; ZIP stays on console); a Blazor console
   evidence-review page (the API serves it); drawn compliance donut / skeletons (M8). Native pages/controls are
   CI/on-device only (kept out of the native-free Core tests).
-- ⏳ **M8** hardening & store readiness.
-- ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
-  workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
+- ✅ **M8 — Hardening & store readiness (comprehensive).** Closed the M7 console-refresh gap, added a telemetry /
+  R14-timing seam, hardened the security-critical MAUI paths, and produced the release runway. Delivered as the
+  buildable-here work (server + Core) plus CI-built/hand-reviewed MAUI-head hardening plus a documented off-container
+  checklist. **Console refresh (server + Core, built & tested here):** new `UserRefreshToken` entity + repository
+  (Dapper SqlServer/Postgres + InMemory) + EF `UserRefreshTokenRecord`/mapping/migration `AddConsoleRefresh` + both
+  dialect scripts `037_console_refresh.sql` (SchemaParity guarded). Token is a selector/verifier `"{tokenId}.{secret}"`
+  — the server finds the row by the embedded id, verifies the secret against the PBKDF2 `TokenHash` (shared
+  `PasswordHasher`), checks `CanUse` + the user is still active, rotates the secret in place, and re-issues via the
+  existing `ITokenIssuer` (one row per login → concurrent sessions + per-session revoke; reuses
+  `JwtOptions.RefreshLifetimeDays`). `AuthResultDto` gains trailing nullable `RefreshToken`/`RefreshTokenExpiresUtc`
+  (existing positional callers unaffected); `LoginAsync`/`AcceptInviteAsync` mint one; new `IAuthService.RefreshAsync`
+  + `POST /api/auth/refresh` (anonymous, `RequireRateLimiting("public")`). Core: `AuthApiClient.RefreshAsync`;
+  `ManagerSessionManager` now implements `IManagerSessionRefresher` and **silently refreshes** an expired access token
+  on resume (no re-login while the refresh token is valid); `ManagerAuthMessageHandler` rewritten to
+  refresh-then-retry-once, falling back to `SessionExpired` only when refresh fails. **Telemetry / R14 timing (Core):**
+  `ITelemetry` + `NoOpTelemetry`; `AttendanceApiClient` + `ManagerSiteEntryApiClient` report their client round-trip
+  (`attendance.signin.roundtrip` / `site-entry.decide.roundtrip`) — the client-side R14 measurement. **MAUI head
+  (CI-built, hand-reviewed):** real biometric (`AndroidX.Biometric` `BiometricPrompt` / iOS `LAContext`,
+  `BiometricWeak|DeviceCredential`); biometric-gated SQLCipher key in `EncryptedStore.ConnectionStringAsync` (once per
+  run, over the OS enclave); TLS cert pinning (`TlsPinning`, SPKI SHA-256 pin set, DEBUG bypass) + a single configured
+  API base URL (`TedwrenApiOptions` via a shared `AddTedwrenClient<T>()` extension applied to every client);
+  accessibility `SemanticProperties` on `TwMenuTile`/`TwKpiCard`/`TwStatusPill` (+ decorative glyphs hidden on
+  `TwEmptyState`/`TwSkeleton`, spoken split on `TwDonutStat`); tablet layout (`TileGrid` 3-up on `DeviceIdiom.Tablet`);
+  `TwSkeleton` loaders + a drawn `TwDonutStat` compliance donut on the dashboards (supersedes M7's segmented bar);
+  `LoggingTelemetry` + global crash hooks in `App`; iOS `PrivacyInfo.xcprivacy`; `Xamarin.AndroidX.Biometric`
+  (Android-only). **Release runway:** new `docs/mobile-store-readiness.md` statuses every off-container gate.
+  Tests (all green): Application `AuthServiceTests` (login/accept-invite mint a refresh token; `RefreshAsync` rotates +
+  re-issues, rejects expired/revoked/unknown/malformed/inactive; `RevokeAllForUser`); API `ConsoleRefreshApiTests`
+  (login returns a refresh token; `/refresh` rotates; pre-rotation token rejected; suspended user → 401; garbage → 401);
+  Core `AuthApiClientTests` (+`RefreshAsync`), `ManagerSessionManagerTests` (+silent refresh), rewritten
+  `ManagerAuthMessageHandlerTests`, `TelemetryTests`; `SchemaParityTests` covers `UserRefreshTokens` (both dialects).
+  ❗ Deferred / off-container (in the readiness doc, not built blind): OS background sync (WorkManager/BGTaskScheduler);
+  App/Play Store submission (signing, provisioning, entitlements, screenshots) + the iOS build (needs macOS + Xcode);
+  device R14 verification, WCAG 2.2 AA audit + the device matrix; the DPIA boundary (R17 — on-device unlock only, none
+  triggered); Inter `.ttf` fonts. 🟨 Raise with Leigh (PRD-silent): the telemetry/crash **vendor** (UK-hosted, R13),
+  the **push** channel, the **WCAG** conformance target, whether OS background sync is required, and root/jailbreak
+  detection. Post-M8 feature backlog stays deferred (multipart forms upload, orphan-image cleanup, operative
+  submission-history read-back, configurable competency-cover MC-13, evidence-pack ZIP on device, the Blazor console
+  evidence page, site-documents MC-27). Native pages/controls are CI/on-device only (kept out of the native-free tests).
+- ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, populate the TLS pin set,
+  confirm the `AndroidX.Biometric` version against the workload, install MAUI workloads (+ Android SDK / Xcode). See
+  `docs/mobile-app-build.md` and `docs/mobile-store-readiness.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and
   one-device-per-operative are SF-1 design choices, not mandates; geotagged photos + push for due forms are
   enhancements beyond the forms spec.

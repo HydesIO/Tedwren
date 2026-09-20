@@ -15,6 +15,12 @@ public interface IAuthService
     Task<AuthResultDto?> AcceptInviteAsync(AcceptInviteRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Exchanges a valid console refresh token for a fresh access token, rotating the refresh token (M8). Returns
+    /// null when the token is unknown, expired, revoked, or the account is no longer active.
+    /// </summary>
+    Task<AuthResultDto?> RefreshAsync(RefreshConsoleTokenRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Starts a password reset: emails a one-time reset link to the address when it belongs to an active
     /// account. Returns unconditionally and reveals nothing about whether the account exists, so the endpoint
     /// cannot be used to enumerate registered emails.

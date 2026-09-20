@@ -21,6 +21,9 @@ public class ManagerSessionManagerTests
     private static AuthResultDto Auth(DateTimeOffset? expires = null) =>
         new("console-token", expires ?? DateTimeOffset.UtcNow.AddHours(8), "Morgan Manager", "SiteManager", Guid.NewGuid());
 
+    private static AuthResultDto AuthWithRefresh(DateTimeOffset accessExpires, string refreshToken, string token = "console-token") =>
+        new(token, accessExpires, "Morgan Manager", "SiteManager", Guid.NewGuid(), refreshToken, DateTimeOffset.UtcNow.AddDays(30));
+
     private static ManagerSessionManager Manager(HttpClient http, FakeSecureStore store, FakeBiometrics biometrics, AccessTokenStore tokens, TimeProvider? clock = null)
         => new(new AuthApiClient(http), store, biometrics, tokens, clock ?? TimeProvider.System);
 
@@ -136,6 +139,48 @@ public class ManagerSessionManagerTests
 
         Assert.True(raised);
         Assert.Null(tokens.AccessToken);
+        Assert.Null(store.Peek(SessionKey));
+    }
+
+    [Fact]
+    public async Task Resume_silently_refreshes_an_expired_access_token()
+    {
+        var store = new FakeSecureStore();
+        var tokens = new AccessTokenStore();
+        var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var http = FakeHttp.Routed(req => req.RequestUri!.AbsolutePath.EndsWith("refresh", StringComparison.Ordinal)
+            ? new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(AuthWithRefresh(clock.GetUtcNow().AddHours(8), "rt-2", "refreshed-token")) }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(AuthWithRefresh(clock.GetUtcNow().AddHours(1), "rt-1")) });
+        var manager = Manager(http, store, new FakeBiometrics(false, BiometricResult.Unavailable), tokens, clock);
+
+        await manager.LoginAsync("morgan@acme.test", "pw");
+        tokens.AccessToken = null;              // relaunch
+        clock.Advance(TimeSpan.FromHours(2));   // access expired, refresh token still valid
+
+        var resume = await manager.TryResumeAsync();
+
+        Assert.Equal(ResumeStatus.Resumed, resume.Status);
+        Assert.Equal("refreshed-token", tokens.AccessToken); // renewed without re-login
+    }
+
+    [Fact]
+    public async Task Resume_reports_expired_when_the_refresh_token_is_rejected()
+    {
+        var store = new FakeSecureStore();
+        var tokens = new AccessTokenStore();
+        var clock = new MutableTimeProvider(DateTimeOffset.UtcNow);
+        var http = FakeHttp.Routed(req => req.RequestUri!.AbsolutePath.EndsWith("refresh", StringComparison.Ordinal)
+            ? new HttpResponseMessage(HttpStatusCode.Unauthorized)
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(AuthWithRefresh(clock.GetUtcNow().AddHours(1), "rt-1")) });
+        var manager = Manager(http, store, new FakeBiometrics(false, BiometricResult.Unavailable), tokens, clock);
+
+        await manager.LoginAsync("morgan@acme.test", "pw");
+        tokens.AccessToken = null;
+        clock.Advance(TimeSpan.FromHours(2));
+
+        var resume = await manager.TryResumeAsync();
+
+        Assert.Equal(ResumeStatus.Expired, resume.Status);
         Assert.Null(store.Peek(SessionKey));
     }
 }

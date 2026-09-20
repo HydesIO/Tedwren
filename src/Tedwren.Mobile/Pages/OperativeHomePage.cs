@@ -17,11 +17,12 @@ public class OperativeHomePage : ContentPage
     private readonly SyncEngine _sync;
     private readonly IServiceProvider _services;
 
-    private readonly Label _statusLine = new() { FontAttributes = FontAttributes.Bold, Text = "Loading…" };
+    private readonly Label _statusLine = new() { FontAttributes = FontAttributes.Bold, IsVisible = false };
     private readonly Label _complianceLine = new() { FontSize = 13 };
     private readonly Label _metaLine = new() { Text = "Hours this week: —    ·    Forms due: —" };
     private readonly Label _syncLine = new() { FontSize = 13 };
     private readonly Button _syncNow;
+    private readonly TwSkeleton _loadingSkeleton = new() { HeightRequest = 18, WidthRequest = 180, HorizontalOptions = LayoutOptions.Start };
 
     /// <summary>Builds the operative overview dashboard and card menu.</summary>
     public OperativeHomePage(OperativeDataService data, SyncEngine sync, IServiceProvider services)
@@ -46,7 +47,7 @@ public class OperativeHomePage : ContentPage
 
         var dashboard = new TwCard
         {
-            Content = new VerticalStackLayout { Spacing = 8, Children = { _statusLine, _complianceLine, _metaLine, syncRow } },
+            Content = new VerticalStackLayout { Spacing = 8, Children = { _loadingSkeleton, _statusLine, _complianceLine, _metaLine, syncRow } },
         };
 
         _sync.StateChanged += OnSyncStateChanged;
@@ -111,6 +112,12 @@ public class OperativeHomePage : ContentPage
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
             _statusLine.Text = "Couldn't load your dashboard";
+        }
+        finally
+        {
+            // Swap the loading skeleton for the resolved status line (M8: skeletons, not spinners).
+            _loadingSkeleton.IsVisible = false;
+            _statusLine.IsVisible = true;
         }
     }
 

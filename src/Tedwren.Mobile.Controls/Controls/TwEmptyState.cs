@@ -28,6 +28,7 @@ public class TwEmptyState : ContentView
     {
         var glyph = new Label { FontSize = 34, HorizontalOptions = LayoutOptions.Center };
         glyph.SetBinding(Label.TextProperty, new Binding(nameof(Glyph), source: this));
+        AutomationProperties.SetIsInAccessibleTree(glyph, false); // decorative — the message carries the meaning
 
         var message = new Label { FontSize = 14, HorizontalTextAlignment = TextAlignment.Center, HorizontalOptions = LayoutOptions.Center };
         message.SetAppThemeColor(Label.TextColorProperty, TwPalette.TextSecondaryLight, TwPalette.TextSecondaryDark);

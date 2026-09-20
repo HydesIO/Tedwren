@@ -19,6 +19,8 @@ public sealed class TwSignaturePad : GraphicsView, IDrawable
         HeightRequest = 160;
         StartInteraction += OnStart;
         DragInteraction += OnDrag;
+        // Announce the pad to assistive technology; drawing a signature itself needs sighted touch input (M8 a11y).
+        SemanticProperties.SetDescription(this, "Signature pad. Draw your signature with your finger or a stylus.");
     }
 
     /// <summary>Whether the operative has drawn anything.</summary>

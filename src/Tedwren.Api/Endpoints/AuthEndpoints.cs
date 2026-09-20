@@ -30,6 +30,16 @@ public static class AuthEndpoints
             })
             .WithName("AcceptInvite");
 
+        // Renew an expired access token from a rotating refresh token (M8). Anonymous because the access token is
+        // already expired when this is called; the opaque refresh token is the credential. 401 when it is
+        // unknown/expired/revoked or the account is no longer active.
+        group.MapPost("/refresh", async (RefreshConsoleTokenRequest request, IAuthService service, CancellationToken cancellationToken) =>
+            {
+                var result = await service.RefreshAsync(request, cancellationToken);
+                return result is null ? Results.Unauthorized() : Results.Ok(result);
+            })
+            .WithName("RefreshConsoleToken");
+
         // Always returns 200 regardless of whether the email is registered — the service reveals nothing about
         // account existence (no enumeration). The reset link, when sent, lands on /reset-password (D1).
         group.MapPost("/forgot-password", async (ForgotPasswordRequest request, IAuthService service, CancellationToken cancellationToken) =>

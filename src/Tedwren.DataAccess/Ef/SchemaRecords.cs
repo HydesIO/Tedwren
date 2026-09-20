@@ -642,6 +642,19 @@ public sealed class OtpChallengeRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>UserRefreshTokens</c> table (console user refresh tokens, M8).</summary>
+public sealed class UserRefreshTokenRecord
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public Guid CompanyId { get; set; }
+    public string TokenHash { get; set; } = string.Empty;
+    public DateTimeOffset ExpiresUtc { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+    public DateTimeOffset LastUsedUtc { get; set; }
+    public DateTimeOffset? RevokedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>EvidenceItems</c> table (operative field evidence captures, M5).</summary>
 public sealed class EvidenceItemRecord
 {

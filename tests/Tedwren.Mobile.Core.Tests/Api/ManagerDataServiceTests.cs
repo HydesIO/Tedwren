@@ -16,7 +16,7 @@ public class ManagerDataServiceTests
         new(new DashboardKpisDto(1, operatives, 1, 100, 0), new ComplianceBreakdownDto(100, operatives, 0, 0, 0, operatives), Array.Empty<SiteRiskRowDto>());
 
     private static ManagerDataService Service(HttpClient http, IReadCache cache, bool connected) =>
-        new(new ManagerApiClient(http), new ManagerSiteEntryApiClient(http), new ManagerWorkforceApiClient(http),
+        new(new ManagerApiClient(http), new ManagerSiteEntryApiClient(http, new NoOpTelemetry()), new ManagerWorkforceApiClient(http),
             new ManagerFormsApiClient(http), new ManagerEvidenceApiClient(http), cache, new FakeConnectivity(connected));
 
     [Fact]

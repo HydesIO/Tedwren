@@ -113,9 +113,43 @@ assign/review via the existing `/api/forms/*`.
   `ManagerDataService` (cache-then-network, MC-14 muster age); ported R18 `SiteGateResultPresenter`. MAUI head:
   `TwKpiCard`/`TwStatusPill`/`TwEmptyState`; live `ManagerHomePage` + muster / site-entry / operatives / forms
   (assign + review) / evidence / reports pages. Auditor role is read-only (RequireWrite gates review + override).
-- **M8 — Hardening & store readiness** (perf, a11y, tablet, security review, store submission).
+- **M8 — Hardening & store readiness (comprehensive)** *(this increment)*: harden the security-critical paths, close
+  the console-refresh gap flagged in M7, polish the native UX, and produce the release runway.
+  - **Console refresh (server + Core, built & tested here)**: a dedicated `UserRefreshToken` table (selector/verifier
+    token `"{tokenId}.{secret}"`, PBKDF2 hash via the shared `PasswordHasher`, rotate-in-place, one row per login →
+    concurrent sessions + per-session revoke; reuses `JwtOptions.RefreshLifetimeDays`). `AuthResultDto` gains trailing
+    nullable refresh fields (existing callers unaffected); login + accept-invite mint one; `POST /api/auth/refresh`
+    (anonymous, rate-limited). Both dialect scripts (`037_console_refresh.sql`) + EF migration `AddConsoleRefresh`;
+    `SchemaParityTests` guards the parity. `ManagerSessionManager` now **silently refreshes** an expired access token
+    (`IManagerSessionRefresher`) and `ManagerAuthMessageHandler` does refresh-then-retry-once (no more forced re-login).
+  - **Telemetry / R14 timing (Core seam)**: `ITelemetry` + `NoOpTelemetry` (Core); the decide + sign-in clients report
+    their client round-trip (`site-entry.decide.roundtrip` / `attendance.signin.roundtrip`) — the client-side R14
+    measurement. The real UK-hosted vendor (R13) is a deployment decision (raised, not chosen).
+  - **MAUI head (CI-built, hand-reviewed)**: real on-device biometric (`AndroidX.Biometric` `BiometricPrompt` / iOS
+    `LAContext`), biometric-gated SQLCipher DB key (once per app run, in addition to the OS enclave), TLS cert pinning
+    (`TlsPinning`, SPKI pin set) + a single configured API base URL (`TedwrenApiOptions` via `AddTedwrenClient<T>()`),
+    accessibility semantics on the shared controls, tablet layouts (`TileGrid` 3-up on tablet), skeleton loaders
+    (`TwSkeleton`) + a drawn compliance donut (`TwDonutStat`), a `LoggingTelemetry` impl + global crash hooks, and the
+    iOS `PrivacyInfo.xcprivacy` privacy manifest.
+  - **Store-readiness runway** — `docs/mobile-store-readiness.md`: every off-container gate statused (device R14
+    verification, WCAG 2.2 AA audit, device matrix, security-review summary, telemetry/crash + push decisions to raise,
+    privacy manifests + Play data-safety, App/Play Store submission, OS background sync, Inter `.ttf` fonts,
+    production API base URL, AndroidX.Biometric version alignment).
 
 Out of scope: in-app AI; face-match-at-sign-in (PRD Phase 5, DPIA-gated).
+
+## Off-container / deferred after M8 (raised, not built)
+Buildable + testable here: the console-refresh flow and the telemetry seam / R14 timing. Everything else in M8 is
+either **MAUI-head code** (CI-built, hand-reviewed — biometric, DB-key gate, cert pinning, a11y, tablet, skeleton/donut,
+telemetry impl, privacy manifest) or genuinely **off-container** and documented in `docs/mobile-store-readiness.md`
+rather than written blind: OS background sync (WorkManager / BGTaskScheduler), App/Play Store submission (signing,
+provisioning, entitlements, screenshots, metadata), the iOS build itself (needs macOS + Xcode), the device matrix +
+accessibility *verification*, the DPIA boundary, and the Inter `.ttf` font files. The telemetry/crash **vendor**
+(UK-hosted, R13), the **push** channel, and the **WCAG** conformance target are PRD-silent — engineering decisions
+raised for Leigh. Post-M8 feature backlog (unchanged, still deferred): multipart forms upload, orphan-image cleanup,
+operative submission-history read-back (needs an operative image/file GET), configurable competency-cover (MC-13),
+evidence-pack ZIP on device, the Blazor console evidence-review page, and site-documents (MC-27, needs a Site↔Document
+model).
 
 ## PRD notes to raise (raise, don't work around)
 The app itself is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and one-device-per-operative

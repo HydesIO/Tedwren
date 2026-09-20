@@ -11,11 +11,13 @@ public class TwKpiCard : TwCard
 {
     /// <summary>The headline value (e.g. a count or a percentage).</summary>
     public static readonly BindableProperty ValueProperty =
-        BindableProperty.Create(nameof(Value), typeof(string), typeof(TwKpiCard), "—");
+        BindableProperty.Create(nameof(Value), typeof(string), typeof(TwKpiCard), "—",
+            propertyChanged: (b, _, _) => ((TwKpiCard)b).UpdateSemantics());
 
     /// <summary>The label beneath the value.</summary>
     public static readonly BindableProperty LabelProperty =
-        BindableProperty.Create(nameof(Label), typeof(string), typeof(TwKpiCard), string.Empty);
+        BindableProperty.Create(nameof(Label), typeof(string), typeof(TwKpiCard), string.Empty,
+            propertyChanged: (b, _, _) => ((TwKpiCard)b).UpdateSemantics());
 
     /// <summary>The headline value.</summary>
     public string Value { get => (string)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
@@ -34,5 +36,10 @@ public class TwKpiCard : TwCard
         label.SetBinding(Microsoft.Maui.Controls.Label.TextProperty, new Binding(nameof(Label), source: this));
 
         Content = new VerticalStackLayout { Spacing = 2, Children = { value, label } };
+        UpdateSemantics();
     }
+
+    /// <summary>Announces the KPI as one unit to assistive technology ("value label"), so a screen reader reads the metric whole.</summary>
+    private void UpdateSemantics() =>
+        SemanticProperties.SetDescription(this, string.IsNullOrEmpty(Label) ? Value : $"{Value} {Label}");
 }

@@ -24,16 +24,19 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore, IFormDraftStore
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly ISecureStore _secure;
+    private readonly IBiometricAuthenticator _biometrics;
     private readonly string _dbPath;
     private readonly SemaphoreSlim _initGate = new(1, 1);
     private string? _connectionString;
+    private bool _unlocked;
 
     static EncryptedStore() => SQLitePCL.Batteries_V2.Init();
 
-    /// <summary>Creates the store over the secure key store and the database file path.</summary>
-    public EncryptedStore(ISecureStore secure, string dbPath)
+    /// <summary>Creates the store over the secure key store, the biometric gate (M8) and the database file path.</summary>
+    public EncryptedStore(ISecureStore secure, IBiometricAuthenticator biometrics, string dbPath)
     {
         _secure = secure;
+        _biometrics = biometrics;
         _dbPath = dbPath;
     }
 
@@ -247,6 +250,19 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore, IFormDraftStore
             {
                 return _connectionString;
             }
+
+            // Biometric-gated key (M8): the DB key requires a local unlock (once per app run) in addition to the OS
+            // secure enclave, so field data stays sealed even if the app lock is bypassed. Skipped when the device has
+            // no biometrics enrolled (the enclave still protects the key); a failed prompt keeps the store closed.
+            if (!_unlocked && await _biometrics.IsAvailableAsync())
+            {
+                if (await _biometrics.AuthenticateAsync("Unlock Tedwren data") != BiometricResult.Success)
+                {
+                    throw new InvalidOperationException("Biometric unlock is required to open the encrypted store.");
+                }
+            }
+
+            _unlocked = true;
 
             var key = await _secure.GetAsync(DbKeyName);
             if (string.IsNullOrEmpty(key))

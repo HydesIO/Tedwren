@@ -34,6 +34,11 @@ public class ManagerHomePage : ContentPage
         _services = services;
         Title = "Overview";
 
+        // Seed skeleton placeholders so the sections read as "loading", not empty, before the first fetch (M8).
+        SeedSkeleton(_complianceBody, 2);
+        SeedSkeleton(_expiringBody, 3);
+        SeedSkeleton(_activityBody, 4);
+
         Content = new ScrollView
         {
             Content = new VerticalStackLayout
@@ -72,7 +77,13 @@ public class ManagerHomePage : ContentPage
                 _sites.Value = summary.Kpis.Sites.ToString();
                 _compliant.Value = summary.Kpis.CompliancePercent is { } pct ? $"{pct:0}%" : "—";
                 _expiring.Value = summary.Kpis.UpcomingExpiries.ToString();
-                BuildComplianceBar(summary.Compliance);
+                BuildCompliance(summary.Compliance);
+            }
+            else
+            {
+                // No cached or live summary yet — clear the compliance skeletons so they don't pulse forever (M8).
+                _complianceBody.Children.Clear();
+                _complianceBody.Children.Add(Muted("No dashboard data yet."));
             }
 
             var expiries = await _data.GetUpcomingExpiriesAsync();
@@ -105,7 +116,12 @@ public class ManagerHomePage : ContentPage
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _complianceBody.Children.Clear();
+            // Replace any remaining skeletons with a single "couldn't load" note across all three sections (M8).
+            foreach (var body in new[] { _complianceBody, _expiringBody, _activityBody })
+            {
+                body.Children.Clear();
+            }
+
             _complianceBody.Children.Add(Muted("Couldn't load the dashboard."));
         }
     }
@@ -126,8 +142,8 @@ public class ManagerHomePage : ContentPage
         return grid;
     }
 
-    /// <summary>Renders the compliance breakdown as a proportional segmented bar with a legend.</summary>
-    private void BuildComplianceBar(ComplianceBreakdownDto c)
+    /// <summary>Renders the compliance breakdown as a drawn donut (M8) beside a colour legend.</summary>
+    private void BuildCompliance(ComplianceBreakdownDto c)
     {
         _complianceBody.Children.Clear();
         var total = c.Compliant + c.AtRisk + c.NonCompliant + c.Pending;
@@ -137,49 +153,50 @@ public class ManagerHomePage : ContentPage
             return;
         }
 
-        var bar = new Grid { HeightRequest = 14, ColumnSpacing = 0 };
-        AddSegment(bar, c.Compliant, TwPalette.SuccessLight);
-        AddSegment(bar, c.AtRisk, TwPalette.WarningLight);
-        AddSegment(bar, c.NonCompliant, TwPalette.DangerLight);
-        AddSegment(bar, c.Pending, TwPalette.BorderLight);
+        var donut = new TwDonutStat
+        {
+            Compliant = c.Compliant,
+            AtRisk = c.AtRisk,
+            NonCompliant = c.NonCompliant,
+            Pending = c.Pending,
+            CentreText = $"{100.0 * c.Compliant / total:0}%",
+            HorizontalOptions = LayoutOptions.Center,
+        };
 
-        var legend = new FlexLayout { Wrap = Microsoft.Maui.Layouts.FlexWrap.Wrap };
+        var legend = new VerticalStackLayout { Spacing = 4, VerticalOptions = LayoutOptions.Center };
         legend.Children.Add(LegendItem($"Compliant {c.Compliant}", TwPalette.SuccessLight));
         legend.Children.Add(LegendItem($"At risk {c.AtRisk}", TwPalette.WarningLight));
         legend.Children.Add(LegendItem($"Non-compliant {c.NonCompliant}", TwPalette.DangerLight));
         legend.Children.Add(LegendItem($"Pending {c.Pending}", TwPalette.BorderLight));
 
-        _complianceBody.Children.Add(new Border
+        var row = new Grid
         {
-            StrokeThickness = 0,
-            StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = new CornerRadius(7) },
-            Content = bar,
-        });
-        _complianceBody.Children.Add(legend);
-    }
-
-    private static void AddSegment(Grid bar, int count, Color colour)
-    {
-        if (count <= 0)
-        {
-            return;
-        }
-
-        bar.ColumnDefinitions.Add(new ColumnDefinition(new GridLength(count, GridUnitType.Star)));
-        var box = new BoxView { Color = colour };
-        bar.Add(box, bar.ColumnDefinitions.Count - 1, 0);
+            ColumnSpacing = 16,
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
+        };
+        row.Add(donut, 0, 0);
+        row.Add(legend, 1, 0);
+        _complianceBody.Children.Add(row);
     }
 
     private static View LegendItem(string text, Color colour) => new HorizontalStackLayout
     {
         Spacing = 6,
-        Margin = new Thickness(0, 6, 16, 0),
         Children =
         {
             new BoxView { Color = colour, WidthRequest = 12, HeightRequest = 12, VerticalOptions = LayoutOptions.Center },
             new Label { Text = text, FontSize = 12 },
         },
     };
+
+    /// <summary>Seeds a section body with pulsing skeleton bars so it reads as "loading" before the first fetch (M8).</summary>
+    private static void SeedSkeleton(VerticalStackLayout body, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            body.Children.Add(new TwSkeleton { HeightRequest = 14 });
+        }
+    }
 
     private static View Section(string title, View body) => new VerticalStackLayout
     {

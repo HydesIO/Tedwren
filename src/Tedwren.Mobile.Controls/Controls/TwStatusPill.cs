@@ -30,7 +30,8 @@ public class TwStatusPill : Border
 
     /// <summary>The pill's text.</summary>
     public static readonly BindableProperty TextProperty =
-        BindableProperty.Create(nameof(Text), typeof(string), typeof(TwStatusPill), string.Empty);
+        BindableProperty.Create(nameof(Text), typeof(string), typeof(TwStatusPill), string.Empty,
+            propertyChanged: (bindable, _, newValue) => SemanticProperties.SetDescription((TwStatusPill)bindable, $"Status: {newValue}"));
 
     /// <summary>The pill's semantic colour.</summary>
     public static readonly BindableProperty KindProperty =

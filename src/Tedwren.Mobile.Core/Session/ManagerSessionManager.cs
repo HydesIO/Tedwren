@@ -33,14 +33,14 @@ public interface IManagerSessionExpiredHandler
 }
 
 /// <summary>
-/// Orchestrates manager/admin sign-in on the device (M7): console email + password against the existing
-/// <c>/api/auth/login</c> surface, with the resulting console JWT held in <see cref="AccessTokenStore"/> and
-/// persisted (biometric-gated) in secure storage so a relaunch resumes without re-typing credentials while the
-/// token is still valid. Unlike the operative flow there is <b>no refresh token</b> (the console issues none), so
-/// an expired token means re-login — surfaced through <see cref="SessionExpired"/> when a call returns 401.
-/// Biometrics are a local unlock, not identity verification (R17).
+/// Orchestrates manager/admin sign-in on the device (M7; refresh added in M8): console email + password against
+/// the existing <c>/api/auth/login</c> surface, with the resulting console JWT held in <see cref="AccessTokenStore"/>
+/// and the session (incl. a rotating refresh token) persisted (biometric-gated) in secure storage. From M8 an
+/// expired access token is renewed <b>silently</b> from the stored refresh token (<see cref="IManagerSessionRefresher"/>)
+/// rather than forcing a re-login; only when the refresh token itself is gone/rejected is <see cref="SessionExpired"/>
+/// raised. Biometrics are a local unlock, not identity verification (R17).
 /// </summary>
-public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
+public sealed class ManagerSessionManager : IManagerSessionExpiredHandler, IManagerSessionRefresher
 {
     private const string SessionKey = "tw.manager.session";
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
@@ -51,7 +51,7 @@ public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
     private readonly AccessTokenStore _tokens;
     private readonly TimeProvider _clock;
 
-    /// <summary>Raised when a manager API call is rejected as unauthorised, so the shell routes to sign-in.</summary>
+    /// <summary>Raised when the session cannot be renewed (the refresh token is gone/rejected), so the shell routes to sign-in.</summary>
     public event EventHandler? SessionExpired;
 
     /// <summary>The current signed-in manager session (name/role/company), or null when signed out. Lets the UI
@@ -73,8 +73,9 @@ public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
     public async Task<bool> HasStoredSessionAsync() => !string.IsNullOrEmpty(await _store.GetAsync(SessionKey));
 
     /// <summary>
-    /// Signs a manager in with console email + password. On success the access token is set live and the session is
-    /// persisted for a biometric-gated resume; invalid credentials and transport failures are reported distinctly.
+    /// Signs a manager in with console email + password. On success the access token is set live and the session
+    /// (incl. its refresh token) is persisted for a biometric-gated resume; invalid credentials and transport
+    /// failures are reported distinctly.
     /// </summary>
     public async Task<ManagerLoginResult> LoginAsync(string email, string password, CancellationToken cancellationToken = default)
     {
@@ -93,34 +94,33 @@ public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
             return new ManagerLoginResult(ManagerLoginStatus.InvalidCredentials, null);
         }
 
-        var session = new MobileSession(result.Token, result.ExpiresUtc, result.Name, result.Role, result.CompanyId);
-        await PersistAsync(session);
-        _tokens.AccessToken = session.Token;
-        Current = session;
+        var session = await ApplyAsync(result);
         return new ManagerLoginResult(ManagerLoginStatus.Success, session);
     }
 
     /// <summary>
-    /// Attempts to resume a stored manager session on launch: biometric unlock (when available), then, if the token
-    /// is still valid, sets it live. An expired token is cleared (re-login required); there is no silent refresh.
+    /// Attempts to resume a stored manager session on launch: biometric unlock (when available), then either use the
+    /// still-valid access token or <b>silently refresh</b> it from the stored refresh token. When neither is possible
+    /// the session is cleared and <see cref="ResumeStatus.Expired"/> is returned (re-login required).
     /// </summary>
     public async Task<ResumeResult> TryResumeAsync(CancellationToken cancellationToken = default)
     {
-        _ = cancellationToken;
         var stored = await ReadAsync();
         if (stored is null)
         {
             return new ResumeResult(ResumeStatus.NotEnrolled, null);
         }
 
-        // No console refresh token exists: an expired access token can only be replaced by signing in again.
-        if (stored.IsExpired(_clock.GetUtcNow()))
+        var now = _clock.GetUtcNow();
+        var accessValid = stored.ExpiresUtc > now;
+        var canRefresh = !string.IsNullOrEmpty(stored.RefreshToken) && stored.RefreshTokenExpiresUtc > now;
+        if (!accessValid && !canRefresh)
         {
-            _store.Remove(SessionKey);
+            ClearStored();
             return new ResumeResult(ResumeStatus.Expired, null);
         }
 
-        // Local unlock: when biometrics are enrolled they must succeed before the stored token is used (R17).
+        // Local unlock: when biometrics are enrolled they must succeed before the stored session is used (R17).
         if (await _biometrics.IsAvailableAsync())
         {
             var unlock = await _biometrics.AuthenticateAsync("Unlock Tedwren");
@@ -130,33 +130,84 @@ public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
             }
         }
 
-        _tokens.AccessToken = stored.Token;
-        Current = stored;
-        return new ResumeResult(ResumeStatus.Resumed, stored);
+        if (accessValid)
+        {
+            var session = ToSession(stored);
+            _tokens.AccessToken = session.Token;
+            Current = session;
+            return new ResumeResult(ResumeStatus.Resumed, session);
+        }
+
+        var refreshed = await RefreshAccessTokenAsync(cancellationToken);
+        if (refreshed is null)
+        {
+            ClearStored();
+            return new ResumeResult(ResumeStatus.Expired, null);
+        }
+
+        return new ResumeResult(ResumeStatus.Resumed, Current);
+    }
+
+    /// <summary>Silently renews the access token from the stored refresh token (no biometric); null when unavailable/rejected.</summary>
+    public async Task<string?> RefreshAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        var stored = await ReadAsync();
+        if (stored is null || string.IsNullOrEmpty(stored.RefreshToken) || stored.RefreshTokenExpiresUtc <= _clock.GetUtcNow())
+        {
+            return null;
+        }
+
+        AuthResultDto? result;
+        try
+        {
+            result = await _auth.RefreshAsync(stored.RefreshToken!, cancellationToken);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            return null;
+        }
+
+        if (result is null)
+        {
+            return null; // rejected — the caller (handler / resume) clears + re-prompts
+        }
+
+        var session = await ApplyAsync(result);
+        return session.Token;
     }
 
     /// <summary>Signs out on this device by discarding the stored session and the live access token.</summary>
-    public void SignOut()
-    {
-        _tokens.AccessToken = null;
-        _store.Remove(SessionKey);
-        Current = null;
-    }
+    public void SignOut() => ClearStored();
 
-    /// <summary>Clears the session on a 401 and raises <see cref="SessionExpired"/> so the shell re-prompts (no refresh).</summary>
+    /// <summary>Clears the session on a terminal 401 and raises <see cref="SessionExpired"/> so the shell re-prompts.</summary>
     public void HandleUnauthorized()
     {
-        _tokens.AccessToken = null;
-        _store.Remove(SessionKey);
-        Current = null;
+        ClearStored();
         SessionExpired?.Invoke(this, EventArgs.Empty);
     }
 
-    private Task PersistAsync(MobileSession session) =>
-        _store.SetAsync(SessionKey, JsonSerializer.Serialize(
-            new Stored(session.Token, session.ExpiresUtc, session.Name, session.Role, session.CompanyId), Json));
+    /// <summary>Persists a fresh auth result, sets it live and updates <see cref="Current"/>; returns the session.</summary>
+    private async Task<MobileSession> ApplyAsync(AuthResultDto result)
+    {
+        var session = new MobileSession(result.Token, result.ExpiresUtc, result.Name, result.Role, result.CompanyId);
+        await _store.SetAsync(SessionKey, JsonSerializer.Serialize(
+            new Stored(result.Token, result.ExpiresUtc, result.Name, result.Role, result.CompanyId, result.RefreshToken, result.RefreshTokenExpiresUtc),
+            Json));
+        _tokens.AccessToken = session.Token;
+        Current = session;
+        return session;
+    }
 
-    private async Task<MobileSession?> ReadAsync()
+    private void ClearStored()
+    {
+        _tokens.AccessToken = null;
+        _store.Remove(SessionKey);
+        Current = null;
+    }
+
+    private static MobileSession ToSession(Stored s) => new(s.Token, s.ExpiresUtc, s.Name, s.Role, s.CompanyId);
+
+    private async Task<Stored?> ReadAsync()
     {
         var json = await _store.GetAsync(SessionKey);
         if (string.IsNullOrEmpty(json))
@@ -166,8 +217,7 @@ public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
 
         try
         {
-            var s = JsonSerializer.Deserialize<Stored>(json, Json);
-            return s is null ? null : new MobileSession(s.Token, s.ExpiresUtc, s.Name, s.Role, s.CompanyId);
+            return JsonSerializer.Deserialize<Stored>(json, Json);
         }
         catch (JsonException)
         {
@@ -176,6 +226,8 @@ public sealed class ManagerSessionManager : IManagerSessionExpiredHandler
         }
     }
 
-    /// <summary>The persisted shape of a manager session (a console JWT + identity; no refresh token exists).</summary>
-    private sealed record Stored(string Token, DateTimeOffset ExpiresUtc, string Name, string Role, Guid CompanyId);
+    /// <summary>The persisted shape of a manager session: a console JWT + identity + the rotating refresh token (M8).</summary>
+    private sealed record Stored(
+        string Token, DateTimeOffset ExpiresUtc, string Name, string Role, Guid CompanyId,
+        string? RefreshToken, DateTimeOffset? RefreshTokenExpiresUtc);
 }

@@ -7,6 +7,7 @@ using Tedwren.Abstractions.Contracts.Forms;
 using Tedwren.Abstractions.Contracts.SiteEntry;
 using Tedwren.Abstractions.Contracts.Workforce;
 using Tedwren.Mobile.Core.Api;
+using Tedwren.Mobile.Core.Platform;
 
 namespace Tedwren.Mobile.Core.Tests.Api;
 
@@ -36,7 +37,7 @@ public class ManagerApiClientsTests
         var muster = new MusterDto(siteId, generated,
             new[] { new MusterPersonDto(Guid.NewGuid(), "Alex", null, null, generated) },
             new[] { new CompetencyCoverDto("First Aid", true, 1) });
-        var client = new ManagerSiteEntryApiClient(FakeHttp.Returning(HttpStatusCode.OK, JsonContent.Create(muster)));
+        var client = new ManagerSiteEntryApiClient(FakeHttp.Returning(HttpStatusCode.OK, JsonContent.Create(muster)), new NoOpTelemetry());
 
         var dto = await client.GetMusterAsync(siteId);
 
@@ -49,7 +50,7 @@ public class ManagerApiClientsTests
     public async Task Decide_posts_and_maps_the_result()
     {
         var result = new EntryDecisionResultDto(true, null, true, Guid.NewGuid(), 42, Array.Empty<DecisionCheckResultDto>());
-        var client = new ManagerSiteEntryApiClient(FakeHttp.Returning(HttpStatusCode.OK, JsonContent.Create(result)));
+        var client = new ManagerSiteEntryApiClient(FakeHttp.Returning(HttpStatusCode.OK, JsonContent.Create(result)), new NoOpTelemetry());
 
         var dto = await client.DecideAsync(new ManagerDecideRequest(Guid.NewGuid(), Guid.NewGuid(), null, "reason"));
 
@@ -60,7 +61,7 @@ public class ManagerApiClientsTests
     [Fact]
     public async Task Decide_throws_on_a_non_success_status()
     {
-        var client = new ManagerSiteEntryApiClient(FakeHttp.Returning(HttpStatusCode.Forbidden, new StringContent(string.Empty)));
+        var client = new ManagerSiteEntryApiClient(FakeHttp.Returning(HttpStatusCode.Forbidden, new StringContent(string.Empty)), new NoOpTelemetry());
 
         await Assert.ThrowsAsync<ApiException>(() =>
             client.DecideAsync(new ManagerDecideRequest(Guid.NewGuid(), Guid.NewGuid(), null, "reason")));
