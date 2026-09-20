@@ -54,4 +54,15 @@
     <ProjectReference Include="..\Tedwren.Mobile.Controls\Tedwren.Mobile.Controls.csproj" />
   </ItemGroup>
 
+  <!-- Android biometric prompt (M8, BiometricPrompt). Android-only; the version tracks the installed MAUI
+       workload's AndroidX set — confirm/adjust on the first CI build (docs/mobile-store-readiness.md). -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">
+    <PackageReference Include="Xamarin.AndroidX.Biometric" Version="1.1.0.29" />
+  </ItemGroup>
+
+  <!-- Apple privacy manifest (M8) — required for App Store submission; declares data use + required-reason APIs. -->
+  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'ios'">
+    <BundleResource Include="Platforms\iOS\PrivacyInfo.xcprivacy" />
+  </ItemGroup>
+
 </Project>

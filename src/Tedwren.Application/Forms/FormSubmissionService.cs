@@ -113,6 +113,22 @@ public sealed class FormSubmissionService : IFormSubmissionService
     {
         var (company, name) = await resolve(cancellationToken);
 
+        // Offline idempotency (R4/R16): a retried sync carrying the same client id returns the existing submission
+        // rather than creating a duplicate. Company-guarded (a GUID collision across tenants is refused, R15).
+        if (request.ClientId is { } clientKey)
+        {
+            var existing = await _submissions.GetByIdAsync(clientKey, cancellationToken);
+            if (existing is not null)
+            {
+                if (company is not null && existing.CompanyId != company)
+                {
+                    throw new ArgumentException("The form could not be found.", nameof(request));
+                }
+
+                return existing.Id;
+            }
+        }
+
         var template = await _templates.GetByIdAsync(request.FormTemplateId, cancellationToken);
         if (template is null || (company is not null && template.CompanyId != company))
         {
@@ -156,6 +172,7 @@ public sealed class FormSubmissionService : IFormSubmissionService
         var companyId = company ?? template.CompanyId;
         var submission = new FormSubmission
         {
+            Id = request.ClientId ?? Guid.NewGuid(),
             CompanyId = companyId,
             FormTemplateId = template.Id,
             FormTemplateVersion = template.Version,

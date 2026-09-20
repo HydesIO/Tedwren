@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using Tedwren.Abstractions.Contracts.Attendance;
 using Tedwren.Abstractions.Contracts.Mobile;
 using Tedwren.Mobile.Core.Api;
+using Tedwren.Mobile.Core.Platform;
 
 namespace Tedwren.Mobile.Core.Tests.Api;
 
@@ -14,7 +15,7 @@ public class AttendanceApiClientTests
     {
         var http = FakeHttp.Returning(HttpStatusCode.OK,
             JsonContent.Create(new SignInResult(true, "Accepted", null, Guid.NewGuid(), null)));
-        var client = new AttendanceApiClient(http);
+        var client = new AttendanceApiClient(http, new NoOpTelemetry());
 
         var result = await client.SignInAsync(new MobileSignInRequest(Guid.NewGuid(), null, 51.5, -0.1));
 
@@ -27,7 +28,7 @@ public class AttendanceApiClientTests
     {
         var http = FakeHttp.Returning(HttpStatusCode.OK,
             JsonContent.Create(new SignInResult(false, "Refused", "Already signed in at Site Alpha.", Guid.NewGuid(), "Site Alpha")));
-        var client = new AttendanceApiClient(http);
+        var client = new AttendanceApiClient(http, new NoOpTelemetry());
 
         var result = await client.SignInAsync(new MobileSignInRequest(Guid.NewGuid(), null, 51.5, -0.1));
 
@@ -39,7 +40,7 @@ public class AttendanceApiClientTests
     public async Task SignIn_throws_on_a_non_success_status()
     {
         var http = FakeHttp.Returning(HttpStatusCode.Forbidden, new StringContent(string.Empty));
-        var client = new AttendanceApiClient(http);
+        var client = new AttendanceApiClient(http, new NoOpTelemetry());
 
         await Assert.ThrowsAsync<HttpRequestException>(() =>
             client.SignInAsync(new MobileSignInRequest(Guid.NewGuid(), null, 51.5, -0.1)));
@@ -50,7 +51,7 @@ public class AttendanceApiClientTests
     {
         var http = FakeHttp.Returning(HttpStatusCode.OK,
             JsonContent.Create(new SignOutResult(true, "Accepted", null, 2.5, Guid.NewGuid())));
-        var client = new AttendanceApiClient(http);
+        var client = new AttendanceApiClient(http, new NoOpTelemetry());
 
         var result = await client.SignOutAsync(new MobileSignOutRequest(Guid.NewGuid(), 51.5, -0.1));
 
@@ -63,7 +64,7 @@ public class AttendanceApiClientTests
     {
         // The server answers 204 No Content when there is no open sign-in (SF-18).
         var http = FakeHttp.Returning(HttpStatusCode.NoContent, new StringContent(string.Empty));
-        var client = new AttendanceApiClient(http);
+        var client = new AttendanceApiClient(http, new NoOpTelemetry());
 
         Assert.Null(await client.GetCurrentAsync());
     }
@@ -74,7 +75,7 @@ public class AttendanceApiClientTests
         var siteId = Guid.NewGuid();
         var http = FakeHttp.Returning(HttpStatusCode.OK,
             JsonContent.Create(new CurrentAttendanceDto(siteId, "Riverside Works", null, DateTimeOffset.UtcNow)));
-        var client = new AttendanceApiClient(http);
+        var client = new AttendanceApiClient(http, new NoOpTelemetry());
 
         var current = await client.GetCurrentAsync();
 

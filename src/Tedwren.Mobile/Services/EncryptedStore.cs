@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Tedwren.Mobile.Core.Caching;
+using Tedwren.Mobile.Core.Forms;
 using Tedwren.Mobile.Core.Platform;
 using Tedwren.Mobile.Core.Sync;
 
@@ -15,7 +16,7 @@ namespace Tedwren.Mobile.Services;
 /// and single-flighted (the key fetch is async), so app start is not blocked. Read-cache reads/writes fail soft (a
 /// storage error must never blank a screen); outbox operations surface errors to the sync engine.
 /// </summary>
-public sealed class EncryptedStore : IReadCache, IOutboxStore
+public sealed class EncryptedStore : IReadCache, IOutboxStore, IFormDraftStore
 {
     /// <summary>Secure-store key under which the database encryption key is held.</summary>
     private const string DbKeyName = "tedwren.db.key";
@@ -23,16 +24,19 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
 
     private readonly ISecureStore _secure;
+    private readonly IBiometricAuthenticator _biometrics;
     private readonly string _dbPath;
     private readonly SemaphoreSlim _initGate = new(1, 1);
     private string? _connectionString;
+    private bool _unlocked;
 
     static EncryptedStore() => SQLitePCL.Batteries_V2.Init();
 
-    /// <summary>Creates the store over the secure key store and the database file path.</summary>
-    public EncryptedStore(ISecureStore secure, string dbPath)
+    /// <summary>Creates the store over the secure key store, the biometric gate (M8) and the database file path.</summary>
+    public EncryptedStore(ISecureStore secure, IBiometricAuthenticator biometrics, string dbPath)
     {
         _secure = secure;
+        _biometrics = biometrics;
         _dbPath = dbPath;
     }
 
@@ -159,6 +163,55 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore
         return new OutboxCounts(0, 0);
     }
 
+    // ---- IFormDraftStore ---------------------------------------------------------------------------------
+
+    /// <inheritdoc />
+    public async Task SaveAsync(FormDraft draft, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO FormDraft (Key, TemplateVersionId, PayloadJson, UpdatedUtc) VALUES ($key, $tvid, $payload, $utc) " +
+            "ON CONFLICT(Key) DO UPDATE SET TemplateVersionId = $tvid, PayloadJson = $payload, UpdatedUtc = $utc";
+        command.Parameters.AddWithValue("$key", draft.Key.ToString());
+        command.Parameters.AddWithValue("$tvid", draft.TemplateVersionId.ToString());
+        command.Parameters.AddWithValue("$payload", draft.PayloadJson);
+        command.Parameters.AddWithValue("$utc", draft.UpdatedUtc.ToString("O", CultureInfo.InvariantCulture));
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<FormDraft?> GetAsync(Guid key, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Key, TemplateVersionId, PayloadJson, UpdatedUtc FROM FormDraft WHERE Key = $key";
+        command.Parameters.AddWithValue("$key", key.ToString());
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        if (!await reader.ReadAsync(cancellationToken))
+        {
+            return null;
+        }
+
+        return new FormDraft
+        {
+            Key = Guid.Parse(reader.GetString(0)),
+            TemplateVersionId = Guid.Parse(reader.GetString(1)),
+            PayloadJson = reader.GetString(2),
+            UpdatedUtc = ParseUtc(reader.GetString(3)),
+        };
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteAsync(Guid key, CancellationToken cancellationToken = default)
+    {
+        await using var connection = await OpenAsync(cancellationToken);
+        await using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM FormDraft WHERE Key = $key";
+        command.Parameters.AddWithValue("$key", key.ToString());
+        await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
     // ---- infrastructure ----------------------------------------------------------------------------------
 
     private const string Columns =
@@ -171,7 +224,9 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore
         "Id TEXT PRIMARY KEY, Sequence INTEGER NOT NULL, Kind TEXT NOT NULL, PayloadJson TEXT NOT NULL, " +
         "PhotoBytes BLOB NULL, PhotoContentType TEXT NULL, UploadedImageReference TEXT NULL, Status INTEGER NOT NULL, " +
         "AttemptCount INTEGER NOT NULL, NextAttemptUtc TEXT NULL, LastError TEXT NULL, CreatedUtc TEXT NOT NULL, " +
-        "CompletedUtc TEXT NULL);";
+        "CompletedUtc TEXT NULL);" +
+        "CREATE TABLE IF NOT EXISTS FormDraft (Key TEXT PRIMARY KEY, TemplateVersionId TEXT NOT NULL, " +
+        "PayloadJson TEXT NOT NULL, UpdatedUtc TEXT NOT NULL);";
 
     /// <summary>Opens a fresh connection, ensuring the key + schema exist (single-flighted).</summary>
     private async Task<SqliteConnection> OpenAsync(CancellationToken cancellationToken)
@@ -195,6 +250,19 @@ public sealed class EncryptedStore : IReadCache, IOutboxStore
             {
                 return _connectionString;
             }
+
+            // Biometric-gated key (M8): the DB key requires a local unlock (once per app run) in addition to the OS
+            // secure enclave, so field data stays sealed even if the app lock is bypassed. Skipped when the device has
+            // no biometrics enrolled (the enclave still protects the key); a failed prompt keeps the store closed.
+            if (!_unlocked && await _biometrics.IsAvailableAsync())
+            {
+                if (await _biometrics.AuthenticateAsync("Unlock Tedwren data") != BiometricResult.Success)
+                {
+                    throw new InvalidOperationException("Biometric unlock is required to open the encrypted store.");
+                }
+            }
+
+            _unlocked = true;
 
             var key = await _secure.GetAsync(DbKeyName);
             if (string.IsNullOrEmpty(key))

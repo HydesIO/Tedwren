@@ -6,6 +6,14 @@ public sealed record DecisionCheckResultDto(string Name, string Outcome, string?
 /// <summary>A day-only manager override of a blocked decision, with a reason (MC-11).</summary>
 public sealed record ManagerOverrideDto(string By, string Reason);
 
+/// <summary>
+/// A manager's authenticated site-entry check from the mobile app (M7). Unlike the anonymous kiosk request, it
+/// carries no company id or overrider name — both are taken from the signed-in manager's token (R15/MC-11):
+/// the company scopes the decision, and the override (when <see cref="OverrideReason"/> is supplied) is attributed
+/// to the authenticated manager rather than a free-text value.
+/// </summary>
+public sealed record ManagerDecideRequest(Guid SiteId, Guid PersonId, Guid? PropertyId, string? OverrideReason);
+
 /// <summary>A request to decide whether a worker may enter a site (MC-8).</summary>
 public sealed record DecideEntryRequest(
     Guid CompanyId,

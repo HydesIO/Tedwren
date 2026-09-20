@@ -21,17 +21,27 @@ public sealed class AuthService : IAuthService
     private readonly ITokenIssuer _tokens;
     private readonly IEmailSender _email;
     private readonly EmailOptions _emailOptions;
+    private readonly IUserRefreshTokenRepository _refreshTokens;
+    private readonly JwtOptions _jwt;
 
     /// <summary>How long a password-reset link stays valid. Deliberately short — the link grants a password change.</summary>
     private static readonly TimeSpan ResetTokenLifetime = TimeSpan.FromHours(1);
 
-    /// <summary>Creates the service over the user repository, token issuer and email sender.</summary>
-    public AuthService(IUserRepository users, ITokenIssuer tokens, IEmailSender email, EmailOptions emailOptions)
+    /// <summary>Creates the service over the user + refresh-token repositories, token issuer, email sender and JWT options.</summary>
+    public AuthService(
+        IUserRepository users,
+        ITokenIssuer tokens,
+        IEmailSender email,
+        EmailOptions emailOptions,
+        IUserRefreshTokenRepository refreshTokens,
+        JwtOptions jwt)
     {
         _users = users;
         _tokens = tokens;
         _email = email;
         _emailOptions = emailOptions;
+        _refreshTokens = refreshTokens;
+        _jwt = jwt;
     }
 
     /// <summary>Signs a user in. Null when credentials are invalid or the account is not active.</summary>
@@ -52,8 +62,7 @@ public sealed class AuthService : IAuthService
         user.LastActiveUtc = DateTimeOffset.UtcNow;
         await _users.UpdateAsync(user, cancellationToken);
 
-        var token = _tokens.Issue(user);
-        return new AuthResultDto(token.Token, token.ExpiresUtc, user.Name, user.Role.ToString(), user.CompanyId);
+        return await IssueAsync(user, cancellationToken);
     }
 
     /// <summary>Accepts an invitation: sets the password, activates the account, clears the token. Null when invalid/expired.</summary>
@@ -78,16 +87,90 @@ public sealed class AuthService : IAuthService
         user.LastActiveUtc = DateTimeOffset.UtcNow;
         await _users.UpdateAsync(user, cancellationToken);
 
-        var token = _tokens.Issue(user);
-        return new AuthResultDto(token.Token, token.ExpiresUtc, user.Name, user.Role.ToString(), user.CompanyId);
+        return await IssueAsync(user, cancellationToken);
     }
 
-    /// <summary>
-    /// Starts a password reset (D1): mints a one-time reset link and emails it to the address, but only when
-    /// it belongs to an active account. Returns unconditionally so a caller cannot tell whether the email is
-    /// registered (no account enumeration). The reset link reuses the one-time token the accept-invite flow
-    /// consumes, so the set-new-password step is shared with invitation acceptance.
-    /// </summary>
+    /// <summary>Exchanges a valid console refresh token for a fresh access token, rotating the refresh token (M8).</summary>
+    public async Task<AuthResultDto?> RefreshAsync(RefreshConsoleTokenRequest request, CancellationToken cancellationToken = default)
+    {
+        if (!TrySplitToken(request.RefreshToken, out var id, out var secret))
+        {
+            return null;
+        }
+
+        var row = await _refreshTokens.GetByIdAsync(id, cancellationToken);
+        var now = DateTimeOffset.UtcNow;
+        if (row is null || !row.CanUse(now) || !PasswordHasher.Verify(secret, row.TokenHash))
+        {
+            return null;
+        }
+
+        // The account must still be active (a suspended/removed user's live sessions are refused).
+        var user = await _users.GetByIdAsync(row.UserId, cancellationToken);
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            return null;
+        }
+
+        // Rotate the secret in place (the id/selector is stable) so a stolen pre-rotation token is refused next time.
+        var newSecret = NewSecret();
+        row.TokenHash = PasswordHasher.Hash(newSecret);
+        row.ExpiresUtc = now.AddDays(_jwt.RefreshLifetimeDays);
+        row.LastUsedUtc = now;
+        await _refreshTokens.UpdateAsync(row, cancellationToken);
+
+        var token = _tokens.Issue(user);
+        return new AuthResultDto(
+            token.Token, token.ExpiresUtc, user.Name, user.Role.ToString(), user.CompanyId, $"{id:N}.{newSecret}", row.ExpiresUtc);
+    }
+
+    /// <summary>Issues an access token plus a freshly-stored refresh token for a signed-in/activated user (M8).</summary>
+    private async Task<AuthResultDto> IssueAsync(User user, CancellationToken cancellationToken)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var id = Guid.NewGuid();
+        var secret = NewSecret();
+        var expiresUtc = now.AddDays(_jwt.RefreshLifetimeDays);
+        await _refreshTokens.AddAsync(
+            new UserRefreshToken
+            {
+                Id = id,
+                UserId = user.Id,
+                CompanyId = user.CompanyId,
+                TokenHash = PasswordHasher.Hash(secret),
+                ExpiresUtc = expiresUtc,
+                CreatedUtc = now,
+                LastUsedUtc = now,
+            },
+            cancellationToken);
+
+        var token = _tokens.Issue(user);
+        return new AuthResultDto(
+            token.Token, token.ExpiresUtc, user.Name, user.Role.ToString(), user.CompanyId, $"{id:N}.{secret}", expiresUtc);
+    }
+
+    /// <summary>Generates a new opaque token secret (32 random bytes, base64).</summary>
+    private static string NewSecret() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+    /// <summary>Splits an opaque refresh token <c>{id:N}.{secret}</c> into its selector id and secret; false when malformed.</summary>
+    private static bool TrySplitToken(string? token, out Guid id, out string secret)
+    {
+        id = Guid.Empty;
+        secret = string.Empty;
+        if (string.IsNullOrEmpty(token))
+        {
+            return false;
+        }
+
+        var dot = token.IndexOf('.');
+        if (dot <= 0 || dot == token.Length - 1 || !Guid.TryParseExact(token[..dot], "N", out id))
+        {
+            return false;
+        }
+
+        secret = token[(dot + 1)..];
+        return true;
+    }
     public async Task RequestPasswordResetAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default)
     {
         var email = (request.Email ?? string.Empty).Trim();

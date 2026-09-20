@@ -54,6 +54,26 @@ public sealed class FormSubmissionServiceTests
         return id;
     }
 
+    [Fact] // M6 — a retried offline sync carrying the same client id creates exactly one submission (R4/R16).
+    public async Task Submit_WithClientId_IsIdempotent()
+    {
+        var (templates, submissions) = CreateServices(Company, out _);
+        var templateId = await PublishedTemplateAsync(templates);
+        var clientId = Guid.NewGuid();
+        var request = new CreateFormSubmissionRequest(
+            templateId, "Organisation", null, null,
+            new List<FormAnswerDto> { new("f1", "Green", Array.Empty<string>()) },
+            Array.Empty<FormSubmissionFileInput>(),
+            ClientId: clientId);
+
+        var first = await submissions.SubmitAsync(request);
+        var second = await submissions.SubmitAsync(request);
+
+        Assert.Equal(clientId, first);       // the client id is used as the submission id
+        Assert.Equal(first, second);          // the retry returns the same submission
+        Assert.Single(await submissions.GetSubmissionsAsync());
+    }
+
     [Fact] // Requirement 7 / R16 — a completed form is captured with the template version snapshotted.
     public async Task Submit_ValidForm_IsCaptured()
     {

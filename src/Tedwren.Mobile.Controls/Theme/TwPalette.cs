@@ -51,4 +51,9 @@ public static class TwPalette
     public static readonly Color DangerDark = Color.FromArgb("#F5766B");
     public static readonly Color DangerPaleLight = Color.FromArgb("#FEF3F2");
     public static readonly Color DangerPaleDark = Color.FromArgb("#2E1B1A");
+
+    /// <summary>RAG (inspection) status — mirrors the XAML TwRag* tokens (reuses the status solids, theme-independent).</summary>
+    public static readonly Color RagRed = Color.FromArgb("#F04438");
+    public static readonly Color RagAmber = Color.FromArgb("#F79009");
+    public static readonly Color RagGreen = Color.FromArgb("#17B26A");
 }

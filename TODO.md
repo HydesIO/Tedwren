@@ -83,9 +83,103 @@ a workload machine (iOS needs macOS).
   notification / push; OS background sync when closed (M8); orphan-image cleanup (M8); biometric-gated DB key
   (until the real biometric integration lands). SQLCipher round-trip is CI/on-device only (kept out of the
   native-free Core test project).
-- ⏳ **M6** forms engine (comprehensive) · **M7** manager/admin mode · **M8** hardening & store readiness.
-- ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, install MAUI
-  workloads (+ Android SDK / Xcode). See `docs/mobile-app-build.md`.
+- ✅ **M6 — Forms & inspection engine (comprehensive).** Operatives complete assigned inspection/checklist forms
+  **offline** (all 14 field kinds, photos, signatures, RAG) with draft autosave/resume, syncing idempotently;
+  reusing the whole existing server forms engine. Delivered all-in-one (server + Core + native UI). Server: reuse
+  `IFormSubmissionService.SubmitForContextAsync` (on-behalf submit — full validation, file storage, red-RAG alert,
+  PDF) + `IFormTemplateService.GetTemplateForFillAsync` (published, tenant-scoped) — **no** methods added to the
+  client-implemented forms interfaces (SRP). Idempotency: added `Guid? ClientId` to `CreateFormSubmissionRequest`;
+  `SubmitCoreAsync` dedups on it (`GetByIdAsync`, company-guarded) + uses it as the submission id — existing
+  console/induction callers pass null → unchanged (no new table, R4/R16/R15). New mobile-only `IMobileFormService`
+  filters company assignments to the operative (Organisation + Operator==me + Site∈attended-via-attendance) and
+  resolves each family's latest published version. `MobileFormEndpoints` (`/api/mobile/forms/{assignments,
+  templates/{id},submissions}`, RequireOperative + `ModuleGate("forms")`). Dashboard `FormsDue` populated (assigned
+  count when the company holds `forms`). Client (Core): `FormsApiClient`; `Forms/` — `FormValidation`
+  (required-by-default, mirrors server), `FormsDueCalculator` (schedule-aware Daily/Weekly/Monthly/AdHoc due/overdue),
+  `FormDraft` + `IFormDraftStore`; `Sync/FormsOutboxHandler` (`form-submission` kind — one idempotent JSON POST, base64
+  files in the payload, no per-file checkpoint). MAUI head: `TwDynamicForm` renderer (all 14 kinds → `GetAnswers()`/
+  `GetFiles()`, signature inline PNG data URL) + `TwSignaturePad`; `FormsInboxPage` (due/overdue badges + draft
+  markers) + `FormFillPage` (offline fill, autosave/resume, client-validate, enqueue → sync); `EncryptedStore` gains
+  a `FormDraft` table (implements `IFormDraftStore`); DI + "Forms due" tile wired. Tests (all green): Application
+  (`MobileFormService` filtering + `SubmitCoreAsync` ClientId idempotency), API (assignments/template/submit reuse,
+  idempotency, module-gate 403, console 403), Core (`FormsApiClient`, `FormsOutboxHandler`, `FormsDueCalculator`,
+  `FormValidation`). ❗ Deferred: multipart forms upload (base64 reused; M8 perf); server-side `ValidationJson`
+  enforcement (unused; client mirrors required-only); operative submission-history read-back (needs an operative
+  file GET, R9); offline form-capture time preserved on the submission (uses server-receipt time for M6); manager
+  assign/review UI (M7). Native renderer + pages are CI/on-device only (kept out of the native-free Core tests).
+- ✅ **M7 — Manager/admin mode (comprehensive).** A role-switched native manager experience reusing the console
+  plane: managers sign in with console email + password (`/api/auth/login`), which already satisfies the API's
+  secure-by-default fallback policy, so the dashboard / forms / workforce / decisions endpoints are reused **as-is**.
+  Delivered all-in-one (server + Core + native UI); no new tables / EF migration. Server: read-only evidence
+  review — `IEvidenceCaptureQueryService` + `EvidenceCaptureQueryService` (company-scoped R15, capturer name from
+  the engagement per §5.1) over the M5 `EvidenceItem` store; `EvidenceCaptureEndpoints` (`/api/evidence-captures`,
+  fallback policy, tenant via `ICurrentUserService`; photo via the authorised `/api/images/{id}`, R9). Authenticated
+  manager site-entry — `ManagerSiteEntryEndpoints`: `GET /api/manager/muster/{siteId}` (fallback + R15 site guard,
+  MC-12/13/14) and `POST /api/manager/entry/decide` (RequireWrite; `CompanyId` from token + override `By` = the
+  signed-in manager, MC-11) + `ManagerDecideRequest`. The console token has **no refresh** (none exists), so the app
+  re-logs-in on expiry. Client (Core): `ManagerSessionManager` (console login + persisted biometric-gated resume;
+  `Current` role; `SessionExpired` on 401), `ManagerAuthMessageHandler` (attaches the console token; 401 → clear +
+  signal, no refresh/retry), five typed clients (`ManagerApiClient` dashboard/expiry/audit,
+  `ManagerSiteEntryApiClient` sites/muster/decide, `ManagerWorkforceApiClient`, `ManagerFormsApiClient`
+  templates/assign/review + template/file fetch, `ManagerEvidenceApiClient` captures + pack summary) +
+  `ManagerImageApiClient` (authorised image bytes), `ManagerDataService` (cache-then-network, MC-14 muster age from
+  `MusterDto.GeneratedUtc`), a pure R18 `SiteGateResultPresenter` (ported from the console) and `FormAnswerFormatter`.
+  MAUI head: controls `TwKpiCard` / `TwStatusPill` / `TwEmptyState` (+ RAG tokens); live `ManagerHomePage` (KPIs +
+  compliance bar + expiring + activity + 7 wired tiles); pages `ManagerSignInPage`, `MusterPage`, `SiteEntryPage`
+  (check + reason-captured override, online-only R2/R3, R18 wording), `OperativesPage`/`OperativeDetailPage` (cards +
+  qualification photos), `FormsManagePage`/`FormAssignPage`, `FormReviewListPage`/`FormReviewPage` (RAG chips,
+  signatures, attachments, approve/reject — hidden for a read-only Auditor, RequireWrite), `EvidenceReviewPage`/
+  `EvidenceDetailPage`, `ReportsPage`; shell routes the manager button → sign-in, `LoadingPage` resumes a manager
+  session, `App` re-prompts on `SessionExpired`. Tests (all green): Application (`EvidenceCaptureQueryService` — R15 +
+  engagement name), API (`ManagerSiteEntryApiTests`, `EvidenceCaptureApiTests` — R15, RequireWrite/Auditor 403,
+  operative 403, unauth 401), Core (`ManagerSessionManager`, `ManagerAuthMessageHandler`, client mapping,
+  `ManagerDataService`, `SiteGateResultPresenter` R18, `FormAnswerFormatter`). ❗ Deferred: configurable competency
+  cover MC-13 (reuses the muster's existing cover; raise with PRD); a console **refresh** endpoint so managers don't
+  re-login at expiry (M8); full evidence-pack ZIP on device (summary only; ZIP stays on console); a Blazor console
+  evidence-review page (the API serves it); drawn compliance donut / skeletons (M8). Native pages/controls are
+  CI/on-device only (kept out of the native-free Core tests).
+- ✅ **M8 — Hardening & store readiness (comprehensive).** Closed the M7 console-refresh gap, added a telemetry /
+  R14-timing seam, hardened the security-critical MAUI paths, and produced the release runway. Delivered as the
+  buildable-here work (server + Core) plus CI-built/hand-reviewed MAUI-head hardening plus a documented off-container
+  checklist. **Console refresh (server + Core, built & tested here):** new `UserRefreshToken` entity + repository
+  (Dapper SqlServer/Postgres + InMemory) + EF `UserRefreshTokenRecord`/mapping/migration `AddConsoleRefresh` + both
+  dialect scripts `037_console_refresh.sql` (SchemaParity guarded). Token is a selector/verifier `"{tokenId}.{secret}"`
+  — the server finds the row by the embedded id, verifies the secret against the PBKDF2 `TokenHash` (shared
+  `PasswordHasher`), checks `CanUse` + the user is still active, rotates the secret in place, and re-issues via the
+  existing `ITokenIssuer` (one row per login → concurrent sessions + per-session revoke; reuses
+  `JwtOptions.RefreshLifetimeDays`). `AuthResultDto` gains trailing nullable `RefreshToken`/`RefreshTokenExpiresUtc`
+  (existing positional callers unaffected); `LoginAsync`/`AcceptInviteAsync` mint one; new `IAuthService.RefreshAsync`
+  + `POST /api/auth/refresh` (anonymous, `RequireRateLimiting("public")`). Core: `AuthApiClient.RefreshAsync`;
+  `ManagerSessionManager` now implements `IManagerSessionRefresher` and **silently refreshes** an expired access token
+  on resume (no re-login while the refresh token is valid); `ManagerAuthMessageHandler` rewritten to
+  refresh-then-retry-once, falling back to `SessionExpired` only when refresh fails. **Telemetry / R14 timing (Core):**
+  `ITelemetry` + `NoOpTelemetry`; `AttendanceApiClient` + `ManagerSiteEntryApiClient` report their client round-trip
+  (`attendance.signin.roundtrip` / `site-entry.decide.roundtrip`) — the client-side R14 measurement. **MAUI head
+  (CI-built, hand-reviewed):** real biometric (`AndroidX.Biometric` `BiometricPrompt` / iOS `LAContext`,
+  `BiometricWeak|DeviceCredential`); biometric-gated SQLCipher key in `EncryptedStore.ConnectionStringAsync` (once per
+  run, over the OS enclave); TLS cert pinning (`TlsPinning`, SPKI SHA-256 pin set, DEBUG bypass) + a single configured
+  API base URL (`TedwrenApiOptions` via a shared `AddTedwrenClient<T>()` extension applied to every client);
+  accessibility `SemanticProperties` on `TwMenuTile`/`TwKpiCard`/`TwStatusPill` (+ decorative glyphs hidden on
+  `TwEmptyState`/`TwSkeleton`, spoken split on `TwDonutStat`); tablet layout (`TileGrid` 3-up on `DeviceIdiom.Tablet`);
+  `TwSkeleton` loaders + a drawn `TwDonutStat` compliance donut on the dashboards (supersedes M7's segmented bar);
+  `LoggingTelemetry` + global crash hooks in `App`; iOS `PrivacyInfo.xcprivacy`; `Xamarin.AndroidX.Biometric`
+  (Android-only). **Release runway:** new `docs/mobile-store-readiness.md` statuses every off-container gate.
+  Tests (all green): Application `AuthServiceTests` (login/accept-invite mint a refresh token; `RefreshAsync` rotates +
+  re-issues, rejects expired/revoked/unknown/malformed/inactive; `RevokeAllForUser`); API `ConsoleRefreshApiTests`
+  (login returns a refresh token; `/refresh` rotates; pre-rotation token rejected; suspended user → 401; garbage → 401);
+  Core `AuthApiClientTests` (+`RefreshAsync`), `ManagerSessionManagerTests` (+silent refresh), rewritten
+  `ManagerAuthMessageHandlerTests`, `TelemetryTests`; `SchemaParityTests` covers `UserRefreshTokens` (both dialects).
+  ❗ Deferred / off-container (in the readiness doc, not built blind): OS background sync (WorkManager/BGTaskScheduler);
+  App/Play Store submission (signing, provisioning, entitlements, screenshots) + the iOS build (needs macOS + Xcode);
+  device R14 verification, WCAG 2.2 AA audit + the device matrix; the DPIA boundary (R17 — on-device unlock only, none
+  triggered); Inter `.ttf` fonts. 🟨 Raise with Leigh (PRD-silent): the telemetry/crash **vendor** (UK-hosted, R13),
+  the **push** channel, the **WCAG** conformance target, whether OS background sync is required, and root/jailbreak
+  detection. Post-M8 feature backlog stays deferred (multipart forms upload, orphan-image cleanup, operative
+  submission-history read-back, configurable competency-cover MC-13, evidence-pack ZIP on device, the Blazor console
+  evidence page, site-documents MC-27). Native pages/controls are CI/on-device only (kept out of the native-free tests).
+- ❗ Before device testing: set the API base URL (not `localhost`), add Inter `.ttf` fonts, populate the TLS pin set,
+  confirm the `AndroidX.Biometric` version against the workload, install MAUI workloads (+ Android SDK / Xcode). See
+  `docs/mobile-app-build.md` and `docs/mobile-store-readiness.md`.
 - ⏳ PRD notes to raise: the app is Q8/Q14 (sanctioned, unspecified in detail); mobile-number+OTP login and
   one-device-per-operative are SF-1 design choices, not mandates; geotagged photos + push for due forms are
   enhancements beyond the forms spec.

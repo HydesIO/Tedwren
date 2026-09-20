@@ -5,8 +5,8 @@ namespace Tedwren.Application.Mobile;
 
 /// <summary>
 /// Builds the operative home dashboard (M3) from the workforce profile (name, compliance, next card expiry), the
-/// current week's hours (SUB-27) and the live signed-in state / current site (M4, attendance). The forms-due
-/// count (M6, forms engine) is a placeholder until that phase lands.
+/// current week's hours (SUB-27), the live signed-in state / current site (M4, attendance), and the count of forms
+/// assigned to the operative (M6, when the company holds the <c>forms</c> module).
 /// </summary>
 public sealed class OperativeDashboardService : IOperativeDashboardService
 {
@@ -14,14 +14,16 @@ public sealed class OperativeDashboardService : IOperativeDashboardService
     private readonly ITimesheetService _timesheets;
     private readonly IMobileAttendanceService _attendance;
     private readonly IEntitlementService _entitlements;
+    private readonly IMobileFormService _forms;
 
-    /// <summary>Creates the service over the mobile surface (profile), the timesheet service, the mobile attendance read and the module entitlements.</summary>
-    public OperativeDashboardService(IMobileSurfaceService surface, ITimesheetService timesheets, IMobileAttendanceService attendance, IEntitlementService entitlements)
+    /// <summary>Creates the service over the mobile surface (profile), the timesheet service, the mobile attendance read, the module entitlements and the mobile forms surface.</summary>
+    public OperativeDashboardService(IMobileSurfaceService surface, ITimesheetService timesheets, IMobileAttendanceService attendance, IEntitlementService entitlements, IMobileFormService forms)
     {
         _surface = surface;
         _timesheets = timesheets;
         _attendance = attendance;
         _entitlements = entitlements;
+        _forms = forms;
     }
 
     /// <summary>Composes the dashboard for one operative, or null when they have no engagement in the company.</summary>
@@ -36,6 +38,8 @@ public sealed class OperativeDashboardService : IOperativeDashboardService
         var hours = await _timesheets.GetOperativeHoursAsync(companyId, personId, CurrentWeekStart(), cancellationToken);
         var current = await _attendance.GetCurrentAsync(personId, cancellationToken);
         var canReportHazards = await _entitlements.IsEnabledAsync(companyId, "hse", cancellationToken);
+        var canUseForms = await _entitlements.IsEnabledAsync(companyId, "forms", cancellationToken);
+        var formsDue = canUseForms ? (await _forms.GetAssignmentsAsync(companyId, personId, cancellationToken)).Count : 0;
 
         // Soonest card expiry (earliest overall — a past date reads as overdue), mirroring the register roll-up.
         var nextExpiry = profile.Qualifications
@@ -50,7 +54,7 @@ public sealed class OperativeDashboardService : IOperativeDashboardService
             profile.StatusLabel,
             hours.TotalHours,
             nextExpiry == default ? null : nextExpiry,
-            FormsDue: 0,
+            FormsDue: formsDue,
             SignedIn: current is not null,
             CurrentSiteId: current?.SiteId,
             CurrentSiteName: current?.SiteName,

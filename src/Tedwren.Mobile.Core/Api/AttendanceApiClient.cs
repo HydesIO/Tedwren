@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Http.Json;
 using Tedwren.Abstractions.Contracts.Attendance;
 using Tedwren.Abstractions.Contracts.Mobile;
+using Tedwren.Mobile.Core.Platform;
 
 namespace Tedwren.Mobile.Core.Api;
 
@@ -10,19 +12,26 @@ namespace Tedwren.Mobile.Core.Api;
 /// silent refresh are handled by <see cref="OperativeAuthMessageHandler"/> on the wrapped <see cref="HttpClient"/>.
 /// Sign-in/out are <b>online-only</b> (R2/R3) — the caller checks connectivity first and never queues these. A
 /// recorded refusal comes back as a 200 with <see cref="SignInResult.SignedIn"/> false (SF-16); a non-success
-/// status (e.g. a cross-company site, 403) throws.
+/// status (e.g. a cross-company site, 403) throws. The sign-in round-trip is timed for the R14 &lt;3s budget (M8).
 /// </summary>
 public sealed class AttendanceApiClient
 {
     private readonly HttpClient _http;
+    private readonly ITelemetry _telemetry;
 
-    /// <summary>Creates the client over the auth-handled <see cref="HttpClient"/> (BaseAddress = API root).</summary>
-    public AttendanceApiClient(HttpClient http) => _http = http;
+    /// <summary>Creates the client over the auth-handled <see cref="HttpClient"/> (BaseAddress = API root) and telemetry.</summary>
+    public AttendanceApiClient(HttpClient http, ITelemetry telemetry)
+    {
+        _http = http;
+        _telemetry = telemetry;
+    }
 
     /// <summary>Records a sign-in attempt and returns its outcome (accepted, flagged or a recorded refusal).</summary>
     public async Task<SignInResult> SignInAsync(MobileSignInRequest request, CancellationToken cancellationToken = default)
     {
+        var stopwatch = Stopwatch.StartNew();
         using var response = await _http.PostAsJsonAsync("api/mobile/attendance/sign-in", request, cancellationToken);
+        _telemetry.TrackTiming("attendance.signin.roundtrip", stopwatch.Elapsed); // R14 client-side round-trip
         response.EnsureSuccessStatusCode();
         return (await response.Content.ReadFromJsonAsync<SignInResult>(cancellationToken))!;
     }

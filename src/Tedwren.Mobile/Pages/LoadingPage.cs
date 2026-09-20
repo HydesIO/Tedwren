@@ -5,20 +5,23 @@ using Tedwren.Mobile.Core.Session;
 namespace Tedwren.Mobile.Pages;
 
 /// <summary>
-/// The launch page (M3): attempts a biometric-gated resume of the operative session and routes to the operative
-/// home when resumed, otherwise to sign-in. Wires the resume-on-launch deferred from M2.
+/// The launch page (M3, extended in M7): attempts a biometric-gated resume of a stored session — the operative
+/// session first, then the manager (console) session — and routes to the matching role home, otherwise to sign-in.
+/// Wires the resume-on-launch deferred from M2.
 /// </summary>
 public class LoadingPage : ContentPage
 {
     private readonly OperativeSessionManager _session;
+    private readonly ManagerSessionManager _manager;
     private readonly AccessTokenStore _tokens;
     private readonly IServiceProvider _services;
     private bool _routed;
 
     /// <summary>Builds the branded loading screen.</summary>
-    public LoadingPage(OperativeSessionManager session, AccessTokenStore tokens, IServiceProvider services)
+    public LoadingPage(OperativeSessionManager session, ManagerSessionManager manager, AccessTokenStore tokens, IServiceProvider services)
     {
         _session = session;
+        _manager = manager;
         _tokens = tokens;
         _services = services;
         BackgroundColor = TwPalette.Brand;
@@ -50,11 +53,16 @@ public class LoadingPage : ContentPage
         Page next;
         try
         {
-            var resume = await _session.TryResumeAsync();
-            if (resume.Status == ResumeStatus.Resumed && resume.Session is not null)
+            var operative = await _session.TryResumeAsync();
+            if (operative.Status == ResumeStatus.Resumed && operative.Session is not null)
             {
-                _tokens.AccessToken = resume.Session.Token;
+                _tokens.AccessToken = operative.Session.Token;
                 next = new NavigationPage(_services.GetRequiredService<OperativeHomePage>());
+            }
+            else if ((await _manager.TryResumeAsync()).Status == ResumeStatus.Resumed)
+            {
+                // The manager resume sets the access token itself (no operative-style token hand-off).
+                next = new NavigationPage(_services.GetRequiredService<ManagerHomePage>());
             }
             else
             {

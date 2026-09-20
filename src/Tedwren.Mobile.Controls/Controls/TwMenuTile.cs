@@ -15,11 +15,13 @@ public class TwMenuTile : TwCard
 
     /// <summary>The tile's title line.</summary>
     public static readonly BindableProperty TitleProperty =
-        BindableProperty.Create(nameof(Title), typeof(string), typeof(TwMenuTile), string.Empty);
+        BindableProperty.Create(nameof(Title), typeof(string), typeof(TwMenuTile), string.Empty,
+            propertyChanged: (b, _, _) => ((TwMenuTile)b).UpdateSemantics());
 
     /// <summary>The tile's supporting subtitle line.</summary>
     public static readonly BindableProperty SubtitleProperty =
-        BindableProperty.Create(nameof(Subtitle), typeof(string), typeof(TwMenuTile), string.Empty);
+        BindableProperty.Create(nameof(Subtitle), typeof(string), typeof(TwMenuTile), string.Empty,
+            propertyChanged: (b, _, _) => ((TwMenuTile)b).UpdateSemantics());
 
     /// <summary>Command invoked when the tile is tapped.</summary>
     public static readonly BindableProperty CommandProperty =
@@ -73,4 +75,8 @@ public class TwMenuTile : TwCard
         };
         GestureRecognizers.Add(tap);
     }
+
+    /// <summary>Announces the tile as one unit to assistive technology (title + subtitle), so it reads as a menu item.</summary>
+    private void UpdateSemantics() =>
+        SemanticProperties.SetDescription(this, string.IsNullOrEmpty(Subtitle) ? Title : $"{Title}. {Subtitle}");
 }

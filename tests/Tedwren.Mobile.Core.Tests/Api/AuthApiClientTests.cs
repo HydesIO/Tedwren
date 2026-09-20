@@ -40,4 +40,27 @@ public class AuthApiClientTests
         var ex = await Assert.ThrowsAsync<ApiException>(() => client.LoginAsync("sam@example.com", "pw"));
         Assert.Equal(500, ex.StatusCode);
     }
+
+    [Fact]
+    public async Task RefreshAsync_returns_result_on_success()
+    {
+        var expected = new AuthResultDto("token-456", DateTimeOffset.UtcNow.AddHours(8), "Sam Manager", "SiteManager", Guid.NewGuid(),
+            RefreshToken: "rt-2", RefreshTokenExpiresUtc: DateTimeOffset.UtcNow.AddDays(30));
+        var http = FakeHttp.Returning(HttpStatusCode.OK, JsonContent.Create(expected));
+        var client = new AuthApiClient(http);
+
+        var result = await client.RefreshAsync("rt-1");
+
+        Assert.Equal("token-456", result!.Token);
+        Assert.Equal("rt-2", result.RefreshToken);
+    }
+
+    [Fact]
+    public async Task RefreshAsync_returns_null_on_unauthorized()
+    {
+        var http = FakeHttp.Returning(HttpStatusCode.Unauthorized, new StringContent(string.Empty));
+        var client = new AuthApiClient(http);
+
+        Assert.Null(await client.RefreshAsync("stale"));
+    }
 }

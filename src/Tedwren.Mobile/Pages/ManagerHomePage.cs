@@ -1,19 +1,43 @@
+using Microsoft.Extensions.DependencyInjection;
+using Tedwren.Abstractions.Common;
+using Tedwren.Abstractions.Contracts.Dashboard;
+using Tedwren.Abstractions.Contracts.Expiry;
 using Tedwren.Mobile.Controls.Controls;
 using Tedwren.Mobile.Controls.Theme;
+using Tedwren.Mobile.Core.Api;
 
 namespace Tedwren.Mobile.Pages;
 
 /// <summary>
-/// The manager/admin home: an overview dashboard (KPI cards) above the interactive card menu. The dashboard is
-/// populated from the console's existing IDashboardService aggregation in M7; this M1 build establishes the
-/// structure and the manager card menu.
+/// The manager/admin home (M7): a live overview dashboard — KPI cards, a workforce-compliance bar, expiring cards
+/// and recent activity, loaded from the console aggregation via <see cref="ManagerDataService"/> (cache-then-network,
+/// usable offline) — above the interactive card menu that routes to the manager surfaces (muster, site entry,
+/// operatives, forms, submissions, evidence, reports).
 /// </summary>
 public class ManagerHomePage : ContentPage
 {
+    private readonly ManagerDataService _data;
+    private readonly IServiceProvider _services;
+
+    private readonly TwKpiCard _operatives = new() { Label = "Operatives" };
+    private readonly TwKpiCard _sites = new() { Label = "Active sites" };
+    private readonly TwKpiCard _compliant = new() { Label = "Compliant" };
+    private readonly TwKpiCard _expiring = new() { Label = "Expiring 30d" };
+    private readonly VerticalStackLayout _complianceBody = new() { Spacing = 8 };
+    private readonly VerticalStackLayout _expiringBody = new() { Spacing = 6 };
+    private readonly VerticalStackLayout _activityBody = new() { Spacing = 6 };
+
     /// <summary>Builds the manager overview dashboard and card menu.</summary>
-    public ManagerHomePage()
+    public ManagerHomePage(ManagerDataService data, IServiceProvider services)
     {
+        _data = data;
+        _services = services;
         Title = "Overview";
+
+        // Seed skeleton placeholders so the sections read as "loading", not empty, before the first fetch (M8).
+        SeedSkeleton(_complianceBody, 2);
+        SeedSkeleton(_expiringBody, 3);
+        SeedSkeleton(_activityBody, 4);
 
         Content = new ScrollView
         {
@@ -24,7 +48,10 @@ public class ManagerHomePage : ContentPage
                 Children =
                 {
                     new Label { Text = "Site overview", FontSize = 22, FontAttributes = FontAttributes.Bold },
-                    BuildKpis(),
+                    BuildKpiGrid(),
+                    Section("Workforce compliance", _complianceBody),
+                    Section("Expiring soon", _expiringBody),
+                    Section("Recent activity", _activityBody),
                     new Label { Text = "Menu", FontSize = 18, FontAttributes = FontAttributes.Bold },
                     BuildMenu(),
                 },
@@ -32,69 +59,183 @@ public class ManagerHomePage : ContentPage
         };
     }
 
-    /// <summary>Placeholder KPI cards; M7 replaces the values with live IDashboardService data.</summary>
-    private static View BuildKpis()
+    /// <summary>Reloads the dashboard each time the page appears (fresh when online, else the cached copy).</summary>
+    protected override async void OnAppearing()
     {
-        var kpis = new (string Value, string Label)[]
-        {
-            ("—", "On site now"),
-            ("—", "Active sites"),
-            ("—", "Compliant"),
-            ("—", "Expiring 30d"),
-        };
+        base.OnAppearing();
+        await LoadAsync();
+    }
 
+    private async Task LoadAsync()
+    {
+        try
+        {
+            var summary = await _data.GetDashboardAsync();
+            if (summary is not null)
+            {
+                _operatives.Value = summary.Kpis.Operatives.ToString();
+                _sites.Value = summary.Kpis.Sites.ToString();
+                _compliant.Value = summary.Kpis.CompliancePercent is { } pct ? $"{pct:0}%" : "—";
+                _expiring.Value = summary.Kpis.UpcomingExpiries.ToString();
+                BuildCompliance(summary.Compliance);
+            }
+            else
+            {
+                // No cached or live summary yet — clear the compliance skeletons so they don't pulse forever (M8).
+                _complianceBody.Children.Clear();
+                _complianceBody.Children.Add(Muted("No dashboard data yet."));
+            }
+
+            var expiries = await _data.GetUpcomingExpiriesAsync();
+            _expiringBody.Children.Clear();
+            if (expiries is { Count: > 0 })
+            {
+                foreach (var e in expiries.Take(5))
+                {
+                    _expiringBody.Children.Add(Row(e.QualificationName, $"{e.PersonName ?? "Operative"} · {DueLabel(e)}"));
+                }
+            }
+            else
+            {
+                _expiringBody.Children.Add(Muted("Nothing expiring in the next 30 days."));
+            }
+
+            var activity = await _data.GetRecentActivityAsync();
+            _activityBody.Children.Clear();
+            if (activity is { Count: > 0 })
+            {
+                foreach (var a in activity.Take(6))
+                {
+                    _activityBody.Children.Add(Row($"{a.Action} · {a.Entity}", $"{a.Actor} · {UkTime.Format(a.OccurredUtc, "dd MMM HH:mm")}"));
+                }
+            }
+            else
+            {
+                _activityBody.Children.Add(Muted("No recent activity."));
+            }
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // Replace any remaining skeletons with a single "couldn't load" note across all three sections (M8).
+            foreach (var body in new[] { _complianceBody, _expiringBody, _activityBody })
+            {
+                body.Children.Clear();
+            }
+
+            _complianceBody.Children.Add(Muted("Couldn't load the dashboard."));
+        }
+    }
+
+    private View BuildKpiGrid()
+    {
         var grid = new Grid
         {
             ColumnSpacing = 12,
             RowSpacing = 12,
-            ColumnDefinitions =
-            {
-                new ColumnDefinition(GridLength.Star),
-                new ColumnDefinition(GridLength.Star),
-            },
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) },
+            RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto) },
         };
-
-        for (var i = 0; i < kpis.Length; i++)
-        {
-            var kpi = kpis[i];
-            var card = new TwCard
-            {
-                Content = new VerticalStackLayout
-                {
-                    Spacing = 2,
-                    Children =
-                    {
-                        new Label { Text = kpi.Value, FontSize = 26, FontAttributes = FontAttributes.Bold, TextColor = TwPalette.Brand },
-                        new Label { Text = kpi.Label, FontSize = 13, TextColor = TwPalette.TextSecondaryLight },
-                    },
-                },
-            };
-
-            var row = i / 2;
-            var col = i % 2;
-            if (grid.RowDefinitions.Count <= row)
-            {
-                grid.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
-            }
-
-            grid.Add(card, col, row);
-        }
-
+        grid.Add(_operatives, 0, 0);
+        grid.Add(_sites, 1, 0);
+        grid.Add(_compliant, 0, 1);
+        grid.Add(_expiring, 1, 1);
         return grid;
     }
 
-    /// <summary>Builds the manager card menu.</summary>
+    /// <summary>Renders the compliance breakdown as a drawn donut (M8) beside a colour legend.</summary>
+    private void BuildCompliance(ComplianceBreakdownDto c)
+    {
+        _complianceBody.Children.Clear();
+        var total = c.Compliant + c.AtRisk + c.NonCompliant + c.Pending;
+        if (total <= 0)
+        {
+            _complianceBody.Children.Add(Muted("No workforce compliance data yet."));
+            return;
+        }
+
+        var donut = new TwDonutStat
+        {
+            Compliant = c.Compliant,
+            AtRisk = c.AtRisk,
+            NonCompliant = c.NonCompliant,
+            Pending = c.Pending,
+            CentreText = $"{100.0 * c.Compliant / total:0}%",
+            HorizontalOptions = LayoutOptions.Center,
+        };
+
+        var legend = new VerticalStackLayout { Spacing = 4, VerticalOptions = LayoutOptions.Center };
+        legend.Children.Add(LegendItem($"Compliant {c.Compliant}", TwPalette.SuccessLight));
+        legend.Children.Add(LegendItem($"At risk {c.AtRisk}", TwPalette.WarningLight));
+        legend.Children.Add(LegendItem($"Non-compliant {c.NonCompliant}", TwPalette.DangerLight));
+        legend.Children.Add(LegendItem($"Pending {c.Pending}", TwPalette.BorderLight));
+
+        var row = new Grid
+        {
+            ColumnSpacing = 16,
+            ColumnDefinitions = { new ColumnDefinition(GridLength.Auto), new ColumnDefinition(GridLength.Star) },
+        };
+        row.Add(donut, 0, 0);
+        row.Add(legend, 1, 0);
+        _complianceBody.Children.Add(row);
+    }
+
+    private static View LegendItem(string text, Color colour) => new HorizontalStackLayout
+    {
+        Spacing = 6,
+        Children =
+        {
+            new BoxView { Color = colour, WidthRequest = 12, HeightRequest = 12, VerticalOptions = LayoutOptions.Center },
+            new Label { Text = text, FontSize = 12 },
+        },
+    };
+
+    /// <summary>Seeds a section body with pulsing skeleton bars so it reads as "loading" before the first fetch (M8).</summary>
+    private static void SeedSkeleton(VerticalStackLayout body, int count)
+    {
+        for (var i = 0; i < count; i++)
+        {
+            body.Children.Add(new TwSkeleton { HeightRequest = 14 });
+        }
+    }
+
+    private static View Section(string title, View body) => new VerticalStackLayout
+    {
+        Spacing = 8,
+        Children =
+        {
+            new Label { Text = title, FontSize = 16, FontAttributes = FontAttributes.Bold },
+            new TwCard { Content = body },
+        },
+    };
+
+    private static View Row(string title, string subtitle)
+    {
+        var sub = new Label { Text = subtitle, FontSize = 12 };
+        sub.SetAppThemeColor(Label.TextColorProperty, TwPalette.TextSecondaryLight, TwPalette.TextSecondaryDark);
+        return new VerticalStackLayout { Spacing = 1, Children = { new Label { Text = title, FontAttributes = FontAttributes.Bold, FontSize = 14 }, sub } };
+    }
+
+    private static Label Muted(string text)
+    {
+        var label = new Label { Text = text, FontSize = 13 };
+        label.SetAppThemeColor(Label.TextColorProperty, TwPalette.TextSecondaryLight, TwPalette.TextSecondaryDark);
+        return label;
+    }
+
+    private static string DueLabel(UpcomingExpiryDto e) =>
+        e.DaysUntilExpiry < 0 ? "expired" : e.ExpiresOn is { } on ? $"expires {on:dd MMM}" : e.StatusLabel;
+
     private View BuildMenu()
     {
-        var items = new (string Glyph, string Title, string Subtitle)[]
+        var items = new (string Glyph, string Title, string Subtitle, Func<Page>? Destination)[]
         {
-            ("👷", "Who's on site", "Live muster"),
-            ("🚦", "Site entry", "Decisions & overrides"),
-            ("📋", "Forms", "Assign & review"),
-            ("🧑‍🔧", "Operatives", "Register & compliance"),
-            ("🏗", "Sites", "Boundaries & properties"),
-            ("📷", "Evidence", "Review submissions"),
-            ("📊", "Reports", "Exports & packs"),
+            ("👷", "Who's on site", "Live muster", () => _services.GetRequiredService<MusterPage>()),
+            ("🚦", "Site entry", "Decisions & overrides", () => _services.GetRequiredService<SiteEntryPage>()),
+            ("🧑‍🔧", "Operatives", "Register & compliance", () => _services.GetRequiredService<OperativesPage>()),
+            ("📋", "Forms", "Library & assign", () => _services.GetRequiredService<FormsManagePage>()),
+            ("✅", "Submissions", "Review & approve", () => _services.GetRequiredService<FormReviewListPage>()),
+            ("📷", "Evidence", "Field captures", () => _services.GetRequiredService<EvidenceReviewPage>()),
+            ("📊", "Reports", "Evidence pack", () => _services.GetRequiredService<ReportsPage>()),
         };
         return TileGrid.Build(this, items);
     }

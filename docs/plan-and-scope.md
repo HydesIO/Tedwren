@@ -22,11 +22,21 @@ seven numbered commercial modules. The definitive brief is **PRD v6.4**
 > **Mobile (M-track):** a separate native **.NET MAUI** field app (Android + iOS) for operatives (primary) and
 > site managers/admins (secondary) is now planned and under way — see
 > [`mobile-app-plan.md`](mobile-app-plan.md) and [`mobile-app-build.md`](mobile-app-build.md). It is an optional
-> layer beside the mandatory browser paths (R1/Q8/Q14). **M1–M5 have landed** (foundation → operative auth →
-> operative surface/dashboard → attendance sign-in/out → offline capture & sync foundation with encrypted outbox,
-> multipart upload, a connectivity-driven sync engine, and two consumers: ungated evidence capture + hse-gated
-> hazard/near-miss reporting): `Tedwren.Mobile.Core` (+ tests) builds in `Tedwren.sln`; the MAUI heads build from
-> `Tedwren.Mobile.slnx`.
+> layer beside the mandatory browser paths (R1/Q8/Q14). **M1–M8 have landed** (foundation → operative auth →
+> operative surface/dashboard → attendance sign-in/out → offline capture & sync → the comprehensive forms &
+> inspection engine → the manager/admin mode → hardening & store readiness): operatives complete assigned
+> checklists/inspections offline with photos, signatures and RAG, and managers sign in with their console account
+> to see the dashboard, muster, run site-entry checks/overrides, look up operatives, assign/review forms and
+> review field evidence — reusing the console endpoints and (for evidence review) one new read surface, with no
+> new tables. `Tedwren.Mobile.Core` (+ tests) builds in `Tedwren.sln`; the MAUI heads build from
+> `Tedwren.Mobile.slnx`. **M8** added a console-session refresh flow (a dedicated `UserRefreshToken` table +
+> `POST /api/auth/refresh`, so managers renew silently instead of re-logging in), a telemetry / R14-timing seam,
+> and — in the CI-built MAUI head — real biometric unlock, a biometric-gated encrypted-DB key, TLS certificate
+> pinning, accessibility semantics, tablet layouts and skeleton/donut polish. The release runway (device
+> verification, WCAG audit, store submission, telemetry vendor, push — several of them PRD-silent decisions for
+> Leigh) is enumerated in [`mobile-store-readiness.md`](mobile-store-readiness.md). The full mobile track (M1–M8)
+> is now delivered; what remains is off-container (device testing, iOS build on macOS, store submission) and the
+> flagged post-M8 feature backlog.
 
 The repository began as a **UI/UX foundation only**. **Six UI phases were complete on `origin/main`**
 (PRs #1–#10), all of them **front-end/component work over mock data**:
