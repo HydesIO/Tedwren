@@ -38,6 +38,46 @@ window.webapp = (function () {
             };
             window.addEventListener("online", notify);
             window.addEventListener("offline", notify);
+        },
+
+        // Canvas signature pad: draw with pointer/touch and report the PNG data URL to .NET after each stroke.
+        // The web mirror of the native TwSignaturePad; the fill page stores the data URL as the field's answer.
+        signature: {
+            attach: function (canvas, dotNetRef) {
+                if (!canvas) { return; }
+                // Size the backing store to the laid-out element for a crisp line.
+                canvas.width = canvas.clientWidth || 320;
+                canvas.height = canvas.clientHeight || 140;
+                var ctx = canvas.getContext("2d");
+                var drawing = false, last = null;
+                function pos(e) {
+                    var r = canvas.getBoundingClientRect();
+                    var p = (e.touches && e.touches[0]) || e;
+                    return { x: p.clientX - r.left, y: p.clientY - r.top };
+                }
+                function start(e) { drawing = true; last = pos(e); e.preventDefault(); }
+                function move(e) {
+                    if (!drawing) { return; }
+                    var p = pos(e);
+                    ctx.strokeStyle = getComputedStyle(canvas).color || "#101828";
+                    ctx.lineWidth = 2; ctx.lineCap = "round";
+                    ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+                    last = p; e.preventDefault();
+                }
+                function end() {
+                    if (!drawing) { return; }
+                    drawing = false;
+                    if (dotNetRef) { try { dotNetRef.invokeMethodAsync("OnStrokeEnd", canvas.toDataURL("image/png")); } catch (_) { /* best-effort */ } }
+                }
+                canvas.addEventListener("pointerdown", start);
+                canvas.addEventListener("pointermove", move);
+                window.addEventListener("pointerup", end);
+            },
+            clear: function (canvas) {
+                if (!canvas) { return; }
+                var ctx = canvas.getContext("2d");
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
         }
     };
 })();

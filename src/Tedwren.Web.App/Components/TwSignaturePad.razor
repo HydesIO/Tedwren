@@ -1,0 +1,41 @@
+@implements IDisposable
+@inject IJSRuntime JS
+
+@* A canvas signature pad — the web mirror of the native TwSignaturePad. It reports the drawn signature as a PNG
+   data URL after each stroke (so the fill page can autosave it as the field's answer) and can be cleared. *@
+
+<div class="tw-signature">
+    <canvas @ref="_canvas" class="tw-signature__canvas"></canvas>
+    <button type="button" class="tw-btn tw-signature__clear" @onclick="ClearAsync">Clear</button>
+</div>
+
+@code {
+    private ElementReference _canvas;
+    private DotNetObjectReference<TwSignaturePad>? _ref;
+
+    /// <summary>Raised with the PNG data URL after each stroke, or null when cleared.</summary>
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+
+    /// <summary>Attaches the drawing handlers once the canvas is in the DOM.</summary>
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            _ref = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("webapp.signature.attach", _canvas, _ref);
+        }
+    }
+
+    /// <summary>Invoked from JS after a stroke ends, with the current signature as a PNG data URL.</summary>
+    [JSInvokable]
+    public Task OnStrokeEnd(string dataUrl) => ValueChanged.InvokeAsync(dataUrl);
+
+    private async Task ClearAsync()
+    {
+        await JS.InvokeVoidAsync("webapp.signature.clear", _canvas);
+        await ValueChanged.InvokeAsync(null);
+    }
+
+    /// <summary>Releases the .NET reference held by the JS handlers.</summary>
+    public void Dispose() => _ref?.Dispose();
+}

@@ -1,0 +1,207 @@
+@page "/operative/attendance"
+@inject OperativeDataService Data
+@inject AttendanceApiClient AttendanceApi
+@inject IConnectivityService Connectivity
+@inject WebGeolocation Geo
+
+@* Operative attendance sign-in / sign-out (M4) — mirrors the native SignInOutPage: online-only (R2/R3), an
+   advisory geofence hint (SF-14), and subcontractor-safe wording ("recorded", never "permitted"/"denied", R18). *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Attendance</h1>
+
+    <div class="tw-banner tw-banner--info">
+        You must be online to sign in or out — it keeps site records accurate. If you can't get online, the browser link still works.
+    </div>
+
+    <TwCard><div class="tw-status-line">@_status</div></TwCard>
+
+    <div class="tw-field">
+        <label class="tw-label" for="site">Site</label>
+        <select id="site" class="tw-input" @bind="_selectedSiteId">
+            <option value="">Choose a site…</option>
+            @foreach (var site in _sites)
+            {
+                <option value="@site.Id">@site.Name</option>
+            }
+        </select>
+    </div>
+
+    @if (_hint is not null)
+    {
+        <div class="tw-muted">@_hint</div>
+    }
+    @if (_result is not null)
+    {
+        <div class="tw-banner tw-banner--@_resultSeverity">@_result</div>
+    }
+
+    <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SignInAsync" disabled="@_busy">Sign in</button>
+    <button type="button" class="tw-btn tw-btn--block" @onclick="SignOutAsync" disabled="@_busy">Sign out</button>
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<MobileSiteDto> _sites = Array.Empty<MobileSiteDto>();
+    private string _selectedSiteId = string.Empty;
+    private string _status = "Loading…";
+    private string? _hint;
+    private string? _result;
+    private string _resultSeverity = "info";
+    private bool _busy;
+    private Guid? _currentSiteId;
+
+    /// <summary>Loads the (offline-cached) site list and the live on-site status when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _sites = await Data.GetSitesAsync() ?? Array.Empty<MobileSiteDto>();
+        await RefreshStatusAsync();
+    }
+
+    private async Task RefreshStatusAsync()
+    {
+        if (!Connectivity.IsConnected)
+        {
+            _currentSiteId = null;
+            _status = "Offline — connect to sign in or out";
+            return;
+        }
+
+        try
+        {
+            var current = await AttendanceApi.GetCurrentAsync();
+            _currentSiteId = current?.SiteId;
+            _status = current is null
+                ? "Not signed in"
+                : $"On site: {current.SiteName} — since {UkTime.Format(current.SinceUtc, "ddd dd MMM HH:mm")}";
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _status = "Couldn't check your current status";
+        }
+    }
+
+    private MobileSiteDto? SelectedSite() => _sites.FirstOrDefault(s => s.Id.ToString() == _selectedSiteId);
+
+    private bool EnsureOnline()
+    {
+        if (Connectivity.IsConnected)
+        {
+            return true;
+        }
+
+        ShowResult("You must be online to sign in — the browser link still works.", "warning");
+        return false;
+    }
+
+    private async Task SignInAsync()
+    {
+        if (_busy || !EnsureOnline())
+        {
+            return;
+        }
+
+        if (SelectedSite() is not { } site)
+        {
+            ShowResult("Pick the site you're signing in at.", "warning");
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            var geo = await Geo.TryGetAsync();
+            ShowGeofenceHint(site, geo);
+            var result = await AttendanceApi.SignInAsync(new MobileSignInRequest(site.Id, null, geo?.Latitude, geo?.Longitude));
+
+            if (result.SignedIn && string.Equals(result.Outcome, "Flagged", StringComparison.OrdinalIgnoreCase))
+            {
+                ShowResult($"Recorded (flagged for review): {result.Reason}", "warning");
+            }
+            else if (result.SignedIn)
+            {
+                ShowResult("Recorded — you're signed in. Site-ready.", "success");
+            }
+            else if (result.SignedInElsewhere is { } elsewhere)
+            {
+                ShowResult($"You're already signed in at {elsewhere}. Sign out there first.", "warning");
+            }
+            else
+            {
+                ShowResult($"Not recorded as on site: {result.Reason}", "danger");
+            }
+
+            await RefreshStatusAsync();
+        });
+    }
+
+    private async Task SignOutAsync()
+    {
+        if (_busy || !EnsureOnline())
+        {
+            return;
+        }
+
+        await RunAsync(async () =>
+        {
+            var current = await AttendanceApi.GetCurrentAsync();
+            var siteId = current?.SiteId ?? _currentSiteId ?? SelectedSite()?.Id;
+            if (siteId is not { } id)
+            {
+                ShowResult("You're not signed in anywhere.", "warning");
+                await RefreshStatusAsync();
+                return;
+            }
+
+            var geo = await Geo.TryGetAsync();
+            var result = await AttendanceApi.SignOutAsync(new MobileSignOutRequest(id, geo?.Latitude, geo?.Longitude));
+            ShowResult(
+                result.SignedOut ? $"Signed out. Time on site: {result.DurationHours:0.##} h." : $"Couldn't sign out: {result.Reason}",
+                result.SignedOut ? "success" : "warning");
+            await RefreshStatusAsync();
+        });
+    }
+
+    private void ShowGeofenceHint(MobileSiteDto site, GeoFix? geo)
+    {
+        if (geo is null)
+        {
+            _hint = null;
+            return;
+        }
+
+        var hint = GeofenceHint.Evaluate(site.Boundary, geo.Latitude, geo.Longitude);
+        if (!hint.HasBoundary)
+        {
+            _hint = null;
+            return;
+        }
+
+        _hint = hint.Inside
+            ? "You're inside the site boundary."
+            : $"You look about {hint.DistanceMetres:0} m outside the boundary — the site may still record it.";
+    }
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        try
+        {
+            await action();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            ShowResult("Something went wrong. Check your connection and try again.", "danger");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private void ShowResult(string text, string severity)
+    {
+        _result = text;
+        _resultSeverity = severity;
+    }
+}

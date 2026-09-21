@@ -1,0 +1,46 @@
+@* A photo-capture control — opens the device camera on mobile (or a file picker) and raises the captured bytes
+   and content type, with a thumbnail preview. The web mirror of the native camera capture used by evidence and
+   hazard reporting. *@
+
+<div class="tw-photo">
+    <label class="tw-btn tw-photo__label">
+        <span>@(_hasPhoto ? "Replace photo" : "Take photo")</span>
+        <InputFile class="tw-photo__input" OnChange="OnChangeAsync" accept="image/*" capture="environment" />
+    </label>
+    @if (_previewUrl is not null)
+    {
+        <img class="tw-photo__preview" src="@_previewUrl" alt="Captured photo preview" />
+    }
+</div>
+
+@code {
+    private const long MaxBytes = 15 * 1024 * 1024;
+    private bool _hasPhoto;
+    private string? _previewUrl;
+
+    /// <summary>Raised when a photo is captured, with its bytes and content type.</summary>
+    [Parameter] public EventCallback<PhotoCapture> OnCaptured { get; set; }
+
+    /// <summary>Reads the picked/captured file into memory and raises it as a <see cref="PhotoCapture"/> with a preview.</summary>
+    private async Task OnChangeAsync(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        await using var stream = file.OpenReadStream(MaxBytes);
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        var bytes = buffer.ToArray();
+        var contentType = string.IsNullOrEmpty(file.ContentType) ? "image/jpeg" : file.ContentType;
+
+        _previewUrl = $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+        _hasPhoto = true;
+        await OnCaptured.InvokeAsync(new PhotoCapture(bytes, contentType));
+    }
+
+    /// <summary>A captured photo's bytes and content type.</summary>
+    public readonly record struct PhotoCapture(byte[] Bytes, string ContentType);
+}

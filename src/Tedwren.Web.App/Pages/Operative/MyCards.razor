@@ -1,0 +1,62 @@
+@page "/operative/cards"
+@inject OperativeDataService Data
+
+@* The operative's qualification cards + compliance (SF-8) — mirrors the native MyCardsPage. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Cards &amp; compliance</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_profile is null)
+    {
+        <div class="tw-banner tw-banner--warning">Couldn't load your cards.</div>
+    }
+    else
+    {
+        <TwCard><div class="tw-card__title">@_profile.StatusLabel</div></TwCard>
+
+        @if (_profile.Qualifications.Count == 0)
+        {
+            <TwEmptyState Glyph="🪪" Title="No cards on file" Message="Your qualification cards will appear here once captured." />
+        }
+        else
+        {
+            @foreach (var card in _profile.Qualifications)
+            {
+                <TwCard>
+                    <div><strong>@card.Name</strong></div>
+                    <div class="tw-muted">
+                        @card.StatusLabel@(card.ExpiresOn is { } expiry ? $"  ·  expires {expiry:dd MMM yyyy}" : string.Empty)
+                    </div>
+                </TwCard>
+            }
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    private OperativeDetailDto? _profile;
+    private bool _loading = true;
+
+    /// <summary>Loads the operative's profile (which carries the cards) when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _profile = await Data.GetProfileAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _profile = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

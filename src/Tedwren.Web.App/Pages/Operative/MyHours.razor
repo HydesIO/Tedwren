@@ -1,0 +1,62 @@
+@page "/operative/hours"
+@inject OperativeDataService Data
+
+@* The operative's own hours for the current week (SUB-27) — mirrors the native MyHoursPage, cache-then-network. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">My hours</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_hours is null)
+    {
+        <div class="tw-banner tw-banner--warning">Couldn't load your hours.</div>
+    }
+    else
+    {
+        <TwCard>
+            <div class="tw-card__title">Total: @_hours.TotalHours.ToString("0.##") h · @_hours.StatusLabel</div>
+        </TwCard>
+
+        @if (_hours.Lines.Count == 0)
+        {
+            <TwEmptyState Glyph="⏱" Title="No hours yet" Message="No hours recorded this week yet." />
+        }
+        else
+        {
+            @foreach (var line in _hours.Lines)
+            {
+                <TwCard>
+                    <div><strong>@line.WorkDate.ToString("ddd dd MMM") — @line.Hours.ToString("0.##") h</strong></div>
+                    <div class="tw-muted">@line.SiteName</div>
+                </TwCard>
+            }
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    private OperativeHoursDto? _hours;
+    private bool _loading = true;
+
+    /// <summary>Loads the current week's hours when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _hours = await Data.GetHoursAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _hours = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
