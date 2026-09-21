@@ -53,6 +53,7 @@ public static class DataAccessServiceCollectionExtensions
         services.AddScoped<IFormAssignmentRepository, FormAssignmentRepository>();
         services.AddScoped<Inductions.InductionTemplateSeeder>();
         services.AddScoped<IReferenceDataRepository, ReferenceDataRepository>();
+        services.AddScoped<IMasterListItemRepository, MasterListItemRepository>();
         services.AddScoped<ISettingsRepository, SettingsRepository>();
         services.AddScoped<IPermitRepository, PermitRepository>();
         services.AddScoped<IAssetRepository, AssetRepository>();

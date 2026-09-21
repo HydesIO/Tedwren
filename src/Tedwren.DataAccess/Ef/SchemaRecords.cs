@@ -223,6 +223,18 @@ public sealed class ReferenceValueRecord
     public int SortOrder { get; set; }
 }
 
+/// <summary>Schema row for the <c>MasterListItems</c> table (compliance master lists — SSIP schemes, document headings, "other requirements"; spec §5–§8).</summary>
+public sealed class MasterListItemRecord
+{
+    public Guid Id { get; set; }
+    public string ListKey { get; set; } = string.Empty;
+    public Guid? CompanyId { get; set; }
+    public string Value { get; set; } = string.Empty;
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>CompanySettings</c> table (per-company general settings, System Configuration).</summary>
 public sealed class CompanySettingsRecord
 {

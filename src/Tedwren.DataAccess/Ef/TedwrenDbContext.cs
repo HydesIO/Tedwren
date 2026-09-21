@@ -32,6 +32,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<AttendanceRecord> Attendance => Set<AttendanceRecord>();
     public DbSet<ModuleEntitlementRecord> ModuleEntitlements => Set<ModuleEntitlementRecord>();
     public DbSet<ReferenceValueRecord> ReferenceValues => Set<ReferenceValueRecord>();
+    public DbSet<MasterListItemRecord> MasterListItems => Set<MasterListItemRecord>();
     public DbSet<CompanySettingsRecord> CompanySettings => Set<CompanySettingsRecord>();
     public DbSet<PermitRecord> Permits => Set<PermitRecord>();
     public DbSet<AssetRecord> Assets => Set<AssetRecord>();
@@ -172,6 +173,14 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ListKey).HasMaxLength(64);
             e.Property(x => x.Value).HasMaxLength(256);
             e.HasIndex(x => new { x.ListKey, x.Value }).IsUnique();
+        });
+
+        model.Entity<MasterListItemRecord>(e =>
+        {
+            e.ToTable("MasterListItems");
+            e.Property(x => x.ListKey).HasMaxLength(64);
+            e.Property(x => x.Value).HasMaxLength(256);
+            e.HasIndex(x => new { x.ListKey, x.CompanyId });   // list lookups scoped to global + a tenant (R15, spec §5–§8)
         });
 
         model.Entity<CompanySettingsRecord>(e =>

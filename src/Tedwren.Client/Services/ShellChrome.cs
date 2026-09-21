@@ -62,6 +62,7 @@ public static class ShellChrome
         new("Leads",               Icons.Material.Outlined.ContactPage,        "/admin/leads"),
         new("Affiliates",          Icons.Material.Outlined.Handshake,          "/admin/affiliates"),
         new("Companies",           Icons.Material.Outlined.Business,           "/admin/companies"),
+        new("Master Data",         Icons.Material.Outlined.Checklist,          "/admin/master-data"),
         new("Users",               Icons.Material.Outlined.PeopleOutline,      "/admin/users"),
         new("Subscriptions",       Icons.Material.Outlined.CardMembership,     "/admin/subscriptions"),
         new("Billing & Mandates",  Icons.Material.Outlined.AccountBalance,     "/admin/billing"),
