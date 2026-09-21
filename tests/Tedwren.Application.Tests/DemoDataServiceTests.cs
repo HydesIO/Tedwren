@@ -46,7 +46,7 @@ public sealed class DemoDataServiceTests
         Assert.Equal(2, status.Companies);
         Assert.Equal(5, status.Users);
         Assert.Equal(16, status.Sites);          // 10 main + 6 subcontractor (incl. dispersed/retrofit)
-        Assert.Equal(30, status.Operatives);      // 25 main + 5 subcontractor
+        Assert.Equal(31, status.Operatives);      // 25 main + 5 subcontractor + 1 demo operative (operative@tedwren.com)
         Assert.Equal(26, status.Payments);        // 2 companies × (12 months + 1 re-take)
         Assert.True(status.QualificationCards >= 30);
         Assert.True(status.AttendanceRecords > 0);

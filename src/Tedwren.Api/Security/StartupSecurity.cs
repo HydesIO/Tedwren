@@ -27,6 +27,7 @@ public static class StartupSecurity
     /// <param name="jwt">The bound JWT options.</param>
     /// <param name="seed">The bound bootstrap-admin seed options.</param>
     /// <param name="testBypass">Whether the auth test-bypass scheme is enabled (<c>Auth:TestBypass</c>).</param>
+    /// <param name="demo">The bound demo options (gates the operative demo sign-in — must be off in Production).</param>
     /// <param name="backend">The resolved data-source options (mode + provider).</param>
     /// <param name="productConnectionString">The product database connection string in Database mode, if any.</param>
     public static void Validate(
@@ -34,6 +35,7 @@ public static class StartupSecurity
         JwtOptions jwt,
         SeedAdminOptions seed,
         bool testBypass,
+        DemoOptions demo,
         BackendOptions backend,
         string? productConnectionString)
     {
@@ -43,6 +45,14 @@ public static class StartupSecurity
         {
             throw new InvalidOperationException(
                 "Auth:TestBypass must never be enabled in Production — it authenticates every request as an Administrator.");
+        }
+
+        // The operative demo sign-in mints a real operative token from a known email without an SMS code — a
+        // browser-emulator convenience that must never exist in Production. Refuse to boot Production with it on.
+        if (demo.Enabled && environment.IsProduction())
+        {
+            throw new InvalidOperationException(
+                "Demo:Enabled must never be enabled in Production — it exposes an operative token minter without a one-time code.");
         }
 
         if (!environment.IsProduction())

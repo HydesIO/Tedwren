@@ -1,0 +1,15 @@
+@* A surface card — rounded, hairline-bordered, padded container that flips with the theme. The web mirror of the
+   native TwCard (and the console DashboardCard). Visual style lives in app.css (token-driven, no literals). *@
+
+<div class="tw-card @Class" @attributes="Attributes">@ChildContent</div>
+
+@code {
+    /// <summary>The card's content.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Extra CSS classes to place on the card.</summary>
+    [Parameter] public string? Class { get; set; }
+
+    /// <summary>Any additional attributes to splat onto the card element.</summary>
+    [Parameter(CaptureUnmatchedValues = true)] public IReadOnlyDictionary<string, object>? Attributes { get; set; }
+}

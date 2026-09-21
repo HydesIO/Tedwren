@@ -1,3 +1,4 @@
+using Tedwren.Abstractions.Configuration;
 using Tedwren.Abstractions.Contracts.Mobile;
 using Tedwren.Abstractions.Services;
 
@@ -44,6 +45,24 @@ public static class MobileAuthEndpoints
                     : Results.Content(outcome.Message, "text/plain", null, StatusCodes.Status401Unauthorized);
             })
             .WithName("RefreshOperativeToken");
+
+        // Development/demo only (fail-closed): a demo operative sign-in for the browser emulator that mints a real
+        // operative token from a known demo email (operative@tedwren.com), without SMS OTP. The route is NOT mapped
+        // in Production or when Demo:Enabled is false, so the surface simply does not exist there. StartupSecurity
+        // additionally refuses to boot Production with Demo:Enabled on.
+        var environment = app.ServiceProvider.GetRequiredService<IHostEnvironment>();
+        var demoOptions = app.ServiceProvider.GetRequiredService<DemoOptions>();
+        if (!environment.IsProduction() && demoOptions.Enabled)
+        {
+            group.MapPost("/demo-sign-in", async (DemoSignInRequest request, IOperativeAuthService service, CancellationToken cancellationToken) =>
+                {
+                    var outcome = await service.DemoSignInAsync(request, cancellationToken);
+                    return outcome.Status == OperativeAuthStatus.Success
+                        ? Results.Ok(outcome.Result)
+                        : Results.Content(outcome.Message, "text/plain", null, StatusCodes.Status401Unauthorized);
+                })
+                .WithName("DemoOperativeSignIn");
+        }
 
         return app;
     }

@@ -1,0 +1,75 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject EmulatorState State
+@inject NavigationManager Nav
+
+@* The emulator shell: the "device lab" chrome (brand, device-size toggle, theme toggle) around the device frame.
+   Every screen renders inside an ErrorBoundary so an API/render error surfaces a recoverable panel rather than
+   blanking the whole app — mirroring the console's MainLayout hardening — and the boundary resets on navigation. *@
+
+<div class="tw-emulator">
+    <header class="tw-emulator__bar">
+        <div class="tw-emulator__brand">
+            <img src="images/logo-icon.svg" alt="" class="tw-emulator__logo" />
+            <div>
+                <div class="tw-emulator__title">Tedwren mobile emulator</div>
+                <div class="tw-emulator__subtitle">Same screens · same API · phone &amp; tablet only</div>
+            </div>
+        </div>
+        <div class="tw-emulator__controls">
+            <div class="tw-seg" role="group" aria-label="Device size">
+                <button type="button" class="tw-seg__btn @(State.Device == DevicePreset.Phone ? "is-active" : null)"
+                        @onclick="() => State.SetDevice(DevicePreset.Phone)">Phone</button>
+                <button type="button" class="tw-seg__btn @(State.Device == DevicePreset.Tablet ? "is-active" : null)"
+                        @onclick="() => State.SetDevice(DevicePreset.Tablet)">Tablet</button>
+            </div>
+            <button type="button" class="tw-iconbtn" @onclick="State.ToggleTheme"
+                    aria-label="@(State.IsDarkMode ? "Switch to light theme" : "Switch to dark theme")">
+                @(State.IsDarkMode ? "☀" : "☾")
+            </button>
+        </div>
+    </header>
+
+    <main class="tw-emulator__stage">
+        <DeviceFrame Device="State.Device" Dark="State.IsDarkMode">
+            <ErrorBoundary @ref="_errorBoundary">
+                <ChildContent>
+                    @Body
+                </ChildContent>
+                <ErrorContent>
+                    <div class="tw-screen tw-screen--center">
+                        <div class="tw-empty__glyph">⚠</div>
+                        <h1 class="tw-screen__title">Something went wrong</h1>
+                        <p class="tw-muted">This screen hit an unexpected error. You can try again.</p>
+                        <button type="button" class="tw-btn tw-btn--primary" @onclick="Recover">Try again</button>
+                    </div>
+                </ErrorContent>
+            </ErrorBoundary>
+        </DeviceFrame>
+    </main>
+</div>
+
+@code {
+    private ErrorBoundary? _errorBoundary;
+
+    /// <summary>Subscribes to emulator-chrome changes and navigation (to reset the error boundary per screen).</summary>
+    protected override void OnInitialized()
+    {
+        State.Changed += OnStateChanged;
+        Nav.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    // A caught error on one screen must not stick to the next — recover the boundary whenever the route changes.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _errorBoundary?.Recover();
+
+    private void Recover() => _errorBoundary?.Recover();
+
+    /// <summary>Unsubscribes from the shell events.</summary>
+    public void Dispose()
+    {
+        State.Changed -= OnStateChanged;
+        Nav.LocationChanged -= OnLocationChanged;
+    }
+}

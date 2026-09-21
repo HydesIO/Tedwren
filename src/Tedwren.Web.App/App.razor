@@ -1,0 +1,17 @@
+@* Root routing component for the mobile emulator. Every route resolves into MainLayout (the device frame). *@
+
+<Router AppAssembly="@typeof(App).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)" />
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div class="tw-screen tw-screen--center">
+                <h1 class="tw-screen__title">Screen not found</h1>
+                <p class="tw-muted">This screen isn't part of the emulator.</p>
+                <a class="tw-btn tw-btn--primary" href="/">Back to start</a>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

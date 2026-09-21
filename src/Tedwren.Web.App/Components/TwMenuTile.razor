@@ -1,0 +1,42 @@
+@* An interactive card tile for the role-home "card menu": a glyph, a title and a short subtitle that either
+   navigates (Href) or runs a callback (OnClick). Web mirror of the native TwMenuTile. *@
+
+@if (!string.IsNullOrEmpty(Href))
+{
+    <a class="tw-tile" href="@Href">@Body</a>
+}
+else
+{
+    <button type="button" class="tw-tile" @onclick="OnClick" disabled="@Disabled">@Body</button>
+}
+
+@code {
+    /// <summary>The tile's leading glyph (an emoji or icon character).</summary>
+    [Parameter] public string Glyph { get; set; } = string.Empty;
+
+    /// <summary>The tile's title line.</summary>
+    [Parameter] public string Title { get; set; } = string.Empty;
+
+    /// <summary>The tile's supporting subtitle line.</summary>
+    [Parameter] public string Subtitle { get; set; } = string.Empty;
+
+    /// <summary>When set, the tile navigates to this route; otherwise it invokes <see cref="OnClick"/>.</summary>
+    [Parameter] public string? Href { get; set; }
+
+    /// <summary>Invoked when a non-navigating tile is activated.</summary>
+    [Parameter] public EventCallback OnClick { get; set; }
+
+    /// <summary>Whether a non-navigating tile is disabled.</summary>
+    [Parameter] public bool Disabled { get; set; }
+
+    /// <summary>The shared tile body (glyph + title + subtitle), used for both the anchor and button variants.</summary>
+    private RenderFragment Body => __builder =>
+    {
+        <span class="tw-tile__glyph">@Glyph</span>
+        <span class="tw-tile__title">@Title</span>
+        @if (!string.IsNullOrEmpty(Subtitle))
+        {
+            <span class="tw-tile__subtitle">@Subtitle</span>
+        }
+    };
+}

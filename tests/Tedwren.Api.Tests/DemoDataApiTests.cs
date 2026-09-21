@@ -33,7 +33,7 @@ public sealed class DemoDataApiTests : IClassFixture<WebApplicationFactory<Progr
         Assert.True(seeded!.Present);
         Assert.Equal(2, seeded.Companies);
         Assert.Equal(16, seeded.Sites);
-        Assert.Equal(30, seeded.Operatives);
+        Assert.Equal(31, seeded.Operatives); // 25 main + 5 subcontractor + 1 demo operative (operative@tedwren.com)
         Assert.Equal(26, seeded.Payments);
 
         var status = await client.GetFromJsonAsync<DemoDataStatus>("/api/admin/demo-data/status");

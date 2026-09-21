@@ -41,6 +41,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tedwren.Mobile.Core", "src\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tedwren.Mobile.Core.Tests", "tests\Tedwren.Mobile.Core.Tests\Tedwren.Mobile.Core.Tests.csproj", "{1C15D769-B2F9-42AA-9A15-675A4CE02986}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tedwren.Web.App", "src\Tedwren.Web.App\Tedwren.Web.App.csproj", "{BA19716F-0267-4377-8B3D-BFFCF6886ADF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -255,6 +257,18 @@ Global
 		{1C15D769-B2F9-42AA-9A15-675A4CE02986}.Release|x64.Build.0 = Release|Any CPU
 		{1C15D769-B2F9-42AA-9A15-675A4CE02986}.Release|x86.ActiveCfg = Release|Any CPU
 		{1C15D769-B2F9-42AA-9A15-675A4CE02986}.Release|x86.Build.0 = Release|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Debug|x64.Build.0 = Debug|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Debug|x86.Build.0 = Debug|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Release|x64.ActiveCfg = Release|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Release|x64.Build.0 = Release|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Release|x86.ActiveCfg = Release|Any CPU
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -275,6 +289,7 @@ Global
 		{C26A6326-455C-4D10-85B3-F8182E138B17} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{6CAFABEE-B1B0-4FA2-BDD9-BB7802230305} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{1C15D769-B2F9-42AA-9A15-675A4CE02986} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{BA19716F-0267-4377-8B3D-BFFCF6886ADF} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {81A2EF9F-AB5F-462D-81DB-3D6069A81322}

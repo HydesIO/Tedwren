@@ -77,6 +77,27 @@ public sealed class OperativeAuthApiClient
         return await response.Content.ReadFromJsonAsync<MobileAuthResultDto>(cancellationToken);
     }
 
+    /// <summary>
+    /// Development/demo-only sign-in used by the browser emulator: exchanges a known demo email for a real
+    /// operative token bound to this device, without an SMS code. Returns null when the demo sign-in is rejected
+    /// or not available (401), i.e. it is disabled or the endpoint isn't mapped (Production).
+    /// </summary>
+    public async Task<MobileAuthResultDto?> DemoSignInAsync(string email, string deviceId, string? deviceName, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/mobile/auth/demo-sign-in", new DemoSignInRequest(email, deviceId, deviceName), cancellationToken);
+        if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new ApiException((int)response.StatusCode, $"Demo sign-in failed ({(int)response.StatusCode}).");
+        }
+
+        return await response.Content.ReadFromJsonAsync<MobileAuthResultDto>(cancellationToken);
+    }
+
     private static async Task<string> SafeReadMessage(HttpResponseMessage response, string fallback)
     {
         try

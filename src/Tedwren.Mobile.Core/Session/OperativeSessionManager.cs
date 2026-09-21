@@ -117,6 +117,25 @@ public sealed class OperativeSessionManager : ISessionRefresher
     }
 
     /// <summary>
+    /// Development/demo-only sign-in for the browser emulator (a device without SMS): signs in the seeded demo
+    /// operative by email, persisting the refresh token in secure storage on success exactly like
+    /// <see cref="EnrolAsync"/>. Returns <see cref="EnrolStatus.InvalidCode"/> when the demo sign-in is rejected or
+    /// unavailable (disabled / not mapped in Production).
+    /// </summary>
+    public async Task<EnrolResult> DemoSignInAsync(string email, string? deviceName, CancellationToken cancellationToken = default)
+    {
+        var deviceId = await GetOrCreateDeviceIdAsync();
+        var result = await _auth.DemoSignInAsync(email, deviceId, deviceName, cancellationToken);
+        if (result is null)
+        {
+            return new EnrolResult(EnrolStatus.InvalidCode, null);
+        }
+
+        await _store.SetAsync(RefreshTokenKey, result.RefreshToken);
+        return new EnrolResult(EnrolStatus.Success, ToSession(result));
+    }
+
+    /// <summary>
     /// Attempts to resume a session on launch: requires biometric unlock (when available), then rotates the
     /// stored refresh token for a fresh access token. Clears the stored token when the server rejects it.
     /// </summary>

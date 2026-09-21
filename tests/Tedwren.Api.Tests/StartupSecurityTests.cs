@@ -28,7 +28,7 @@ public class StartupSecurityTests
 
     private static void Validate(
         IHostEnvironment env, JwtOptions jwt, SeedAdminOptions seed, bool testBypass, BackendOptions backend, string? conn)
-        => StartupSecurity.Validate(env, jwt, seed, testBypass, backend, conn);
+        => StartupSecurity.Validate(env, jwt, seed, testBypass, new DemoOptions(), backend, conn);
 
     [Fact]
     public void Development_with_all_defaults_does_not_throw()
@@ -75,6 +75,27 @@ public class StartupSecurityTests
             Validate(new FakeEnvironment(), StrongJwt(), StrongSeed(), testBypass: true,
                 new BackendOptions { Mode = DataSourceMode.InMemory }, conn: null));
         Assert.Contains("Auth:TestBypass", ex.Message);
+    }
+
+    [Fact]
+    public void Production_with_demo_enabled_throws()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            StartupSecurity.Validate(new FakeEnvironment(), StrongJwt(), StrongSeed(), testBypass: false,
+                new DemoOptions { Enabled = true },
+                new BackendOptions { Mode = DataSourceMode.InMemory }, productConnectionString: null));
+        Assert.Contains("Demo:Enabled", ex.Message);
+    }
+
+    [Fact]
+    public void Development_with_demo_enabled_does_not_throw()
+    {
+        var env = new FakeEnvironment { EnvironmentName = Environments.Development };
+        var ex = Record.Exception(() =>
+            StartupSecurity.Validate(env, new JwtOptions(), new SeedAdminOptions(), testBypass: true,
+                new DemoOptions { Enabled = true },
+                new BackendOptions { Mode = DataSourceMode.InMemory }, productConnectionString: null));
+        Assert.Null(ex);
     }
 
     [Fact]
