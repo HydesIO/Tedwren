@@ -9,6 +9,34 @@ Legend: ✅ complete · 🔄 in progress · ⏳ planned · ⏸️ deferred · �
 
 ---
 
+## Subcontractor onboarding programme — SO-track (21 Sep 2026)
+
+Main-contractor-driven subcontractor onboarding from the *"Subcontractor Onboarding — Process Map & Build
+Spec"* (four actors, five gates, three registers, one notification engine). Plan, phasing and the **PRD
+discrepancy note** (access period / RAMS review cycle / MC-configures-subcontractor are beyond PRD v6.4;
+subcontractor-issued induction conflicts with §6.1 — resolved in the PRD's favour) are in
+`docs/subcontractor-onboarding-plan.md`. Build posture: full UI over the spec, PRD-aligned backend; beyond-PRD
+enforcement behind a `subcontractor-onboarding` flag. Reuses the TradeInvite / induction / RAMS / expiry
+verticals and the `TedwrenStepper`/Forms/dialog kit.
+
+- ✅ **SO-1 — Master-data CRUD foundation (Phase 1).** New `MasterListItem` vertical for the admin-maintained
+  compliance lists (document headings, SSIP schemes, "other requirements"; spec §5–§8) — global (platform-owned)
+  rows every tenant inherits + org-scoped custom entries, soft-deletable (R15, SF-11, Q21). Domain +
+  `IMasterDataService`/DTOs + `MasterDataService` (+ `MasterListSeed`) + in-memory double + Dapper repo + EF
+  `MasterListItemRecord` + dual migrations `038_master_list_items.sql` (both dialects, schema parity green) +
+  `AddMasterListItems`; `/api/master-data` endpoints (reads authenticated, writes `RequireWrite`, shared-list
+  writes platform-admin-only in the service); client `ApiMasterDataService` + platform-admin
+  `Pages/Admin/AdminMasterData.razor` (+ `EditMasterListItemDialog`) + `ShellChrome` nav. 7 new unit tests;
+  whole solution builds clean (0 warnings) and the full suite is green.
+- ⏳ **SO-2 — MC config/onboarding wizard + `SubcontractorOnboardingConfig` (Phase 2).**
+- ⏳ **SO-3 — Subcontractor-side upload + Gate 1 (Phase 3).**
+- ⏳ **SO-4 — RAMS review cycle (Phase 4).**
+- ⏳ **SO-5 — Operative induction & accreditation gates G2/G3/G4 (Phase 5; mobile track in lockstep).**
+- ⏳ **SO-6 — Registers + notification engine (Phase 6).**
+- ⏳ **SO-7 — Site sign-in Gate 5 (Phase 7; mobile track in lockstep).**
+
+---
+
 ## Mobile app (.NET MAUI, Android + iOS) — M-track (19 Sep 2026)
 
 New native field app for operatives (primary) + site managers/admins (secondary). Plan & scope in

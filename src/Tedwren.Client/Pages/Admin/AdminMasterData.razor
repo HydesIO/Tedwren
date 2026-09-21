@@ -1,0 +1,123 @@
+@page "/admin/master-data"
+@using Tedwren.Abstractions.Contracts.MasterData
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.DataDisplay
+@using Tedwren.UiComponents.Dialogs
+@inject IMasterDataService MasterData
+@inject IDialogService DialogService
+
+<PageTitle>Master Data · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Compliance master data"
+                Subtitle="The shared SSIP, document-heading and requirement lists every customer inherits (Subcontractor Onboarding §5–§8)" />
+
+    <DashboardCard>
+        <Body>
+            <div class="admin-master-data__toolbar">
+                <div class="admin-master-data__lists" role="tablist">
+                    @foreach (var key in _keys)
+                    {
+                        var thisKey = key;
+                        <MudButton Variant="@(_activeKey == thisKey ? Variant.Filled : Variant.Outlined)"
+                                   Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => OnListChangedAsync(thisKey))">@Label(thisKey)</MudButton>
+                    }
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add" OnClick="AddAsync">Add value</MudButton>
+            </div>
+
+            <DataTable TItem="MasterListItemDto"
+                       Items="_items"
+                       Columns="_columns"
+                       Loading="_loading"
+                       OnRowClick="EditAsync"
+                       SearchPlaceholder="Search values…"
+                       EmptyTitle="No values yet"
+                       EmptyDescription="Add the first value to this list — customers will see it in the onboarding wizard."
+                       EmptyIcon="@Icons.Material.Outlined.Checklist" />
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private readonly IReadOnlyList<string> _keys = MasterListKeys.All;
+    private string _activeKey = MasterListKeys.All[0];
+    private IReadOnlyList<MasterListItemDto> _items = Array.Empty<MasterListItemDto>();
+    private List<DataColumn<MasterListItemDto>> _columns = new();
+    private bool _loading = true;
+
+    // The management read includes soft-deleted rows so a platform admin can restore them; the API scopes the
+    // write actions to platform admins for the shared (global) list (enforced server-side, R15).
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private void BuildColumns()
+    {
+        _columns = new()
+        {
+            new() { Title = "Value", Value = i => i.Value },
+            new()
+            {
+                Title = "Scope", Text = i => i.IsGlobal ? "Shared" : "Custom", Filterable = true,
+                CellTemplate = i => @<StatusPill Label="@(i.IsGlobal ? "Shared" : "Custom")"
+                                                 Status="@(i.IsGlobal ? StatusKind.Info : StatusKind.Neutral)" />
+            },
+            new() { Title = "Order", Value = i => i.SortOrder, AlignRight = true },
+            new()
+            {
+                Title = "Status", Text = i => i.IsActive ? "Active" : "Retired", Filterable = true, Sortable = false,
+                CellTemplate = i => @<StatusPill Label="@(i.IsActive ? "Active" : "Retired")"
+                                                 Status="@(i.IsActive ? StatusKind.Success : StatusKind.Neutral)" />
+            },
+        };
+    }
+
+    private async Task OnListChangedAsync(string key)
+    {
+        _activeKey = key;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _items = await MasterData.GetForManagementAsync(_activeKey);
+        _loading = false;
+    }
+
+    // Opens the add dialog for the active list; reloads on success.
+    private async Task AddAsync()
+    {
+        var parameters = new DialogParameters { ["ListKey"] = _activeKey };
+        var dialog = await DialogService.ShowAsync<EditMasterListItemDialog>("Add value", parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    // Opens the edit dialog for a value (also used to retire/restore it via the Active toggle); reloads on success.
+    private async Task EditAsync(MasterListItemDto item)
+    {
+        var parameters = new DialogParameters { ["ListKey"] = _activeKey, ["Existing"] = item };
+        var dialog = await DialogService.ShowAsync<EditMasterListItemDialog>("Edit value", parameters, TedwrenDialog.Small());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    // Friendly label for a well-known list key.
+    private static string Label(string key) => key switch
+    {
+        MasterListKeys.DocumentHeadings => "Document headings",
+        MasterListKeys.SsipSchemes => "SSIP schemes",
+        MasterListKeys.OtherRequirements => "Other requirements",
+        _ => key,
+    };
+}

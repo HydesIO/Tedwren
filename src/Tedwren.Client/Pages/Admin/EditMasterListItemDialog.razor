@@ -1,0 +1,107 @@
+@using Tedwren.Abstractions.Contracts.MasterData
+@using Tedwren.Abstractions.Services
+@inject IMasterDataService MasterData
+@inject ISnackbar Snackbar
+
+@* Add or edit a shared (global) compliance master-list value (spec §5–§8). Adding creates a global row
+   (platform-admin owned); editing can retire/restore it via the Active toggle (soft delete). *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="@(_isEdit
+                ? "Update this shared list value. It applies to every customer that uses this list in the subcontractor-onboarding wizard."
+                : "Add a value to the shared list. Every customer sees it in the subcontractor-onboarding wizard. Customers can also add their own private entries.")" />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">List value</h3>
+                <div class="tw-dialog-section__grid">
+                    <div class="tw-dialog-body__full">
+                        <TedwrenTextField Label="Value" @bind-Value="_value" Required="true"
+                                          Placeholder="e.g. CHAS"
+                                          Error="_submitted && string.IsNullOrWhiteSpace(_value)"
+                                          ErrorText="A value is required." />
+                    </div>
+                    <TedwrenNumericField Label="Sort order" @bind-Value="_sortOrder"
+                                         HelperText="Lower numbers appear first." />
+                    @if (_isEdit)
+                    {
+                        <TedwrenToggle Label="Active" @bind-Value="_isActive"
+                                       Description="Turn off to retire this value without deleting it." />
+                    }
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">
+            @(_isEdit ? "Save changes" : "Add value")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The master list the value belongs to (used when adding).</summary>
+    [Parameter] public string ListKey { get; set; } = string.Empty;
+
+    /// <summary>The value being edited, or null when adding a new one.</summary>
+    [Parameter] public MasterListItemDto? Existing { get; set; }
+
+    private string? _value;
+    private decimal? _sortOrder = 0;
+    private bool _isActive = true;
+    private bool _submitted;
+    private bool _busy;
+
+    private bool _isEdit => Existing is not null;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            _value = Existing.Value;
+            _sortOrder = Existing.SortOrder;
+            _isActive = Existing.IsActive;
+        }
+    }
+
+    // Persists the add/edit via IMasterDataService, then closes with success so the page can refresh.
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_value))
+        {
+            Snackbar.Add("A value is required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var order = (int)(_sortOrder ?? 0);
+            if (_isEdit)
+            {
+                await MasterData.UpdateAsync(Existing!.Id, new UpdateMasterListItemRequest(_value!.Trim(), order, _isActive));
+            }
+            else
+            {
+                // Platform-admin management maintains the shared national list (Global: true).
+                await MasterData.CreateAsync(new CreateMasterListItemRequest(ListKey, _value!.Trim(), order, Global: true));
+            }
+
+            Snackbar.Add(_isEdit ? "Value updated." : "Value added.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not save the value: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

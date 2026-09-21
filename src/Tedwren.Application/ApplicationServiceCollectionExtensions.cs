@@ -275,6 +275,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic compliance master-data service (SSIP schemes, document headings, "other requirements"; spec §5–§8, SF-11).</summary>
+    public static IServiceCollection AddMasterDataCore(this IServiceCollection services)
+    {
+        services.AddScoped<IMasterDataService, MasterData.MasterDataService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory master-data repository seeded with the shared global lists (singleton so custom entries persist across test requests).</summary>
+    public static IServiceCollection AddInMemoryMasterDataStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemoryMasterListItemRepository>();
+        services.AddScoped<IMasterListItemRepository>(sp => sp.GetRequiredService<InMemoryMasterListItemRepository>());
+        return services;
+    }
+
     /// <summary>Registers the store-agnostic self-service onboarding service (SF-4, SUB-2).</summary>
     public static IServiceCollection AddOnboardingCore(this IServiceCollection services)
     {
