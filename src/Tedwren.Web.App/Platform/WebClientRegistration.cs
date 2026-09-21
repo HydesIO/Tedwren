@@ -29,7 +29,9 @@ public static class WebClientRegistration
         // plus the browser read cache / outbox / draft store (the MAUI head's SQLCipher store is device-only).
         services.AddSingleton<ITelemetry, WebTelemetry>();
         services.AddSingleton<ISecureStore, WebSecureStore>();
-        services.AddSingleton<IConnectivityService, WebConnectivityService>();
+        // The connectivity service is registered concretely too, so the emulator chrome's offline toggle can drive it.
+        services.AddSingleton<WebConnectivityService>();
+        services.AddSingleton<IConnectivityService>(sp => sp.GetRequiredService<WebConnectivityService>());
         services.AddSingleton<IBiometricAuthenticator, WebBiometricAuthenticator>();
         services.AddSingleton<IReadCache, WebReadCache>();
         services.AddSingleton<IOutboxStore, WebOutboxStore>();

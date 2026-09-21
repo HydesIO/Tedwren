@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
+using Microsoft.Extensions.DependencyInjection;
+using Tedwren.Mobile.Core.Platform;
 using Tedwren.Web.App;
 using Tedwren.Web.App.Platform;
 using Tedwren.Web.App.Shell;
@@ -25,4 +27,22 @@ builder.Services.AddSingleton<EmulatorState>();
 // The emulator's in-memory "who is signed in" for the UI (tokens live in the Core session managers).
 builder.Services.AddSingleton<SessionContext>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// Global crash hooks (mirroring the app's M8 telemetry): route unhandled exceptions to telemetry so a background
+// failure is recorded, not lost. The ErrorBoundary in MainLayout catches render/UI exceptions; these catch the rest.
+var telemetry = host.Services.GetRequiredService<ITelemetry>();
+AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+{
+    if (e.ExceptionObject is Exception ex)
+    {
+        telemetry.TrackError(ex, "unhandled");
+    }
+};
+TaskScheduler.UnobservedTaskException += (_, e) =>
+{
+    telemetry.TrackError(e.Exception, "unobserved-task");
+    e.SetObserved();
+};
+
+await host.RunAsync();

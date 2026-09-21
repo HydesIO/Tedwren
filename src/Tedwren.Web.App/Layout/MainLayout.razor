@@ -3,6 +3,7 @@
 @inject EmulatorState State
 @inject NavigationManager Nav
 @inject ManagerSessionManager ManagerSession
+@inject WebConnectivityService Connectivity
 
 @* The emulator shell: the "device lab" chrome (brand, device-size toggle, theme toggle) around the device frame.
    Every screen renders inside an ErrorBoundary so an API/render error surfaces a recoverable panel rather than
@@ -28,11 +29,16 @@
                     aria-label="@(State.IsDarkMode ? "Switch to light theme" : "Switch to dark theme")">
                 @(State.IsDarkMode ? "☀" : "☾")
             </button>
+            <button type="button" class="tw-iconbtn @(Connectivity.IsConnected ? null : "is-offline")" @onclick="ToggleConnectivity"
+                    title="@(Connectivity.IsConnected ? "Online — click to simulate offline" : "Offline — click to go back online")"
+                    aria-label="@(Connectivity.IsConnected ? "Simulate offline" : "Go back online")">
+                @(Connectivity.IsConnected ? "🌐" : "✈")
+            </button>
         </div>
     </header>
 
     <main class="tw-emulator__stage">
-        <DeviceFrame Device="State.Device" Dark="State.IsDarkMode">
+        <DeviceFrame Device="State.Device" Dark="State.IsDarkMode" Offline="!Connectivity.IsConnected">
             <ErrorBoundary @ref="_errorBoundary">
                 <ChildContent>
                     @Body
@@ -59,9 +65,15 @@
         State.Changed += OnStateChanged;
         Nav.LocationChanged += OnLocationChanged;
         ManagerSession.SessionExpired += OnManagerSessionExpired;
+        Connectivity.ConnectivityChanged += OnConnectivityChanged;
     }
 
     private void OnStateChanged() => InvokeAsync(StateHasChanged);
+
+    private void OnConnectivityChanged(object? sender, bool connected) => InvokeAsync(StateHasChanged);
+
+    // Flips the emulator between online and offline so offline capture/queue/drain-on-reconnect can be tested.
+    private void ToggleConnectivity() => Connectivity.SetConnected(!Connectivity.IsConnected);
 
     // A caught error on one screen must not stick to the next — recover the boundary whenever the route changes.
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _errorBoundary?.Recover();
@@ -78,5 +90,6 @@
         State.Changed -= OnStateChanged;
         Nav.LocationChanged -= OnLocationChanged;
         ManagerSession.SessionExpired -= OnManagerSessionExpired;
+        Connectivity.ConnectivityChanged -= OnConnectivityChanged;
     }
 }
