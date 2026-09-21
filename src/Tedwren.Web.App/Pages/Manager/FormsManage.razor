@@ -1,0 +1,73 @@
+@page "/manager/forms"
+@inject ManagerDataService Data
+
+@* The manager forms surface (M7) — mirrors the native FormsManagePage: the template library and current
+   assignments, with a route to assign a form. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Forms</h1>
+
+    <a class="tw-btn tw-btn--primary tw-btn--block" href="/manager/forms/assign">Assign a form</a>
+
+    <div class="tw-section__label">Templates</div>
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="3" /></TwCard>
+    }
+    else if (_templates.Count == 0)
+    {
+        <TwCard><div class="tw-muted">No form templates yet.</div></TwCard>
+    }
+    else
+    {
+        @foreach (var t in _templates)
+        {
+            <TwCard>
+                <div><strong>@t.Name</strong></div>
+                <div class="tw-muted">v@t.Version · @t.Status · @t.FieldCount fields</div>
+            </TwCard>
+        }
+    }
+
+    <div class="tw-section__label">Assignments</div>
+    @if (!_loading && _assignments.Count == 0)
+    {
+        <TwCard><div class="tw-muted">No forms assigned.</div></TwCard>
+    }
+    else
+    {
+        @foreach (var a in _assignments)
+        {
+            <TwCard>
+                <div><strong>@a.FormName</strong></div>
+                <div class="tw-muted">@a.Scope · @a.Schedule@(a.SiteName is { } site ? $" · {site}" : string.Empty)</div>
+            </TwCard>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<FormTemplateSummaryDto> _templates = Array.Empty<FormTemplateSummaryDto>();
+    private IReadOnlyList<FormAssignmentDto> _assignments = Array.Empty<FormAssignmentDto>();
+    private bool _loading = true;
+
+    /// <summary>Loads the template library and current assignments when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _templates = await Data.GetFormTemplatesAsync() ?? Array.Empty<FormTemplateSummaryDto>();
+            _assignments = await Data.GetFormAssignmentsAsync() ?? Array.Empty<FormAssignmentDto>();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // Leave empty; the sections show their "none" copy.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

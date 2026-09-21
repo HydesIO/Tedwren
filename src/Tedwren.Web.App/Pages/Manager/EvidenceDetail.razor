@@ -1,0 +1,77 @@
+@page "/manager/evidence/{Id:guid}"
+@inject ManagerEvidenceApiClient Evidence
+@inject ManagerImageApiClient Images
+
+@* A single field-evidence capture (M7) — mirrors the native EvidenceDetailPage: the note, when/where it was taken,
+   and the photo loaded through the authorised image route (R9). *@
+
+<div class="tw-screen">
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="5" /></TwCard>
+    }
+    else if (_capture is null)
+    {
+        <TwEmptyState Glyph="📷" Title="Not found" Message="Couldn't load this capture. Connect and try again." />
+    }
+    else
+    {
+        <h1 class="tw-screen__title">@_capture.PersonName</h1>
+        <TwCard>
+            <dl class="tw-rows">
+                <div class="tw-row-pair"><dt>Captured</dt><dd>@UkTime.Format(_capture.CapturedUtc, "dd MMM yyyy HH:mm")</dd></div>
+                <div class="tw-row-pair"><dt>Note</dt><dd>@(_capture.Note ?? "—")</dd></div>
+                <div class="tw-row-pair"><dt>Location</dt><dd>@LocationLabel</dd></div>
+            </dl>
+            @if (_photoUrl is not null)
+            {
+                <img class="tw-card-photo" src="@_photoUrl" alt="Evidence photo" />
+            }
+        </TwCard>
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager/evidence">Back to evidence</a></div>
+</div>
+
+@code {
+    /// <summary>The capture id from the route.</summary>
+    [Parameter] public Guid Id { get; set; }
+
+    private EvidenceCaptureDto? _capture;
+    private string? _photoUrl;
+    private bool _loading = true;
+
+    private string LocationLabel => _capture is { Latitude: { } lat, Longitude: { } lng }
+        ? $"{lat:0.0000}, {lng:0.0000}"
+        : "Not recorded";
+
+    /// <summary>Loads the capture and its photo (through the image route) when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _capture = await Evidence.GetCaptureAsync(Id);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _capture = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_capture?.PhotoReference is { Length: > 0 } reference)
+        {
+            try
+            {
+                _photoUrl = WebManagerUi.DataUrl(await Images.GetImageAsync(reference));
+                StateHasChanged();
+            }
+            catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+            {
+                // A photo that can't be loaded simply stays hidden.
+            }
+        }
+    }
+}

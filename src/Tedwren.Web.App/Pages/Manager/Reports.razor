@@ -1,0 +1,59 @@
+@page "/manager/reports"
+@inject ManagerEvidenceApiClient Evidence
+
+@* The manager reports surface (M7) — mirrors the native ReportsPage: the compliance evidence-pack summary
+   (section counts). The endpoint is hse-gated (403 without the module) — shown as a "not enabled" state. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Reports</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_summary is null)
+    {
+        <div class="tw-banner tw-banner--warning">The evidence pack isn't available. It needs the HSE module, or the connection failed.</div>
+    }
+    else
+    {
+        <TwCard>
+            <div class="tw-card__title">Evidence pack</div>
+            <div class="tw-muted">@_summary.TotalRecords records · generated @UkTime.Format(_summary.GeneratedUtc, "dd MMM yyyy HH:mm")</div>
+        </TwCard>
+
+        @foreach (var sec in _summary.Sections)
+        {
+            <TwCard>
+                <div class="tw-list-line">
+                    <span>@sec.Name</span>
+                    <TwStatusPill Kind="TwStatusKind.Neutral" Text="@sec.Count.ToString()" />
+                </div>
+            </TwCard>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private EvidenceSummaryDto? _summary;
+    private bool _loading = true;
+
+    /// <summary>Loads the evidence-pack summary when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _summary = await Evidence.GetEvidenceSummaryAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _summary = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

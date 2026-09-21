@@ -1,0 +1,53 @@
+@page "/manager/form-reviews"
+@inject ManagerDataService Data
+
+@* The manager submissions list (M7) — mirrors the native FormReviewListPage: completed forms to review,
+   drilling into a submission. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Submissions</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_submissions.Count == 0)
+    {
+        <TwEmptyState Glyph="✅" Title="No submissions" Message="No submitted forms to review." />
+    }
+    else
+    {
+        @foreach (var s in _submissions)
+        {
+            <a class="tw-card tw-formcard" href="@($"/manager/form-reviews/{s.Id}")">
+                <div><strong>@s.FormName</strong></div>
+                <div class="tw-muted">@s.Scope · @s.SubmittedBy · @UkTime.Format(s.SubmittedUtc, "dd MMM yyyy HH:mm")</div>
+                <TwStatusPill Kind="@WebManagerUi.ForFormStatus(s.Status)" Text="@s.Status" />
+            </a>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<FormSubmissionSummaryDto> _submissions = Array.Empty<FormSubmissionSummaryDto>();
+    private bool _loading = true;
+
+    /// <summary>Loads the submissions list when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _submissions = await Data.GetFormSubmissionsAsync() ?? Array.Empty<FormSubmissionSummaryDto>();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _submissions = Array.Empty<FormSubmissionSummaryDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

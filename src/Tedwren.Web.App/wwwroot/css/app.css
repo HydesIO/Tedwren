@@ -291,6 +291,26 @@ h1, h2, h3, p { margin: 0; }
 .tw-formcard { display: flex; flex-direction: column; gap: var(--spacing-8); text-decoration: none; color: var(--color-text-primary); }
 .tw-formcard:hover { box-shadow: var(--shadow-card-hover); text-decoration: none; }
 
+/* ---------- manager lists / detail ---------- */
+.tw-list-row { display: flex; flex-direction: column; gap: 1px; padding: var(--spacing-8) 0; border-top: 1px solid var(--color-border); }
+.tw-list-row:first-child { border-top: 0; padding-top: 0; }
+.tw-list-line { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-12); padding: var(--spacing-8) 0; border-top: 1px solid var(--color-border); }
+.tw-list-line:first-child { border-top: 0; padding-top: 0; }
+
+.tw-compliance { display: flex; align-items: center; gap: var(--spacing-16); flex-wrap: wrap; }
+.tw-legend { display: flex; flex-direction: column; gap: var(--spacing-4); font-size: 13px; }
+.tw-legend__dot { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: var(--spacing-8); }
+.tw-legend__dot--success { background: var(--color-success); }
+.tw-legend__dot--warning { background: var(--color-warning); }
+.tw-legend__dot--danger { background: var(--color-danger); }
+.tw-legend__dot--neutral { background: var(--color-text-muted); }
+
+.tw-signin-hint { font-size: 13px; text-align: center; }
+.tw-detail-pill { margin-top: var(--spacing-8); }
+.tw-card-photo { max-width: 100%; max-height: 220px; margin-top: var(--spacing-8); border-radius: var(--radius-control); border: 1px solid var(--color-border); }
+.tw-answer { display: flex; flex-direction: column; gap: 2px; }
+.tw-answer-image { max-width: 100%; max-height: 140px; border: 1px solid var(--color-border); border-radius: var(--radius-control); align-self: flex-start; }
+
 /* ---------- banners ---------- */
 .tw-banner { padding: var(--spacing-12); border-radius: var(--radius-control); font-size: 14px; border: 1px solid transparent; }
 .tw-banner--info { background: var(--color-info-pale); color: var(--color-info); border-color: var(--color-info); }

@@ -1,0 +1,53 @@
+@page "/manager/operatives"
+@inject ManagerDataService Data
+
+@* The manager operative register (M7) — mirrors the native OperativesPage: the company's operatives with their
+   compliance status, drilling into an operative's profile. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Operatives</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_operatives.Count == 0)
+    {
+        <TwEmptyState Glyph="🧑‍🔧" Title="No operatives" Message="No operatives on record." />
+    }
+    else
+    {
+        @foreach (var op in _operatives)
+        {
+            <a class="tw-card tw-formcard" href="@($"/manager/operatives/{op.Slug}")">
+                <div><strong>@op.Name</strong></div>
+                <div class="tw-muted">@(op.Trade ?? "—") · @op.Company</div>
+                <TwStatusPill Kind="@WebManagerUi.ForCompliance(op.State)" Text="@op.StatusLabel" />
+            </a>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<OperativeListItemDto> _operatives = Array.Empty<OperativeListItemDto>();
+    private bool _loading = true;
+
+    /// <summary>Loads the operative register when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _operatives = await Data.GetOperativesAsync() ?? Array.Empty<OperativeListItemDto>();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _operatives = Array.Empty<OperativeListItemDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
