@@ -1,0 +1,74 @@
+@page "/manager/sign-in"
+@inject ManagerSessionManager Session
+@inject SessionContext SessionContext
+@inject NavigationManager Nav
+
+@* Manager / admin sign-in (M7) — console email + password against /api/auth/login, exactly like the native
+   ManagerSignInPage. On success it sets the console session live and lands on the manager home. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Manager / admin</h1>
+
+    <div class="tw-banner tw-banner--info">
+        Use the same email and password as the Tedwren web console. Operatives sign in with their mobile number instead.
+    </div>
+
+    <TwCard>
+        <div class="tw-field">
+            <label class="tw-label" for="email">Work email</label>
+            <input id="email" class="tw-input" type="email" @bind="_email" placeholder="you@company.com" />
+        </div>
+        <div class="tw-field">
+            <label class="tw-label" for="password">Password</label>
+            <input id="password" class="tw-input" type="password" @bind="_password" />
+        </div>
+        @if (_error is not null)
+        {
+            <div class="tw-banner tw-banner--danger">@_error</div>
+        }
+        <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SignInAsync" disabled="@_busy">
+            @(_busy ? "Signing in…" : "Sign in")
+        </button>
+    </TwCard>
+
+    <div class="tw-muted tw-signin-hint">
+        Demo: <strong>contractor@tedwren.com</strong> or <strong>subcontractor@tedwren.com</strong> · password <strong>Demo123!</strong>
+    </div>
+
+    <div class="tw-screen__footnote"><a href="/">Back to start</a></div>
+</div>
+
+@code {
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string? _error;
+    private bool _busy;
+
+    /// <summary>Signs in against the console auth surface and routes to the manager home.</summary>
+    private async Task SignInAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var result = await Session.LoginAsync(_email.Trim(), _password);
+            switch (result.Status)
+            {
+                case ManagerLoginStatus.Success:
+                    SessionContext.SetManager(result.Session);
+                    Nav.NavigateTo("/manager");
+                    break;
+                case ManagerLoginStatus.InvalidCredentials:
+                    _error = "That email or password wasn't recognised.";
+                    break;
+                default:
+                    _error = "Couldn't sign in. Check the API is running and try again.";
+                    break;
+            }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

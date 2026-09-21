@@ -1,0 +1,98 @@
+@page "/operative/forms"
+@inject FormsApiClient FormsApi
+@inject IReadCache Cache
+@inject IConnectivityService Connectivity
+@inject IFormDraftStore Drafts
+
+@* The operative "forms due" inbox (M6) — mirrors the native FormsInboxPage: assigned forms (cache-then-network)
+   with a schedule-aware due/overdue badge (FormsDueCalculator) and an in-progress-draft marker. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Your forms</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_items.Count == 0)
+    {
+        <TwEmptyState Glyph="📋" Title="No forms" Message="No forms assigned to you." />
+    }
+    else
+    {
+        @foreach (var row in _items)
+        {
+            <a class="tw-card tw-formcard" href="@($"/operative/forms/{row.Assignment.AssignmentId}")">
+                <div><strong>@row.Assignment.FormName</strong></div>
+                <div class="tw-muted">@Subtitle(row.Assignment)</div>
+                <TwStatusPill Kind="@BadgeKind(row)" Text="@BadgeText(row)" />
+            </a>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    private const string AssignmentsKey = "forms.assignments";
+    private const string LastSubmittedKey = "forms.lastSubmitted";
+
+    private readonly List<Row> _items = new();
+    private bool _loading = true;
+
+    /// <summary>Loads the assignment list, computes each form's due state and draft marker.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        var assignments = await LoadAssignmentsAsync();
+        var lastSubmitted = await Cache.GetAsync<Dictionary<Guid, DateTimeOffset>>(LastSubmittedKey) ?? new Dictionary<Guid, DateTimeOffset>();
+        var now = DateTimeOffset.UtcNow;
+
+        foreach (var assignment in assignments)
+        {
+            DateTimeOffset? last = lastSubmitted.TryGetValue(assignment.FamilyId, out var t) ? t : null;
+            var due = FormsDueCalculator.Evaluate(assignment.Schedule, last, now);
+            var hasDraft = await Drafts.GetAsync(assignment.AssignmentId) is not null;
+            _items.Add(new Row(assignment, due, hasDraft));
+        }
+
+        _loading = false;
+    }
+
+    private async Task<IReadOnlyList<MobileFormAssignmentDto>> LoadAssignmentsAsync()
+    {
+        if (Connectivity.IsConnected)
+        {
+            try
+            {
+                var fresh = await FormsApi.GetAssignmentsAsync();
+                await Cache.SetAsync(AssignmentsKey, fresh);
+                return fresh;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or ApiException or TaskCanceledException)
+            {
+                // Fall through to the cached copy — the inbox stays usable offline.
+            }
+        }
+
+        return await Cache.GetAsync<IReadOnlyList<MobileFormAssignmentDto>>(AssignmentsKey) ?? Array.Empty<MobileFormAssignmentDto>();
+    }
+
+    private static string Subtitle(MobileFormAssignmentDto a) => a.SiteName is { } site ? $"{a.Schedule} · {site}" : a.Schedule;
+
+    private static string BadgeText(Row row) => row.HasDraft ? "In progress" : row.Due switch
+    {
+        FormDueState.Overdue => "Overdue",
+        FormDueState.Due => "Due",
+        _ => "Up to date",
+    };
+
+    private static TwStatusKind BadgeKind(Row row) => row.Due switch
+    {
+        FormDueState.Overdue => TwStatusKind.Danger,
+        FormDueState.Due => TwStatusKind.Warning,
+        _ => TwStatusKind.Success,
+    };
+
+    /// <summary>One inbox row: the assignment, its due state and whether a draft is in progress.</summary>
+    private sealed record Row(MobileFormAssignmentDto Assignment, FormDueState Due, bool HasDraft);
+}

@@ -1,0 +1,160 @@
+@page "/manager"
+@inject ManagerDataService Data
+@inject ManagerSessionManager Session
+@inject SessionContext SessionContext
+@inject NavigationManager Nav
+
+@* The manager/admin home (M7) — mirrors the native ManagerHomePage: KPI cards, a workforce-compliance breakdown,
+   expiring cards and recent activity (cache-then-network via ManagerDataService), over the manager card menu. *@
+
+<div class="tw-screen">
+    <div class="tw-home-head">
+        <div>
+            <div class="tw-muted">Signed in</div>
+            <h1 class="tw-screen__title">@(_name ?? "Manager")</h1>
+        </div>
+        <button type="button" class="tw-btn" @onclick="SignOut">Sign out</button>
+    </div>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else
+    {
+        <div class="tw-grid-2">
+            <TwKpiCard Value="@Kpi(_summary?.Kpis.Operatives)" Label="Operatives" />
+            <TwKpiCard Value="@Kpi(_summary?.Kpis.Sites)" Label="Active sites" />
+            <TwKpiCard Value="@Percent(_summary?.Kpis.CompliancePercent)" Label="Compliant" />
+            <TwKpiCard Value="@Kpi(_summary?.Kpis.UpcomingExpiries)" Label="Expiring 30d" />
+        </div>
+
+        @if (_summary is not null)
+        {
+            <div class="tw-section__label">Workforce compliance</div>
+            <TwCard>
+                <div class="tw-compliance">
+                    <TwDonutStat Value="@_summary.Compliance.Compliant" Max="@ComplianceTotal" Figure="@Percent(_summary.Kpis.CompliancePercent)" Label="Compliant" Kind="TwStatusKind.Success" />
+                    <div class="tw-legend">
+                        <div><span class="tw-legend__dot tw-legend__dot--success"></span> Compliant @_summary.Compliance.Compliant</div>
+                        <div><span class="tw-legend__dot tw-legend__dot--warning"></span> At risk @_summary.Compliance.AtRisk</div>
+                        <div><span class="tw-legend__dot tw-legend__dot--danger"></span> Non-compliant @_summary.Compliance.NonCompliant</div>
+                        <div><span class="tw-legend__dot tw-legend__dot--neutral"></span> Pending @_summary.Compliance.Pending</div>
+                    </div>
+                </div>
+            </TwCard>
+        }
+
+        <div class="tw-section__label">Expiring soon</div>
+        <TwCard>
+            @if (_expiries.Count == 0)
+            {
+                <div class="tw-muted">Nothing expiring in the next 30 days.</div>
+            }
+            else
+            {
+                @foreach (var e in _expiries.Take(5))
+                {
+                    <div class="tw-list-row">
+                        <strong>@e.QualificationName</strong>
+                        <div class="tw-muted">@(e.PersonName ?? "Operative") · @DueLabel(e)</div>
+                    </div>
+                }
+            }
+        </TwCard>
+
+        <div class="tw-section__label">Recent activity</div>
+        <TwCard>
+            @if (_activity.Count == 0)
+            {
+                <div class="tw-muted">No recent activity.</div>
+            }
+            else
+            {
+                @foreach (var a in _activity.Take(6))
+                {
+                    <div class="tw-list-row">
+                        <strong>@a.Action · @a.Entity</strong>
+                        <div class="tw-muted">@a.Actor · @UkTime.Format(a.OccurredUtc, "dd MMM HH:mm")</div>
+                    </div>
+                }
+            }
+        </TwCard>
+    }
+
+    <div class="tw-section__label">Menu</div>
+    <TwTileGrid>
+        <TwMenuTile Glyph="👷" Title="Who's on site" Subtitle="Live muster" Href="/manager/muster" />
+        <TwMenuTile Glyph="🚦" Title="Site entry" Subtitle="Decisions & overrides" Href="/manager/site-entry" />
+        <TwMenuTile Glyph="🧑‍🔧" Title="Operatives" Subtitle="Register & compliance" Href="/manager/operatives" />
+        <TwMenuTile Glyph="📋" Title="Forms" Subtitle="Library & assign" Href="/manager/forms" />
+        <TwMenuTile Glyph="✅" Title="Submissions" Subtitle="Review & approve" Href="/manager/form-reviews" />
+        <TwMenuTile Glyph="📷" Title="Evidence" Subtitle="Field captures" Href="/manager/evidence" />
+        <TwMenuTile Glyph="📊" Title="Reports" Subtitle="Evidence pack" Href="/manager/reports" />
+    </TwTileGrid>
+</div>
+
+@code {
+    private DashboardSummaryDto? _summary;
+    private IReadOnlyList<UpcomingExpiryDto> _expiries = Array.Empty<UpcomingExpiryDto>();
+    private IReadOnlyList<AuditEntryDto> _activity = Array.Empty<AuditEntryDto>();
+    private string? _name;
+    private bool _loading = true;
+
+    private double ComplianceTotal => _summary is null
+        ? 0
+        : _summary.Compliance.Compliant + _summary.Compliance.AtRisk + _summary.Compliance.NonCompliant + _summary.Compliance.Pending;
+
+    /// <summary>Ensures a signed-in manager session (fresh login or resume), then loads the overview.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        if (Session.Current is null)
+        {
+            var resume = await Session.TryResumeAsync();
+            if (resume.Status == ResumeStatus.Resumed && resume.Session is not null)
+            {
+                SessionContext.SetManager(resume.Session);
+            }
+            else
+            {
+                Nav.NavigateTo("/manager/sign-in");
+                return;
+            }
+        }
+
+        _name = Session.Current?.Name;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        try
+        {
+            _summary = await Data.GetDashboardAsync();
+            _expiries = await Data.GetUpcomingExpiriesAsync() ?? Array.Empty<UpcomingExpiryDto>();
+            _activity = await Data.GetRecentActivityAsync() ?? Array.Empty<AuditEntryDto>();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // Leave the loaded-but-empty state; the sections show their "couldn't load / nothing" copy.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private static string Kpi(int? value) => value?.ToString() ?? "—";
+
+    private static string Percent(double? value) => value is { } pct ? $"{pct:0}%" : "—";
+
+    private static string DueLabel(UpcomingExpiryDto e) =>
+        e.DaysUntilExpiry < 0 ? "expired" : e.ExpiresOn is { } on ? $"expires {on:dd MMM}" : e.StatusLabel;
+
+    private void SignOut()
+    {
+        Session.SignOut();
+        SessionContext.SetManager(null);
+        Nav.NavigateTo("/manager/sign-in");
+    }
+}

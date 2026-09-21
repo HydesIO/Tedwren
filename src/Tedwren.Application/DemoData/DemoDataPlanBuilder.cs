@@ -111,6 +111,8 @@ public static class DemoDataPlanBuilder
         BuildWorkforce(DemoDataIds.MainCompanyId, "main", MainOperativeNames, mainSites, people, engagements, cards, attendance, now);
         BuildWorkforce(DemoDataIds.SubCompanyId, "sub", SubContractorNames, subSites, people, engagements, cards, attendance, now);
 
+        AddDemoOperative(people, engagements, cards, now);
+
         var (mandates, subscriptions, payments, payouts) = BuildCommercial(now);
 
         return new DemoDataPlan(companies, users, enabledModules, sites, people, engagements, cards, attendance, mandates, subscriptions, payments, payouts);
@@ -239,6 +241,50 @@ public static class DemoDataPlanBuilder
             var site = companySites[i % companySites.Count];
             attendance.AddRange(BuildAttendance(personKey, personId, site, now));
         }
+    }
+
+    /// <summary>
+    /// Adds a single named demo operative reachable by the emulator's Development-only demo sign-in
+    /// (<c>operative@tedwren.com</c>): an active engagement in the main contractor (so <c>contractor@</c> sees them
+    /// too) plus one valid CSCS card so "My cards" isn't empty. Seeded/torn down with the rest of the dataset.
+    /// </summary>
+    private static void AddDemoOperative(List<Person> people, List<Engagement> engagements, List<QualificationCard> cards, DateTimeOffset now)
+    {
+        var today = DateOnly.FromDateTime(now.UtcDateTime);
+
+        people.Add(new Person
+        {
+            Id = DemoOperatives.PersonId,
+            PhoneNumber = PhoneNumber.Parse(DemoOperatives.Phone),
+            CreatedUtc = now.AddMonths(-6),
+        });
+
+        engagements.Add(new Engagement
+        {
+            Id = DemoOperatives.EngagementId,
+            CompanyId = DemoDataIds.MainCompanyId,
+            PersonId = DemoOperatives.PersonId,
+            Name = "Demo Operative",
+            Trade = "Groundworks",
+            InternalReference = "MAIN-DEMO",
+            Status = EngagementStatus.Active,
+            CreatedUtc = now.AddMonths(-6),
+        });
+
+        cards.Add(new QualificationCard
+        {
+            Id = DemoDataIds.Derive("card:demo-operative:cscs"),
+            PersonId = DemoOperatives.PersonId,
+            QualificationTypeId = CscsCard,
+            CardNumber = "CSCS-90000",
+            HolderName = "Demo Operative",
+            IssuedOn = today.AddYears(-1),
+            ExpiresOn = today.AddYears(2),
+            CaptureSource = CardCaptureSource.Photo,
+            VerificationState = CardVerificationState.CscsVerified,
+            ConfirmedBy = "Demo Main Compliance",
+            ConfirmedUtc = now.AddMonths(-2),
+        });
     }
 
     /// <summary>Builds a realistic set of qualification cards for one operative (valid / expiring-soon / expired mix).</summary>

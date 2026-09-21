@@ -1,0 +1,22 @@
+@* A shimmering loading placeholder — a set of pulsing bars shown while a screen's data loads. Web mirror of the
+   native TwSkeleton. *@
+
+<div class="tw-skeleton" aria-hidden="true">
+    @for (var i = 0; i < Lines; i++)
+    {
+        <div class="tw-skeleton__line" style="width:@WidthFor(i)"></div>
+    }
+</div>
+
+@code {
+    /// <summary>How many placeholder lines to render.</summary>
+    [Parameter] public int Lines { get; set; } = 3;
+
+    // Vary the bar widths so the placeholder reads as text rather than a solid block.
+    private static string WidthFor(int index) => (index % 3) switch
+    {
+        0 => "92%",
+        1 => "76%",
+        _ => "60%",
+    };
+}

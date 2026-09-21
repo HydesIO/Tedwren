@@ -1,0 +1,176 @@
+@page "/manager/site-entry"
+@inject ManagerDataService Data
+@inject ManagerSiteEntryApiClient SiteEntryApi
+@inject IConnectivityService Connectivity
+
+@* The manager site-entry check + day-only override (M7, MC-8/MC-11) — mirrors the native SiteEntryPage:
+   online-only (R2/R3), fail-closed, product-correct wording via the reused SiteGateResultPresenter (R18), with a
+   recorded manager override when a decision is blocked (MC-11). *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Site entry</h1>
+
+    <div class="tw-banner tw-banner--info">
+        The decision uses live data and needs a connection. A blocked worker can be admitted with a recorded manager override.
+    </div>
+
+    <div class="tw-field">
+        <label class="tw-label" for="site">Site</label>
+        <select id="site" class="tw-input" @bind="_siteId">
+            <option value="">Choose a site…</option>
+            @foreach (var site in _sites)
+            {
+                <option value="@site.Id">@site.Name</option>
+            }
+        </select>
+    </div>
+
+    <div class="tw-field">
+        <label class="tw-label" for="operative">Operative</label>
+        <select id="operative" class="tw-input" @bind="_personId">
+            <option value="">Choose an operative…</option>
+            @foreach (var op in _operatives)
+            {
+                <option value="@op.PersonId">@op.Name</option>
+            }
+        </select>
+    </div>
+
+    <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="() => DecideAsync(null)" disabled="@_busy">Check entry</button>
+
+    @if (_banner is not null)
+    {
+        <div class="tw-banner tw-banner--@_bannerSeverity">@_banner</div>
+    }
+
+    @if (_checks.Count > 0)
+    {
+        <TwCard>
+            @foreach (var check in _checks)
+            {
+                <div class="tw-list-line">
+                    <div>
+                        <strong>@check.Name</strong>
+                        @if (!string.IsNullOrWhiteSpace(check.Detail))
+                        {
+                            <div class="tw-muted">@check.Detail</div>
+                        }
+                    </div>
+                    <TwStatusPill Kind="@CheckKind(check.Outcome)" Text="@check.Outcome" />
+                </div>
+            }
+        </TwCard>
+    }
+
+    @if (_offersOverride)
+    {
+        <TwCard>
+            <div class="tw-card__title">Manager override</div>
+            <div class="tw-field">
+                <label class="tw-label" for="reason">Reason</label>
+                <textarea id="reason" class="tw-input" rows="3" @bind="_overrideReason" placeholder="Reason for admitting despite the block"></textarea>
+            </div>
+            <button type="button" class="tw-btn tw-btn--danger tw-btn--block" @onclick="OverrideAsync" disabled="@_busy">Admit for today</button>
+        </TwCard>
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private IReadOnlyList<OperativeListItemDto> _operatives = Array.Empty<OperativeListItemDto>();
+    private string _siteId = string.Empty;
+    private string _personId = string.Empty;
+    private bool _busy;
+    private string? _banner;
+    private string _bannerSeverity = "info";
+    private IReadOnlyList<DecisionCheckResultDto> _checks = Array.Empty<DecisionCheckResultDto>();
+    private bool _offersOverride;
+    private string? _overrideReason;
+
+    /// <summary>Loads the cached site + operative lists for the pickers.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _sites = await Data.GetSitesAsync() ?? Array.Empty<SiteSummary>();
+        _operatives = await Data.GetOperativesAsync() ?? Array.Empty<OperativeListItemDto>();
+    }
+
+    private async Task DecideAsync(string? overrideReason)
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        if (!Connectivity.IsConnected)
+        {
+            ShowBanner("You must be online to check entry — the browser link still works.", "warning");
+            return;
+        }
+
+        var site = _sites.FirstOrDefault(s => s.Id.ToString() == _siteId);
+        var operative = _operatives.FirstOrDefault(o => o.PersonId.ToString() == _personId);
+        if (site is null || operative is null)
+        {
+            ShowBanner("Pick a site and an operative first.", "warning");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await SiteEntryApi.DecideAsync(new ManagerDecideRequest(site.Id, operative.PersonId, null, overrideReason));
+            if (result is null)
+            {
+                ShowBanner("Couldn't reach the site gate. Try again.", "danger");
+                return;
+            }
+
+            // Product is unknown to the emulator; the presenter's null default keeps the fail-closed framing (R2/R18).
+            var view = SiteGateResultPresenter.For(null, result);
+            ShowBanner($"{view.Title} — {view.Message}", Severity(view.Severity));
+            _checks = result.Checks;
+            _offersOverride = view.OffersOverride;
+        }
+        catch (ApiException)
+        {
+            ShowBanner("Couldn't complete the check. You may not have permission, or the connection failed.", "danger");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task OverrideAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_overrideReason))
+        {
+            ShowBanner("Enter a reason for the override.", "warning");
+            return;
+        }
+
+        await DecideAsync(_overrideReason.Trim());
+    }
+
+    private static TwStatusKind CheckKind(string outcome) => outcome switch
+    {
+        "Passed" => TwStatusKind.Success,
+        "Failed" => TwStatusKind.Danger,
+        _ => TwStatusKind.Neutral,
+    };
+
+    private static string Severity(GateResultSeverity severity) => severity switch
+    {
+        GateResultSeverity.Success => "success",
+        GateResultSeverity.Danger => "danger",
+        _ => "warning",
+    };
+
+    private void ShowBanner(string text, string severity)
+    {
+        _banner = text;
+        _bannerSeverity = severity;
+    }
+}

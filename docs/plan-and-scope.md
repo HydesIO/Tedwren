@@ -38,6 +38,16 @@ seven numbered commercial modules. The definitive brief is **PRD v6.4**
 > is now delivered; what remains is off-container (device testing, iOS build on macOS, store submission) and the
 > flagged post-M8 feature backlog.
 
+> **Mobile emulator (W-App track):** a **browser emulator of the mobile app** — `src/Tedwren.Web.App` (Blazor
+> WebAssembly) — for device-free testing, separate from the console. It **reuses `Tedwren.Mobile.Core` unchanged**
+> (so its API calls and business logic are identical to the app), swaps the four device seams for browser
+> implementations, and re-creates every mobile screen as a Blazor page inside a phone/tablet device frame. It hits
+> the **same API endpoints**; operatives sign in via a Development-only, fail-closed demo login
+> (`operative@tedwren.com`), managers via the console credentials. **WA1–WA6 are delivered** (scaffold → operative
+> demo login → operative field screens → manager screens → hardening + bUnit/API tests → offline emulation). In
+> `Tedwren.sln` + CI (no MAUI workload). The mobile app and the emulator are kept **like-for-like** — a change to
+> one must be mirrored in the other (CLAUDE.md). See [`web-app-emulator.md`](web-app-emulator.md).
+
 The repository began as a **UI/UX foundation only**. **Six UI phases were complete on `origin/main`**
 (PRs #1–#10), all of them **front-end/component work over mock data**:
 

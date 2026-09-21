@@ -46,4 +46,13 @@ public interface IOperativeAuthService
 
     /// <summary>Rotates a valid, device-bound refresh token for a fresh access token (and a new refresh token).</summary>
     Task<OperativeAuthOutcome> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Development/demo-only: signs in the seeded demo operative from a known email (<c>operative@tedwren.com</c>),
+    /// binding this device and issuing tokens exactly like <see cref="VerifyOtpAsync"/> but without an SMS code —
+    /// for the browser emulator. Returns <see cref="OperativeAuthStatus.Invalid"/> when demo sign-in is disabled
+    /// (<c>Demo:Enabled</c> false), the email is not the demo operative, or the demo operative is not seeded, so it
+    /// is fail-closed by default.
+    /// </summary>
+    Task<OperativeAuthOutcome> DemoSignInAsync(DemoSignInRequest request, CancellationToken cancellationToken = default);
 }

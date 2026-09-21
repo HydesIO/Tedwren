@@ -1,0 +1,225 @@
+@page "/manager/form-reviews/{SubmissionId:guid}"
+@inject ManagerFormsApiClient Forms
+@inject ManagerSessionManager Session
+
+@* The manager submission review (M7) — mirrors the native FormReviewPage: a completed form's answers (RAG chips,
+   inline signatures, photo attachments) and, for a still-submitted form and a non-Auditor, approve / reject with a
+   note. Field labels are resolved from the submitted template version; images come through the authorised routes (R9). *@
+
+<div class="tw-screen">
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="6" /></TwCard>
+    }
+    else if (_submission is null)
+    {
+        <TwEmptyState Glyph="✅" Title="Not found" Message="Couldn't load this submission. Connect and try again." />
+    }
+    else
+    {
+        <h1 class="tw-screen__title">@_submission.FormName</h1>
+        <div class="tw-muted">v@_submission.FormTemplateVersion · @_submission.Scope · @_submission.SubmittedBy · @UkTime.Format(_submission.SubmittedUtc, "dd MMM yyyy HH:mm")</div>
+        <div class="tw-detail-pill"><TwStatusPill Kind="@WebManagerUi.ForFormStatus(_submission.Status)" Text="@_submission.Status" /></div>
+
+        @if (!string.IsNullOrWhiteSpace(_submission.ReviewNote))
+        {
+            <div class="tw-banner tw-banner--warning">Review note: @_submission.ReviewNote</div>
+        }
+
+        <div class="tw-section__label">Responses</div>
+        <TwCard>
+            @if (_submission.Answers.Count == 0)
+            {
+                <div class="tw-muted">No answers recorded.</div>
+            }
+            else
+            {
+                @foreach (var answer in _submission.Answers)
+                {
+                    @if (FormAnswerFormatter.IsImage(answer) && !string.IsNullOrEmpty(answer.Value))
+                    {
+                        <div class="tw-answer">
+                            <div class="tw-muted">@LabelFor(answer)</div>
+                            <img class="tw-answer-image" src="@answer.Value" alt="Signature" />
+                        </div>
+                    }
+                    else if (IsRag(answer) && !string.IsNullOrWhiteSpace(answer.Value))
+                    {
+                        <div class="tw-list-line">
+                            <span>@LabelFor(answer)</span>
+                            <TwStatusPill Kind="@WebManagerUi.ForRag(answer.Value!)" Text="@answer.Value" />
+                        </div>
+                    }
+                    else if (FormAnswerFormatter.Format(answer) is { Length: > 0 } text)
+                    {
+                        <div class="tw-answer">
+                            <div class="tw-muted">@LabelFor(answer)</div>
+                            <div>@text</div>
+                        </div>
+                    }
+                }
+            }
+        </TwCard>
+
+        @if (_submission.Files.Count > 0)
+        {
+            <div class="tw-section__label">Attachments</div>
+            <TwCard>
+                @foreach (var file in _submission.Files)
+                {
+                    <div class="tw-muted">@file.FileName</div>
+                    @if (_attachments.GetValueOrDefault(file.Id) is { } url)
+                    {
+                        <img class="tw-card-photo" src="@url" alt="@file.FileName" />
+                    }
+                }
+            </TwCard>
+        }
+
+        @if (_submission.Status == "Submitted" && !IsAuditor)
+        {
+            <div class="tw-section__label">Review</div>
+            <TwCard>
+                <div class="tw-field">
+                    <label class="tw-label" for="note">Note</label>
+                    <textarea id="note" class="tw-input" rows="3" @bind="_note" placeholder="Optional for approve · required for reject"></textarea>
+                </div>
+                @if (_actionError is not null)
+                {
+                    <div class="tw-banner tw-banner--danger">@_actionError</div>
+                }
+                <div class="tw-row">
+                    <button type="button" class="tw-btn tw-btn--primary" @onclick="Approve" disabled="@_busy">Approve</button>
+                    <button type="button" class="tw-btn tw-btn--danger" @onclick="Reject" disabled="@_busy">Reject</button>
+                </div>
+            </TwCard>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager/form-reviews">Back to submissions</a></div>
+</div>
+
+@code {
+    /// <summary>The submission id from the route.</summary>
+    [Parameter] public Guid SubmissionId { get; set; }
+
+    private FormSubmissionDetailDto? _submission;
+    private IReadOnlyDictionary<string, FormFieldDto> _fields = new Dictionary<string, FormFieldDto>();
+    private readonly Dictionary<Guid, string> _attachments = new();
+    private bool _loading = true;
+    private bool _busy;
+    private string? _note;
+    private string? _actionError;
+
+    private bool IsAuditor => string.Equals(Session.Current?.Role, "Auditor", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>Loads the submission (and its template, for labels) when the page opens.</summary>
+    protected override async Task OnInitializedAsync() => await ReloadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _submission = await Forms.GetSubmissionAsync(SubmissionId);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _submission = null;
+        }
+
+        if (_submission is not null)
+        {
+            _fields = await ResolveFieldsAsync(_submission.FormTemplateId);
+        }
+
+        _loading = false;
+
+        if (_submission is not null)
+        {
+            foreach (var file in _submission.Files.Where(f => f.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)))
+            {
+                await LoadAttachmentAsync(file.Id);
+            }
+        }
+    }
+
+    private async Task<IReadOnlyDictionary<string, FormFieldDto>> ResolveFieldsAsync(Guid templateVersionId)
+    {
+        try
+        {
+            var template = await Forms.GetTemplateAsync(templateVersionId);
+            if (template is not null)
+            {
+                return template.Sections.SelectMany(s => s.Fields).ToDictionary(f => f.Id, StringComparer.Ordinal);
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // Fall back to field ids.
+        }
+
+        return new Dictionary<string, FormFieldDto>();
+    }
+
+    private async Task LoadAttachmentAsync(Guid fileId)
+    {
+        try
+        {
+            var url = WebManagerUi.DataUrl(await Forms.GetSubmissionFileAsync(fileId));
+            if (url is not null)
+            {
+                _attachments[fileId] = url;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // An attachment that can't be loaded stays hidden.
+        }
+    }
+
+    private string LabelFor(FormAnswerDto answer) => _fields.TryGetValue(answer.FieldId, out var field) ? field.Label : answer.FieldId;
+
+    private bool IsRag(FormAnswerDto answer) =>
+        (_fields.TryGetValue(answer.FieldId, out var f) && f.Kind == "RagStatus") || answer.Value is "Red" or "Amber" or "Green";
+
+    private Task Approve() => ReviewAsync(approve: true);
+
+    private Task Reject() => ReviewAsync(approve: false);
+
+    private async Task ReviewAsync(bool approve)
+    {
+        _actionError = null;
+        var note = string.IsNullOrWhiteSpace(_note) ? null : _note!.Trim();
+        if (!approve && note is null)
+        {
+            _actionError = "A rejection needs a reason.";
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            if (approve)
+            {
+                await Forms.ApproveAsync(SubmissionId, note);
+            }
+            else
+            {
+                await Forms.RejectAsync(SubmissionId, note);
+            }
+
+            _note = null;
+            await ReloadAsync();
+        }
+        catch (ApiException)
+        {
+            _actionError = "Couldn't save. You may not have permission, or the connection failed.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

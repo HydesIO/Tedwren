@@ -1,0 +1,106 @@
+@page "/operative/capture"
+@inject IOutboxStore Outbox
+@inject SyncEngine Sync
+@inject IConnectivityService Connectivity
+@inject WebGeolocation Geo
+
+@* Capture field evidence (M5) — mirrors the native CaptureEvidencePage: a photo + note + location queued to the
+   outbox and synced when online. Ungated. The enqueue is identical to the app's, so the sync path is shared. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Capture evidence</h1>
+
+    <div class="tw-banner tw-banner--info">
+        Take a photo and add a note. It's saved on your device and uploads automatically when you're online.
+    </div>
+
+    <TwPhotoInput @key="_photoInputKey" OnCaptured="OnPhoto" />
+
+    <div class="tw-field">
+        <label class="tw-label" for="note">Note</label>
+        <textarea id="note" class="tw-input" rows="4" @bind="_note" placeholder="What did you see? (optional)"></textarea>
+    </div>
+
+    @if (_result is not null)
+    {
+        <div class="tw-banner tw-banner--@_severity">@_result</div>
+    }
+
+    <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SaveAsync" disabled="@_busy">Save evidence</button>
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+    private byte[]? _photo;
+    private string? _photoType;
+    private string? _note;
+    private string? _result;
+    private string _severity = "success";
+    private bool _busy;
+    private int _photoInputKey;
+
+    private void OnPhoto(TwPhotoInput.PhotoCapture capture)
+    {
+        _photo = capture.Bytes;
+        _photoType = capture.ContentType;
+    }
+
+    /// <summary>Queues the evidence capture to the outbox (like the app) and nudges a sync.</summary>
+    private async Task SaveAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        if (_photo is null && string.IsNullOrWhiteSpace(_note))
+        {
+            ShowResult("Add a photo or a note first.", "warning");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var clientId = Guid.NewGuid();
+            var capturedUtc = DateTimeOffset.UtcNow;
+            var geo = await Geo.TryGetAsync();
+            var request = new MobileReportEvidenceRequest(clientId, Clean(_note), geo?.Latitude, geo?.Longitude, null, capturedUtc);
+
+            await Outbox.EnqueueAsync(new OutboxItem
+            {
+                Id = clientId,
+                Kind = EvidenceOutboxHandler.ItemKind,
+                PayloadJson = JsonSerializer.Serialize(request, Json),
+                PhotoBytes = _photo,
+                PhotoContentType = _photoType,
+                CreatedUtc = capturedUtc,
+            });
+            Sync.RequestSync();
+
+            ShowResult(Connectivity.IsConnected ? "Saved — uploading now." : "Saved on your device — it'll upload when you're online.", "success");
+            _photo = null;
+            _photoType = null;
+            _note = string.Empty;
+            _photoInputKey++;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ShowResult("Couldn't save. Please try again.", "danger");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private void ShowResult(string text, string severity)
+    {
+        _result = text;
+        _severity = severity;
+    }
+}

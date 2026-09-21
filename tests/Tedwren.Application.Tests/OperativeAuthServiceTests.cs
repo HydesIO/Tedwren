@@ -179,7 +179,7 @@ public sealed class OperativeAuthServiceTests
         var sms = new CapturingSmsSender();
         var service = new OperativeAuthService(
             people, engagements, devices, challenges, sms,
-            new FakeOperativeTokenIssuer(), new FixedOtpCodeGenerator(Code), new JwtOptions());
+            new FakeOperativeTokenIssuer(), new FixedOtpCodeGenerator(Code), new JwtOptions(), new DemoOptions());
 
         return new Sut(service, people, engagements, devices, challenges, sms, personId);
     }

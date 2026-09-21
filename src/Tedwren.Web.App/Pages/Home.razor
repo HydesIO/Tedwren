@@ -1,0 +1,25 @@
+@page "/"
+
+@* The role chooser — the emulator's entry screen, mirroring the native SignInPage. Operatives and managers sign
+   in through different flows (phone/demo vs console email), so the app opens by asking which. *@
+
+<div class="tw-screen">
+    <div class="tw-hero">
+        <img class="tw-hero__logo" src="images/logo-icon.svg" alt="" />
+        <h1 class="tw-hero__title">Tedwren</h1>
+        <p class="tw-hero__tagline">Field app — choose how you're signing in</p>
+    </div>
+
+    <TwTileGrid>
+        <TwMenuTile Glyph="👷" Title="I'm an operative"
+                    Subtitle="Sign in / out, capture evidence, forms, my hours"
+                    Href="/operative/sign-in" />
+        <TwMenuTile Glyph="🧭" Title="Site manager / admin"
+                    Subtitle="Muster, site entry, reviews, reports"
+                    Href="/manager/sign-in" />
+    </TwTileGrid>
+
+    <div class="tw-screen__footnote">
+        <a href="/kit">View component kit</a>
+    </div>
+</div>

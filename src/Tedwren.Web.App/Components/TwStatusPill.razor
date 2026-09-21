@@ -1,0 +1,12 @@
+@* A small rounded status pill — a bold caption on a pale, theme-aware background in the colour of its Kind. Web
+   mirror of the native TwStatusPill; colours come from the design tokens. *@
+
+<span class="tw-pill tw-pill--@Kind.ToString().ToLowerInvariant()" title="@Text">@Text</span>
+
+@code {
+    /// <summary>The pill's text.</summary>
+    [Parameter] public string Text { get; set; } = string.Empty;
+
+    /// <summary>The pill's semantic colour.</summary>
+    [Parameter] public TwStatusKind Kind { get; set; } = TwStatusKind.Neutral;
+}

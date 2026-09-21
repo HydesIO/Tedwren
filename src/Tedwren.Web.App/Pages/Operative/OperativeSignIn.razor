@@ -1,0 +1,78 @@
+@page "/operative/sign-in"
+@inject OperativeSessionManager Session
+@inject AccessTokenStore Tokens
+@inject SessionContext SessionContext
+@inject NavigationManager Nav
+@inject IConfiguration Config
+
+@* Operative sign-in — mirrors the native OperativeEnrolPage, but the emulator uses the Development-only demo
+   sign-in (operative@tedwren.com) since a browser can't receive an SMS one-time code. On success it hands the
+   access token to the authenticated API handler (exactly as the app does) and lands on the operative home. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Operative sign in</h1>
+
+    <div class="tw-banner tw-banner--info">
+        In the emulator, operatives sign in with a demo account. On a real device this is your mobile number and a
+        texted one-time code, which a browser can't receive.
+    </div>
+
+    <TwCard>
+        <div class="tw-card__title">Demo operative</div>
+        <p class="tw-muted">Signs in as <strong>@Email</strong> and lands on the operative home.</p>
+        @if (_error is not null)
+        {
+            <div class="tw-banner tw-banner--danger">@_error</div>
+        }
+        <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SignInAsync" disabled="@_busy">
+            @(_busy ? "Signing in…" : "Sign in as demo operative")
+        </button>
+    </TwCard>
+
+    <TwCard>
+        <div class="tw-card__title">Mobile number + code</div>
+        <p class="tw-muted">The real device flow — disabled here because it needs an SMS one-time code.</p>
+        <div class="tw-field">
+            <label class="tw-label">Mobile number</label>
+            <input class="tw-input" type="tel" placeholder="Requires SMS (device only)" disabled />
+        </div>
+    </TwCard>
+
+    <div class="tw-screen__footnote"><a href="/">Back to start</a></div>
+</div>
+
+@code {
+    private const string DemoEmailFallback = "operative@tedwren.com";
+    private bool _busy;
+    private string? _error;
+
+    private string Email => Config["Demo:OperativeEmail"] ?? DemoEmailFallback;
+
+    /// <summary>Runs the Development-only demo sign-in, sets the access token live, and routes to the operative home.</summary>
+    private async Task SignInAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            var result = await Session.DemoSignInAsync(Email, "Web emulator");
+            if (result.Status == EnrolStatus.Success && result.Session is not null)
+            {
+                Tokens.AccessToken = result.Session.Token;
+                SessionContext.SetOperative(result.Session);
+                Nav.NavigateTo("/operative");
+                return;
+            }
+
+            _error = "Demo sign-in isn't available. Check the API is running with Demo:Enabled and the demo data has been seeded.";
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "Couldn't reach the API. Check it's running and its CORS allows this origin.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

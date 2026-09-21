@@ -1,0 +1,307 @@
+@* Dynamic form renderer — the web mirror of the native TwDynamicForm. Renders all 14 FormFieldKinds from a
+   template's sections and exposes the same output contract: GetAnswers() → FormAnswerDto[] (signatures inline as a
+   PNG data URL) and GetFiles() → FormSubmissionFileInput[] (base64). Raises OnChanged after every edit so the fill
+   page can autosave a draft. *@
+
+@foreach (var sec in Sections.OrderBy(s => s.Order))
+{
+    <div class="tw-form-section">
+        <div class="tw-form-section__title">@sec.Title</div>
+
+        @foreach (var field in sec.Fields.OrderBy(f => f.Order))
+        {
+            @if (field.Kind == "Heading")
+            {
+                <div class="tw-form-heading">@field.Label</div>
+            }
+            else if (field.Kind == "Instruction")
+            {
+                <div class="tw-muted tw-form-instruction">@field.Label</div>
+            }
+            else
+            {
+                <div class="tw-field">
+                    <label class="tw-label">@field.Label@(field.Required ? " *" : string.Empty)</label>
+                    @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                    {
+                        <div class="tw-muted tw-form-help">@field.HelpText</div>
+                    }
+
+                    @switch (field.Kind)
+                    {
+                        case "LongText":
+                            <textarea class="tw-input" rows="4" @onchange="e => SetValue(field.Id, e.Value?.ToString())">@GetValue(field.Id)</textarea>
+                            break;
+                        case "Number":
+                            <input type="number" class="tw-input" value="@GetValue(field.Id)" @onchange="e => SetValue(field.Id, e.Value?.ToString())" />
+                            break;
+                        case "Date":
+                            <input type="date" class="tw-input" value="@GetValue(field.Id)" @onchange="e => SetValue(field.Id, e.Value?.ToString())" />
+                            break;
+                        case "Time":
+                            <input type="time" class="tw-input" value="@GetValue(field.Id)" @onchange="e => SetValue(field.Id, e.Value?.ToString())" />
+                            break;
+                        case "Dropdown":
+                            <select class="tw-input" @onchange="e => SetValue(field.Id, e.Value?.ToString())">
+                                <option value="" selected="@(string.IsNullOrEmpty(GetValue(field.Id)))">Select…</option>
+                                @foreach (var option in ParseOptions(field.OptionsJson))
+                                {
+                                    <option value="@option" selected="@(GetValue(field.Id) == option)">@option</option>
+                                }
+                            </select>
+                            break;
+                        case "MultiSelect":
+                            <div class="tw-checks">
+                                @foreach (var option in ParseOptions(field.OptionsJson))
+                                {
+                                    <label class="tw-check">
+                                        <input type="checkbox" checked="@MultiHas(field.Id, option)"
+                                               @onchange="e => ToggleMulti(field.Id, option, (bool)(e.Value ?? false))" />
+                                        <span>@option</span>
+                                    </label>
+                                }
+                            </div>
+                            break;
+                        case "YesNo":
+                            <label class="tw-check">
+                                <input type="checkbox" checked="@(GetValue(field.Id) == "true")"
+                                       @onchange="e => SetYesNo(field.Id, e.Value)" />
+                                <span>Yes</span>
+                            </label>
+                            break;
+                        case "RagStatus":
+                            <div class="tw-rag">
+                                @foreach (var rag in Rag)
+                                {
+                                    <button type="button" class="@RagClass(field.Id, rag)" @onclick="() => SetValue(field.Id, rag)">@rag</button>
+                                }
+                            </div>
+                            break;
+                        case "Photo":
+                            <InputFile class="tw-file" OnChange="e => OnFileAsync(field.Id, e)" accept="image/*" capture="environment" />
+                            <div class="tw-muted">@FileLabel(field.Id)</div>
+                            break;
+                        case "FileUpload":
+                            <InputFile class="tw-file" OnChange="e => OnFileAsync(field.Id, e)" />
+                            <div class="tw-muted">@FileLabel(field.Id)</div>
+                            break;
+                        case "Signature":
+                            <TwSignaturePad ValueChanged="v => SetSignature(field.Id, v)" />
+                            @if (!string.IsNullOrEmpty(_signatures.GetValueOrDefault(field.Id)))
+                            {
+                                <div class="tw-muted">Signed ✓</div>
+                            }
+                            break;
+                        default:
+                            <input type="text" class="tw-input" value="@GetValue(field.Id)" @onchange="e => SetValue(field.Id, e.Value?.ToString())" />
+                            break;
+                    }
+                </div>
+            }
+        }
+    </div>
+}
+
+@code {
+    private static readonly string[] Rag = { "Red", "Amber", "Green" };
+
+    /// <summary>The template sections to render.</summary>
+    [Parameter] public IReadOnlyList<FormSectionDto> Sections { get; set; } = Array.Empty<FormSectionDto>();
+
+    /// <summary>Answers to resume from a saved draft.</summary>
+    [Parameter] public IReadOnlyList<FormAnswerDto>? ResumeAnswers { get; set; }
+
+    /// <summary>Files to resume from a saved draft.</summary>
+    [Parameter] public IReadOnlyList<FormSubmissionFileInput>? ResumeFiles { get; set; }
+
+    /// <summary>Raised after any edit, so the fill page can autosave.</summary>
+    [Parameter] public EventCallback OnChanged { get; set; }
+
+    private readonly Dictionary<string, string?> _values = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, HashSet<string>> _multi = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, List<FileEntry>> _files = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, string?> _signatures = new(StringComparer.Ordinal);
+
+    /// <summary>Seeds the field state from the template (and any resumed draft answers/files).</summary>
+    protected override void OnInitialized()
+    {
+        var byId = (ResumeAnswers ?? Array.Empty<FormAnswerDto>()).ToDictionary(a => a.FieldId, a => a, StringComparer.Ordinal);
+        foreach (var file in ResumeFiles ?? Array.Empty<FormSubmissionFileInput>())
+        {
+            if (!_files.TryGetValue(file.FieldId, out var list))
+            {
+                list = new List<FileEntry>();
+                _files[file.FieldId] = list;
+            }
+
+            list.Add(new FileEntry(file.FileName, file.ContentType, file.ContentBase64));
+        }
+
+        foreach (var field in Sections.SelectMany(s => s.Fields))
+        {
+            var resume = byId.GetValueOrDefault(field.Id);
+            switch (field.Kind)
+            {
+                case "MultiSelect":
+                    _multi[field.Id] = new HashSet<string>(resume?.Values ?? Array.Empty<string>(), StringComparer.Ordinal);
+                    break;
+                case "Signature":
+                    _signatures[field.Id] = resume?.Value;
+                    break;
+                case "YesNo":
+                    _values[field.Id] = resume?.Value ?? "false";
+                    break;
+                case "Photo" or "FileUpload" or "Heading" or "Instruction":
+                    break;
+                default:
+                    _values[field.Id] = resume?.Value;
+                    break;
+            }
+        }
+    }
+
+    /// <summary>The captured answers (single-valued in Value, multi-select in Values, signatures as a PNG data URL).</summary>
+    public IReadOnlyList<FormAnswerDto> GetAnswers()
+    {
+        var answers = new List<FormAnswerDto>();
+        foreach (var (id, value) in _values)
+        {
+            if (!string.IsNullOrEmpty(value))
+            {
+                answers.Add(new FormAnswerDto(id, value, Array.Empty<string>()));
+            }
+        }
+
+        foreach (var (id, set) in _multi)
+        {
+            if (set.Count > 0)
+            {
+                answers.Add(new FormAnswerDto(id, null, set.ToList()));
+            }
+        }
+
+        foreach (var (id, url) in _signatures)
+        {
+            if (!string.IsNullOrEmpty(url))
+            {
+                answers.Add(new FormAnswerDto(id, url, Array.Empty<string>()));
+            }
+        }
+
+        return answers;
+    }
+
+    /// <summary>The captured files (photos / uploads) as base64, keyed by field id.</summary>
+    public IReadOnlyList<FormSubmissionFileInput> GetFiles() =>
+        _files.SelectMany(kv => kv.Value.Select(f => new FormSubmissionFileInput(kv.Key, f.FileName, f.ContentType, f.Base64))).ToList();
+
+    private string? GetValue(string id) => _values.GetValueOrDefault(id);
+
+    private void SetValue(string id, string? value)
+    {
+        _values[id] = value;
+        _ = OnChanged.InvokeAsync();
+    }
+
+    private void SetYesNo(string id, object? value) => SetValue(id, value is bool b && b ? "true" : "false");
+
+    private bool MultiHas(string id, string option) => _multi.TryGetValue(id, out var set) && set.Contains(option);
+
+    private void ToggleMulti(string id, string option, bool on)
+    {
+        if (!_multi.TryGetValue(id, out var set))
+        {
+            set = new HashSet<string>(StringComparer.Ordinal);
+            _multi[id] = set;
+        }
+
+        if (on)
+        {
+            set.Add(option);
+        }
+        else
+        {
+            set.Remove(option);
+        }
+
+        _ = OnChanged.InvokeAsync();
+    }
+
+    private void SetSignature(string id, string? url)
+    {
+        _signatures[id] = url;
+        _ = OnChanged.InvokeAsync();
+    }
+
+    private async Task OnFileAsync(string id, InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file is null)
+        {
+            return;
+        }
+
+        const long max = 15 * 1024 * 1024;
+        await using var stream = file.OpenReadStream(max);
+        using var buffer = new MemoryStream();
+        await stream.CopyToAsync(buffer);
+        if (!_files.TryGetValue(id, out var list))
+        {
+            list = new List<FileEntry>();
+            _files[id] = list;
+        }
+
+        var contentType = string.IsNullOrEmpty(file.ContentType) ? "application/octet-stream" : file.ContentType;
+        list.Add(new FileEntry(file.Name, contentType, Convert.ToBase64String(buffer.ToArray())));
+        await OnChanged.InvokeAsync();
+    }
+
+    private string FileLabel(string id) => _files.TryGetValue(id, out var list) && list.Count > 0
+        ? $"{list.Count} file(s) attached"
+        : "No file yet";
+
+    private string RagClass(string id, string rag) =>
+        $"tw-rag__btn tw-rag__btn--{rag.ToLowerInvariant()}" + (GetValue(id) == rag ? " is-active" : string.Empty);
+
+    /// <summary>Parses an OptionsJson ([{id,text}] or a legacy ["a","b"]) into the option display texts.</summary>
+    private static IReadOnlyList<string> ParseOptions(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return Array.Empty<string>();
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != JsonValueKind.Array)
+            {
+                return Array.Empty<string>();
+            }
+
+            var options = new List<string>();
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                if (element.ValueKind == JsonValueKind.String)
+                {
+                    options.Add(element.GetString()!);
+                }
+                else if (element.ValueKind == JsonValueKind.Object
+                         && (element.TryGetProperty("text", out var text) || element.TryGetProperty("Text", out text))
+                         && text.ValueKind == JsonValueKind.String)
+                {
+                    options.Add(text.GetString()!);
+                }
+            }
+
+            return options;
+        }
+        catch (JsonException)
+        {
+            return Array.Empty<string>();
+        }
+    }
+
+    /// <summary>A captured file held in memory as base64 until submit.</summary>
+    private sealed record FileEntry(string FileName, string ContentType, string Base64);
+}

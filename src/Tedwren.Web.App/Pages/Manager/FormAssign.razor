@@ -1,0 +1,169 @@
+@page "/manager/forms/assign"
+@inject ManagerDataService Data
+@inject ManagerFormsApiClient Forms
+@inject NavigationManager Nav
+
+@* Assign a form (M7) — mirrors the native FormAssignPage: pick a form family, a scope (organisation or site), a
+   schedule and an optional failure-alert email, then create the assignment via the reused forms client. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Assign a form</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_families.Count == 0)
+    {
+        <div class="tw-banner tw-banner--warning">There are no published form templates to assign yet.</div>
+    }
+    else
+    {
+        <div class="tw-banner tw-banner--info">
+            Assign a form to your organisation or a site, on a schedule. Operatives see it in their forms inbox.
+        </div>
+
+        <TwCard>
+            <div class="tw-field">
+                <label class="tw-label" for="form">Form</label>
+                <select id="form" class="tw-input" @bind="_familyId">
+                    @foreach (var family in _families)
+                    {
+                        <option value="@family.Id">@family.Name</option>
+                    }
+                </select>
+            </div>
+
+            <div class="tw-field">
+                <label class="tw-label" for="scope">Scope</label>
+                <select id="scope" class="tw-input" @bind="_scope">
+                    @foreach (var scope in Scopes)
+                    {
+                        <option value="@scope">@scope</option>
+                    }
+                </select>
+            </div>
+
+            @if (_scope == "Site")
+            {
+                <div class="tw-field">
+                    <label class="tw-label" for="site">Site</label>
+                    <select id="site" class="tw-input" @bind="_siteId">
+                        <option value="">Choose a site…</option>
+                        @foreach (var site in _sites)
+                        {
+                            <option value="@site.Id">@site.Name</option>
+                        }
+                    </select>
+                </div>
+            }
+
+            <div class="tw-field">
+                <label class="tw-label" for="schedule">Schedule</label>
+                <select id="schedule" class="tw-input" @bind="_schedule">
+                    @foreach (var schedule in Schedules)
+                    {
+                        <option value="@schedule">@schedule</option>
+                    }
+                </select>
+            </div>
+
+            <div class="tw-field">
+                <label class="tw-label" for="alert">Failure-alert email (optional)</label>
+                <input id="alert" class="tw-input" type="email" @bind="_alertEmail" placeholder="alerts@company.com" />
+            </div>
+
+            @if (_error is not null)
+            {
+                <div class="tw-banner tw-banner--danger">@_error</div>
+            }
+
+            <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="AssignAsync" disabled="@_busy">Assign form</button>
+        </TwCard>
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager/forms">Back to forms</a></div>
+</div>
+
+@code {
+    private static readonly string[] Scopes = { "Organisation", "Site" };
+    private static readonly string[] Schedules = { "Daily", "Weekly", "Monthly", "AdHoc" };
+
+    private readonly List<Family> _families = new();
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private string _familyId = string.Empty;
+    private string _scope = "Organisation";
+    private string _siteId = string.Empty;
+    private string _schedule = "Weekly";
+    private string? _alertEmail;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+
+    /// <summary>Loads the form families (from the template library) and site list when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var templates = await Data.GetFormTemplatesAsync() ?? Array.Empty<FormTemplateSummaryDto>();
+            _families.AddRange(templates
+                .GroupBy(t => t.FamilyId)
+                .Select(g => new Family(g.Key, g.OrderByDescending(t => t.Version).First().Name)));
+            _sites = await Data.GetSitesAsync() ?? Array.Empty<SiteSummary>();
+            if (_families.Count > 0)
+            {
+                _familyId = _families[0].Id.ToString();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // Leave empty; the page shows the "no templates" state.
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task AssignAsync()
+    {
+        _error = null;
+        if (!Guid.TryParse(_familyId, out var familyId))
+        {
+            _error = "Choose a form.";
+            return;
+        }
+
+        Guid? siteId = null;
+        if (_scope == "Site")
+        {
+            if (!Guid.TryParse(_siteId, out var parsed))
+            {
+                _error = "Choose a site for a site-scoped assignment.";
+                return;
+            }
+
+            siteId = parsed;
+        }
+
+        _busy = true;
+        try
+        {
+            await Forms.CreateAssignmentAsync(new CreateFormAssignmentRequest(
+                familyId, _scope, siteId, PersonId: null, InductionTemplateId: null, _schedule,
+                string.IsNullOrWhiteSpace(_alertEmail) ? null : _alertEmail!.Trim()));
+            Nav.NavigateTo("/manager/forms");
+        }
+        catch (ApiException)
+        {
+            _error = "Couldn't assign the form. You may not have permission, or the connection failed.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>A form family option (the assignable unit) — its id and a display name.</summary>
+    private sealed record Family(Guid Id, string Name);
+}

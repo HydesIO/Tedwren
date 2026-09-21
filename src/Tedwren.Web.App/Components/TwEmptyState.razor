@@ -1,0 +1,29 @@
+@* An empty-state placeholder — a glyph, a title, a short message and an optional action. Web mirror of the
+   native TwEmptyState, shown when a list has no data. *@
+
+<div class="tw-empty">
+    <div class="tw-empty__glyph" aria-hidden="true">@Glyph</div>
+    <div class="tw-empty__title">@Title</div>
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <div class="tw-empty__message">@Message</div>
+    }
+    @if (ChildContent is not null)
+    {
+        <div class="tw-empty__action">@ChildContent</div>
+    }
+</div>
+
+@code {
+    /// <summary>The leading glyph.</summary>
+    [Parameter] public string Glyph { get; set; } = "∅";
+
+    /// <summary>The empty-state title.</summary>
+    [Parameter] public string Title { get; set; } = "Nothing here yet";
+
+    /// <summary>An optional supporting message.</summary>
+    [Parameter] public string? Message { get; set; }
+
+    /// <summary>An optional action (e.g. a button).</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

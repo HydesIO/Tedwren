@@ -1,0 +1,135 @@
+@page "/operative"
+@implements IDisposable
+@inject OperativeDataService Data
+@inject OperativeSessionManager Session
+@inject AccessTokenStore Tokens
+@inject SyncEngine Sync
+@inject SessionContext SessionContext
+@inject NavigationManager Nav
+
+@* The operative home — mirrors the native OperativeHomePage: an overview card (today's site + sign-in state,
+   compliance + next expiry, hours + forms due, and the offline-sync badge) over the interactive card menu,
+   loaded cache-then-network from the same OperativeDataService the app uses. *@
+
+<div class="tw-screen">
+    <div class="tw-home-head">
+        <div>
+            <div class="tw-muted">Signed in</div>
+            <h1 class="tw-screen__title">@(_name ?? "Operative")</h1>
+        </div>
+        <button type="button" class="tw-btn" @onclick="SignOut">Sign out</button>
+    </div>
+
+    <TwCard>
+        @if (_loading)
+        {
+            <TwSkeleton Lines="3" />
+        }
+        else if (_dashboard is null)
+        {
+            <div class="tw-banner tw-banner--warning">Couldn't load your dashboard. Make sure the API is running, then try again.</div>
+        }
+        else
+        {
+            <div class="tw-kpi-row">
+                <div>
+                    <div class="tw-status-line">@SiteLine</div>
+                    <div class="tw-muted">@ComplianceLine</div>
+                </div>
+                <TwStatusPill Kind="@(_pending > 0 ? TwStatusKind.Warning : TwStatusKind.Success)"
+                              Text="@(_pending > 0 ? $"{_pending} to sync" : "All synced")" />
+            </div>
+            <div class="tw-grid-2 tw-home-kpis">
+                <TwKpiCard Value="@_dashboard.HoursThisWeek.ToString("0.##")" Label="Hours this week" />
+                <TwKpiCard Value="@_dashboard.FormsDue.ToString()" Label="Forms due" />
+            </div>
+        }
+    </TwCard>
+
+    <div class="tw-section__label">Menu</div>
+    <TwTileGrid>
+        <TwMenuTile Glyph="🕒" Title="Sign in / out" Subtitle="Record arrival & departure" Href="/operative/attendance" />
+        <TwMenuTile Glyph="📷" Title="Capture evidence" Subtitle="Photos with location" Href="/operative/capture" />
+        <TwMenuTile Glyph="⚠️" Title="Report hazard" Subtitle="Near-miss & observations" Href="/operative/hazard" />
+        <TwMenuTile Glyph="📋" Title="Forms due" Subtitle="Checklists & inspections" Href="/operative/forms" />
+        <TwMenuTile Glyph="⏱" Title="My hours" Subtitle="This week's timesheet" Href="/operative/hours" />
+        <TwMenuTile Glyph="🪪" Title="My cards" Subtitle="Compliance & expiries" Href="/operative/cards" />
+        <TwMenuTile Glyph="👤" Title="Profile" Subtitle="Your details" Href="/operative/profile" />
+    </TwTileGrid>
+</div>
+
+@code {
+    private OperativeDashboardDto? _dashboard;
+    private string? _name;
+    private bool _loading = true;
+    private int _pending;
+
+    /// <summary>Ensures a live access token (fresh sign-in or resume), then loads the dashboard and sync badge.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        // After a fresh sign-in the token is already set; after a page reload, resume from the stored refresh
+        // token (biometrics are unavailable in the browser, so resume proceeds without a prompt).
+        if (string.IsNullOrEmpty(Tokens.AccessToken))
+        {
+            var resume = await Session.TryResumeAsync();
+            if (resume.Status == ResumeStatus.Resumed && resume.Session is not null)
+            {
+                Tokens.AccessToken = resume.Session.Token;
+                SessionContext.SetOperative(resume.Session);
+            }
+            else
+            {
+                Nav.NavigateTo("/operative/sign-in");
+                return;
+            }
+        }
+
+        _name = SessionContext.Operative?.Name;
+        Sync.StateChanged += OnSyncChanged;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _dashboard = await Data.GetDashboardAsync();
+            _name ??= _dashboard?.Name;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _dashboard = null;
+        }
+        finally
+        {
+            _loading = false;
+            _pending = Sync.State.PendingCount;
+        }
+
+        Sync.RequestSync();
+    }
+
+    private string SiteLine => _dashboard is { SignedIn: true, CurrentSiteName: { } site } ? $"On site: {site}" : "Not signed in";
+
+    private string ComplianceLine => _dashboard is null
+        ? string.Empty
+        : _dashboard.ComplianceLabel + (_dashboard.NextExpiry is { } expiry ? $"  ·  next expiry {expiry:dd MMM yyyy}" : string.Empty);
+
+    private void OnSyncChanged(object? sender, EventArgs e) => InvokeAsync(() =>
+    {
+        _pending = Sync.State.PendingCount;
+        StateHasChanged();
+    });
+
+    private void SignOut()
+    {
+        Session.SignOut();
+        Tokens.AccessToken = null;
+        SessionContext.SetOperative(null);
+        Nav.NavigateTo("/operative/sign-in");
+    }
+
+    /// <summary>Unsubscribes from the sync-state event.</summary>
+    public void Dispose() => Sync.StateChanged -= OnSyncChanged;
+}

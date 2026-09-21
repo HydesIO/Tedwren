@@ -1,0 +1,31 @@
+@* The device frame: a centered phone/tablet chrome whose viewport hosts the rendered app screen. The theme-dark
+   class is applied on the frame root so the design tokens flip INSIDE the frame (MudBlazor-independent). The
+   viewport is a CSS container so the Tw* grid can respond to the frame width, not the browser window. *@
+
+<div class="tw-frame tw-frame--@Device.ToString().ToLowerInvariant()">
+    <div class="tw-frame__device">
+        <div class="tw-frame__screen @(Dark ? "theme-dark" : null)">
+            <div class="tw-frame__statusbar" aria-hidden="true">
+                <span class="tw-frame__time">09:41</span>
+                <span class="tw-frame__glyphs">@(Offline ? "✈ Offline" : "●●● ▾ ▮")</span>
+            </div>
+            <div class="tw-frame__viewport">
+                @ChildContent
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    /// <summary>The device form factor to render (phone or tablet).</summary>
+    [Parameter] public DevicePreset Device { get; set; } = DevicePreset.Phone;
+
+    /// <summary>Whether the app inside the frame renders in dark theme.</summary>
+    [Parameter] public bool Dark { get; set; }
+
+    /// <summary>Whether the emulator is currently in simulated-offline mode (shown in the status bar).</summary>
+    [Parameter] public bool Offline { get; set; }
+
+    /// <summary>The app screen rendered inside the device viewport.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

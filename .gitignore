@@ -33,3 +33,7 @@ src/Tedwren.Web/wwwroot/css/tokens.css
 
 # Generated: shared brand logo copied from Tedwren.Client at build (Tedwren.Web)
 src/Tedwren.Web/wwwroot/images/logo-icon.svg
+
+# Generated: shared design tokens + brand logo copied from Tedwren.Client at build (Tedwren.Web.App)
+src/Tedwren.Web.App/wwwroot/css/tokens.css
+src/Tedwren.Web.App/wwwroot/images/logo-icon.svg

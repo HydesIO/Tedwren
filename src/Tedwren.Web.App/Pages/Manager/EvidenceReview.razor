@@ -1,0 +1,56 @@
+@page "/manager/evidence"
+@inject ManagerDataService Data
+
+@* The manager evidence review (M7) — mirrors the native EvidenceReviewPage: field-evidence captures operatives
+   recorded on the app, newest first, drilling into a capture. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Evidence</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_captures.Count == 0)
+    {
+        <TwEmptyState Glyph="📷" Title="No evidence" Message="No field-evidence captures yet." />
+    }
+    else
+    {
+        @foreach (var c in _captures)
+        {
+            <a class="tw-card tw-formcard" href="@($"/manager/evidence/{c.Id}")">
+                <div><strong>@c.PersonName</strong></div>
+                <div class="tw-muted">@UkTime.Format(c.CapturedUtc, "dd MMM yyyy HH:mm")@(c.Note is { Length: > 0 } note ? $" · {note}" : string.Empty)</div>
+                @if (c.PhotoReference is { Length: > 0 })
+                {
+                    <div class="tw-muted">📷 Photo attached</div>
+                }
+            </a>
+        }
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<EvidenceCaptureDto> _captures = Array.Empty<EvidenceCaptureDto>();
+    private bool _loading = true;
+
+    /// <summary>Loads the evidence captures when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _captures = await Data.GetEvidenceCapturesAsync() ?? Array.Empty<EvidenceCaptureDto>();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _captures = Array.Empty<EvidenceCaptureDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

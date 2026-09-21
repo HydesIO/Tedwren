@@ -18,6 +18,14 @@ public sealed record VerifyOtpRequest(string MobileNumber, string Code, string D
 public sealed record RefreshTokenRequest(string RefreshToken, string DeviceId);
 
 /// <summary>
+/// Development/demo-only operative sign-in used by the browser emulator: exchanges a known demo email
+/// (<c>operative@tedwren.com</c>) for a real operative token bound to this device, without an SMS one-time code
+/// (which a browser can't receive). Only honoured when <c>Demo:Enabled</c> is true and the environment is not
+/// Production — the endpoint is not even mapped otherwise, so it is fail-closed.
+/// </summary>
+public sealed record DemoSignInRequest(string Email, string DeviceId, string? DeviceName);
+
+/// <summary>
 /// A successful operative authentication: a short-lived bearer access token plus a long-lived, device-bound,
 /// rotating refresh token, and the resolved identity. The refresh token is stored on the device in encrypted
 /// secure storage (gated by biometric unlock); the access token is held in memory.

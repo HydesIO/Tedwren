@@ -1,0 +1,10 @@
+@* The responsive card-menu grid: two columns on a phone frame, three on a tablet frame. It responds to the
+   device FRAME width (a CSS container query on the frame viewport), not the browser window — mirroring the
+   native TileGrid's phone/tablet column switch. *@
+
+<div class="tw-tilegrid">@ChildContent</div>
+
+@code {
+    /// <summary>The tiles to lay out.</summary>
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

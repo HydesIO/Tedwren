@@ -186,6 +186,41 @@ a workload machine (iOS needs macOS).
 
 ---
 
+## Mobile emulator (Blazor WASM) — W-App track (21 Sep 2026)
+
+A **browser emulator of the native mobile app** — `src/Tedwren.Web.App` — for device-free testing. It reuses
+`Tedwren.Mobile.Core` unchanged (same API calls as the app) with browser device seams, re-creates the mobile
+screens as Blazor pages inside a phone/tablet device frame, and hits the same API endpoints. Separate from the
+console. In `Tedwren.sln` + CI. See `docs/web-app-emulator.md`. **Keep in lockstep with the mobile app** (CLAUDE.md).
+
+- ✅ **WA1** Scaffold — new `Tedwren.Web.App` (Blazor WASM) over `Tedwren.Mobile.Core`; browser platform seams
+  (`WebSecureStore`/`WebBiometricAuthenticator`/`WebConnectivityService`/`WebTelemetry` + read-cache/outbox/draft
+  stores); device frame (phone/tablet only) + faithful `Tw*` Blazor kit on the shared `tokens.css`; role chooser +
+  `/kit` showcase; added to `Tedwren.sln` + CI (no MAUI workload).
+- ✅ **WA2** Operative demo login — `operative@tedwren.com` → operative FIELD home via a **Development-only,
+  fail-closed** `/api/mobile/auth/demo-sign-in` (mints a real operative token; gated by `Demo:Enabled`, refused in
+  Production by `StartupSecurity`, endpoint unmapped otherwise). Seeded a demo operative in `DemoDataPlanBuilder`
+  (`DemoOperatives`); `OperativeAuthService.BindAndIssueAsync` shared with OTP verify; client
+  `OperativeAuthApiClient`/`OperativeSessionManager.DemoSignInAsync`. Demo dataset now 31 operatives.
+- ✅ **WA3** Operative field screens — attendance (online-only + geofence hint + geolocation), evidence capture +
+  hazard (camera via `InputFile`, queued to the reused outbox/`SyncEngine`), forms inbox (due badges) + fill
+  (`DynamicForm`: all 14 field kinds + canvas signature; reuses `FormValidation`; drafts), my hours/cards/profile.
+- ✅ **WA4** Manager screens — sign-in (console `contractor@`/`subcontractor@`) + home (KPIs/compliance/expiries/
+  activity), muster (MC-14 data age, competency cover), site entry (five-check decide + override, reusing
+  `SiteGateResultPresenter` for R18), operatives + detail (card photos via the image route, R9), forms
+  manage/assign/review-list/review (approve/reject, RAG, signatures, attachments; Auditor read-only), evidence
+  review/detail, reports. Manager session-expiry routes to sign-in from the shell.
+- ✅ **WA5** Hardening + tests — `ErrorBoundary` + recover-on-nav + `_ready`-style resume guards + global
+  unhandled-exception hooks; per-screen loading/empty/error. `tests/Tedwren.Web.App.Tests` (bUnit: components, the
+  dynamic form, platform stores, demo sign-in, manager mappings) + `MobileDemoAuthApiTests` (gated endpoint).
+- ✅ **WA6** Offline emulation — connectivity toggle in the chrome drives `WebConnectivityService` (offline capture
+  → queue → drain-on-reconnect via `SyncEngine`); `WebOutboxStore`/`WebReadCache` persist to `localStorage` so a
+  reload keeps queued captures/cache.
+- ⏳ Post-W-App: run the emulator against a live API for a full manual pass; consider a shared web `Tw*` control
+  library if a second web surface needs it; richer offline (per-file eviction) if `localStorage` limits bite.
+
+---
+
 ## API & UI review — endpoints, contracts, security, PostgreSQL parity (19 Sep 2026)
 
 A full sweep of every API endpoint/contract and the Blazor UI. The client↔API contract reconciled clean

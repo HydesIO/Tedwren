@@ -4,6 +4,12 @@
 > `docs/plan-and-scope.md` (the console/API plan). The PRD (`docs/TedwrenPRDv6_4.docx`, mirror
 > `docs/TedwrenPRDv6_4.md`) remains the source of truth; where this disagrees with the PRD, the PRD wins.
 
+> **Device-free testing:** a **browser emulator of this app** — `src/Tedwren.Web.App` (Blazor WASM) — reuses
+> `Tedwren.Mobile.Core` unchanged and re-creates these screens as Blazor pages in a phone/tablet frame, hitting
+> the same API endpoints. It is the way to exercise the mobile flows without an Android/iOS device. The app and the
+> emulator are **like-for-like** — any change here must be mirrored in the emulator (and vice-versa). See
+> [`web-app-emulator.md`](web-app-emulator.md).
+
 ## Context
 
 Tedwren's primary daily user is the **operative** (a trade worker on site); its secondary daily user is the

@@ -32,7 +32,9 @@ in the same change.
 
 ## Architecture
 
-Two deployables that talk over HTTP/CORS, plus supporting libraries:
+Multiple deployables that talk over HTTP/CORS, plus supporting libraries. The Blazor console, the Web API,
+the marketing site, the native mobile app and the mobile emulator are all separate deployables served by the
+one API:
 
 | Project | Responsibility |
 |---|---|
@@ -43,8 +45,18 @@ Two deployables that talk over HTTP/CORS, plus supporting libraries:
 | `src/Tedwren.Application` | Business services (each behind an interface, SRP). |
 | `src/Tedwren.DataAccess` | Dapper repositories (product/compliance DB): shared base + SQL Server / PostgreSQL dialects; product EF `DbContext` + migrations (schema/DDL). |
 | `src/Tedwren.DataAccess.Commercial` | Commercial/admin DB plane: the billing + go-to-market Dapper repositories (reusing `Tedwren.DataAccess`'s base/dialects/runner) and its own EF `CommercialDbContext` + migrations. |
-| `src/Tedwren.Api` | ASP.NET Core Web API (separate deployable, CORS, mobile-ready). |
-| `tests/*` | xUnit unit + integration tests. |
+| `src/Tedwren.Api` | ASP.NET Core Web API (separate deployable, CORS, mobile-ready). Serves the console, the mobile app and the emulator. |
+| `src/Tedwren.Mobile.Core` | The **non-UI heart of the mobile app** (`net10.0`, no MAUI): typed API clients, operative + manager session managers, the `SyncEngine` outbox, the forms/validation engine, caching and the device-`Platform/` interfaces. In `Tedwren.sln` + CI, so it is unit-tested off-device. |
+| `src/Tedwren.Mobile` | The native **.NET MAUI** field app head (Android + iOS), authored in C# — the operative + manager screens. Needs the MAUI workload, so it lives **only** in `Tedwren.Mobile.slnx` (not in `Tedwren.sln`/CI). |
+| `src/Tedwren.Mobile.Controls` | The native MAUI `Tw*` control kit + design system (ports `tokens.css`). MAUI workload; `Tedwren.Mobile.slnx` only. |
+| `src/Tedwren.Web` | The public, server-rendered **ASP.NET Core MVC marketing site** (separate from the product API + console). |
+| `src/Tedwren.Web.App` | The **browser emulator of the mobile app** (Blazor WebAssembly): it **reuses `Tedwren.Mobile.Core` unchanged** (same API calls as the native app) with browser implementations of the device seams, re-creates the mobile screens as Blazor pages inside a phone/tablet device frame, and hits the **same API endpoints**. For device-free testing. In `Tedwren.sln` + CI. See `docs/web-app-emulator.md`. |
+| `tests/*` | xUnit unit + integration tests (`Tedwren.Web.App.Tests` uses bUnit; the MAUI heads are covered off-container). |
+
+> **Two solutions.** `Tedwren.sln` (built by CI) holds everything that compiles without the MAUI workload,
+> **including** `Tedwren.Mobile.Core`, `Tedwren.Web` and `Tedwren.Web.App`. `Tedwren.Mobile.slnx` adds the MAUI
+> heads (`Tedwren.Mobile`, `Tedwren.Mobile.Controls`) that need the `maui-android`/`maui-ios` workloads. The
+> mobile track's own guidance is in `docs/mobile-app-plan.md`, `docs/web-app-emulator.md`, and `TODO.md` (M / W-App).
 
 ### The data source (database only; in-memory is a test double)
 
@@ -80,6 +92,19 @@ been removed. Static shell chrome (nav/route inventory, platform switcher, envir
   patterns. New components follow the established naming, scoped-CSS and `tokens.css`
   conventions and are catalogued in `docs/component-catalogue.md`. `tokens.css` is the only
   source of colour/spacing — no literals elsewhere.
+- **Mobile app and its emulator move in lockstep.** `src/Tedwren.Web.App` is a **like-for-like browser
+  emulator of the native mobile app** (`src/Tedwren.Mobile`) for device-free testing. Any change to the mobile
+  app's behaviour, screens or flows — whether in the native head (`src/Tedwren.Mobile`) or the shared logic
+  (`src/Tedwren.Mobile.Core`) — **must be mirrored in `src/Tedwren.Web.App`, and vice-versa**, so the two never
+  drift. A PR that changes one without the other should be flagged. They deliberately share `Tedwren.Mobile.Core`
+  (so API calls + business logic are identical) and the design tokens; only the UI layer (native MAUI vs Blazor)
+  and the four device seams differ. When you touch a mobile screen, update the matching Blazor page under
+  `src/Tedwren.Web.App/Pages`; when you add a mobile API call in `Tedwren.Mobile.Core`, the emulator gets it for
+  free. See `docs/web-app-emulator.md`.
+- **Demo-only auth is fail-closed.** The emulator signs an operative in with `operative@tedwren.com` via a
+  **Development-only** `/api/mobile/auth/demo-sign-in` endpoint, gated by `Demo:Enabled` (off by default; on in
+  `appsettings.Development.json`). It is not mapped in Production, and `StartupSecurity` refuses to boot Production
+  with `Demo:Enabled` on — mirroring the `Auth:TestBypass` guard. Never enable it in a real deployment.
 - **Tests** must not modify existing/production records — use isolated, transactional,
   purpose-created or mocked data. Integration tests run against SQL Server LocalDB with a
   transaction rolled back per test; a dedicated PostgreSQL suite is the pre-launch parity gate.
@@ -155,7 +180,14 @@ around its content. Reuse the shared dialog assets rather than hand-rolling opti
 dotnet build Tedwren.sln          # whole solution
 dotnet test  Tedwren.sln          # all test projects
 dotnet run --project src/Tedwren.Api      # Web API (health at /health)
-dotnet run --project src/Tedwren.Client   # Blazor WASM client
+dotnet run --project src/Tedwren.Client   # Blazor WASM console
+dotnet run --project src/Tedwren.Web.App  # Blazor WASM mobile emulator (add its origin to the API's Cors:AllowedOrigins)
+```
+
+The native MAUI heads build from the separate mobile solution and need the MAUI workload:
+
+```bash
+dotnet build Tedwren.Mobile.slnx  # native mobile app (needs maui-android / maui-ios workloads)
 ```
 
 > Toolchain note: the .NET 10 SDK installs from `packages.microsoft.com`

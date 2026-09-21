@@ -1,0 +1,132 @@
+@page "/manager/muster"
+@inject ManagerDataService Data
+
+@* The manager muster (M7, MC-12–MC-14) — mirrors the native MusterPage: who is on a chosen site now, the data's
+   age from the muster's own GeneratedUtc (honest staleness offline, MC-14), and monitored competency cover (MC-13). *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Who's on site</h1>
+
+    <div class="tw-field">
+        <label class="tw-label" for="site">Site</label>
+        <select id="site" class="tw-input" @bind="_selectedSiteId" @bind:after="LoadMusterAsync">
+            <option value="">Choose a site…</option>
+            @foreach (var site in _sites)
+            {
+                <option value="@site.Id">@site.Name</option>
+            }
+        </select>
+    </div>
+
+    @if (_dataAge is not null)
+    {
+        <div class="tw-muted">@_dataAge</div>
+    }
+
+    <div class="tw-section__label">Competency cover</div>
+    <TwCard>
+        @if (_loadingMuster)
+        {
+            <TwSkeleton Lines="2" />
+        }
+        else if (_muster is null)
+        {
+            <div class="tw-muted">Choose a site to see who's on it.</div>
+        }
+        else if (_muster.Competencies.Count == 0)
+        {
+            <div class="tw-muted">No monitored competencies.</div>
+        }
+        else
+        {
+            @foreach (var c in _muster.Competencies)
+            {
+                <div class="tw-list-line">
+                    <span>@c.Competency</span>
+                    <TwStatusPill Kind="@CompetencyKind(c)" Text="@CompetencyLabel(c)" />
+                </div>
+            }
+        }
+    </TwCard>
+
+    <div class="tw-section__label">On site now</div>
+    <TwCard>
+        @if (_muster is null)
+        {
+            <div class="tw-muted">—</div>
+        }
+        else if (_muster.People.Count == 0)
+        {
+            <div class="tw-muted">Nobody is signed in right now.</div>
+        }
+        else
+        {
+            @foreach (var p in _muster.People)
+            {
+                <div class="tw-list-row">
+                    <strong>@p.Name</strong>
+                    <div class="tw-muted">@PersonDetail(p)</div>
+                </div>
+            }
+        }
+    </TwCard>
+
+    <div class="tw-screen__footnote"><a href="/manager">Back to overview</a></div>
+</div>
+
+@code {
+    private IReadOnlyList<SiteSummary> _sites = Array.Empty<SiteSummary>();
+    private string _selectedSiteId = string.Empty;
+    private MusterDto? _muster;
+    private string? _dataAge;
+    private bool _loadingMuster;
+
+    /// <summary>Loads the site list and the first site's muster when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        _sites = await Data.GetSitesAsync() ?? Array.Empty<SiteSummary>();
+        if (_sites.Count > 0)
+        {
+            _selectedSiteId = _sites[0].Id.ToString();
+            await LoadMusterAsync();
+        }
+    }
+
+    private async Task LoadMusterAsync()
+    {
+        var site = _sites.FirstOrDefault(s => s.Id.ToString() == _selectedSiteId);
+        if (site is null)
+        {
+            _muster = null;
+            _dataAge = null;
+            return;
+        }
+
+        _loadingMuster = true;
+        try
+        {
+            _muster = await Data.GetMusterAsync(site.Id);
+            _dataAge = _muster is null
+                ? null
+                : $"As at {UkTime.Format(_muster.GeneratedUtc, "HH:mm")} · {WebManagerUi.FormatAge(DateTimeOffset.UtcNow - _muster.GeneratedUtc)} ago";
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _muster = null;
+            _dataAge = null;
+        }
+        finally
+        {
+            _loadingMuster = false;
+        }
+    }
+
+    private static TwStatusKind CompetencyKind(CompetencyCoverDto c) =>
+        !c.Covered ? TwStatusKind.Danger : c.HoldersOnSite <= 1 ? TwStatusKind.Warning : TwStatusKind.Success;
+
+    private static string CompetencyLabel(CompetencyCoverDto c) =>
+        !c.Covered ? "Not covered" : c.HoldersOnSite <= 1 ? "Last holder on site" : $"{c.HoldersOnSite} on site";
+
+    private static string PersonDetail(MusterPersonDto p) =>
+        (p.PropertyName is { Length: > 0 } prop ? $"{prop} · " : string.Empty) + $"since {UkTime.Format(p.SinceUtc, "HH:mm")}";
+}

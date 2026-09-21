@@ -1,0 +1,70 @@
+@page "/kit"
+
+@* A component-kit showcase — renders every Tw* primitive so the faithful kit can be eyeballed in light and dark
+   (use the theme toggle in the emulator chrome). A developer aid, not part of the app's screens. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Component kit</h1>
+    <p class="tw-muted">The faithful Tw* kit, rendered from the shared design tokens.</p>
+
+    <section class="tw-section">
+        <div class="tw-section__label">KPI cards</div>
+        <div class="tw-grid-2">
+            <TwKpiCard Value="128" Label="On site now" />
+            <TwKpiCard Value="94%" Label="Compliant" />
+        </div>
+    </section>
+
+    <section class="tw-section">
+        <div class="tw-section__label">Status pills</div>
+        <div class="tw-row">
+            <TwStatusPill Kind="TwStatusKind.Success" Text="Compliant" />
+            <TwStatusPill Kind="TwStatusKind.Warning" Text="Expiring" />
+            <TwStatusPill Kind="TwStatusKind.Danger" Text="Blocked" />
+            <TwStatusPill Kind="TwStatusKind.Neutral" Text="Unknown" />
+        </div>
+    </section>
+
+    <section class="tw-section">
+        <div class="tw-section__label">Donut stats</div>
+        <div class="tw-row">
+            <TwDonutStat Value="94" Max="100" Figure="94%" Label="Compliant" Kind="TwStatusKind.Success" />
+            <TwDonutStat Value="3" Max="12" Figure="3" Label="Expiring" Kind="TwStatusKind.Warning" />
+        </div>
+    </section>
+
+    <section class="tw-section">
+        <div class="tw-section__label">Surface card</div>
+        <TwCard>
+            <div class="tw-card__title">Surface card</div>
+            <p class="tw-muted">Rounded, hairline-bordered and theme-aware.</p>
+            <div class="tw-row">
+                <button type="button" class="tw-btn tw-btn--primary">Primary</button>
+                <button type="button" class="tw-btn">Secondary</button>
+            </div>
+        </TwCard>
+    </section>
+
+    <section class="tw-section">
+        <div class="tw-section__label">Menu tiles</div>
+        <TwTileGrid>
+            <TwMenuTile Glyph="🕒" Title="My hours" Subtitle="This week" Href="/kit" />
+            <TwMenuTile Glyph="📋" Title="Forms" Subtitle="2 due" Href="/kit" />
+            <TwMenuTile Glyph="📸" Title="Capture" Subtitle="Evidence" Href="/kit" />
+        </TwTileGrid>
+    </section>
+
+    <section class="tw-section">
+        <div class="tw-section__label">Loading skeleton</div>
+        <TwCard><TwSkeleton Lines="3" /></TwCard>
+    </section>
+
+    <section class="tw-section">
+        <div class="tw-section__label">Empty state</div>
+        <TwCard><TwEmptyState Glyph="📭" Title="No evidence yet" Message="Captured photos will appear here." /></TwCard>
+    </section>
+
+    <div class="tw-screen__footnote">
+        <a href="/">Back to start</a>
+    </div>
+</div>

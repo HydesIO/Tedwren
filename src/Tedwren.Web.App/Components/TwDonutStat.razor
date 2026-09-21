@@ -1,0 +1,34 @@
+@* A compact donut stat — an inline SVG ring showing a value out of a max, with a centred figure and a label.
+   Web mirror of the native TwDonutStat; the ring colour uses the status tokens. *@
+
+<div class="tw-donut">
+    <svg class="tw-donut__svg" viewBox="0 0 42 42" role="img" aria-label="@AriaLabel">
+        <circle class="tw-donut__track" cx="21" cy="21" r="15.915" fill="none" stroke-width="4" />
+        <circle class="tw-donut__ring tw-donut__ring--@Kind.ToString().ToLowerInvariant()"
+                cx="21" cy="21" r="15.915" fill="none" stroke-width="4"
+                stroke-dasharray="@($"{Percent} {100 - Percent}")" stroke-dashoffset="25" stroke-linecap="round" />
+        <text class="tw-donut__figure" x="21" y="21" text-anchor="middle" dominant-baseline="central">@Figure</text>
+    </svg>
+    <div class="tw-donut__label">@Label</div>
+</div>
+
+@code {
+    /// <summary>The current value.</summary>
+    [Parameter] public double Value { get; set; }
+
+    /// <summary>The maximum (100% of the ring). Values &lt;= 0 render an empty ring.</summary>
+    [Parameter] public double Max { get; set; } = 100;
+
+    /// <summary>The label beneath the ring.</summary>
+    [Parameter] public string Label { get; set; } = string.Empty;
+
+    /// <summary>The ring colour.</summary>
+    [Parameter] public TwStatusKind Kind { get; set; } = TwStatusKind.Success;
+
+    /// <summary>Optional centred figure; defaults to the value.</summary>
+    [Parameter] public string? Figure { get; set; }
+
+    private int Percent => Max > 0 ? (int)Math.Clamp(Math.Round(Value / Max * 100), 0, 100) : 0;
+
+    private string AriaLabel => $"{Label}: {Figure ?? Value.ToString()}";
+}

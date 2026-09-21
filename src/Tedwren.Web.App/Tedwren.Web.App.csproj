@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The emulator reuses the mobile app's own logic (typed API clients, session managers, sync engine,
+         forms/validation) unchanged, so its API calls are identical to the native app. Abstractions + Domain
+         flow in transitively. It deliberately does NOT reference Tedwren.Client / Tedwren.UiComponents — the
+         emulator is separate from the web console. -->
+    <ProjectReference Include="..\Tedwren.Mobile.Core\Tedwren.Mobile.Core.csproj" />
+  </ItemGroup>
+
+  <!-- Single source of truth for design tokens: the file lives in Tedwren.Client and is copied into this
+       project's wwwroot at build so the emulator renders "like for like" with the native app (which ports the
+       same tokens.css into its MAUI resources). The copy is git-ignored — the client file remains the only
+       source. Mirrors the same discipline in Tedwren.Web.csproj. -->
+  <Target Name="ShareTokensCss" BeforeTargets="BeforeBuild;BeforeRebuild">
+    <Copy SourceFiles="..\Tedwren.Client\wwwroot\css\tokens.css"
+          DestinationFiles="wwwroot\css\tokens.css"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Same single-source discipline for the brand logo. -->
+  <Target Name="ShareBrandLogo" BeforeTargets="BeforeBuild;BeforeRebuild">
+    <MakeDir Directories="wwwroot\images" />
+    <Copy SourceFiles="..\Tedwren.Client\wwwroot\images\logo-icon.svg"
+          DestinationFiles="wwwroot\images\logo-icon.svg"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

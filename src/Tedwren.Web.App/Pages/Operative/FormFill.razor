@@ -1,0 +1,204 @@
+@page "/operative/forms/{AssignmentId:guid}"
+@inject FormsApiClient FormsApi
+@inject IReadCache Cache
+@inject IConnectivityService Connectivity
+@inject IOutboxStore Outbox
+@inject SyncEngine Sync
+@inject IFormDraftStore Drafts
+@inject NavigationManager Nav
+
+@* Completes an assigned form (M6) — mirrors the native FormFillPage: loads the published template (cache-first by
+   immutable version id), renders it with DynamicForm, autosaves a draft on every edit, validates required fields,
+   and on submit queues the whole submission to the outbox (synced idempotently when online). *@
+
+<div class="tw-screen">
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="5" /></TwCard>
+    }
+    else if (_assignment is null || _template is null)
+    {
+        <h1 class="tw-screen__title">Form</h1>
+        <div class="tw-banner tw-banner--warning">Couldn't load this form. Connect and try again.</div>
+    }
+    else
+    {
+        <h1 class="tw-screen__title">@_assignment.FormName</h1>
+
+        <DynamicForm @ref="_form" Sections="_template.Sections" ResumeAnswers="_resumeAnswers" ResumeFiles="_resumeFiles" OnChanged="SaveDraftAsync" />
+
+        @if (_error is not null)
+        {
+            <div class="tw-banner tw-banner--danger">@_error</div>
+        }
+
+        <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SubmitAsync" disabled="@_busy">Submit form</button>
+    }
+
+    <div class="tw-screen__footnote"><a href="/operative/forms">Back to forms</a></div>
+</div>
+
+@code {
+    private const string AssignmentsKey = "forms.assignments";
+    private const string LastSubmittedKey = "forms.lastSubmitted";
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    /// <summary>The assignment being completed (from the route).</summary>
+    [Parameter] public Guid AssignmentId { get; set; }
+
+    private MobileFormAssignmentDto? _assignment;
+    private FormTemplateDto? _template;
+    private DynamicForm? _form;
+    private IReadOnlyList<FormAnswerDto>? _resumeAnswers;
+    private IReadOnlyList<FormSubmissionFileInput>? _resumeFiles;
+    private bool _loading = true;
+    private bool _busy;
+    private string? _error;
+
+    /// <summary>Resolves the assignment, loads its template and any saved draft.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        var assignments = await LoadAssignmentsAsync();
+        _assignment = assignments.FirstOrDefault(a => a.AssignmentId == AssignmentId);
+        if (_assignment is null)
+        {
+            _loading = false;
+            return;
+        }
+
+        _template = await LoadTemplateAsync(_assignment.TemplateVersionId);
+        if (_template is not null)
+        {
+            var draft = await Drafts.GetAsync(_assignment.AssignmentId);
+            if (draft is not null && draft.TemplateVersionId == _assignment.TemplateVersionId
+                && JsonSerializer.Deserialize<DraftPayload>(draft.PayloadJson, Json) is { } saved)
+            {
+                _resumeAnswers = saved.Answers;
+                _resumeFiles = saved.Files;
+            }
+        }
+
+        _loading = false;
+    }
+
+    /// <summary>Autosaves the in-progress capture as a draft (resume on return).</summary>
+    private async Task SaveDraftAsync()
+    {
+        if (_form is null || _assignment is null)
+        {
+            return;
+        }
+
+        var payload = new DraftPayload(_form.GetAnswers(), _form.GetFiles());
+        await Drafts.SaveAsync(new FormDraft
+        {
+            Key = _assignment.AssignmentId,
+            TemplateVersionId = _assignment.TemplateVersionId,
+            PayloadJson = JsonSerializer.Serialize(payload, Json),
+            UpdatedUtc = DateTimeOffset.UtcNow,
+        });
+    }
+
+    /// <summary>Validates, then queues the submission to the outbox (like the app) and returns to the inbox.</summary>
+    private async Task SubmitAsync()
+    {
+        if (_busy || _form is null || _assignment is null || _template is null)
+        {
+            return;
+        }
+
+        var answers = _form.GetAnswers();
+        var files = _form.GetFiles();
+        var missing = FormValidation.MissingRequired(_template, answers, files);
+        if (missing.Count > 0)
+        {
+            _error = "Please complete: " + string.Join(", ", missing);
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var request = new CreateFormSubmissionRequest(
+                _assignment.TemplateVersionId, _assignment.Scope, _assignment.SiteId, null, answers, files, ClientId: Guid.NewGuid());
+
+            await Outbox.EnqueueAsync(new OutboxItem
+            {
+                Id = request.ClientId!.Value,
+                Kind = FormsOutboxHandler.ItemKind,
+                PayloadJson = JsonSerializer.Serialize(request, Json),
+                CreatedUtc = DateTimeOffset.UtcNow,
+            });
+            Sync.RequestSync();
+
+            await RecordSubmittedAsync(_assignment.FamilyId);
+            await Drafts.DeleteAsync(_assignment.AssignmentId);
+            Nav.NavigateTo("/operative/forms");
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            _error = "Couldn't save. Please try again.";
+            _busy = false;
+        }
+    }
+
+    private async Task RecordSubmittedAsync(Guid familyId)
+    {
+        var map = await Cache.GetAsync<Dictionary<Guid, DateTimeOffset>>(LastSubmittedKey) ?? new Dictionary<Guid, DateTimeOffset>();
+        map[familyId] = DateTimeOffset.UtcNow;
+        await Cache.SetAsync(LastSubmittedKey, map);
+    }
+
+    private async Task<IReadOnlyList<MobileFormAssignmentDto>> LoadAssignmentsAsync()
+    {
+        if (Connectivity.IsConnected)
+        {
+            try
+            {
+                var fresh = await FormsApi.GetAssignmentsAsync();
+                await Cache.SetAsync(AssignmentsKey, fresh);
+                return fresh;
+            }
+            catch (Exception ex) when (ex is HttpRequestException or ApiException or TaskCanceledException)
+            {
+                // Fall through to the cached copy.
+            }
+        }
+
+        return await Cache.GetAsync<IReadOnlyList<MobileFormAssignmentDto>>(AssignmentsKey) ?? Array.Empty<MobileFormAssignmentDto>();
+    }
+
+    private async Task<FormTemplateDto?> LoadTemplateAsync(Guid versionId)
+    {
+        var key = $"forms.template.{versionId}";
+        var cached = await Cache.GetAsync<FormTemplateDto>(key);
+        if (cached is not null)
+        {
+            return cached; // published versions are immutable — the cache is authoritative.
+        }
+
+        if (!Connectivity.IsConnected)
+        {
+            return null;
+        }
+
+        try
+        {
+            var fresh = await FormsApi.GetTemplateAsync(versionId);
+            if (fresh is not null)
+            {
+                await Cache.SetAsync(key, fresh);
+            }
+
+            return fresh;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or ApiException or TaskCanceledException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>The in-progress capture persisted in a draft.</summary>
+    private sealed record DraftPayload(IReadOnlyList<FormAnswerDto> Answers, IReadOnlyList<FormSubmissionFileInput> Files);
+}

@@ -1,0 +1,15 @@
+@* A single dashboard KPI: a large brand-coloured value over a muted label, on a surface card. Web mirror of the
+   native TwKpiCard so the manager overview reads as one system with the app. *@
+
+<div class="tw-card tw-kpi">
+    <div class="tw-kpi__value">@Value</div>
+    <div class="tw-kpi__label">@Label</div>
+</div>
+
+@code {
+    /// <summary>The headline value (e.g. a count or a percentage).</summary>
+    [Parameter] public string Value { get; set; } = "—";
+
+    /// <summary>The label beneath the value.</summary>
+    [Parameter] public string Label { get; set; } = string.Empty;
+}

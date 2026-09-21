@@ -120,6 +120,13 @@ builder.Services.AddScoped<Tedwren.Application.Auth.AdminUserSeeder>();
 // signed-in user with a tenant company id (R15), replacing the former config stub.
 var jwtOptions = builder.Configuration.GetSection(JwtOptions.SectionName).Get<JwtOptions>() ?? new JwtOptions();
 builder.Services.AddSingleton(jwtOptions);
+
+// Demo-only conveniences (the operative demo sign-in used by the browser emulator). Bound from "Demo"; OFF by
+// default and refused in Production by StartupSecurity. Registered so OperativeAuthService and the mobile-auth
+// endpoint gate can resolve it.
+var demoOptions = builder.Configuration.GetSection(DemoOptions.SectionName).Get<DemoOptions>() ?? new DemoOptions();
+builder.Services.AddSingleton(demoOptions);
+
 builder.Services.AddSingleton<Tedwren.Application.Auth.ITokenIssuer, Tedwren.Api.Auth.JwtTokenIssuer>();
 // Operative (mobile) access tokens: separate issuer, audience "tedwren-mobile", "Operative" role (M2).
 builder.Services.AddSingleton<Tedwren.Application.Auth.IOperativeTokenIssuer, Tedwren.Api.Auth.JwtOperativeTokenIssuer>();
@@ -326,7 +333,7 @@ var app = builder.Build();
 // committed development default (JWT signing key, seed admin password), the auth test-bypass, or a missing
 // database secret is in effect. Non-production environments (and the test host) are unaffected.
 Tedwren.Api.Security.StartupSecurity.Validate(
-    app.Environment, jwtOptions, seedAdminOptions, testBypass, backend, productConnectionString);
+    app.Environment, jwtOptions, seedAdminOptions, testBypass, demoOptions, backend, productConnectionString);
 
 if (app.Environment.IsDevelopment())
 {

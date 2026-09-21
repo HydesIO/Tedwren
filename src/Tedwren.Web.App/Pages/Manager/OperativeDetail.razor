@@ -1,0 +1,136 @@
+@page "/manager/operatives/{Slug}"
+@inject ManagerWorkforceApiClient Workforce
+@inject ManagerImageApiClient Images
+
+@* The manager operative profile (M7) — mirrors the native OperativeDetailPage: overview, qualification cards (with
+   the captured card photo loaded through the authorised image route, R9) and recent history. *@
+
+<div class="tw-screen">
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="6" /></TwCard>
+    }
+    else if (_op is null)
+    {
+        <TwEmptyState Glyph="🧑‍🔧" Title="Not found" Message="Couldn't load this operative. Connect and try again." />
+    }
+    else
+    {
+        <div>
+            <h1 class="tw-screen__title">@_op.Name</h1>
+            <div class="tw-muted">@(_op.Trade ?? "—") · @_op.Company</div>
+            <div class="tw-detail-pill"><TwStatusPill Kind="@WebManagerUi.ForCompliance(_op.State)" Text="@_op.StatusLabel" /></div>
+        </div>
+
+        @if (_op.InductionApplies && !_op.InductionValid)
+        {
+            <div class="tw-banner tw-banner--warning">Not site-ready — induction outstanding</div>
+        }
+
+        <div class="tw-section__label">Overview</div>
+        <TwCard>
+            <dl class="tw-rows">
+                <div class="tw-row-pair"><dt>Phone</dt><dd>@(_op.Phone ?? "—")</dd></div>
+                @if (_op.InductionApplies)
+                {
+                    <div class="tw-row-pair"><dt>Induction</dt><dd>@_op.InductionStatusLabel</dd></div>
+                }
+                <div class="tw-row-pair"><dt>Emergency contact</dt><dd>@(_op.EmergencyContactName ?? "—")</dd></div>
+                <div class="tw-row-pair"><dt>Emergency phone</dt><dd>@(_op.EmergencyContactPhone ?? "—")</dd></div>
+            </dl>
+        </TwCard>
+
+        <div class="tw-section__label">Qualifications (@_op.Qualifications.Count)</div>
+        @if (_op.Qualifications.Count == 0)
+        {
+            <TwCard><div class="tw-muted">No qualification cards on record.</div></TwCard>
+        }
+        else
+        {
+            @foreach (var q in _op.Qualifications)
+            {
+                <TwCard>
+                    <div><strong>@q.Name</strong></div>
+                    <div class="tw-muted">@(q.Issuer ?? "—")@(q.ExpiresOn is { } on ? $" · expires {on:dd MMM yyyy}" : string.Empty)</div>
+                    <div class="tw-detail-pill"><TwStatusPill Kind="@WebManagerUi.ForCompliance(q.State)" Text="@q.StatusLabel" /></div>
+                    @if (q.ImageReference is { Length: > 0 } reference && _images.GetValueOrDefault(reference) is { } url)
+                    {
+                        <img class="tw-card-photo" src="@url" alt="Card photo" />
+                    }
+                </TwCard>
+            }
+        }
+
+        <div class="tw-section__label">History</div>
+        <TwCard>
+            @if (_op.History.Count == 0)
+            {
+                <div class="tw-muted">No recent history.</div>
+            }
+            else
+            {
+                @foreach (var h in _op.History)
+                {
+                    <div class="tw-list-row">
+                        <strong>@h.Title</strong>
+                        <div class="tw-muted">@((h.Detail is { Length: > 0 } d ? d + " · " : string.Empty))@UkTime.Format(h.OccurredUtc, "dd MMM yyyy HH:mm")</div>
+                    </div>
+                }
+            }
+        </TwCard>
+    }
+
+    <div class="tw-screen__footnote"><a href="/manager/operatives">Back to operatives</a></div>
+</div>
+
+@code {
+    private readonly Dictionary<string, string> _images = new(StringComparer.Ordinal);
+
+    /// <summary>The operative slug from the route.</summary>
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    private OperativeDetailDto? _op;
+    private bool _loading = true;
+
+    /// <summary>Loads the operative profile and, in the background, each card photo through the image route (R9).</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _op = await Workforce.GetOperativeAsync(Slug);
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _op = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+
+        if (_op is not null)
+        {
+            foreach (var reference in _op.Qualifications.Select(q => q.ImageReference).Where(r => r is { Length: > 0 }).Distinct())
+            {
+                await LoadImageAsync(reference!);
+            }
+        }
+    }
+
+    private async Task LoadImageAsync(string reference)
+    {
+        try
+        {
+            var url = WebManagerUi.DataUrl(await Images.GetImageAsync(reference));
+            if (url is not null)
+            {
+                _images[reference] = url;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            // A card photo that can't be loaded simply stays hidden — never break the profile.
+        }
+    }
+}
