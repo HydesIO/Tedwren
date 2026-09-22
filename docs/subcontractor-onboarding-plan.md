@@ -38,8 +38,11 @@ is the whole process, phased so each increment is usable and never breaks a comp
 1. **Master-data CRUD foundation** — platform-admin + org-scoped lists (document headings, SSIP schemes,
    "other requirements") the wizard/gates consume; accreditations + trade→accreditation map. **[Done]** — see
    below.
-2. **MC config/onboarding wizard + `SubcontractorOnboardingConfig`** — the headline `TedwrenStepper` wizard;
-   replaces the hardcoded `RequestedDocumentTypes` in `TradeOnboardingService`.
+2. **MC config/onboarding wizard + `SubcontractorOnboardingConfig`** — the headline `TedwrenStepper` wizard
+   (`/subcontractors/onboard`); replaces the hardcoded `RequestedDocumentTypes` in `TradeOnboardingService` with
+   a config-driven fallback. **[Done]** — new `SubcontractorOnboardingConfig` vertical + orchestrator reusing the
+   trade-invite flow + `/api/subcontractor-onboarding` + client wizard; SSSTS/SMSTS + induction captured (wired
+   in Phase 5), access period + RAMS cycle persisted (enforced in Phases 3/4). See `TODO.md` SO-2.
 3. **Subcontractor-side upload + Gate 1** — upload against configured headings; all required-before-work docs
    valid → unlock add-operative (fail-closed, R2).
 4. **RAMS review cycle** — bridge sub RAMS upload into the existing `RamsSubmission` review; add

@@ -1,0 +1,116 @@
+/* Subcontractor-onboarding wizard — layout only; colour/spacing come from tokens.css. */
+.sub-onboard {
+    max-width: 860px;
+}
+
+.sub-onboard__step {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-16, 16px);
+    padding: var(--spacing-8, 8px) 0;
+}
+
+.sub-onboard__step-head {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-4, 4px);
+}
+
+.sub-onboard__step-title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.sub-onboard__step-hint {
+    margin: 0;
+    color: var(--color-text-muted, #5b6068);
+    font-size: 0.9rem;
+    max-width: 62ch;
+}
+
+.sub-onboard__grid {
+    display: grid;
+    gap: var(--spacing-12, 12px);
+}
+
+.sub-onboard__grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sub-onboard__grid--3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 640px) {
+    .sub-onboard__grid--2,
+    .sub-onboard__grid--3 {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+.sub-onboard__docs {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-8, 8px);
+}
+
+.sub-onboard__doc {
+    border: 1px solid var(--color-border, #dcdad4);
+    border-radius: var(--radius-control, 8px);
+    padding: var(--spacing-8, 8px) var(--spacing-12, 12px);
+}
+
+.sub-onboard__doc--selected {
+    border-color: var(--color-brand, #e8590c);
+    background: var(--color-brand-pale, #fff1e8);
+}
+
+.sub-onboard__doc-detail {
+    padding: var(--spacing-8, 8px) 0 var(--spacing-4, 4px) var(--spacing-32, 32px);
+}
+
+.sub-onboard__review {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--spacing-8, 8px);
+    margin: 0;
+}
+
+.sub-onboard__review > div {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-16, 16px);
+    padding: var(--spacing-8, 8px) 0;
+    border-bottom: 1px solid var(--color-border, #dcdad4);
+}
+
+.sub-onboard__review dt {
+    color: var(--color-text-muted, #5b6068);
+    font-weight: 600;
+}
+
+.sub-onboard__review dd {
+    margin: 0;
+    text-align: right;
+}
+
+.sub-onboard__finish {
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-8, 8px);
+    margin-top: var(--spacing-16, 16px);
+}
+
+.sub-onboard__link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-12, 12px);
+}
+
+.sub-onboard__link-head {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-8, 8px);
+    font-size: 0.92rem;
+}

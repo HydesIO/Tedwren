@@ -45,6 +45,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<OnboardingLinkRecord> OnboardingLinks => Set<OnboardingLinkRecord>();
     public DbSet<InductionLinkRecord> InductionLinks => Set<InductionLinkRecord>();
     public DbSet<TradeInviteRecord> TradeInvites => Set<TradeInviteRecord>();
+    public DbSet<SubcontractorOnboardingConfigRecord> SubcontractorOnboardingConfigs => Set<SubcontractorOnboardingConfigRecord>();
     public DbSet<OperativeDeviceRecord> OperativeDevices => Set<OperativeDeviceRecord>();
     public DbSet<OtpChallengeRecord> OtpChallenges => Set<OtpChallengeRecord>();
     public DbSet<UserRefreshTokenRecord> UserRefreshTokens => Set<UserRefreshTokenRecord>();
@@ -219,6 +220,14 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ReviewNote).HasMaxLength(1024);
             e.HasIndex(x => x.Token).IsUnique();
             e.HasIndex(x => x.InviterCompanyId);   // the review queue is scoped to the inviting tenant (R15)
+        });
+
+        model.Entity<SubcontractorOnboardingConfigRecord>(e =>
+        {
+            e.ToTable("SubcontractorOnboardingConfigs");
+            e.HasIndex(x => x.SubcontractorCompanyId);   // the Gate 1/5 lookup
+            e.HasIndex(x => x.TradeInviteId);
+            e.HasIndex(x => x.InviterCompanyId);         // scoped to the inviting tenant (R15)
         });
 
         model.Entity<OperativeDeviceRecord>(e =>

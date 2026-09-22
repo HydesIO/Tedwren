@@ -322,6 +322,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
+    /// <summary>Registers the store-agnostic subcontractor onboarding set-up/config service (spec Stage 1 / §4).</summary>
+    public static IServiceCollection AddSubcontractorOnboardingCore(this IServiceCollection services)
+    {
+        services.AddScoped<ISubcontractorOnboardingService, Subcontractors.SubcontractorOnboardingService>();
+        return services;
+    }
+
+    /// <summary>Registers the in-memory subcontractor onboarding-config store (singleton so a config persists across test requests).</summary>
+    public static IServiceCollection AddInMemorySubcontractorOnboardingStore(this IServiceCollection services)
+    {
+        services.AddSingleton<InMemorySubcontractorOnboardingConfigRepository>();
+        services.AddScoped<ISubcontractorOnboardingConfigRepository>(sp => sp.GetRequiredService<InMemorySubcontractorOnboardingConfigRepository>());
+        return services;
+    }
+
     /// <summary>Registers the operative (mobile) services: authentication + one-time-code generator (M2), the read surface + dashboard (M3), the attendance read (M4), the offline-capture evidence + hazard writes (M5) and the forms assignment surface (M6).</summary>
     public static IServiceCollection AddMobileAuthCore(this IServiceCollection services)
     {
