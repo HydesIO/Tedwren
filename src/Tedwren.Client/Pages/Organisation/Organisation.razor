@@ -19,6 +19,11 @@
                    OnClick="@(() => Nav.NavigateTo("/trade-approvals"))">
             Trade approvals
         </MudButton>
+        @* Full set-up & configuration wizard for a subcontractor (spec Stage 1 / §4). *@
+        <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.GroupAdd"
+                   OnClick="@(() => Nav.NavigateTo("/subcontractors/onboard"))">
+            Onboard subcontractor
+        </MudButton>
         <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.ForwardToInbox"
                    OnClick="InviteTradeAsync">
             Invite trade

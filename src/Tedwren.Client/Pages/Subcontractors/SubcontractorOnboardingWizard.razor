@@ -1,0 +1,341 @@
+@page "/subcontractors/onboard"
+@using Tedwren.Abstractions.Contracts.MasterData
+@using Tedwren.Abstractions.Contracts.Subcontractors
+@using Tedwren.Abstractions.Services
+@inject ISubcontractorOnboardingService Subs
+@inject IMasterDataService MasterData
+@inject ISnackbar Snackbar
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+
+<PageTitle>Onboard a subcontractor · Tedwren</PageTitle>
+
+<PageHeader Title="Onboard a subcontractor"
+            Subtitle="Set up a subcontractor and configure what they must provide, then share their onboarding link." />
+
+<div class="sub-onboard">
+    <TedwrenStepper @bind-ActiveIndex="_activeStep" OnPreviewInteraction="OnStepPreview">
+        @* 1. Company + primary contact *@
+        <MudStep Title="Company">
+            <div class="sub-onboard__step">
+                <FormSection Title="Subcontractor details" Description="Creates the subcontractor's company record; they complete the rest from the link.">
+                    <TedwrenTextField Label="Company name" @bind-Value="_model.CompanyName" Required="true"
+                                      Placeholder="e.g. Apex Electrical Ltd"
+                                      Error="ShowErrors(StepCompany) && string.IsNullOrWhiteSpace(_model.CompanyName)"
+                                      ErrorText="Company name is required." />
+                    <TedwrenTextField Label="Primary trade" @bind-Value="_model.Trade" Placeholder="e.g. Electrical" />
+                    <TedwrenTextField Label="Registration number" @bind-Value="_model.RegistrationNumber"
+                                      Placeholder="e.g. 09876543" HelperText="Companies House number, if applicable." />
+                </FormSection>
+                <FormSection Title="Primary contact" Description="Who we send the onboarding link to.">
+                    <TedwrenTextField Label="Contact name" @bind-Value="_model.ContactName" Placeholder="Full name" />
+                    <TedwrenTextField Label="Contact email" @bind-Value="_model.ContactEmail" InputType="InputType.Email"
+                                      Placeholder="name@company.com"
+                                      Error="ShowErrors(StepCompany) && !string.IsNullOrWhiteSpace(_model.ContactEmail) && !IsValidEmail(_model.ContactEmail)"
+                                      ErrorText="Enter a valid email address." />
+                    <TedwrenTextField Label="Contact phone" @bind-Value="_model.ContactPhone" InputType="InputType.Telephone" Placeholder="+44 …" />
+                </FormSection>
+                <TedwrenToggle Label="Require a passcode"
+                               Description="Adds a short passcode the subcontractor must enter to open the link."
+                               @bind-Value="_model.RequirePasscode" />
+            </div>
+        </MudStep>
+
+        @* 2. Access period *@
+        <MudStep Title="Access period">
+            <div class="sub-onboard__step">
+                <FormSection Title="Access period" Description="How long this subcontractor stays active on site (default 12 months).">
+                    <div class="sub-onboard__grid sub-onboard__grid--2">
+                        <MudNumericField T="int" Label="Access period (months)" @bind-Value="_model.AccessPeriodMonths"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" Max="120" />
+                    </div>
+                </FormSection>
+            </div>
+        </MudStep>
+
+        @* 3. Required documents *@
+        <MudStep Title="Documents">
+            <div class="sub-onboard__step">
+                <div class="sub-onboard__step-head">
+                    <h2 class="sub-onboard__step-title">Required documents</h2>
+                    <p class="sub-onboard__step-hint">
+                        Tick each document this subcontractor must provide. Mark "required before work" for the ones
+                        that must be valid before their operatives can start (these block onboarding until uploaded).
+                    </p>
+                </div>
+                @if (_model.Documents.Count == 0)
+                {
+                    <BannerAlert Severity="StatusKind.Info"
+                                 Message="No document headings are configured yet. A platform administrator can add them under Admin → Master Data." />
+                }
+                else
+                {
+                    <div class="sub-onboard__docs">
+                        @foreach (var doc in _model.Documents)
+                        {
+                            <div class="sub-onboard__doc @(doc.Selected ? "sub-onboard__doc--selected" : null)">
+                                <MudCheckBox T="bool" Value="doc.Selected" ValueChanged="@(v => ToggleDocument(doc, v))"
+                                             Color="Color.Primary" Label="@doc.Heading" />
+                                @if (doc.Selected)
+                                {
+                                    <div class="sub-onboard__doc-detail">
+                                        <TedwrenToggle Label="Required before work"
+                                                       Description="Blocks the subcontractor from adding operatives until this is valid (Gate 1)."
+                                                       @bind-Value="doc.RequiredBeforeWork" />
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </MudStep>
+
+        @* 4. Supervisor competency *@
+        <MudStep Title="Supervisor">
+            <div class="sub-onboard__step">
+                <FormSection Title="Supervisor competency" Description="Site-supervision qualifications required of the subcontractor's supervisor.">
+                    <TedwrenToggle Label="SSSTS required" Description="Site Supervisor Safety Training Scheme."
+                                   @bind-Value="_model.SsstsRequired" />
+                    <TedwrenToggle Label="SMSTS required" Description="Site Management Safety Training Scheme."
+                                   @bind-Value="_model.SmstsRequired" />
+                </FormSection>
+            </div>
+        </MudStep>
+
+        @* 5. Induction *@
+        <MudStep Title="Induction">
+            <div class="sub-onboard__step">
+                <FormSection Title="Induction" Description="The induction their operatives complete (delivered by your induction, MC-1..7).">
+                    <div class="sub-onboard__grid sub-onboard__grid--3">
+                        <MudNumericField T="int" Label="Valid for (days)" @bind-Value="_model.InductionValidityDays"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
+                        <MudNumericField T="int" Label="Pass mark (correct answers)" @bind-Value="_model.InductionPassMark"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense" Min="0" />
+                        <MudNumericField T="int" Label="Max attempts" @bind-Value="_model.InductionAttemptLimit"
+                                         Variant="Variant.Outlined" Margin="Margin.Dense" Min="1" />
+                    </div>
+                </FormSection>
+            </div>
+        </MudStep>
+
+        @* 6. RAMS review cycle *@
+        <MudStep Title="RAMS cycle">
+            <div class="sub-onboard__step">
+                <FormSection Title="RAMS review cycle" Description="How often the subcontractor's RAMS must be re-reviewed.">
+                    <div class="sub-onboard__grid sub-onboard__grid--2">
+                        <TedwrenSelect T="int" Label="Review cycle" @bind-Value="_model.RamsReviewCycleMonths"
+                                       Options="_ramsCycles" OptionText="@(m => $"{m} months")" />
+                    </div>
+                </FormSection>
+            </div>
+        </MudStep>
+
+        @* Review *@
+        <MudStep Title="Review">
+            <div class="sub-onboard__step">
+                @if (_result is null)
+                {
+                    <div class="sub-onboard__step-head">
+                        <h2 class="sub-onboard__step-title">Review &amp; finish</h2>
+                        <p class="sub-onboard__step-hint">Check the configuration below, then create the subcontractor and its onboarding link.</p>
+                    </div>
+                    <dl class="sub-onboard__review">
+                        <div><dt>Company</dt><dd>@(string.IsNullOrWhiteSpace(_model.CompanyName) ? "—" : _model.CompanyName)</dd></div>
+                        <div><dt>Primary contact</dt><dd>@ContactSummary</dd></div>
+                        <div><dt>Access period</dt><dd>@_model.AccessPeriodMonths months</dd></div>
+                        <div><dt>Required documents</dt><dd>@DocumentsSummary</dd></div>
+                        <div><dt>Supervisor</dt><dd>@SupervisorSummary</dd></div>
+                        <div><dt>Induction</dt><dd>@_model.InductionValidityDays days · pass @_model.InductionPassMark · @_model.InductionAttemptLimit attempts</dd></div>
+                        <div><dt>RAMS review cycle</dt><dd>@_model.RamsReviewCycleMonths months</dd></div>
+                    </dl>
+                    <div class="sub-onboard__finish">
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large" Disabled="_busy"
+                                   StartIcon="@Icons.Material.Outlined.Check" OnClick="Finish">
+                            @(_busy ? "Setting up…" : "Create subcontractor")
+                        </MudButton>
+                    </div>
+                }
+                else
+                {
+                    <div class="sub-onboard__link">
+                        <div class="sub-onboard__link-head">
+                            <MudIcon Icon="@Icons.Material.Outlined.CheckCircle" Color="Color.Success" Size="Size.Small" />
+                            <span>"@_model.CompanyName" is set up. Send this onboarding link to their primary contact — it's valid until @_result.ExpiresUtc.LocalDateTime.ToString("dd MMM yyyy").</span>
+                        </div>
+                        <MudTextField Value="@_shareUrl" ReadOnly="true" Label="Subcontractor onboarding link" Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" Adornment="Adornment.End"
+                                      AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_shareUrl!))" />
+                        @if (_result.Passcode is not null)
+                        {
+                            <MudTextField Value="@_result.Passcode" ReadOnly="true" Label="Passcode" Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" Adornment="Adornment.End"
+                                          AdornmentIcon="@Icons.Material.Outlined.ContentCopy" OnAdornmentClick="@(() => CopyAsync(_result.Passcode!))" />
+                        }
+                        <div class="sub-onboard__finish">
+                            <MudButton Variant="Variant.Text" OnClick="@(() => Nav.NavigateTo("/organisation"))">Back to Organisation</MudButton>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="StartAnother">Onboard another</MudButton>
+                        </div>
+                    </div>
+                }
+            </div>
+        </MudStep>
+    </TedwrenStepper>
+</div>
+
+@code {
+    // Company is step 0 and always present, so this index is stable.
+    private const int StepCompany = 0;
+
+    private int _activeStep;
+    private bool _submitted;
+    private bool _busy;
+    private readonly HashSet<int> _validatedSteps = new();
+    private readonly SubcontractorOnboardingModel _model = new();
+    private static readonly int[] _ramsCycles = { 6, 9, 12 };
+
+    private SubcontractorOnboardingResultDto? _result;
+    private string? _shareUrl;
+
+    // Loads the configurable document headings (master data) so the MC can pick which to require. Falls back to
+    // an empty list (with guidance) rather than failing the wizard if the lookup can't be loaded.
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var headings = await MasterData.GetListAsync(MasterListKeys.DocumentHeadings);
+            foreach (var heading in headings)
+            {
+                _model.Documents.Add(new RequiredDocumentRow(heading.Value));
+            }
+        }
+        catch
+        {
+            // Leave the documents list empty; the step shows guidance to configure headings.
+        }
+    }
+
+    // Gates forward navigation on per-step validation; backward moves are always allowed (mirrors the org wizard).
+    private Task OnStepPreview(StepperInteractionEventArgs args)
+    {
+        var movingForward = args.Action == StepAction.Complete
+            || (args.Action == StepAction.Activate && args.StepIndex > _activeStep);
+        if (!movingForward)
+        {
+            return Task.CompletedTask;
+        }
+
+        var stepToValidate = args.Action == StepAction.Complete ? args.StepIndex : _activeStep;
+        _validatedSteps.Add(stepToValidate);
+        if (!IsStepValid(stepToValidate))
+        {
+            args.Cancel = true;
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private bool IsStepValid(int stepIndex) => stepIndex switch
+    {
+        StepCompany => !string.IsNullOrWhiteSpace(_model.CompanyName)
+            && (string.IsNullOrWhiteSpace(_model.ContactEmail) || IsValidEmail(_model.ContactEmail)),
+        _ => true,
+    };
+
+    private bool ShowErrors(int stepIndex) => _submitted || _validatedSteps.Contains(stepIndex);
+
+    // Keeps the "required before work" flag off when a document is unticked.
+    private void ToggleDocument(RequiredDocumentRow doc, bool selected)
+    {
+        doc.Selected = selected;
+        if (!selected)
+        {
+            doc.RequiredBeforeWork = false;
+        }
+    }
+
+    private string ContactSummary =>
+        string.IsNullOrWhiteSpace(_model.ContactName) && string.IsNullOrWhiteSpace(_model.ContactEmail)
+            ? "—"
+            : string.Join(" · ", new[] { _model.ContactName, _model.ContactEmail }.Where(s => !string.IsNullOrWhiteSpace(s)));
+
+    private string DocumentsSummary
+    {
+        get
+        {
+            var selected = _model.Documents.Count(d => d.Selected);
+            var blocking = _model.Documents.Count(d => d.Selected && d.RequiredBeforeWork);
+            return selected == 0 ? "None" : $"{selected} required ({blocking} before work)";
+        }
+    }
+
+    private string SupervisorSummary
+    {
+        get
+        {
+            var parts = new List<string>();
+            if (_model.SsstsRequired) parts.Add("SSSTS");
+            if (_model.SmstsRequired) parts.Add("SMSTS");
+            return parts.Count == 0 ? "No supervisor qualification required" : string.Join(" + ", parts) + " required";
+        }
+    }
+
+    // Creates the subcontractor + config and surfaces the shareable link.
+    private async Task Finish()
+    {
+        _submitted = true;
+        if (string.IsNullOrWhiteSpace(_model.CompanyName)
+            || (!string.IsNullOrWhiteSpace(_model.ContactEmail) && !IsValidEmail(_model.ContactEmail)))
+        {
+            Snackbar.Add("Please complete the subcontractor's company name and a valid contact email.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var documents = _model.Documents
+                .Where(d => d.Selected)
+                .Select(d => new RequiredDocumentSelection(d.Heading, d.RequiredBeforeWork))
+                .ToList();
+
+            _result = await Subs.SetupAsync(new SetupSubcontractorRequest(
+                _model.CompanyName!.Trim(), _model.Trade, _model.RegistrationNumber,
+                _model.ContactName, _model.ContactEmail, _model.ContactPhone,
+                _model.AccessPeriodMonths, documents, _model.SsstsRequired, _model.SmstsRequired,
+                _model.InductionValidityDays, _model.InductionPassMark, _model.InductionAttemptLimit,
+                _model.RamsReviewCycleMonths, _model.RequirePasscode));
+
+            var passcodePart = _result.Passcode is null ? string.Empty : $"&passcode={Uri.EscapeDataString(_result.Passcode)}";
+            _shareUrl = $"{Nav.BaseUri}trade?token={Uri.EscapeDataString(_result.Token)}{passcodePart}";
+            Snackbar.Add($"\"{_model.CompanyName}\" set up — onboarding link created.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not set up the subcontractor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Resets the wizard to onboard another subcontractor.
+    private void StartAnother() => Nav.NavigateTo("/subcontractors/onboard", forceLoad: true);
+
+    private async Task CopyAsync(string text)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            Snackbar.Add("Copied to clipboard.", Severity.Info);
+        }
+        catch
+        {
+            // Clipboard unavailable — the value is on screen to copy manually.
+        }
+    }
+
+    private static bool IsValidEmail(string? value)
+        => !string.IsNullOrWhiteSpace(value) && value.Contains('@') && value.Contains('.');
+}

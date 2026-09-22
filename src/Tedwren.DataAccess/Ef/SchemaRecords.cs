@@ -280,6 +280,24 @@ public sealed class TradeInviteRecord
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
+/// <summary>Schema row for the <c>SubcontractorOnboardingConfigs</c> table (subcontractor onboarding config, spec Stage 1 / §4).</summary>
+public sealed class SubcontractorOnboardingConfigRecord
+{
+    public Guid Id { get; set; }
+    public Guid InviterCompanyId { get; set; }
+    public Guid SubcontractorCompanyId { get; set; }
+    public Guid TradeInviteId { get; set; }
+    public int AccessPeriodMonths { get; set; }
+    public string RequiredDocumentsJson { get; set; } = string.Empty;
+    public bool SsstsRequired { get; set; }
+    public bool SmstsRequired { get; set; }
+    public int InductionValidityDays { get; set; }
+    public int InductionPassMark { get; set; }
+    public int InductionAttemptLimit { get; set; }
+    public int? RamsReviewCycleMonths { get; set; }
+    public DateTimeOffset CreatedUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>InductionLinks</c> table (shareable induction links, UAT-018/MC-1).</summary>
 public sealed class InductionLinkRecord
 {

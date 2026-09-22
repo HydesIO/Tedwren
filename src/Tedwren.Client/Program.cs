@@ -70,6 +70,7 @@ builder.Services.AddScoped<IHavsExposureService, ApiHavsExposureService>();
 builder.Services.AddScoped<IEvidenceExportService, ApiEvidenceExportService>();
 builder.Services.AddScoped<IOnboardingService, ApiOnboardingService>();
 builder.Services.AddScoped<ITradeOnboardingService, ApiTradeOnboardingService>();
+builder.Services.AddScoped<ISubcontractorOnboardingService, ApiSubcontractorOnboardingService>();
 builder.Services.AddScoped<IDemoDataService, ApiDemoDataService>();
 builder.Services.AddScoped<IPlatformAdminService, ApiPlatformAdminService>();
 builder.Services.AddScoped<ILaunchListService, ApiLaunchListService>();

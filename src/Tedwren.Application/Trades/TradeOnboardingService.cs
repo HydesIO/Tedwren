@@ -28,12 +28,17 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
     private readonly IAuditService? _audit;
     private readonly ICurrentUserService? _currentUser;
     private readonly IEmailSender? _email;
+    private readonly ISubcontractorOnboardingConfigRepository? _subcontractorConfigs;
 
     /// <summary>Default invite lifetime (SUB-18: 30 days), mirroring the onboarding link.</summary>
     private static readonly TimeSpan LinkLifetime = TimeSpan.FromDays(30);
 
-    /// <summary>The documents a trade is asked to provide (SUB-4) — surfaced as guidance on the link.</summary>
-    private static readonly IReadOnlyList<string> RequestedDocumentTypes =
+    /// <summary>
+    /// The default documents a trade is asked to provide (SUB-4) — surfaced as guidance on the link. Used for a
+    /// plain trade invite; when the invite was created by the subcontractor-onboarding wizard, the configured
+    /// required-document headings (spec Stage 1 / §4) are surfaced instead (see <see cref="ResolveRequestedDocumentTypesAsync"/>).
+    /// </summary>
+    private static readonly IReadOnlyList<string> DefaultRequestedDocumentTypes =
         new[] { "Registration", "RAMS", "Insurance", "Accreditation" };
 
     /// <summary>
@@ -49,7 +54,8 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
         IImageStore images,
         IAuditService? audit = null,
         ICurrentUserService? currentUser = null,
-        IEmailSender? email = null)
+        IEmailSender? email = null,
+        ISubcontractorOnboardingConfigRepository? subcontractorConfigs = null)
     {
         _invites = invites;
         _companies = companies;
@@ -59,6 +65,7 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
         _audit = audit;
         _currentUser = currentUser;
         _email = email;
+        _subcontractorConfigs = subcontractorConfigs;
     }
 
     /// <summary>Creates the trade company and its invitation link, returning the token + (optional) passcode.</summary>
@@ -276,7 +283,27 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
             invite.Status.ToString(),
             invite.ReviewNote,
             docs.Select(d => new TradeDocumentDto(d.Name, d.Type, d.ExpiresOn, d.FileReference is not null, FileReference: null)).ToList(),
-            RequestedDocumentTypes);
+            await ResolveRequestedDocumentTypesAsync(invite.CompanyId, cancellationToken));
+    }
+
+    /// <summary>
+    /// The document headings the trade is asked to provide: the configured required-document headings when a
+    /// subcontractor-onboarding configuration exists for the company (spec Stage 1 / §4), else the default
+    /// trade-invite set (SUB-4). Falling back keeps the plain trade-invite path working when no configuration was
+    /// created (phase independence).
+    /// </summary>
+    private async Task<IReadOnlyList<string>> ResolveRequestedDocumentTypesAsync(Guid companyId, CancellationToken cancellationToken)
+    {
+        if (_subcontractorConfigs is not null)
+        {
+            var config = await _subcontractorConfigs.GetBySubcontractorCompanyAsync(companyId, cancellationToken);
+            if (config is not null && config.RequiredDocuments.Count > 0)
+            {
+                return config.RequiredDocuments.Select(d => d.Heading).ToList();
+            }
+        }
+
+        return DefaultRequestedDocumentTypes;
     }
 
     /// <summary>Builds the manager-facing review item (includes the blob reference so the manager can view files).</summary>

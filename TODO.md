@@ -28,7 +28,21 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   writes platform-admin-only in the service); client `ApiMasterDataService` + platform-admin
   `Pages/Admin/AdminMasterData.razor` (+ `EditMasterListItemDialog`) + `ShellChrome` nav. 7 new unit tests;
   whole solution builds clean (0 warnings) and the full suite is green.
-- ⏳ **SO-2 — MC config/onboarding wizard + `SubcontractorOnboardingConfig` (Phase 2).**
+- ✅ **SO-2 — MC config/onboarding wizard + `SubcontractorOnboardingConfig` (Phase 2).** The signed-in main
+  contractor runs a `TedwrenStepper` wizard (`/subcontractors/onboard`, launched from Organisation) to set up &
+  configure a subcontractor — company + primary contact, access period, required-document headings (from the
+  SO-1 master data) with per-heading "required before work" toggles, SSSTS/SMSTS, induction settings and RAMS
+  review cycle — ending with a shareable onboarding link. New `SubcontractorOnboardingConfig` vertical (domain +
+  `ISubcontractorOnboardingService`/DTOs + `SubcontractorOnboardingService` orchestrator + in-memory double +
+  Dapper repo + EF record + dual migrations `040_subcontractor_onboarding_config.sql` (both dialects, schema
+  parity green) + `AddSubcontractorOnboarding`). Orchestrator reuses `IOrganisationService.CreateCompanyAsync`
+  (→ `OrgType.Subcontractor`) + a `TradeInvite` (so the sub uploads from the same link into the existing review
+  queue). `TradeOnboardingService.BuildViewAsync` de-hardcoded — surfaces the configured headings when a config
+  exists, else the legacy Registration/RAMS/Insurance/Accreditation set (plain `/trade` flow unbroken).
+  `/api/subcontractor-onboarding` endpoints + client `ApiSubcontractorOnboardingService`. Scoping (per the PRD
+  note): SSSTS/SMSTS + induction captured now, wired to enforcement in SO-5; access period + RAMS cycle
+  persisted, not yet enforced. 4 new unit tests; whole solution builds clean (0 warnings) and the full suite is
+  green. Built on branch `claude/subcontractor-onboarding-phase-2` (forked from the SO-1 branch).
 - ⏳ **SO-3 — Subcontractor-side upload + Gate 1 (Phase 3).**
 - ⏳ **SO-4 — RAMS review cycle (Phase 4).**
 - ⏳ **SO-5 — Operative induction & accreditation gates G2/G3/G4 (Phase 5; mobile track in lockstep).**
