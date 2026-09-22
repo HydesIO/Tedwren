@@ -5,6 +5,7 @@ using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.CompliancePacks;
 using Tedwren.Application.Persistence;
+using Tedwren.Application.Subcontractors;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 
@@ -181,6 +182,48 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
         return await BuildViewAsync(invite, cancellationToken);
     }
 
+    /// <summary>
+    /// Adds an operative to the invited subcontractor from the link once Gate 1 has cleared (spec Stage 2). The
+    /// gate is re-evaluated against current data here (R3) and enforced server-side (fail-closed, R2) so the UI
+    /// toggle is never the security boundary.
+    /// </summary>
+    public async Task<TradeInviteViewDto?> AddOperativeByLinkAsync(string token, string? passcode, AddTradeOperativeRequest request, CancellationToken cancellationToken = default)
+    {
+        var invite = await AuthorizeAsync(token, passcode, cancellationToken);
+        if (invite is null)
+        {
+            return null;
+        }
+
+        // Adding operatives is a configured-subcontractor capability; a plain trade invite has no such step.
+        var config = await LoadConfigAsync(invite.CompanyId, cancellationToken)
+            ?? throw new InvalidOperationException("This invitation is not set up to add operatives.");
+
+        var docs = await _documents.GetByCompanyAsync(invite.CompanyId, cancellationToken);
+        var gate1 = Gate1Evaluator.Evaluate(config, docs, DateOnly.FromDateTime(DateTime.UtcNow));
+        if (!gate1.Cleared)
+        {
+            throw new InvalidOperationException("Required documents must be uploaded and valid before operatives can be added.");
+        }
+
+        var name = (request.Name ?? string.Empty).Trim();
+        var mobile = (request.MobileNumber ?? string.Empty).Trim();
+        if (name.Length == 0 || mobile.Length == 0)
+        {
+            throw new ArgumentException("An operative name and mobile number are required.", nameof(request));
+        }
+
+        var result = await _organisation.AddOperativeAsync(
+            new AddOperativeRequest(invite.CompanyId, name, mobile, Trimmed(request.Trade), null), cancellationToken);
+        if (!result.Succeeded)
+        {
+            throw new InvalidOperationException(result.Error ?? "The operative could not be added.");
+        }
+
+        await AuditAsync(invite.InviterCompanyId, "Subcontractor operative added", name, mobile, cancellationToken);
+        return await BuildViewAsync(invite, cancellationToken);
+    }
+
     /// <summary>Lists the trade submissions for the caller's tenant that a manager should review (R15).</summary>
     public async Task<IReadOnlyList<TradeReviewItemDto>> GetReviewQueueAsync(CancellationToken cancellationToken = default)
     {
@@ -278,33 +321,30 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
     {
         var company = await _companies.GetByIdAsync(invite.CompanyId, cancellationToken);
         var docs = await _documents.GetByCompanyAsync(invite.CompanyId, cancellationToken);
+        var config = await LoadConfigAsync(invite.CompanyId, cancellationToken);
+
+        // A subcontractor-onboarding configuration (spec Stage 1 / §4) drives the requested headings and Gate 1;
+        // a plain trade invite (no configuration) keeps the default set and has no gate (phase independence).
+        var requested = config is { RequiredDocuments.Count: > 0 }
+            ? config.RequiredDocuments.Select(d => d.Heading).ToList()
+            : (IReadOnlyList<string>)DefaultRequestedDocumentTypes;
+
+        var gate1 = config is null
+            ? null
+            : Gate1Evaluator.Evaluate(config, docs, DateOnly.FromDateTime(DateTime.UtcNow));
+
         return new TradeInviteViewDto(
             company?.Name ?? "your company",
             invite.Status.ToString(),
             invite.ReviewNote,
             docs.Select(d => new TradeDocumentDto(d.Name, d.Type, d.ExpiresOn, d.FileReference is not null, FileReference: null)).ToList(),
-            await ResolveRequestedDocumentTypesAsync(invite.CompanyId, cancellationToken));
+            requested,
+            gate1);
     }
 
-    /// <summary>
-    /// The document headings the trade is asked to provide: the configured required-document headings when a
-    /// subcontractor-onboarding configuration exists for the company (spec Stage 1 / §4), else the default
-    /// trade-invite set (SUB-4). Falling back keeps the plain trade-invite path working when no configuration was
-    /// created (phase independence).
-    /// </summary>
-    private async Task<IReadOnlyList<string>> ResolveRequestedDocumentTypesAsync(Guid companyId, CancellationToken cancellationToken)
-    {
-        if (_subcontractorConfigs is not null)
-        {
-            var config = await _subcontractorConfigs.GetBySubcontractorCompanyAsync(companyId, cancellationToken);
-            if (config is not null && config.RequiredDocuments.Count > 0)
-            {
-                return config.RequiredDocuments.Select(d => d.Heading).ToList();
-            }
-        }
-
-        return DefaultRequestedDocumentTypes;
-    }
+    /// <summary>The subcontractor-onboarding configuration for a company, or null (no config repo, or a plain trade invite).</summary>
+    private async Task<Tedwren.Domain.Entities.SubcontractorOnboardingConfig?> LoadConfigAsync(Guid companyId, CancellationToken cancellationToken) =>
+        _subcontractorConfigs is null ? null : await _subcontractorConfigs.GetBySubcontractorCompanyAsync(companyId, cancellationToken);
 
     /// <summary>Builds the manager-facing review item (includes the blob reference so the manager can view files).</summary>
     private async Task<TradeReviewItemDto> BuildReviewItemAsync(TradeInvite invite, CancellationToken cancellationToken)

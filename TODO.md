@@ -43,7 +43,18 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   note): SSSTS/SMSTS + induction captured now, wired to enforcement in SO-5; access period + RAMS cycle
   persisted, not yet enforced. 4 new unit tests; whole solution builds clean (0 warnings) and the full suite is
   green. Built on branch `claude/subcontractor-onboarding-phase-2` (forked from the SO-1 branch).
-- ⏳ **SO-3 — Subcontractor-side upload + Gate 1 (Phase 3).**
+- ✅ **SO-3 — Subcontractor-side upload + Gate 1 (Phase 3).** The subcontractor's onboarding link
+  (`/trade`) now shows its required document headings, a **Gate 1** panel (spec §2 — all "required before work"
+  documents present & in date), and, once Gate 1 clears, an **add-operative** step. New shared `Gate1Evaluator`
+  (config's required-before-work headings vs the company's `CompanyDocument`s, decided against current data,
+  R3); `ISubcontractorOnboardingService.EvaluateGate1Async` + `GET /api/subcontractor-onboarding/{id}/gate1`
+  (tenant-scoped, R15); `TradeInviteViewDto` gains an optional `Gate1` (null for a plain trade invite — phase
+  independence); `ITradeOnboardingService.AddOperativeByLinkAsync` re-evaluates Gate 1 and **fails closed** (R2)
+  before adding the operative via `IOrganisationService.AddOperativeAsync` (SF-1/SF-2), exposed anonymously at
+  `POST /api/trades/by-link/{token}/operatives` (kiosk-rate-limited). Client + `TradeOnboard.razor` updated. No
+  schema change. 3 new unit tests (gate blocks then clears; add-operative gated then succeeds; vacuous clear);
+  whole solution builds clean (0 warnings) and the full suite is green. Branch
+  `claude/subcontractor-onboarding-phase-3` (off latest master).
 - ⏳ **SO-4 — RAMS review cycle (Phase 4).**
 - ⏳ **SO-5 — Operative induction & accreditation gates G2/G3/G4 (Phase 5; mobile track in lockstep).**
 - ⏳ **SO-6 — Registers + notification engine (Phase 6).**

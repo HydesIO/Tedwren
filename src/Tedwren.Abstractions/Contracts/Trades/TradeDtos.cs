@@ -1,3 +1,5 @@
+using Tedwren.Abstractions.Contracts.Subcontractors;
+
 namespace Tedwren.Abstractions.Contracts.Trades;
 
 /// <summary>
@@ -30,7 +32,14 @@ public sealed record TradeInviteViewDto(
     string Status,
     string? ReviewNote,
     IReadOnlyList<TradeDocumentDto> Documents,
-    IReadOnlyList<string> RequestedDocumentTypes);
+    IReadOnlyList<string> RequestedDocumentTypes,
+    Gate1StatusDto? Gate1 = null);
+
+/// <summary>
+/// A subcontractor adds an operative from the onboarding link once Gate 1 has cleared (spec Stage 2). The person
+/// is identified by mobile number (SF-1); the name is recorded for the subcontractor company (SF-2).
+/// </summary>
+public sealed record AddTradeOperativeRequest(string Name, string MobileNumber, string? Trade);
 
 /// <summary>
 /// A document the trade uploads via the link (UAT-023): the category/name/expiry plus an optional base64 file

@@ -1,10 +1,12 @@
 using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Subcontractors;
+using Tedwren.Abstractions.Contracts.Trades;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Subcontractors;
 using Tedwren.Application.Trades;
+using Tedwren.Domain.Entities;
 using Xunit;
 using DomainOrgType = Tedwren.Domain.Enums.OrgType;
 
@@ -35,6 +37,7 @@ public sealed class SubcontractorOnboardingServiceTests
         TradeOnboardingService Trades,
         InMemorySubcontractorOnboardingConfigRepository Configs,
         InMemoryCompanyRepository Companies,
+        InMemoryCompanyDocumentRepository Documents,
         InMemoryTradeInviteRepository Invites);
 
     /// <summary>Builds the subcontractor + trade onboarding services over shared in-memory repositories, scoped to a tenant.</summary>
@@ -51,12 +54,12 @@ public sealed class SubcontractorOnboardingServiceTests
         var configs = new InMemorySubcontractorOnboardingConfigRepository();
         var currentUser = new StubCurrentUser(tenant);
 
-        var subs = new SubcontractorOnboardingService(organisation, invites, configs, currentUser);
+        var subs = new SubcontractorOnboardingService(organisation, invites, configs, documents, currentUser);
         var trades = new TradeOnboardingService(
             invites, companies, documents, organisation, new InMemoryImageStore(),
             audit: null, currentUser: currentUser, email: null, subcontractorConfigs: configs);
 
-        return new Sut(subs, trades, configs, companies, invites);
+        return new Sut(subs, trades, configs, companies, documents, invites);
     }
 
     private static SetupSubcontractorRequest SampleRequest(
@@ -130,7 +133,7 @@ public sealed class SubcontractorOnboardingServiceTests
                 new InMemoryPersonRepository(new InMemoryOrganisationStore(seed: false)),
                 new InMemoryEngagementRepository(new InMemoryOrganisationStore(seed: false)),
                 new InMemoryQualificationCardRepository(new InMemoryQualificationStore(seed: false))),
-            sut.Invites, sut.Configs, new StubCurrentUser(OtherContractor));
+            sut.Invites, sut.Configs, sut.Documents, new StubCurrentUser(OtherContractor));
         Assert.Null(await intruder.GetBySubcontractorAsync(result.SubcontractorCompanyId));
     }
 
@@ -167,5 +170,65 @@ public sealed class SubcontractorOnboardingServiceTests
 
         Assert.NotNull(view);
         Assert.Equal(new[] { "Registration", "RAMS", "Insurance", "Accreditation" }, view!.RequestedDocumentTypes);
+    }
+
+    /// <summary>A present, in-date, file-backed document for a heading — satisfies Gate 1 for that heading.</summary>
+    private static CompanyDocument ValidDoc(Guid companyId, string heading) => new()
+    {
+        CompanyId = companyId,
+        Name = heading,
+        Type = heading,
+        FileReference = "blob-" + Guid.NewGuid().ToString("N"),
+        ExpiresOn = DateOnly.FromDateTime(DateTime.UtcNow.AddYears(1)),
+    };
+
+    [Fact] // Gate 1 stays closed until the "required before work" document is present and in date (spec §2).
+    public async Task Gate1_ClearsWhenRequiredBeforeWorkDocumentValid()
+    {
+        var sut = CreateSut(MainContractor);
+        var result = await sut.Subs.SetupAsync(SampleRequest());   // "Employer's Liability Insurance" is required-before-work
+
+        var before = await sut.Subs.EvaluateGate1Async(result.SubcontractorCompanyId);
+        Assert.False(before.Cleared);
+        Assert.Contains(before.Requirements, r => r.Heading == "Employer's Liability Insurance" && !r.Satisfied && r.Issue == "Not uploaded");
+
+        await sut.Documents.AddAsync(ValidDoc(result.SubcontractorCompanyId, "Employer's Liability Insurance"));
+
+        var after = await sut.Subs.EvaluateGate1Async(result.SubcontractorCompanyId);
+        Assert.True(after.Cleared);
+    }
+
+    [Fact] // Fail-closed (R2): an operative cannot be added via the link until Gate 1 clears, then it succeeds.
+    public async Task AddOperativeByLink_GatedByGate1()
+    {
+        var sut = CreateSut(MainContractor);
+        var result = await sut.Subs.SetupAsync(SampleRequest());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.Trades.AddOperativeByLinkAsync(result.Token, passcode: null,
+                new AddTradeOperativeRequest("Jo Bloggs", "+447700900123", "Electrical")));
+
+        await sut.Documents.AddAsync(ValidDoc(result.SubcontractorCompanyId, "Employer's Liability Insurance"));
+
+        var view = await sut.Trades.AddOperativeByLinkAsync(result.Token, passcode: null,
+            new AddTradeOperativeRequest("Jo Bloggs", "+447700900123", "Electrical"));
+        Assert.NotNull(view);
+        Assert.True(view!.Gate1!.Cleared);
+    }
+
+    [Fact] // With no "required before work" headings, Gate 1 clears vacuously and operatives can be added.
+    public async Task Gate1_VacuousWhenNoRequiredBeforeWork()
+    {
+        var sut = CreateSut(MainContractor);
+        var docs = new[] { new RequiredDocumentSelection("Public Liability Insurance", false) };
+        var result = await sut.Subs.SetupAsync(SampleRequest(documents: docs));
+
+        var gate = await sut.Subs.EvaluateGate1Async(result.SubcontractorCompanyId);
+        Assert.True(gate.Cleared);
+        Assert.Empty(gate.Requirements);
+
+        var view = await sut.Trades.AddOperativeByLinkAsync(result.Token, passcode: null,
+            new AddTradeOperativeRequest("Sam", "+447700900999", null));
+        Assert.NotNull(view);
     }
 }

@@ -44,7 +44,9 @@ is the whole process, phased so each increment is usable and never breaks a comp
    trade-invite flow + `/api/subcontractor-onboarding` + client wizard; SSSTS/SMSTS + induction captured (wired
    in Phase 5), access period + RAMS cycle persisted (enforced in Phases 3/4). See `TODO.md` SO-2.
 3. **Subcontractor-side upload + Gate 1** — upload against configured headings; all required-before-work docs
-   valid → unlock add-operative (fail-closed, R2).
+   valid → unlock add-operative (fail-closed, R2). **[Done]** — shared `Gate1Evaluator`;
+   `EvaluateGate1Async` + `/gate1` endpoint; `TradeInviteViewDto.Gate1`; `AddOperativeByLinkAsync` (fail-closed)
+   + `by-link/{token}/operatives`; `TradeOnboard.razor` gate panel + gated add-operative. See `TODO.md` SO-3.
 4. **RAMS review cycle** — bridge sub RAMS upload into the existing `RamsSubmission` review; add
    Approved-with-comments + live version; recurring cycle reminder behind the flag.
 5. **Operative induction & accreditation gates (G2/G3/G4)** — reuse OTP/device (G2), server-scored quiz (G4,

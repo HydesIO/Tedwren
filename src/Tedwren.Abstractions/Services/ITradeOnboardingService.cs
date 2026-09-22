@@ -22,6 +22,13 @@ public interface ITradeOnboardingService
     /// <summary>Submits the trade's documents for manager review (Invited/Returned → Submitted). Null when the link is invalid; throws when not submittable.</summary>
     Task<TradeInviteViewDto?> SubmitForReviewAsync(string token, string? passcode, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Adds an operative to the invited subcontractor from the link (spec Stage 2). Null when the link is invalid;
+    /// throws when the invite has no onboarding configuration, when Gate 1 has not cleared (fail-closed, R2), or
+    /// when the operative cannot be added (SF-2). Returns the refreshed view on success.
+    /// </summary>
+    Task<TradeInviteViewDto?> AddOperativeByLinkAsync(string token, string? passcode, AddTradeOperativeRequest request, CancellationToken cancellationToken = default);
+
     /// <summary>Lists the trade submissions for the caller's tenant that a manager should review (MC-27, R15).</summary>
     Task<IReadOnlyList<TradeReviewItemDto>> GetReviewQueueAsync(CancellationToken cancellationToken = default);
 

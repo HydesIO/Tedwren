@@ -40,6 +40,19 @@ public sealed record SubcontractorOnboardingResultDto(
     Guid SubcontractorCompanyId,
     Guid TradeInviteId);
 
+/// <summary>
+/// One required-before-work document heading's Gate 1 status: whether a valid document satisfies it, and (when
+/// not) why (spec §2/§5). <paramref name="Issue"/> is "Not uploaded" or "Expired" when unsatisfied, else null.
+/// </summary>
+public sealed record Gate1RequirementDto(string Heading, bool Satisfied, string? Issue);
+
+/// <summary>
+/// The Gate 1 result for a subcontractor (spec §2): <paramref name="Cleared"/> is true only when every
+/// "required before work" document heading is satisfied (present and unexpired). Empty requirements clear
+/// vacuously. Cleared unlocks adding operatives.
+/// </summary>
+public sealed record Gate1StatusDto(bool Cleared, IReadOnlyList<Gate1RequirementDto> Requirements);
+
 /// <summary>A subcontractor's stored onboarding configuration (spec Stage 1 / §4).</summary>
 public sealed record SubcontractorOnboardingConfigDto(
     Guid Id,

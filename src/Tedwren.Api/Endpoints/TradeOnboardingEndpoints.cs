@@ -82,6 +82,26 @@ public static class TradeOnboardingEndpoints
             })
             .WithName("SubmitTradeForReview").AllowAnonymous().RequireRateLimiting("kiosk");
 
+        // Add an operative from the link once Gate 1 has cleared (spec Stage 2). Fail-closed: the service
+        // re-evaluates the gate against current data and rejects with 409 when it is not cleared (R2/R3).
+        group.MapPost("/by-link/{token}/operatives", async (string token, string? passcode, AddTradeOperativeRequest request, ITradeOnboardingService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    return await service.AddOperativeByLinkAsync(token, passcode, request, cancellationToken) is { } view
+                        ? Results.Ok(view) : Results.StatusCode(StatusCodes.Status403Forbidden);
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { reason = ex.Message });
+                }
+            })
+            .WithName("AddTradeOperative").AllowAnonymous().RequireRateLimiting("kiosk");
+
         return app;
     }
 

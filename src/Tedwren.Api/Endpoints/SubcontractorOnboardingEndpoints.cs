@@ -41,6 +41,11 @@ public static class SubcontractorOnboardingEndpoints
             })
             .WithName("GetSubcontractorConfig");
 
+        // Gate 1 status for a subcontractor — whether every "required before work" document is present & valid (spec §2).
+        group.MapGet("/{subcontractorCompanyId:guid}/gate1", async (Guid subcontractorCompanyId, ISubcontractorOnboardingService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.EvaluateGate1Async(subcontractorCompanyId, cancellationToken)))
+            .WithName("EvaluateSubcontractorGate1");
+
         return app;
     }
 }

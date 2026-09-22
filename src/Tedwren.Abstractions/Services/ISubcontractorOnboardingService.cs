@@ -17,4 +17,10 @@ public interface ISubcontractorOnboardingService
 
     /// <summary>Returns the stored configuration for a subcontractor company (own tenant only), or null when none exists.</summary>
     Task<SubcontractorOnboardingConfigDto?> GetBySubcontractorAsync(Guid subcontractorCompanyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Evaluates Gate 1 for a subcontractor (spec §2): whether every "required before work" document heading is
+    /// present and valid. Scoped to the inviting tenant (R15); a company with no configuration clears vacuously.
+    /// </summary>
+    Task<Gate1StatusDto> EvaluateGate1Async(Guid subcontractorCompanyId, CancellationToken cancellationToken = default);
 }

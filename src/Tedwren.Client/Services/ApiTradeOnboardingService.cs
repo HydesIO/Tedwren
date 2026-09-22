@@ -78,6 +78,26 @@ public sealed class ApiTradeOnboardingService : ITradeOnboardingService
         return await response.Content.ReadFromJsonAsync<TradeInviteViewDto>(cancellationToken);
     }
 
+    /// <summary>Adds an operative from the link once Gate 1 has cleared. Null on a rejected link; 409 (Gate 1 not cleared / SF-2) surfaces as an exception.</summary>
+    public async Task<TradeInviteViewDto?> AddOperativeByLinkAsync(string token, string? passcode, AddTradeOperativeRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync(
+            $"api/trades/by-link/{Uri.EscapeDataString(token)}/operatives?passcode={Uri.EscapeDataString(passcode ?? string.Empty)}", request, cancellationToken);
+        if (response.StatusCode == HttpStatusCode.Forbidden)
+        {
+            return null;
+        }
+
+        if (response.StatusCode is HttpStatusCode.BadRequest or HttpStatusCode.Conflict)
+        {
+            var error = await response.Content.ReadFromJsonAsync<ErrorBody>(cancellationToken);
+            throw new InvalidOperationException(error?.Error ?? error?.Reason ?? "The operative could not be added.");
+        }
+
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<TradeInviteViewDto>(cancellationToken);
+    }
+
     /// <summary>Lists the trade submissions the caller's tenant should review.</summary>
     public async Task<IReadOnlyList<TradeReviewItemDto>> GetReviewQueueAsync(CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<IReadOnlyList<TradeReviewItemDto>>("api/trades/reviews", cancellationToken)

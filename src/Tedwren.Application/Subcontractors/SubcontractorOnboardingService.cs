@@ -22,23 +22,26 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
     private readonly IOrganisationService _organisation;
     private readonly ITradeInviteRepository _invites;
     private readonly ISubcontractorOnboardingConfigRepository _configs;
+    private readonly ICompanyDocumentRepository _documents;
     private readonly ICurrentUserService? _currentUser;
     private readonly IAuditService? _audit;
 
     /// <summary>Default invite lifetime (SUB-18: 30 days), mirroring the onboarding/trade links.</summary>
     private static readonly TimeSpan LinkLifetime = TimeSpan.FromDays(30);
 
-    /// <summary>Creates the service over the organisation service and the invite + config repositories.</summary>
+    /// <summary>Creates the service over the organisation service and the invite, config + document repositories.</summary>
     public SubcontractorOnboardingService(
         IOrganisationService organisation,
         ITradeInviteRepository invites,
         ISubcontractorOnboardingConfigRepository configs,
+        ICompanyDocumentRepository documents,
         ICurrentUserService? currentUser = null,
         IAuditService? audit = null)
     {
         _organisation = organisation;
         _invites = invites;
         _configs = configs;
+        _documents = documents;
         _currentUser = currentUser;
         _audit = audit;
     }
@@ -128,6 +131,29 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
         }
 
         return ToDto(config);
+    }
+
+    /// <summary>
+    /// Evaluates Gate 1 for a subcontractor against current data (R3). A company with no configuration — or one
+    /// owned by another tenant (R15) — clears vacuously (no "required before work" requirements apply).
+    /// </summary>
+    public async Task<Gate1StatusDto> EvaluateGate1Async(Guid subcontractorCompanyId, CancellationToken cancellationToken = default)
+    {
+        var config = await _configs.GetBySubcontractorCompanyAsync(subcontractorCompanyId, cancellationToken);
+        if (config is null)
+        {
+            return new Gate1StatusDto(true, Array.Empty<Gate1RequirementDto>());
+        }
+
+        // R15: only the inviting tenant may read its subcontractor's gate; others see the vacuous cleared result.
+        var tenant = await ResolveTenantAsync(cancellationToken);
+        if (tenant is not null && config.InviterCompanyId != tenant)
+        {
+            return new Gate1StatusDto(true, Array.Empty<Gate1RequirementDto>());
+        }
+
+        var documents = await _documents.GetByCompanyAsync(subcontractorCompanyId, cancellationToken);
+        return Gate1Evaluator.Evaluate(config, documents, DateOnly.FromDateTime(DateTime.UtcNow));
     }
 
     /// <summary>The signed-in tenant's company id, or null when unauthenticated (R15).</summary>
