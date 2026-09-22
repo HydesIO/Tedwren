@@ -130,6 +130,7 @@ public class OperativeHomePage : ContentPage
             ("⚠️", "Report hazard", "Near-miss & observations", () => _services.GetRequiredService<ReportHazardPage>()),
             ("📋", "Forms due", "Checklists & inspections", () => _services.GetRequiredService<FormsInboxPage>()),
             ("🎓", "Induction", "Complete your site induction", () => _services.GetRequiredService<InductionPage>()),
+            ("📝", "Site RAMS", "Read & sign the method statement", () => _services.GetRequiredService<RamsSignPage>()),
             ("⏱", "My hours", "This week's timesheet", () => _services.GetRequiredService<MyHoursPage>()),
             ("🪪", "My cards", "Compliance & expiries", () => _services.GetRequiredService<MyCardsPage>()),
             ("📄", "Site documents", "Rules, plans, welfare", null),

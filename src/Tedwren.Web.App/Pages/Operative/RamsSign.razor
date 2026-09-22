@@ -1,0 +1,161 @@
+@page "/operative/rams-sign"
+@using Tedwren.Abstractions.Contracts.Rams
+@inject RamsApiClient RamsApi
+@inject NavigationManager Nav
+
+@* Read & sign the current live RAMS (Gate 5) — mirrors the native RamsSignPage. The operative reads the approved
+   method statement for their subcontractor, confirms they understand it and signs; the signature is recorded against
+   the live version (append-only, R4/R16) so their next site sign-in is admitted. Reached from the home tile or when a
+   sign-in is blocked pending a signature. Subcontractor-safe wording throughout (R18). *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Site RAMS</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_loadFailed)
+    {
+        <div class="tw-banner tw-banner--warning">Couldn't load the RAMS. Check your connection and try again.</div>
+        <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+    }
+    else if (_live is null)
+    {
+        <div class="tw-banner tw-banner--info">
+            There's no RAMS for you to sign right now. If you've been told to sign one, check with your site manager.
+        </div>
+        <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+    }
+    else if (_signed)
+    {
+        <div class="tw-banner tw-banner--success">
+            Thanks — your signature is recorded for @_live.Title (v@_live.Version). You can sign in now.
+        </div>
+        <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="BackToSignIn">Back to sign-in</button>
+        <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+    }
+    else
+    {
+        <div class="tw-banner tw-banner--info">
+            Read the method statement below, confirm you understand it and sign. You must do this before you can sign in
+            on site.
+        </div>
+
+        <TwCard>
+            <div class="tw-detail">
+                <div class="tw-detail__label">Method statement</div>
+                <div class="tw-detail__value">@_live.Title</div>
+            </div>
+            <div class="tw-detail">
+                <div class="tw-detail__label">Reference</div>
+                <div class="tw-detail__value">@_live.Reference — v@_live.Version</div>
+            </div>
+            <div class="tw-detail">
+                <div class="tw-detail__label">Contractor</div>
+                <div class="tw-detail__value">@_live.ContractorName</div>
+            </div>
+            @if (_live.HasFile)
+            {
+                <div class="tw-muted">A signed-off document is attached — read it with your site manager if you need it.</div>
+            }
+        </TwCard>
+
+        <div class="tw-section__label">Sign</div>
+        <TwCard>
+            <label class="tw-field">
+                <span class="tw-field__label">Your full name</span>
+                <input class="tw-input" @bind="_signatureName" @bind:event="oninput" placeholder="e.g. Sam Taylor" />
+            </label>
+            <label class="tw-check">
+                <input type="checkbox" @bind="_understood" />
+                <span>I have read and understood this RAMS and will work to it.</span>
+            </label>
+
+            @if (_error is not null)
+            {
+                <div class="tw-banner tw-banner--danger">@_error</div>
+            }
+
+            <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SignAsync" disabled="@(!CanSign)">Sign RAMS</button>
+            @if (!CanSign && _error is null)
+            {
+                <div class="tw-screen__footnote">Enter your name and confirm you've read it to sign.</div>
+            }
+        </TwCard>
+    }
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    /// <summary>The site the operative was signing in at when blocked, so we can send them back to retry after signing.</summary>
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "site")]
+    public string? Site { get; set; }
+
+    private LiveRamsDto? _live;
+    private string? _signatureName;
+    private bool _understood;
+    private bool _loading = true;
+    private bool _loadFailed;
+    private bool _busy;
+    private bool _signed;
+    private string? _error;
+
+    private bool CanSign => !_busy && _understood && !string.IsNullOrWhiteSpace(_signatureName);
+
+    /// <summary>Loads the operative's current live approved RAMS when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _live = await RamsApi.GetLiveAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    /// <summary>Records the operative's signature of the live RAMS version (Gate 5).</summary>
+    private async Task SignAsync()
+    {
+        if (!CanSign || _live is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var ack = await RamsApi.SignAsync(new SignRamsRequest(_live.Id, _signatureName!.Trim()));
+            if (ack is null)
+            {
+                // The version moved on while the page was open — reload the current one and ask them to sign again.
+                _error = "This RAMS was updated. Please read the latest version and sign again.";
+                _live = await RamsApi.GetLiveAsync();
+                _understood = false;
+                return;
+            }
+
+            _signed = true;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "Couldn't record your signature. Check your connection and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Returns to the attendance screen to retry the sign-in that was blocked.</summary>
+    private void BackToSignIn() => Nav.NavigateTo("/operative/attendance");
+}

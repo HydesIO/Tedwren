@@ -453,18 +453,21 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the store-agnostic RAMS review service (PRD §8.2).</summary>
+    /// <summary>Registers the store-agnostic RAMS review service (PRD §8.2) and the shared Gate-5 RAMS evaluator (MC-8).</summary>
     public static IServiceCollection AddRamsCore(this IServiceCollection services)
     {
         services.AddScoped<IRamsService, Rams.RamsService>();
+        services.AddScoped<Rams.RamsGate>();
         return services;
     }
 
-    /// <summary>Registers the in-memory RAMS repository (singleton so submissions persist across test requests).</summary>
+    /// <summary>Registers the in-memory RAMS repositories (singleton so submissions + acknowledgements persist across test requests).</summary>
     public static IServiceCollection AddInMemoryRamsStore(this IServiceCollection services)
     {
         services.AddSingleton<InMemoryRamsRepository>();
         services.AddScoped<IRamsRepository>(sp => sp.GetRequiredService<InMemoryRamsRepository>());
+        services.AddSingleton<InMemoryRamsAcknowledgementRepository>();
+        services.AddScoped<IRamsAcknowledgementRepository>(sp => sp.GetRequiredService<InMemoryRamsAcknowledgementRepository>());
         return services;
     }
 

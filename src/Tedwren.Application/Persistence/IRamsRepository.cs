@@ -14,6 +14,9 @@ public interface IRamsRepository
     /// <summary>Returns every version in a family for the company, newest version first (live-version management, spec Stage 3).</summary>
     Task<IReadOnlyList<RamsSubmission>> GetByFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns the current live (approved / approved-with-comments) version of a family, or null when none is live (Gate 5).</summary>
+    Task<RamsSubmission?> GetLiveForFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default);
+
     /// <summary>Returns a single submission by id, or null if none exists.</summary>
     Task<RamsSubmission?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 

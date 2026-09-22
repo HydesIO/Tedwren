@@ -37,6 +37,7 @@ public sealed class TedwrenDbContext : DbContext
     public DbSet<PermitRecord> Permits => Set<PermitRecord>();
     public DbSet<AssetRecord> Assets => Set<AssetRecord>();
     public DbSet<RamsSubmissionRecord> RamsSubmissions => Set<RamsSubmissionRecord>();
+    public DbSet<RamsAcknowledgementRecord> RamsAcknowledgements => Set<RamsAcknowledgementRecord>();
     public DbSet<DocumentDistributionRecord> DocumentDistributions => Set<DocumentDistributionRecord>();
     public DbSet<DocumentAcknowledgementRecord> DocumentAcknowledgements => Set<DocumentAcknowledgementRecord>();
     public DbSet<HazardReportRecord> HazardReports => Set<HazardReportRecord>();
@@ -301,6 +302,13 @@ public sealed class TedwrenDbContext : DbContext
             e.Property(x => x.ReviewedBy).HasMaxLength(256);
             e.HasIndex(x => new { x.CompanyId, x.SubmittedUtc });
             e.HasIndex(x => new { x.CompanyId, x.FamilyId });
+        });
+
+        model.Entity<RamsAcknowledgementRecord>(e =>
+        {
+            e.ToTable("RamsAcknowledgements");
+            e.Property(x => x.SignatureName).HasMaxLength(256);
+            e.HasIndex(x => new { x.CompanyId, x.PersonId, x.FamilyId });
         });
 
         model.Entity<DocumentDistributionRecord>(e =>

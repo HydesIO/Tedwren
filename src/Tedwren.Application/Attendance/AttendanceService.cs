@@ -1,6 +1,7 @@
 using Tedwren.Abstractions.Contracts.Attendance;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
+using Tedwren.Application.Rams;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 using Tedwren.Domain.ValueObjects;
@@ -23,19 +24,24 @@ public sealed class AttendanceService : IAttendanceService
     private readonly ISitePropertyRepository _properties;
     private readonly IAttendanceRepository _attendance;
     private readonly IEngagementRepository? _engagements;
+    private readonly RamsGate? _ramsGate;
 
     /// <summary>
     /// Creates the service over its repositories. <paramref name="engagements"/> resolves a worker's display
     /// name for the muster/log (the name is per-engagement, cross-company; F12); it is optional so unit tests
     /// that construct the service directly run without it (names then fall back to a neutral placeholder).
+    /// <paramref name="ramsGate"/> enforces Gate 5 on the operative's own sign-in (an unsigned/unapproved RAMS
+    /// blocks it, MC-8); it is likewise optional so existing attendance unit tests are unaffected (the check is
+    /// then skipped — sign-in behaves as before).
     /// </summary>
     public AttendanceService(ISiteRepository sites, ISitePropertyRepository properties, IAttendanceRepository attendance,
-        IEngagementRepository? engagements = null)
+        IEngagementRepository? engagements = null, RamsGate? ramsGate = null)
     {
         _sites = sites;
         _properties = properties;
         _attendance = attendance;
         _engagements = engagements;
+        _ramsGate = ramsGate;
     }
 
     /// <summary>Records a sign-in attempt and returns its outcome.</summary>
@@ -60,6 +66,25 @@ public sealed class AttendanceService : IAttendanceService
                 AttendanceOutcome.Refused, request, within: null, reason, cancellationToken);
             return new SignInResult(false, nameof(AttendanceOutcome.Refused), reason,
                 refused.Id, openElsewhere.SiteId == site.Id ? null : otherName);
+        }
+
+        // Gate 5 (MC-8): an operative under a subcontractor RAMS obligation must have a signed, approved live RAMS
+        // before they can be on site. Evaluated by the shared RamsGate so this path never diverges from the manager
+        // decision. NotApplicable/Signed → fall through to the usual location rules; MustSign/NoApprovedRams → refuse,
+        // still recording the attempt (SF-16). MustSign carries the live RAMS id so the app routes to sign, then retries.
+        if (_ramsGate is not null)
+        {
+            var rams = await _ramsGate.EvaluateAsync(request.PersonId, site.Id, cancellationToken);
+            if (rams.Status is RamsGateStatus.MustSign or RamsGateStatus.NoApprovedRams)
+            {
+                var reason = rams.Status == RamsGateStatus.MustSign
+                    ? "You must read and sign the current RAMS before signing in."
+                    : "RAMS is not yet approved — you cannot sign in until it is approved.";
+                var toSign = rams.Status == RamsGateStatus.MustSign ? rams.LiveRamsId : null;
+                var blocked = await AppendAsync(request.PersonId, site.Id, request.PropertyId, AttendanceEventType.SignIn,
+                    AttendanceOutcome.Refused, request, within: null, reason, cancellationToken);
+                return new SignInResult(false, nameof(AttendanceOutcome.Refused), reason, blocked.Id, null, toSign);
+            }
         }
 
         var (outcome, within, outcomeReason) = await EvaluateAsync(site, request, cancellationToken);

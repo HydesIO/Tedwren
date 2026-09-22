@@ -388,6 +388,19 @@ public sealed class RamsSubmissionRecord
     public bool IsLive { get; set; }
 }
 
+/// <summary>Schema row for the <c>RamsAcknowledgements</c> table (Gate-5 operative RAMS signatures).</summary>
+public sealed class RamsAcknowledgementRecord
+{
+    public Guid Id { get; set; }
+    public Guid CompanyId { get; set; }
+    public Guid PersonId { get; set; }
+    public Guid FamilyId { get; set; }
+    public int Version { get; set; }
+    public string SignatureName { get; set; } = string.Empty;
+    public DateTimeOffset SignedUtc { get; set; }
+    public DateTimeOffset? ExpiresUtc { get; set; }
+}
+
 /// <summary>Schema row for the <c>DocumentDistributions</c> table (document distribution, PRD §8.2).</summary>
 public sealed class DocumentDistributionRecord
 {

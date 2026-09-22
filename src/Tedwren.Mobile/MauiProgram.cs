@@ -84,6 +84,9 @@ public static class MauiProgram
         // Operative induction take-flow (Gate 4): resolve-or-start, steps, server-scored quiz, finalise.
         builder.Services.AddTedwrenClient<InductionApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
 
+        // Operative RAMS read + sign (Gate 5): the current live approved RAMS and the operative's signature.
+        builder.Services.AddTedwrenClient<RamsApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
+
         // Manager / admin surface (M7; M8 adds silent refresh). The console-token session is now the manager auth
         // handler's refresher (renew the 8h token) as well as its expiry sink (re-login when the refresh is gone).
         builder.Services.AddSingleton<ManagerSessionManager>();
@@ -112,6 +115,7 @@ public static class MauiProgram
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
         builder.Services.AddTransient<AddCardPage>();
+        builder.Services.AddTransient<RamsSignPage>();
         builder.Services.AddTransient<ProfilePage>();
 
         // Manager / admin pages (M7).

@@ -446,6 +446,7 @@ app.MapMobileHazardEndpoints();
 app.MapMobileFormEndpoints();
 app.MapMobileInductionEndpoints();
 app.MapMobileCardEndpoints();
+app.MapMobileRamsEndpoints();
 app.MapLaunchListEndpoints();
 app.MapLeadEndpoints();
 app.MapAffiliateEndpoints();

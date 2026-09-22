@@ -59,6 +59,16 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
         return rows.Select(Map).ToList();
     }
 
+    /// <summary>Returns the current live version of a family for the company, or null when none is live (Gate 5).</summary>
+    public async Task<RamsSubmission?> GetLiveForFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            SelectColumns + " WHERE CompanyId = @CompanyId AND FamilyId = @FamilyId AND IsLive = @IsLive",
+            new { CompanyId = companyId, FamilyId = familyId, IsLive = true }, cancellationToken);
+        var row = rows.FirstOrDefault();
+        return row is null ? null : Map(row);
+    }
+
     /// <summary>Returns the highest version number in a family for the company (0 when unknown).</summary>
     public async Task<int> GetMaxVersionAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default)
     {
