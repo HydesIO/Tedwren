@@ -55,7 +55,25 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   schema change. 3 new unit tests (gate blocks then clears; add-operative gated then succeeds; vacuous clear);
   whole solution builds clean (0 warnings) and the full suite is green. Branch
   `claude/subcontractor-onboarding-phase-3` (off latest master).
-- ⏳ **SO-4 — RAMS review cycle (Phase 4).**
+- ✅ **SO-4 — RAMS review + review cycle (Phase 4).** The subcontractor's uploaded RAMS now flows into the
+  site-manager review workflow and gains a live-version pointer + a beyond-PRD review cycle. `RamsStatus` gains
+  `ApprovedWithComments`; `RamsSubmission` gains `IsLive` (spec Stage 3 — the approved version operatives read &
+  sign) and `RamsService` now **sets the live version** on approve / approve-with-comments (clearing the earlier
+  live version in the family, append-only preserved, R4/R16) and exposes `RegisterFromDocumentAsync` (bridge) +
+  `ApproveWithCommentsAsync` (`POST /api/rams/{id}/approve-with-comments`, note required). `TradeOnboardingService`
+  **bridges** a subcontractor RAMS-heading upload into the MC's RAMS review queue (spec Stage 2→3), reusing the
+  stored file reference and recording the RAMS family on the config (`SubcontractorOnboardingConfig.RamsFamilyId`)
+  so later uploads become new versions. `RamsReviewCycleMonths` drives a **reminder-only** re-review engine
+  (`RamsReviewCycleReminderJob`, idempotent via `LastRamsReviewReminderUtc`, scheduled + `POST /api/jobs/rams-review-reminders`)
+  and a tenant-scoped due-list (`GetSubcontractorsDueForRamsReviewAsync` + `GET /api/subcontractor-onboarding/rams-review-due`).
+  Client `Rams.razor` gains an approve-with-comments action + a "live" marker; `RamsReviewDialog` generalised to
+  reject/return/approve-with-comments. **Beyond-PRD (per the discrepancy note):** the recurring review cycle is
+  §8.2-per-submission in PRD v6.4, so the reminder engine is **gated behind the `subcontractor-onboarding` module
+  and fails closed** (never expires an approval); the RAMS review itself remains HSE-gated (§8.2). Dual migration
+  `041_rams_review_cycle.sql` (SQL Server + PostgreSQL) + EF `AddRamsReviewCycle`; EF↔raw parity green. 12 new
+  unit tests (live-version + approve-with-comments + register-from-document; bridge into queue; review-due
+  detection; reminder fires/idempotent/flag-gated/not-yet-due); whole solution builds clean (0 warnings) and the
+  full suite is green. Branch `claude/subcontractor-onboarding-phase-4` (off latest master).
 - ⏳ **SO-5 — Operative induction & accreditation gates G2/G3/G4 (Phase 5; mobile track in lockstep).**
 - ⏳ **SO-6 — Registers + notification engine (Phase 6).**
 - ⏳ **SO-7 — Site sign-in Gate 5 (Phase 7; mobile track in lockstep).**

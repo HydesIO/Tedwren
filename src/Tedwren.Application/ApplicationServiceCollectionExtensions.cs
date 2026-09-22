@@ -322,10 +322,11 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the store-agnostic subcontractor onboarding set-up/config service (spec Stage 1 / §4).</summary>
+    /// <summary>Registers the store-agnostic subcontractor onboarding set-up/config service (spec Stage 1 / §4) and the beyond-PRD RAMS review-cycle reminder job (flag-gated).</summary>
     public static IServiceCollection AddSubcontractorOnboardingCore(this IServiceCollection services)
     {
         services.AddScoped<ISubcontractorOnboardingService, Subcontractors.SubcontractorOnboardingService>();
+        services.AddScoped<Subcontractors.RamsReviewCycleReminderJob>();
         return services;
     }
 

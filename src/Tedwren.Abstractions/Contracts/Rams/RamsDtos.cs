@@ -20,7 +20,8 @@ public sealed record RamsSubmissionDto(
     DateTimeOffset? ReviewedUtc,
     DateTimeOffset SubmittedUtc,
     double AwaitingHours,
-    bool Overdue);
+    bool Overdue,
+    bool IsLive = false);
 
 /// <summary>Request to submit a RAMS. Set <see cref="FamilyId"/> to resubmit a new version of an existing RAMS.</summary>
 public sealed record SubmitRamsRequest(
@@ -34,3 +35,11 @@ public sealed record SubmitRamsRequest(
 
 /// <summary>Request to reject or return a RAMS, with the required written note (PRD §8.2).</summary>
 public sealed record ReviewRamsRequest(string Note);
+
+/// <summary>
+/// Registers a RAMS submission from an already-stored document (spec Stage 2→3): the subcontractor uploaded its
+/// RAMS on the onboarding link and it is bridged into the review queue, reusing the stored file reference rather
+/// than re-uploading it. Set <see cref="FamilyId"/> to resubmit a new version into the same family.
+/// </summary>
+public sealed record RegisterRamsFromDocumentRequest(
+    string ContractorName, string Title, string? FileReference, Guid? FamilyId, Guid? SiteId, string? SiteName);

@@ -39,6 +39,17 @@ public sealed class ApiRamsService : IRamsService
         return response.IsSuccessStatusCode;
     }
 
+    /// <summary>Approves a RAMS with comments (a required note) via the API; returns true on success.</summary>
+    public async Task<bool> ApproveWithCommentsAsync(Guid companyId, Guid id, string reviewer, string note, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync($"api/rams/{id}/approve-with-comments", new ReviewRamsRequest(note), cancellationToken);
+        return response.IsSuccessStatusCode;
+    }
+
+    /// <summary>Not used from the browser client — the subcontractor-RAMS bridge (spec Stage 2→3) runs server-side in the API.</summary>
+    public Task<RamsSubmissionDto> RegisterFromDocumentAsync(Guid companyId, RegisterRamsFromDocumentRequest request, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Registering a RAMS from an uploaded document happens server-side during subcontractor onboarding.");
+
     /// <summary>Rejects a RAMS (with a note) via the API; returns true on success.</summary>
     public async Task<bool> RejectAsync(Guid companyId, Guid id, string reviewer, string note, CancellationToken cancellationToken = default)
     {

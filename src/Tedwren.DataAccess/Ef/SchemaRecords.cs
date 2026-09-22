@@ -295,6 +295,8 @@ public sealed class SubcontractorOnboardingConfigRecord
     public int InductionPassMark { get; set; }
     public int InductionAttemptLimit { get; set; }
     public int? RamsReviewCycleMonths { get; set; }
+    public Guid? RamsFamilyId { get; set; }
+    public DateTimeOffset? LastRamsReviewReminderUtc { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
@@ -375,6 +377,7 @@ public sealed class RamsSubmissionRecord
     public string? ReviewedBy { get; set; }
     public DateTimeOffset? ReviewedUtc { get; set; }
     public DateTimeOffset SubmittedUtc { get; set; }
+    public bool IsLive { get; set; }
 }
 
 /// <summary>Schema row for the <c>DocumentDistributions</c> table (document distribution, PRD §8.2).</summary>

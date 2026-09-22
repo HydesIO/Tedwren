@@ -15,7 +15,7 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
     private const string Columns =
         "Id, InviterCompanyId, SubcontractorCompanyId, TradeInviteId, AccessPeriodMonths, RequiredDocumentsJson, " +
         "SsstsRequired, SmstsRequired, InductionValidityDays, InductionPassMark, InductionAttemptLimit, " +
-        "RamsReviewCycleMonths, CreatedUtc";
+        "RamsReviewCycleMonths, RamsFamilyId, LastRamsReviewReminderUtc, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public SubcontractorOnboardingConfigRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -27,10 +27,10 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         ExecuteAsync(
             "INSERT INTO SubcontractorOnboardingConfigs (Id, InviterCompanyId, SubcontractorCompanyId, TradeInviteId, " +
             "AccessPeriodMonths, RequiredDocumentsJson, SsstsRequired, SmstsRequired, InductionValidityDays, " +
-            "InductionPassMark, InductionAttemptLimit, RamsReviewCycleMonths, CreatedUtc) VALUES " +
+            "InductionPassMark, InductionAttemptLimit, RamsReviewCycleMonths, RamsFamilyId, LastRamsReviewReminderUtc, CreatedUtc) VALUES " +
             "(@Id, @InviterCompanyId, @SubcontractorCompanyId, @TradeInviteId, @AccessPeriodMonths, @RequiredDocumentsJson, " +
             "@SsstsRequired, @SmstsRequired, @InductionValidityDays, @InductionPassMark, @InductionAttemptLimit, " +
-            "@RamsReviewCycleMonths, @CreatedUtc)",
+            "@RamsReviewCycleMonths, @RamsFamilyId, @LastRamsReviewReminderUtc, @CreatedUtc)",
             ToParameters(config), cancellationToken);
 
     /// <summary>Returns the configuration for a trade invite, or null.</summary>
@@ -52,14 +52,39 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         return row is null ? null : ToEntity(row);
     }
 
-    /// <summary>Updates a configuration's mutable fields.</summary>
+    /// <summary>Returns every configuration created by an inviting main contractor, newest first (R15 — the MC's own subcontractors).</summary>
+    public async Task<IReadOnlyList<SubcontractorOnboardingConfig>> GetByInviterCompanyAsync(Guid inviterCompanyId, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            $"SELECT {Columns} FROM SubcontractorOnboardingConfigs WHERE InviterCompanyId = @CompanyId ORDER BY CreatedUtc DESC",
+            new { CompanyId = inviterCompanyId }, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
+    /// <summary>Returns every configuration with a RAMS review cycle set, across tenants (the reminder engine's candidate set).</summary>
+    public async Task<IReadOnlyList<SubcontractorOnboardingConfig>> GetWithReviewCycleAsync(CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            $"SELECT {Columns} FROM SubcontractorOnboardingConfigs WHERE RamsReviewCycleMonths IS NOT NULL",
+            new { }, cancellationToken);
+        return rows.Select(ToEntity).ToList();
+    }
+
+    /// <summary>Updates a configuration's mutable fields (including the RAMS family link set on first upload).</summary>
     public Task UpdateAsync(SubcontractorOnboardingConfig config, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
             "UPDATE SubcontractorOnboardingConfigs SET AccessPeriodMonths = @AccessPeriodMonths, " +
             "RequiredDocumentsJson = @RequiredDocumentsJson, SsstsRequired = @SsstsRequired, SmstsRequired = @SmstsRequired, " +
             "InductionValidityDays = @InductionValidityDays, InductionPassMark = @InductionPassMark, " +
-            "InductionAttemptLimit = @InductionAttemptLimit, RamsReviewCycleMonths = @RamsReviewCycleMonths WHERE Id = @Id",
+            "InductionAttemptLimit = @InductionAttemptLimit, RamsReviewCycleMonths = @RamsReviewCycleMonths, " +
+            "RamsFamilyId = @RamsFamilyId, LastRamsReviewReminderUtc = @LastRamsReviewReminderUtc WHERE Id = @Id",
             ToParameters(config), cancellationToken);
+
+    /// <summary>Records when a RAMS re-review reminder was last sent (idempotency marker), touching nothing else.</summary>
+    public Task UpdateReviewReminderAsync(Guid id, DateTimeOffset remindedUtc, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            "UPDATE SubcontractorOnboardingConfigs SET LastRamsReviewReminderUtc = @RemindedUtc WHERE Id = @Id",
+            new { Id = id, RemindedUtc = remindedUtc }, cancellationToken);
 
     /// <summary>Flattens a configuration to Dapper parameters (required documents serialised to JSON).</summary>
     private static object ToParameters(SubcontractorOnboardingConfig c) => new
@@ -76,6 +101,8 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         c.InductionPassMark,
         c.InductionAttemptLimit,
         c.RamsReviewCycleMonths,
+        c.RamsFamilyId,
+        c.LastRamsReviewReminderUtc,
         c.CreatedUtc,
     };
 
@@ -96,6 +123,8 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         InductionPassMark = r.InductionPassMark,
         InductionAttemptLimit = r.InductionAttemptLimit,
         RamsReviewCycleMonths = r.RamsReviewCycleMonths,
+        RamsFamilyId = r.RamsFamilyId,
+        LastRamsReviewReminderUtc = r.LastRamsReviewReminderUtc,
         CreatedUtc = r.CreatedUtc,
     };
 
@@ -103,5 +132,6 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
     private sealed record Row(
         Guid Id, Guid InviterCompanyId, Guid SubcontractorCompanyId, Guid TradeInviteId, int AccessPeriodMonths,
         string? RequiredDocumentsJson, bool SsstsRequired, bool SmstsRequired, int InductionValidityDays,
-        int InductionPassMark, int InductionAttemptLimit, int? RamsReviewCycleMonths, DateTimeOffset CreatedUtc);
+        int InductionPassMark, int InductionAttemptLimit, int? RamsReviewCycleMonths, Guid? RamsFamilyId,
+        DateTimeOffset? LastRamsReviewReminderUtc, DateTimeOffset CreatedUtc);
 }

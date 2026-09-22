@@ -5,6 +5,7 @@ using Tedwren.Application.Attendance;
 using Tedwren.Application.Expiry;
 using Tedwren.Application.Forms;
 using Tedwren.Application.Jobs;
+using Tedwren.Application.Subcontractors;
 
 namespace Tedwren.Api.Endpoints;
 
@@ -80,6 +81,19 @@ public static class JobEndpoints
                 return Results.Ok(result);
             })
             .WithName("RunFormReminders").RequireAuthorization("PlatformAdmin");
+
+        // Reminds MCs of subcontractor RAMS due for re-review (Subcontractor Onboarding spec §4; beyond PRD, flag-gated).
+        jobs.MapPost("/rams-review-reminders", async (JobRunner runner, RamsReviewCycleReminderJob job, CancellationToken cancellationToken) =>
+            {
+                RamsReviewReminderScanResult result = new(0, 0);
+                await runner.RunAsync(JobNames.RamsReviewReminder, async token =>
+                {
+                    result = await job.RunAsync(DateTimeOffset.UtcNow, token);
+                    return (result.ConfigsEvaluated, result.RemindersSent);
+                }, cancellationToken);
+                return Results.Ok(result);
+            })
+            .WithName("RunRamsReviewReminders").RequireAuthorization("PlatformAdmin");
 
         // Checks each job's heartbeat and alerts ops on a silent stop (R12).
         jobs.MapPost("/heartbeat-check", async (JobHeartbeatMonitor monitor, CancellationToken cancellationToken) =>

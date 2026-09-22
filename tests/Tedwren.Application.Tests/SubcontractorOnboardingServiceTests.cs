@@ -4,6 +4,7 @@ using Tedwren.Abstractions.Contracts.Trades;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence.InMemory;
+using Tedwren.Application.Rams;
 using Tedwren.Application.Subcontractors;
 using Tedwren.Application.Trades;
 using Tedwren.Domain.Entities;
@@ -35,12 +36,13 @@ public sealed class SubcontractorOnboardingServiceTests
     private sealed record Sut(
         SubcontractorOnboardingService Subs,
         TradeOnboardingService Trades,
+        RamsService Rams,
         InMemorySubcontractorOnboardingConfigRepository Configs,
         InMemoryCompanyRepository Companies,
         InMemoryCompanyDocumentRepository Documents,
         InMemoryTradeInviteRepository Invites);
 
-    /// <summary>Builds the subcontractor + trade onboarding services over shared in-memory repositories, scoped to a tenant.</summary>
+    /// <summary>Builds the subcontractor + trade onboarding services (and the shared RAMS service the bridge feeds) over shared in-memory repositories, scoped to a tenant.</summary>
     private static Sut CreateSut(Guid tenant)
     {
         var orgStore = new InMemoryOrganisationStore(seed: false);
@@ -52,14 +54,16 @@ public sealed class SubcontractorOnboardingServiceTests
             new InMemoryEngagementRepository(orgStore), new InMemoryQualificationCardRepository(qualStore));
         var invites = new InMemoryTradeInviteRepository();
         var configs = new InMemorySubcontractorOnboardingConfigRepository();
+        var ramsRepo = new InMemoryRamsRepository();
+        var rams = new RamsService(ramsRepo, new InMemoryImageStore());
         var currentUser = new StubCurrentUser(tenant);
 
-        var subs = new SubcontractorOnboardingService(organisation, invites, configs, documents, currentUser);
+        var subs = new SubcontractorOnboardingService(organisation, invites, configs, documents, currentUser, audit: null, rams: ramsRepo);
         var trades = new TradeOnboardingService(
             invites, companies, documents, organisation, new InMemoryImageStore(),
-            audit: null, currentUser: currentUser, email: null, subcontractorConfigs: configs);
+            audit: null, currentUser: currentUser, email: null, subcontractorConfigs: configs, rams: rams);
 
-        return new Sut(subs, trades, configs, companies, documents, invites);
+        return new Sut(subs, trades, rams, configs, companies, documents, invites);
     }
 
     private static SetupSubcontractorRequest SampleRequest(
@@ -230,5 +234,58 @@ public sealed class SubcontractorOnboardingServiceTests
         var view = await sut.Trades.AddOperativeByLinkAsync(result.Token, passcode: null,
             new AddTradeOperativeRequest("Sam", "+447700900999", null));
         Assert.NotNull(view);
+    }
+
+    [Fact] // Spec Stage 2→3 — a RAMS-heading upload from a configured subcontractor lands in the MC's RAMS review queue.
+    public async Task RamsUpload_BridgedIntoReviewQueue()
+    {
+        var sut = CreateSut(MainContractor);
+        var result = await sut.Subs.SetupAsync(SampleRequest());   // RAMS is one of the configured headings
+
+        await sut.Trades.SubmitDocumentAsync(result.Token, passcode: null,
+            new SubmitTradeDocumentRequest("Risk Assessments & Method Statements (RAMS)", "Excavation RAMS", null, null, null, null));
+
+        // The submission is queued under the reviewing main contractor (R15), not the subcontractor.
+        var item = Assert.Single(await sut.Rams.GetReviewQueueAsync(MainContractor));
+        Assert.Equal("Apex Electrical Ltd", item.ContractorName);
+        Assert.Equal("Submitted", item.Status);
+        Assert.Empty(await sut.Rams.GetReviewQueueAsync(result.SubcontractorCompanyId));
+
+        // The RAMS family was recorded on the configuration so later uploads become new versions.
+        var config = await sut.Configs.GetBySubcontractorCompanyAsync(result.SubcontractorCompanyId);
+        Assert.NotNull(config!.RamsFamilyId);
+    }
+
+    [Fact] // A non-RAMS upload is not bridged into the RAMS queue.
+    public async Task NonRamsUpload_NotBridged()
+    {
+        var sut = CreateSut(MainContractor);
+        var result = await sut.Subs.SetupAsync(SampleRequest());
+
+        await sut.Trades.SubmitDocumentAsync(result.Token, passcode: null,
+            new SubmitTradeDocumentRequest("Employer's Liability Insurance", "EL certificate", null, null, null, null));
+
+        Assert.Empty(await sut.Rams.GetReviewQueueAsync(MainContractor));
+    }
+
+    [Fact] // Spec §4 — a subcontractor's live RAMS is flagged due once its review cycle elapses (beyond PRD, informational only).
+    public async Task RamsReviewDue_DetectedAfterCycleElapses()
+    {
+        var sut = CreateSut(MainContractor);
+        var result = await sut.Subs.SetupAsync(SampleRequest());   // RamsReviewCycleMonths = 6
+
+        // Upload + approve a RAMS so there is a live approved version to date the cycle from.
+        await sut.Trades.SubmitDocumentAsync(result.Token, passcode: null,
+            new SubmitTradeDocumentRequest("Risk Assessments & Method Statements (RAMS)", "RAMS", null, null, null, null));
+        var queued = Assert.Single(await sut.Rams.GetReviewQueueAsync(MainContractor));
+        await sut.Rams.ApproveAsync(MainContractor, queued.Id, "MC Admin");
+
+        // Within the cycle — nothing due yet.
+        Assert.Empty(await sut.Subs.GetSubcontractorsDueForRamsReviewAsync(DateTimeOffset.UtcNow.AddMonths(3)));
+
+        // After the cycle — the subcontractor is flagged for re-review.
+        var due = Assert.Single(await sut.Subs.GetSubcontractorsDueForRamsReviewAsync(DateTimeOffset.UtcNow.AddMonths(7)));
+        Assert.Equal(result.SubcontractorCompanyId, due.SubcontractorCompanyId);
+        Assert.Equal(6, due.ReviewCycleMonths);
     }
 }

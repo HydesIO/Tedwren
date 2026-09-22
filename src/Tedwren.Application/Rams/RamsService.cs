@@ -99,9 +99,13 @@ public sealed class RamsService : IRamsService
             .Select(ToDto)
             .ToList();
 
-    /// <summary>Approves a submitted RAMS.</summary>
+    /// <summary>Approves a submitted RAMS and makes it the live version (spec Stage 3).</summary>
     public Task<bool> ApproveAsync(Guid companyId, Guid id, string reviewer, CancellationToken cancellationToken = default) =>
         DecideAsync(companyId, id, RamsStatus.Approved, reviewer, note: null, cancellationToken);
+
+    /// <summary>Approves a submitted RAMS with reviewer comments (a required note) and makes it the live version (spec Stage 3).</summary>
+    public Task<bool> ApproveWithCommentsAsync(Guid companyId, Guid id, string reviewer, string note, CancellationToken cancellationToken = default) =>
+        DecideAsync(companyId, id, RamsStatus.ApprovedWithComments, reviewer, note, cancellationToken);
 
     /// <summary>Rejects a submitted RAMS with a required note.</summary>
     public Task<bool> RejectAsync(Guid companyId, Guid id, string reviewer, string note, CancellationToken cancellationToken = default) =>
@@ -111,7 +115,54 @@ public sealed class RamsService : IRamsService
     public Task<bool> ReturnAsync(Guid companyId, Guid id, string reviewer, string note, CancellationToken cancellationToken = default) =>
         DecideAsync(companyId, id, RamsStatus.Returned, reviewer, note, cancellationToken);
 
-    /// <summary>Applies a review decision, scoped to the company (R15). Reject/return require a note; only a submitted RAMS can be decided.</summary>
+    /// <summary>
+    /// Registers a RAMS from an already-stored document (spec Stage 2→3): the subcontractor uploaded its RAMS on
+    /// the onboarding link and it is bridged into the review queue, reusing the stored file reference rather than
+    /// re-uploading it. A supplied family id is used as-is — so the first upload seeds the family (v1) and each
+    /// later upload resubmits into it as the next version — leaving earlier versions intact (append-only, R4/R16).
+    /// </summary>
+    public async Task<RamsSubmissionDto> RegisterFromDocumentAsync(Guid companyId, RegisterRamsFromDocumentRequest request, CancellationToken cancellationToken = default)
+    {
+        if (companyId == Guid.Empty)
+        {
+            throw new ArgumentException("A company id is required.", nameof(companyId));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.ContractorName))
+        {
+            throw new ArgumentException("A contractor name is required.", nameof(request));
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            throw new ArgumentException("A RAMS title is required.", nameof(request));
+        }
+
+        // Unlike SubmitAsync, a supplied family id need not already exist: the bridge chooses the family up front
+        // (the subcontractor's configured RamsFamilyId), so version = maxVersion + 1 gives v1 for a new family.
+        var familyId = request.FamilyId ?? Guid.NewGuid();
+        var version = request.FamilyId is { } fam
+            ? await _rams.GetMaxVersionAsync(companyId, fam, cancellationToken) + 1
+            : 1;
+
+        var submission = new RamsSubmission
+        {
+            CompanyId = companyId,
+            FamilyId = familyId,
+            Version = version,
+            Reference = BuildReference(),
+            ContractorName = request.ContractorName.Trim(),
+            Title = request.Title.Trim(),
+            SiteId = request.SiteId,
+            SiteName = string.IsNullOrWhiteSpace(request.SiteName) ? null : request.SiteName.Trim(),
+            FileReference = string.IsNullOrWhiteSpace(request.FileReference) ? null : request.FileReference.Trim(),
+            Status = RamsStatus.Submitted,
+        };
+        await _rams.AddAsync(submission, cancellationToken);
+        return ToDto(submission);
+    }
+
+    /// <summary>Applies a review decision, scoped to the company (R15). Reject/return/approve-with-comments require a note; only a submitted RAMS can be decided.</summary>
     private async Task<bool> DecideAsync(Guid companyId, Guid id, RamsStatus decision, string reviewer, string? note, CancellationToken cancellationToken)
     {
         var submission = await _rams.GetAsync(id, cancellationToken);
@@ -125,17 +176,44 @@ public sealed class RamsService : IRamsService
             throw new InvalidOperationException($"A RAMS that is {submission.Status} cannot be reviewed again.");
         }
 
-        if ((decision is RamsStatus.Rejected or RamsStatus.Returned) && string.IsNullOrWhiteSpace(note))
+        if (RequiresNote(decision) && string.IsNullOrWhiteSpace(note))
         {
-            throw new ArgumentException("A written note is required to reject or return a RAMS.", nameof(note));
+            throw new ArgumentException("A written note is required for this decision.", nameof(note));
         }
 
         submission.Status = decision;
         submission.ReviewNote = string.IsNullOrWhiteSpace(note) ? null : note.Trim();
         submission.ReviewedBy = string.IsNullOrWhiteSpace(reviewer) ? "System" : reviewer.Trim();
         submission.ReviewedUtc = DateTimeOffset.UtcNow;
+
+        // Spec Stage 3: an approval (with or without comments) makes this the live version operatives read and
+        // sign; any earlier live version in the family is cleared. History is preserved — only the pointer moves.
+        if (decision is RamsStatus.Approved or RamsStatus.ApprovedWithComments)
+        {
+            await PromoteToLiveAsync(submission, cancellationToken);
+        }
+
         await _rams.UpdateAsync(submission, cancellationToken);
         return true;
+    }
+
+    /// <summary>Whether a decision needs a written note: reject, return, or approve-with-comments (the comments).</summary>
+    private static bool RequiresNote(RamsStatus decision) =>
+        decision is RamsStatus.Rejected or RamsStatus.Returned or RamsStatus.ApprovedWithComments;
+
+    /// <summary>Marks the submission live and clears any earlier live version in its family (spec Stage 3; append-only preserved).</summary>
+    private async Task PromoteToLiveAsync(RamsSubmission submission, CancellationToken cancellationToken)
+    {
+        submission.IsLive = true;
+        var family = await _rams.GetByFamilyAsync(submission.CompanyId, submission.FamilyId, cancellationToken);
+        foreach (var sibling in family)
+        {
+            if (sibling.Id != submission.Id && sibling.IsLive)
+            {
+                sibling.IsLive = false;
+                await _rams.UpdateAsync(sibling, cancellationToken);
+            }
+        }
     }
 
     /// <summary>Builds a human-readable submission reference (date + short random suffix).</summary>
@@ -156,6 +234,6 @@ public sealed class RamsService : IRamsService
         return new RamsSubmissionDto(
             r.Id, r.FamilyId, r.Version, r.Reference, r.ContractorName, r.Title, r.SiteId, r.SiteName,
             r.FileReference is not null, r.Status.ToString(), r.ReviewNote, r.ReviewedBy, r.ReviewedUtc, r.SubmittedUtc,
-            Math.Round(awaitingHours, 1), r.Status == RamsStatus.Submitted && awaitingHours > OverdueHours);
+            Math.Round(awaitingHours, 1), r.Status == RamsStatus.Submitted && awaitingHours > OverdueHours, r.IsLive);
     }
 }

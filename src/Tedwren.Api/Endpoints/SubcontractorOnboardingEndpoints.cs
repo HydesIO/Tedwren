@@ -46,6 +46,11 @@ public static class SubcontractorOnboardingEndpoints
                 Results.Ok(await service.EvaluateGate1Async(subcontractorCompanyId, cancellationToken)))
             .WithName("EvaluateSubcontractorGate1");
 
+        // Subcontractors whose live RAMS is due for re-review under its configured cycle (spec §4; beyond PRD v6.4).
+        group.MapGet("/rams-review-due", async (DateTimeOffset? asOf, ISubcontractorOnboardingService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetSubcontractorsDueForRamsReviewAsync(asOf ?? DateTimeOffset.UtcNow, cancellationToken)))
+            .WithName("SubcontractorsDueForRamsReview");
+
         return app;
     }
 }

@@ -23,4 +23,11 @@ public interface ISubcontractorOnboardingService
     /// present and valid. Scoped to the inviting tenant (R15); a company with no configuration clears vacuously.
     /// </summary>
     Task<Gate1StatusDto> EvaluateGate1Async(Guid subcontractorCompanyId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Lists the caller's subcontractors whose live RAMS is due for re-review under its configured cycle, as of
+    /// <paramref name="asOf"/> (spec §4; beyond PRD v6.4 — informational, never expires an approval). Scoped to
+    /// the inviting tenant (R15).
+    /// </summary>
+    Task<IReadOnlyList<RamsReviewDueDto>> GetSubcontractorsDueForRamsReviewAsync(DateTimeOffset asOf, CancellationToken cancellationToken = default);
 }

@@ -59,6 +59,25 @@ public static class RamsEndpoints
             })
             .WithName("ApproveRams").RequireAuthorization("RequireWrite");
 
+        group.MapPost("/{id:guid}/approve-with-comments", async (Guid id, ReviewRamsRequest request, ICurrentUserService currentUser, IRamsService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var user = await currentUser.GetCurrentAsync(cancellationToken);
+                    return await service.ApproveWithCommentsAsync(user.CompanyId ?? Guid.Empty, id, user.Name, request?.Note ?? string.Empty, cancellationToken)
+                        ? Results.NoContent() : Results.NotFound();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { reason = ex.Message });
+                }
+            })
+            .WithName("ApproveRamsWithComments").RequireAuthorization("RequireWrite");
+
         group.MapPost("/{id:guid}/reject", async (Guid id, ReviewRamsRequest request, ICurrentUserService currentUser, IRamsService service, CancellationToken cancellationToken) =>
                 await DecideAsync(id, request, currentUser, service, reject: true, cancellationToken))
             .WithName("RejectRams").RequireAuthorization("RequireWrite");
