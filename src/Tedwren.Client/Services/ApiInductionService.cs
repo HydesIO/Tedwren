@@ -124,6 +124,10 @@ public sealed class ApiInductionService : IInductionService
         (await (await _http.PostAsJsonAsync("api/inductions/sessions", request, cancellationToken))
             .Content.ReadFromJsonAsync<InductionSessionDto>(cancellationToken))!;
 
+    /// <summary>Not used from the console client — the operative "current induction" resolve-or-start runs on the mobile plane (/api/mobile/inductions).</summary>
+    public Task<InductionSessionDto> GetOrStartForPersonAsync(Guid companyId, Guid templateId, Guid personId, string personName, CancellationToken cancellationToken = default) =>
+        throw new NotSupportedException("Resolving an operative's current induction happens on the mobile plane, not the console.");
+
     /// <summary>Returns the device-facing session, or null (R5).</summary>
     public async Task<InductionSessionDto?> GetSessionAsync(Guid sessionId, CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<InductionSessionDto>($"api/inductions/sessions/{sessionId}", cancellationToken);

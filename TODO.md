@@ -74,7 +74,26 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   unit tests (live-version + approve-with-comments + register-from-document; bridge into queue; review-due
   detection; reminder fires/idempotent/flag-gated/not-yet-due); whole solution builds clean (0 warnings) and the
   full suite is green. Branch `claude/subcontractor-onboarding-phase-4` (off latest master).
-- ⏳ **SO-5 — Operative induction & accreditation gates G2/G3/G4 (Phase 5; mobile track in lockstep).**
+- 🟡 **SO-5 — Operative induction & accreditation gates (Phase 5; mobile track in lockstep).** Split into two
+  sequential PRs by gate; **5a (induction / Gate 4) done**, 5b (accreditation / Gate 3) next.
+  - ✅ **SO-5a — Operative induction + quiz (Gate 4).** The operative completes their **MC-owned** induction on the
+    mobile app (native + emulator, in lockstep) and passing issues the induction number (`IND-…`) + the session
+    register entry. **G2** (OTP + device binding) already existed and was reused as-is. `SubcontractorOnboardingConfig`
+    gains `InductionTemplateId`; `SetupAsync` now **resolves-or-creates the MC's own induction template** (§6.1 — reused
+    across the MC's subcontractors) from the captured induction settings via `IInductionService`. `SubmitQuizAsync`
+    now **enforces `AttemptLimit`** (MC-6/MC-15; `QuizResultDto.AttemptsExhausted`), and `ResetAsync` re-grants attempts.
+    New `IInductionService.GetOrStartForPersonAsync` (resume-not-clobber) + `OperativeInductionService` (resolves the
+    operative's induction via their subcontractor config, ownership-guarded, R15). New operative API
+    `/api/mobile/inductions/*` (`RequireOperative`, core — no module gate); `Mobile.Core` `InductionApiClient`
+    registered in both heads' DI; emulator `Pages/Operative/Induction.razor` + home tile; native `Pages/InductionPage.cs`
+    + home tile (hand-reviewed, MAUI-only). Dual migration `042_subcontractor_induction_template.sql` + EF
+    `AddInductionTemplateLink`; EF↔raw parity green. New unit tests (Application: attempt-limit + reset + get-or-start +
+    setup-links-template + operative resolution/ownership; Mobile.Core: `InductionApiClient` via `FakeHttp`; Api:
+    operative induction flow issues `IND-…` + console-token rejection; Web.App: bUnit induction render). Whole solution
+    builds clean (0 warnings) and the full suite is green. Branch `claude/subcontractor-onboarding-phase-5a` (off latest master).
+  - ⏳ **SO-5b — Operative accreditation / competency (Gate 3).** SF-11 map gains `LegalMandatory`/`ClientRequired`;
+    seed **Gas Safe**; map/type admin CRUD (Q21); a pure `Gate3Evaluator`; operative card upload (`/api/mobile/cards`)
+    + emulator/native screens (lockstep). Site-entry turnstile enforcement of G3 is **deferred to Phase 7** (with the RAMS Gate-5 rework).
 - ⏳ **SO-6 — Registers + notification engine (Phase 6).**
 - ⏳ **SO-7 — Site sign-in Gate 5 (Phase 7; mobile track in lockstep).**
 

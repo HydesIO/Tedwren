@@ -206,4 +206,45 @@ public sealed class InductionServiceTests
         var priorSummary = (await service.GetForCompanyAsync(Company)).Single(s => s.Id == first.Id);
         Assert.Equal("Superseded", priorSummary.Status);
     }
+
+    [Fact] // MC-6/MC-15 — the attempt limit is enforced, and a manager reset re-grants attempts.
+    public async Task Quiz_EnforcesAttemptLimit_ThenResetReGrants()
+    {
+        var service = CreateService();   // default template: AttemptLimit 3, PassMark 3
+        var session = await StartAsync(service);
+
+        await service.SubmitQuizAsync(session.Id, new SubmitQuizRequest(WrongAnswers));   // attempt 1
+        await service.SubmitQuizAsync(session.Id, new SubmitQuizRequest(WrongAnswers));   // attempt 2
+        var third = await service.SubmitQuizAsync(session.Id, new SubmitQuizRequest(WrongAnswers));   // attempt 3 — limit spent
+        Assert.True(third!.AttemptsExhausted);
+        Assert.Equal(3, third.AttemptCount);
+
+        // A further submit is blocked (not even scored) until a manager reset — the count does not move.
+        var blocked = await service.SubmitQuizAsync(session.Id, new SubmitQuizRequest(CorrectAnswers));
+        Assert.True(blocked!.AttemptsExhausted);
+        Assert.False(blocked.Passed);
+        Assert.Equal(3, blocked.AttemptCount);
+
+        await service.ResetAsync(session.Id, new ResetInductionRequest("Retake after coaching"));
+        var afterReset = await service.SubmitQuizAsync(session.Id, new SubmitQuizRequest(CorrectAnswers));
+        Assert.True(afterReset!.Passed);
+        Assert.Equal(1, afterReset.AttemptCount);   // re-granted from zero
+    }
+
+    [Fact] // Gate 4 — get-or-start resumes an in-progress session (never clobbering progress) and is per-operative.
+    public async Task GetOrStart_ResumesInProgress_AndIsPerOperative()
+    {
+        var service = CreateService();
+        var personId = Guid.NewGuid();
+
+        var first = await service.GetOrStartForPersonAsync(Company, Template, personId, "M. Adeyemi");
+        await service.CompleteStepAsync(first.Id, first.Steps[0].Id);
+
+        var resumed = await service.GetOrStartForPersonAsync(Company, Template, personId, "M. Adeyemi");
+        Assert.Equal(first.Id, resumed.Id);                              // same session
+        Assert.Contains(first.Steps[0].Id, resumed.CompletedStepIds);   // progress kept
+
+        var other = await service.GetOrStartForPersonAsync(Company, Template, Guid.NewGuid(), "Other");
+        Assert.NotEqual(first.Id, other.Id);                            // a different operative gets their own
+    }
 }

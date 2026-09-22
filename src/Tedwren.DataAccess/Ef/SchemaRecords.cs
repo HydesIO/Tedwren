@@ -294,6 +294,7 @@ public sealed class SubcontractorOnboardingConfigRecord
     public int InductionValidityDays { get; set; }
     public int InductionPassMark { get; set; }
     public int InductionAttemptLimit { get; set; }
+    public Guid? InductionTemplateId { get; set; }
     public int? RamsReviewCycleMonths { get; set; }
     public Guid? RamsFamilyId { get; set; }
     public DateTimeOffset? LastRamsReviewReminderUtc { get; set; }
