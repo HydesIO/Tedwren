@@ -12,8 +12,8 @@ using Tedwren.DataAccess.Ef;
 namespace Tedwren.DataAccess.Ef.Migrations
 {
     [DbContext(typeof(TedwrenDbContext))]
-    [Migration("20260922093258_AddExpiryNotificationSource")]
-    partial class AddExpiryNotificationSource
+    [Migration("20260922195506_Initial")]
+    partial class Initial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -1526,6 +1526,42 @@ namespace Tedwren.DataAccess.Ef.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("QualificationTypes", (string)null);
+                });
+
+            modelBuilder.Entity("Tedwren.DataAccess.Ef.RamsAcknowledgementRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTimeOffset?>("ExpiresUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SignatureName")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("nvarchar(256)");
+
+                    b.Property<DateTimeOffset>("SignedUtc")
+                        .HasColumnType("datetimeoffset");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId", "PersonId", "FamilyId");
+
+                    b.ToTable("RamsAcknowledgements", (string)null);
                 });
 
             modelBuilder.Entity("Tedwren.DataAccess.Ef.RamsSubmissionRecord", b =>
