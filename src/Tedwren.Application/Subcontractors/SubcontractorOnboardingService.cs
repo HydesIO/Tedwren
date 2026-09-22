@@ -25,18 +25,24 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
     private readonly ICompanyDocumentRepository _documents;
     private readonly ICurrentUserService? _currentUser;
     private readonly IAuditService? _audit;
+    private readonly IRamsRepository? _rams;
 
     /// <summary>Default invite lifetime (SUB-18: 30 days), mirroring the onboarding/trade links.</summary>
     private static readonly TimeSpan LinkLifetime = TimeSpan.FromDays(30);
 
-    /// <summary>Creates the service over the organisation service and the invite, config + document repositories.</summary>
+    /// <summary>
+    /// Creates the service over the organisation service and the invite, config + document repositories. The RAMS
+    /// repository is optional (the review-cycle due-list needs it; the set-up/Gate-1 paths do not) so unit tests
+    /// can construct the service bare (the established pattern); the composition root supplies it.
+    /// </summary>
     public SubcontractorOnboardingService(
         IOrganisationService organisation,
         ITradeInviteRepository invites,
         ISubcontractorOnboardingConfigRepository configs,
         ICompanyDocumentRepository documents,
         ICurrentUserService? currentUser = null,
-        IAuditService? audit = null)
+        IAuditService? audit = null,
+        IRamsRepository? rams = null)
     {
         _organisation = organisation;
         _invites = invites;
@@ -44,6 +50,7 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
         _documents = documents;
         _currentUser = currentUser;
         _audit = audit;
+        _rams = rams;
     }
 
     /// <summary>Sets up & configures a subcontractor, returning the shareable onboarding link and the created ids.</summary>
@@ -154,6 +161,59 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
 
         var documents = await _documents.GetByCompanyAsync(subcontractorCompanyId, cancellationToken);
         return Gate1Evaluator.Evaluate(config, documents, DateOnly.FromDateTime(DateTime.UtcNow));
+    }
+
+    /// <summary>
+    /// Lists the caller's subcontractors whose live RAMS is due for re-review under its configured cycle, as of
+    /// <paramref name="asOf"/> (spec §4; beyond PRD v6.4 — informational only, never expires an approval). Scoped
+    /// to the inviting tenant (R15); empty when unauthenticated or when no RAMS repository is configured.
+    /// </summary>
+    public async Task<IReadOnlyList<RamsReviewDueDto>> GetSubcontractorsDueForRamsReviewAsync(DateTimeOffset asOf, CancellationToken cancellationToken = default)
+    {
+        var tenant = await ResolveTenantAsync(cancellationToken);
+        if (tenant is null || _rams is null)
+        {
+            return Array.Empty<RamsReviewDueDto>();
+        }
+
+        var configs = await _configs.GetByInviterCompanyAsync(tenant.Value, cancellationToken);
+        var due = new List<RamsReviewDueDto>();
+        foreach (var config in configs)
+        {
+            var item = await BuildReviewDueAsync(config, asOf, cancellationToken);
+            if (item is not null)
+            {
+                due.Add(item);
+            }
+        }
+
+        return due;
+    }
+
+    /// <summary>
+    /// Builds the review-due row for one configuration, or null when it has no cycle, no linked RAMS family, no
+    /// approved live version, or the live version is not yet due. Reads are scoped to the reviewing company (R15).
+    /// </summary>
+    private async Task<RamsReviewDueDto?> BuildReviewDueAsync(SubcontractorOnboardingConfig config, DateTimeOffset asOf, CancellationToken cancellationToken)
+    {
+        if (_rams is null || config.RamsReviewCycleMonths is not { } months || config.RamsFamilyId is not { } familyId)
+        {
+            return null;
+        }
+
+        var family = await _rams.GetByFamilyAsync(config.InviterCompanyId, familyId, cancellationToken);
+        var live = family.FirstOrDefault(r => r.IsLive);
+        if (live?.ReviewedUtc is not { } approvedUtc)
+        {
+            return null;
+        }
+
+        if (RamsReviewCycle.DueUtc(months, approvedUtc) is not { } dueUtc || asOf < dueUtc)
+        {
+            return null;
+        }
+
+        return new RamsReviewDueDto(config.SubcontractorCompanyId, live.ContractorName, months, approvedUtc, dueUtc);
     }
 
     /// <summary>The signed-in tenant's company id, or null when unauthenticated (R15).</summary>

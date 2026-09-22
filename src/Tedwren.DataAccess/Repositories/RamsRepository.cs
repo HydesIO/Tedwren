@@ -10,7 +10,7 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
 {
     private const string SelectColumns =
         "SELECT Id, CompanyId, FamilyId, Version, Reference, ContractorName, Title, SiteId, SiteName, FileReference, " +
-        "Status, ReviewNote, ReviewedBy, ReviewedUtc, SubmittedUtc FROM RamsSubmissions";
+        "Status, ReviewNote, ReviewedBy, ReviewedUtc, SubmittedUtc, IsLive FROM RamsSubmissions";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public RamsRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -21,9 +21,9 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
     public async Task AddAsync(RamsSubmission submission, CancellationToken cancellationToken = default) =>
         await ExecuteAsync(
             "INSERT INTO RamsSubmissions (Id, CompanyId, FamilyId, Version, Reference, ContractorName, Title, " +
-            "SiteId, SiteName, FileReference, Status, ReviewNote, ReviewedBy, ReviewedUtc, SubmittedUtc) VALUES " +
+            "SiteId, SiteName, FileReference, Status, ReviewNote, ReviewedBy, ReviewedUtc, SubmittedUtc, IsLive) VALUES " +
             "(@Id, @CompanyId, @FamilyId, @Version, @Reference, @ContractorName, @Title, @SiteId, @SiteName, " +
-            "@FileReference, @Status, @ReviewNote, @ReviewedBy, @ReviewedUtc, @SubmittedUtc)",
+            "@FileReference, @Status, @ReviewNote, @ReviewedBy, @ReviewedUtc, @SubmittedUtc, @IsLive)",
             ToParams(submission), cancellationToken);
 
     /// <summary>Returns a company's RAMS submissions, newest first.</summary>
@@ -47,8 +47,17 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
     public async Task UpdateAsync(RamsSubmission submission, CancellationToken cancellationToken = default) =>
         await ExecuteAsync(
             "UPDATE RamsSubmissions SET Status = @Status, ReviewNote = @ReviewNote, ReviewedBy = @ReviewedBy, " +
-            "ReviewedUtc = @ReviewedUtc WHERE Id = @Id",
+            "ReviewedUtc = @ReviewedUtc, IsLive = @IsLive WHERE Id = @Id",
             ToParams(submission), cancellationToken);
+
+    /// <summary>Returns every version in a family for the company, newest version first (spec Stage 3 live-version management).</summary>
+    public async Task<IReadOnlyList<RamsSubmission>> GetByFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default)
+    {
+        var rows = await QueryAsync<Row>(
+            SelectColumns + " WHERE CompanyId = @CompanyId AND FamilyId = @FamilyId ORDER BY Version DESC",
+            new { CompanyId = companyId, FamilyId = familyId }, cancellationToken);
+        return rows.Select(Map).ToList();
+    }
 
     /// <summary>Returns the highest version number in a family for the company (0 when unknown).</summary>
     public async Task<int> GetMaxVersionAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default)
@@ -77,6 +86,7 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
         s.ReviewedBy,
         s.ReviewedUtc,
         s.SubmittedUtc,
+        s.IsLive,
     };
 
     /// <summary>Maps a flat row to a RAMS submission entity.</summary>
@@ -97,6 +107,7 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
         ReviewedBy = r.ReviewedBy,
         ReviewedUtc = r.ReviewedUtc,
         SubmittedUtc = r.SubmittedUtc,
+        IsLive = r.IsLive,
     };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
@@ -115,5 +126,6 @@ public sealed class RamsRepository : RepositoryBase, IRamsRepository
         string? ReviewNote,
         string? ReviewedBy,
         DateTimeOffset? ReviewedUtc,
-        DateTimeOffset SubmittedUtc);
+        DateTimeOffset SubmittedUtc,
+        bool IsLive);
 }

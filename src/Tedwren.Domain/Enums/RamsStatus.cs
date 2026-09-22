@@ -14,4 +14,7 @@ public enum RamsStatus
 
     /// <summary>Returned for changes with a written note; a corrected resubmission is a new version (R18 — returned, not denied).</summary>
     Returned = 3,
+
+    /// <summary>Approved but with reviewer comments the contractor should act on; still a signable live version (spec Stage 3).</summary>
+    ApprovedWithComments = 4,
 }

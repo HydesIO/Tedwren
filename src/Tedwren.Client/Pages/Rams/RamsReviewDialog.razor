@@ -1,32 +1,50 @@
-@* Capture the required note to reject or return a RAMS (R18). Returns the note text via DialogResult. *@
+@* Capture the required note for a RAMS review decision that needs one (R18): reject, return, or approve with comments. Returns the note text via DialogResult. *@
 
 <MudDialog>
     <DialogContent>
         <div class="tw-dialog-body">
-            <DialogGuidance Text="@Guidance" />
-            <TedwrenTextField Label="Reason / note" @bind-Value="_note" Required="true"
+            <DialogGuidance Text="@Guidance" Severity="@GuidanceSeverity" />
+            <TedwrenTextField Label="@Label" @bind-Value="_note" Required="true"
                               Error="_submitted && string.IsNullOrWhiteSpace(_note)" ErrorText="A note is required." />
         </div>
     </DialogContent>
     <DialogActions>
         <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
-        <MudButton Variant="Variant.Filled" Color="@(IsReject ? Color.Error : Color.Primary)" OnClick="Confirm">@ConfirmText</MudButton>
+        <MudButton Variant="Variant.Filled" Color="@ConfirmColor" OnClick="Confirm">@ConfirmText</MudButton>
     </DialogActions>
 </MudDialog>
 
 @code {
+    /// <summary>The kind of review decision this dialog captures a written note for.</summary>
+    public enum RamsReviewMode { Reject, Return, ApproveWithComments }
+
     [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
 
-    [Parameter] public bool IsReject { get; set; }
+    /// <summary>Which decision the note supports; defaults to Reject for backward compatibility.</summary>
+    [Parameter] public RamsReviewMode Mode { get; set; } = RamsReviewMode.Reject;
 
     private string? _note;
     private bool _submitted;
 
-    private string ConfirmText => IsReject ? "Reject RAMS" : "Return for changes";
+    private Color ConfirmColor => Mode == RamsReviewMode.Reject ? Color.Error : Color.Primary;
 
-    private string Guidance => IsReject
-        ? "Rejecting requires a written reason (R18). The contractor can resubmit a corrected RAMS as a new version."
-        : "Returning for changes requires a note explaining what is needed; the contractor resubmits a new version.";
+    private StatusKind GuidanceSeverity => Mode == RamsReviewMode.ApproveWithComments ? StatusKind.Info : StatusKind.Warning;
+
+    private string Label => Mode == RamsReviewMode.ApproveWithComments ? "Reviewer comments" : "Reason / note";
+
+    private string ConfirmText => Mode switch
+    {
+        RamsReviewMode.Reject => "Reject RAMS",
+        RamsReviewMode.Return => "Return for changes",
+        _ => "Approve with comments",
+    };
+
+    private string Guidance => Mode switch
+    {
+        RamsReviewMode.Reject => "Rejecting requires a written reason (R18). The contractor can resubmit a corrected RAMS as a new version.",
+        RamsReviewMode.Return => "Returning for changes requires a note explaining what is needed; the contractor resubmits a new version.",
+        _ => "Approving with comments records your remarks alongside the approval and makes this the live version operatives read and sign.",
+    };
 
     private void Confirm()
     {

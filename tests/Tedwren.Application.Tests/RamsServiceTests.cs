@@ -124,4 +124,68 @@ public sealed class RamsServiceTests
 
         Assert.False(await service.ApproveAsync(CompanyA, Guid.NewGuid(), "Mgr"));
     }
+
+    [Fact] // Approving makes the submission the live version operatives read and sign (spec Stage 3).
+    public async Task Approve_MakesLiveVersion()
+    {
+        var service = CreateSut();
+        var dto = await service.SubmitAsync(CompanyA, NewSubmission());
+        Assert.False(dto.IsLive);
+
+        await service.ApproveAsync(CompanyA, dto.Id, "Mgr");
+
+        var live = (await service.ListAsync(CompanyA)).Single();
+        Assert.Equal("Approved", live.Status);
+        Assert.True(live.IsLive);
+    }
+
+    [Fact] // Approve-with-comments needs a written note; with one it approves, records the comments and goes live.
+    public async Task ApproveWithComments_RequiresNote_AndGoesLive()
+    {
+        var service = CreateSut();
+        var dto = await service.SubmitAsync(CompanyA, NewSubmission());
+
+        await Assert.ThrowsAsync<ArgumentException>(() => service.ApproveWithCommentsAsync(CompanyA, dto.Id, "Mgr", "   "));
+
+        Assert.True(await service.ApproveWithCommentsAsync(CompanyA, dto.Id, "Mgr", "Watch the exclusion zone"));
+        var live = (await service.ListAsync(CompanyA)).Single();
+        Assert.Equal("ApprovedWithComments", live.Status);
+        Assert.Equal("Watch the exclusion zone", live.ReviewNote);
+        Assert.True(live.IsLive);
+    }
+
+    [Fact] // A RAMS registered from an uploaded document reuses the stored file and versions within its family.
+    public async Task RegisterFromDocument_ReusesFile_AndVersionsWithinFamily()
+    {
+        var service = CreateSut();
+        var familyId = Guid.NewGuid();
+
+        var v1 = await service.RegisterFromDocumentAsync(CompanyA,
+            new RegisterRamsFromDocumentRequest("Apex", "Method statement", "blob-123", familyId, null, null));
+        Assert.Equal(familyId, v1.FamilyId);
+        Assert.Equal(1, v1.Version);
+        Assert.True(v1.HasFile);            // reused the stored blob reference (no re-upload)
+        Assert.Equal("Submitted", v1.Status);
+
+        var v2 = await service.RegisterFromDocumentAsync(CompanyA,
+            new RegisterRamsFromDocumentRequest("Apex", "Method statement v2", "blob-456", familyId, null, null));
+        Assert.Equal(familyId, v2.FamilyId);
+        Assert.Equal(2, v2.Version);        // resubmits into the same family as the next version
+    }
+
+    [Fact] // Approving a newer version moves the live pointer off the earlier one (append-only history preserved).
+    public async Task Approve_NewVersion_MovesLivePointer()
+    {
+        var service = CreateSut();
+        var v1 = await service.SubmitAsync(CompanyA, NewSubmission());
+        await service.ApproveAsync(CompanyA, v1.Id, "Mgr");
+
+        var v2 = await service.SubmitAsync(CompanyA, NewSubmission(v1.FamilyId));
+        await service.ApproveAsync(CompanyA, v2.Id, "Mgr");
+
+        var all = await service.ListAsync(CompanyA);
+        Assert.Equal(2, all.Count);         // both versions retained (R4/R16)
+        Assert.True(all.Single(r => r.Version == 2).IsLive);
+        Assert.False(all.Single(r => r.Version == 1).IsLive);
+    }
 }

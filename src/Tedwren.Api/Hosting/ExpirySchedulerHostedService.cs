@@ -2,6 +2,7 @@ using Tedwren.Application.Attendance;
 using Tedwren.Application.Expiry;
 using Tedwren.Application.Forms;
 using Tedwren.Application.Jobs;
+using Tedwren.Application.Subcontractors;
 
 namespace Tedwren.Api.Hosting;
 
@@ -89,6 +90,14 @@ public sealed class ExpirySchedulerHostedService : BackgroundService
             {
                 var result = await reminders.RunAsync(DateTimeOffset.UtcNow, token);
                 return (result.AssignmentsEvaluated, result.RemindersSent);
+            }, cancellationToken);
+
+            // Subcontractor Onboarding spec §4 (beyond PRD, flag-gated): remind MCs of RAMS due for re-review.
+            var ramsReview = provider.GetRequiredService<RamsReviewCycleReminderJob>();
+            await runner.RunAsync(JobNames.RamsReviewReminder, async token =>
+            {
+                var result = await ramsReview.RunAsync(DateTimeOffset.UtcNow, token);
+                return (result.ConfigsEvaluated, result.RemindersSent);
             }, cancellationToken);
 
             // SF-19: flag anyone left signed in before today started.

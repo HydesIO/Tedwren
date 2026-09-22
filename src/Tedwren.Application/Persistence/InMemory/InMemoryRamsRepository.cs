@@ -25,6 +25,16 @@ public sealed class InMemoryRamsRepository : IRamsRepository
         return Task.FromResult(rows);
     }
 
+    /// <summary>Returns every version in a family for the company, newest version first.</summary>
+    public Task<IReadOnlyList<RamsSubmission>> GetByFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyList<RamsSubmission> rows = _rams.Values
+            .Where(r => r.CompanyId == companyId && r.FamilyId == familyId)
+            .OrderByDescending(r => r.Version)
+            .ToList();
+        return Task.FromResult(rows);
+    }
+
     /// <summary>Returns a single submission by id, or null if none exists.</summary>
     public Task<RamsSubmission?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_rams.TryGetValue(id, out var submission) ? submission : null);

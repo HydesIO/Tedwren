@@ -1,5 +1,6 @@
 using Tedwren.Abstractions.Contracts.Audit;
 using Tedwren.Abstractions.Contracts.Organisation;
+using Tedwren.Abstractions.Contracts.Rams;
 using Tedwren.Abstractions.Contracts.Trades;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
@@ -30,6 +31,7 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
     private readonly ICurrentUserService? _currentUser;
     private readonly IEmailSender? _email;
     private readonly ISubcontractorOnboardingConfigRepository? _subcontractorConfigs;
+    private readonly IRamsService? _rams;
 
     /// <summary>Default invite lifetime (SUB-18: 30 days), mirroring the onboarding link.</summary>
     private static readonly TimeSpan LinkLifetime = TimeSpan.FromDays(30);
@@ -56,7 +58,8 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
         IAuditService? audit = null,
         ICurrentUserService? currentUser = null,
         IEmailSender? email = null,
-        ISubcontractorOnboardingConfigRepository? subcontractorConfigs = null)
+        ISubcontractorOnboardingConfigRepository? subcontractorConfigs = null,
+        IRamsService? rams = null)
     {
         _invites = invites;
         _companies = companies;
@@ -67,6 +70,7 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
         _currentUser = currentUser;
         _email = email;
         _subcontractorConfigs = subcontractorConfigs;
+        _rams = rams;
     }
 
     /// <summary>Creates the trade company and its invitation link, returning the token + (optional) passcode.</summary>
@@ -150,8 +154,63 @@ public sealed class TradeOnboardingService : ITradeOnboardingService
             FileReference = fileReference,
         }, cancellationToken);
 
+        // Spec Stage 2→3: a RAMS upload from a configured subcontractor also enters the RAMS review queue.
+        await BridgeRamsIfApplicableAsync(invite, type, name, fileReference, cancellationToken);
+
         return await BuildViewAsync(invite, cancellationToken);
     }
+
+    /// <summary>
+    /// Bridges a subcontractor-uploaded RAMS document into the RAMS review queue (spec Stage 2→3): when the invite
+    /// has an onboarding configuration and the uploaded heading is a RAMS document, a RAMS submission is registered
+    /// against the inviting main contractor (the reviewer, R15), reusing the stored file reference. The submission
+    /// family is recorded on the configuration on the first upload so later uploads become new versions
+    /// (append-only, R4/R16). No-ops for a plain trade invite, when no RAMS service is wired, or a non-RAMS heading.
+    /// </summary>
+    private async Task BridgeRamsIfApplicableAsync(TradeInvite invite, string type, string name, string? fileReference, CancellationToken cancellationToken)
+    {
+        if (_rams is null || _subcontractorConfigs is null)
+        {
+            return;
+        }
+
+        if (!IsRamsHeading(type) && !IsRamsHeading(name))
+        {
+            return;
+        }
+
+        var config = await _subcontractorConfigs.GetBySubcontractorCompanyAsync(invite.CompanyId, cancellationToken);
+        if (config is null)
+        {
+            return;   // a plain trade invite has no RAMS review workflow
+        }
+
+        // Seed the family on the first RAMS upload so each later upload resubmits into it (append-only versioning).
+        if (config.RamsFamilyId is null)
+        {
+            config.RamsFamilyId = Guid.NewGuid();
+            await _subcontractorConfigs.UpdateAsync(config, cancellationToken);
+        }
+
+        var company = await _companies.GetByIdAsync(invite.CompanyId, cancellationToken);
+        await _rams.RegisterFromDocumentAsync(
+            config.InviterCompanyId,
+            new RegisterRamsFromDocumentRequest(
+                ContractorName: company?.Name ?? "Subcontractor",
+                Title: string.IsNullOrWhiteSpace(name) ? type : name,
+                FileReference: fileReference,
+                FamilyId: config.RamsFamilyId,
+                SiteId: null,
+                SiteName: null),
+            cancellationToken);
+    }
+
+    /// <summary>Whether a document heading denotes a RAMS (risk assessment / method statement) upload.</summary>
+    private static bool IsRamsHeading(string? heading) =>
+        !string.IsNullOrWhiteSpace(heading) &&
+        (heading.Contains("RAMS", StringComparison.OrdinalIgnoreCase) ||
+         heading.Contains("Risk Assessment", StringComparison.OrdinalIgnoreCase) ||
+         heading.Contains("Method Statement", StringComparison.OrdinalIgnoreCase));
 
     /// <summary>Submits the trade's documents for manager review (Invited/Returned → Submitted).</summary>
     public async Task<TradeInviteViewDto?> SubmitForReviewAsync(string token, string? passcode, CancellationToken cancellationToken = default)

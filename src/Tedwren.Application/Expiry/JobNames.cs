@@ -14,4 +14,7 @@ public static class JobNames
 
     /// <summary>The recurring-form due/reminder scan (PRD-Phase 2 checklist scheduling, R12).</summary>
     public const string FormReminder = "form-reminder";
+
+    /// <summary>The RAMS re-review cycle reminder scan (Subcontractor Onboarding spec §4; beyond PRD v6.4, flag-gated).</summary>
+    public const string RamsReviewReminder = "rams-review-reminder";
 }

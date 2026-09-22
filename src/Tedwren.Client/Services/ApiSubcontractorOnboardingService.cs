@@ -41,4 +41,10 @@ public sealed class ApiSubcontractorOnboardingService : ISubcontractorOnboarding
     public async Task<Gate1StatusDto> EvaluateGate1Async(Guid subcontractorCompanyId, CancellationToken cancellationToken = default) =>
         await _http.GetFromJsonAsync<Gate1StatusDto>($"api/subcontractor-onboarding/{subcontractorCompanyId}/gate1", cancellationToken)
         ?? new Gate1StatusDto(false, Array.Empty<Gate1RequirementDto>());
+
+    /// <summary>Returns the caller's subcontractors whose live RAMS is due for re-review as of <paramref name="asOf"/>.</summary>
+    public async Task<IReadOnlyList<RamsReviewDueDto>> GetSubcontractorsDueForRamsReviewAsync(DateTimeOffset asOf, CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<IReadOnlyList<RamsReviewDueDto>>(
+            $"api/subcontractor-onboarding/rams-review-due?asOf={Uri.EscapeDataString(asOf.ToString("o"))}", cancellationToken)
+        ?? Array.Empty<RamsReviewDueDto>();
 }

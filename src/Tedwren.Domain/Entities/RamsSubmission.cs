@@ -53,6 +53,14 @@ public sealed class RamsSubmission
     /// <summary>When it was reviewed (UTC; displayed in UK local time, R11).</summary>
     public DateTimeOffset? ReviewedUtc { get; set; }
 
+    /// <summary>
+    /// Whether this is the current live version of its family — the approved version operatives read and sign
+    /// (spec Stage 3: "the decision sets the live RAMS version"). Set when a version is Approved or
+    /// Approved-with-comments; any earlier live version in the family is cleared. Earlier versions are retained
+    /// (append-only, R4/R16) — only this pointer moves.
+    /// </summary>
+    public bool IsLive { get; set; }
+
     /// <summary>When it was submitted (UTC).</summary>
     public DateTimeOffset SubmittedUtc { get; init; } = DateTimeOffset.UtcNow;
 }

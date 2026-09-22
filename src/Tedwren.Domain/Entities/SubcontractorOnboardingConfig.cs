@@ -47,8 +47,22 @@ public sealed class SubcontractorOnboardingConfig
     /// <summary>Maximum induction quiz attempts before a manager reset is needed (spec §4; default 3, MC-6).</summary>
     public int InductionAttemptLimit { get; set; } = 3;
 
-    /// <summary>RAMS re-review cycle in months (6/9/12; spec §4). Null when not set. Captured; not yet enforced.</summary>
+    /// <summary>RAMS re-review cycle in months (6/9/12; spec §4). Null when not set. Drives re-review reminders (Phase 4).</summary>
     public int? RamsReviewCycleMonths { get; set; }
+
+    /// <summary>
+    /// The RAMS submission family this subcontractor's uploaded RAMS resubmits into (spec Stage 2→3). Set on the
+    /// first RAMS upload from the onboarding link; null until then. Links the subcontractor to its RAMS review
+    /// history and its live version.
+    /// </summary>
+    public Guid? RamsFamilyId { get; set; }
+
+    /// <summary>
+    /// When a RAMS re-review reminder was last sent for this subcontractor (UTC), or null if none yet. The
+    /// reminder engine (Phase 4, beyond PRD; behind the <c>subcontractor-onboarding</c> flag) uses it to fire at
+    /// most once per due window — the same idempotency guarantee as the recurring-form and SF-9 reminders.
+    /// </summary>
+    public DateTimeOffset? LastRamsReviewReminderUtc { get; set; }
 
     /// <summary>When the configuration was created (UTC).</summary>
     public DateTimeOffset CreatedUtc { get; set; }

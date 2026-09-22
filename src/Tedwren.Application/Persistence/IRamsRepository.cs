@@ -11,6 +11,9 @@ public interface IRamsRepository
     /// <summary>Returns a company's RAMS submissions, newest first.</summary>
     Task<IReadOnlyList<RamsSubmission>> GetByCompanyAsync(Guid companyId, CancellationToken cancellationToken = default);
 
+    /// <summary>Returns every version in a family for the company, newest version first (live-version management, spec Stage 3).</summary>
+    Task<IReadOnlyList<RamsSubmission>> GetByFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default);
+
     /// <summary>Returns a single submission by id, or null if none exists.</summary>
     Task<RamsSubmission?> GetAsync(Guid id, CancellationToken cancellationToken = default);
 

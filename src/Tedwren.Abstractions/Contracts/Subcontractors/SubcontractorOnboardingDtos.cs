@@ -53,6 +53,17 @@ public sealed record Gate1RequirementDto(string Heading, bool Satisfied, string?
 /// </summary>
 public sealed record Gate1StatusDto(bool Cleared, IReadOnlyList<Gate1RequirementDto> Requirements);
 
+/// <summary>
+/// A subcontractor whose live RAMS is due for re-review under its configured review cycle (spec §4). Surfaced to
+/// the main contractor so it can prompt a fresh review before the cycle lapses.
+/// </summary>
+public sealed record RamsReviewDueDto(
+    Guid SubcontractorCompanyId,
+    string ContractorName,
+    int ReviewCycleMonths,
+    DateTimeOffset LastApprovedUtc,
+    DateTimeOffset DueUtc);
+
 /// <summary>A subcontractor's stored onboarding configuration (spec Stage 1 / §4).</summary>
 public sealed record SubcontractorOnboardingConfigDto(
     Guid Id,

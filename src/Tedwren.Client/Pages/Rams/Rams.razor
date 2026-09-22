@@ -60,7 +60,7 @@
             new()
             {
                 Title = "Status", Value = r => r.Status, Filterable = true,
-                CellTemplate = r => @<span>@r.Status@(r.Overdue ? " · overdue" : "")</span>
+                CellTemplate = r => @<span>@r.Status@(r.Overdue ? " · overdue" : "")@(r.IsLive ? " · live" : "")</span>
             },
             new()
             {
@@ -69,6 +69,7 @@
                     @if (r.Status == "Submitted")
                     {
                         <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" OnClick="@(() => ApproveRams(r))">Approve</MudButton>
+                        <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ApproveWithCommentsRams(r))">Approve w/ comments</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Error" OnClick="@(() => RejectRams(r))">Reject</MudButton>
                         <MudButton Size="Size.Small" Variant="Variant.Text" OnClick="@(() => ReturnRams(r))">Return</MudButton>
                     }
@@ -103,22 +104,34 @@
         }
     }
 
-    private Task RejectRams(RamsSubmissionDto r) => ReviewRams(r, isReject: true);
+    private Task RejectRams(RamsSubmissionDto r) => ReviewRams(r, RamsReviewDialog.RamsReviewMode.Reject);
 
-    private Task ReturnRams(RamsSubmissionDto r) => ReviewRams(r, isReject: false);
+    private Task ReturnRams(RamsSubmissionDto r) => ReviewRams(r, RamsReviewDialog.RamsReviewMode.Return);
 
-    private async Task ReviewRams(RamsSubmissionDto r, bool isReject)
+    private Task ApproveWithCommentsRams(RamsSubmissionDto r) => ReviewRams(r, RamsReviewDialog.RamsReviewMode.ApproveWithComments);
+
+    private async Task ReviewRams(RamsSubmissionDto r, RamsReviewDialog.RamsReviewMode mode)
     {
-        var parameters = new DialogParameters<RamsReviewDialog> { { x => x.IsReject, isReject } };
-        var title = isReject ? "Reject RAMS" : "Return RAMS";
+        var parameters = new DialogParameters<RamsReviewDialog> { { x => x.Mode, mode } };
+        var title = mode switch
+        {
+            RamsReviewDialog.RamsReviewMode.Reject => "Reject RAMS",
+            RamsReviewDialog.RamsReviewMode.Return => "Return RAMS",
+            _ => "Approve RAMS with comments",
+        };
         var dialog = await Dialogs.ShowAsync<RamsReviewDialog>(title, parameters, TedwrenDialog.Small());
         if (await dialog.Result is { Canceled: false, Data: string note })
         {
-            var ok = isReject
-                ? await RamsSvc.RejectAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note)
-                : await RamsSvc.ReturnAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note);
-            Snackbar.Add(ok ? (isReject ? "RAMS rejected." : "RAMS returned.") : "Could not update the RAMS.",
-                ok ? Severity.Success : Severity.Error);
+            var (ok, message) = mode switch
+            {
+                RamsReviewDialog.RamsReviewMode.Reject =>
+                    (await RamsSvc.RejectAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note), "RAMS rejected."),
+                RamsReviewDialog.RamsReviewMode.Return =>
+                    (await RamsSvc.ReturnAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note), "RAMS returned."),
+                _ =>
+                    (await RamsSvc.ApproveWithCommentsAsync(Tenant.CurrentCompanyId, r.Id, string.Empty, note), "RAMS approved with comments."),
+            };
+            Snackbar.Add(ok ? message : "Could not update the RAMS.", ok ? Severity.Success : Severity.Error);
             if (ok) await LoadAsync();
         }
     }

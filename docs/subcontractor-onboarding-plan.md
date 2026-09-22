@@ -48,7 +48,12 @@ is the whole process, phased so each increment is usable and never breaks a comp
    `EvaluateGate1Async` + `/gate1` endpoint; `TradeInviteViewDto.Gate1`; `AddOperativeByLinkAsync` (fail-closed)
    + `by-link/{token}/operatives`; `TradeOnboard.razor` gate panel + gated add-operative. See `TODO.md` SO-3.
 4. **RAMS review cycle** — bridge sub RAMS upload into the existing `RamsSubmission` review; add
-   Approved-with-comments + live version; recurring cycle reminder behind the flag.
+   Approved-with-comments + live version; recurring cycle reminder behind the flag. **[Done]** — RAMS bridge in
+   `TradeOnboardingService`; `RamsStatus.ApprovedWithComments` + `RamsSubmission.IsLive` (live-version pointer);
+   `ApproveWithCommentsAsync`/`RegisterFromDocumentAsync`; flag-gated `RamsReviewCycleReminderJob` + due-list.
+   The recurring review cycle is beyond PRD v6.4 (§8.2 is per-submission), so the reminder engine is gated behind
+   the `subcontractor-onboarding` module and fails closed (reminder-only, never expires an approval). See
+   `TODO.md` SO-4.
 5. **Operative induction & accreditation gates (G2/G3/G4)** — reuse OTP/device (G2), server-scored quiz (G4,
    R5), SF-11 mandatory accreditation (G3). Mobile track: `Tedwren.Mobile.Core` + `Tedwren.Web.App` in lockstep.
 6. **Registers + one notification engine** — competency/induction/RAMS as projections over the existing
