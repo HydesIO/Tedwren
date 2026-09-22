@@ -397,11 +397,17 @@ if (backend.Mode != DataSourceMode.InMemory)
     await inductionSeeder.RunAsync();
 }
 
-// Seed the bootstrap admin for both modes (idempotent) so the console can be signed into (D1).
+// Seed the bootstrap admin for both modes (idempotent) so the console can be signed into (D1), then ensure the
+// published demo login accounts (the two demo-tenant admins, the platform admins at the demo password, and the
+// demo operative) are signable-in. The demo-login seed is gated on Demo:Enabled — off by default and refused in
+// Production by StartupSecurity — so its fixed credentials never reach a real deployment.
 using (var adminScope = app.Services.CreateScope())
 {
     var adminSeeder = adminScope.ServiceProvider.GetRequiredService<Tedwren.Application.Auth.AdminUserSeeder>();
     await adminSeeder.RunAsync();
+
+    var demoLoginSeeder = adminScope.ServiceProvider.GetRequiredService<Tedwren.Application.DemoData.DemoLoginSeeder>();
+    await demoLoginSeeder.RunAsync();
 }
 
 app.MapOrganisationEndpoints();

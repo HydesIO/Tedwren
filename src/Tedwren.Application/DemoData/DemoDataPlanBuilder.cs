@@ -65,7 +65,7 @@ public static class DemoDataPlanBuilder
     public static DemoDataPlan Build()
     {
         var now = DateTimeOffset.UtcNow;
-        var passwordHash = PasswordHasher.Hash("Demo123!");
+        var passwordHash = PasswordHasher.Hash(DemoCredentials.TenantPassword);
 
         var companies = new[]
         {

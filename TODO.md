@@ -569,6 +569,28 @@ data-surfacing, 4 larger features. **All four phases ✅ — all 27 issues deliv
 
 ## Completed
 
+### Demo/staging — auto-seed the published sign-in accounts at startup (22 Sep 2026)
+So a fresh demo/staging database is always signable-in without first running "Create demo data", a new
+`DemoLoginSeeder` runs at startup (in `Program.cs`, after `AdminUserSeeder`) and guarantees the documented demo
+logins work: `contractor@tedwren.com` / `subcontractor@tedwren.com` (Administrators of the two demo tenants,
+`Demo123!`), the demo operative identity behind `operative@tedwren.com` (the emulator's demo sign-in, `Demo123!`),
+and the named platform admins `leigh.hydes@` / `james.darby@` / `james.wheeler@` (`Admin123!`). Whole solution
+builds **0 warnings / 0 errors**; full suite green (Domain 74, DataAccess 10 +18 LocalDB-skipped, Client 30,
+Mobile.Core 129, Application 439 incl. 5 new, Web.App 29, Web 178, Api 231).
+- ✅ **Seeder.** `src/Tedwren.Application/DemoData/DemoLoginSeeder.cs` — idempotent + self-healing (creates when
+  missing; repairs a drifted password/active status so the published credential always works). It seeds the two
+  demo tenants + demo operative `Person`/`Engagement` (reusing `DemoDataPlanBuilder`), the two demo-tenant admins,
+  and heals the platform admins to the demo admin password.
+- ✅ **Fail-closed gate.** Runs only when `Demo:Enabled`, which `StartupSecurity` refuses to allow in Production —
+  so these fixed credentials can never reach a real deployment. Mirrors the operative demo sign-in's own gate.
+- ✅ **Shared credentials.** `DemoCredentials` holds `Demo123!` / `Admin123!` once; `DemoDataPlanBuilder` now uses
+  it, so the on-demand seed and the startup seed can't drift.
+- ✅ **Coexistence.** `DemoDataService.SeedAsync` creates companies/users/people/engagements skip-if-present (same
+  deterministic ids), so "Create demo data" still succeeds on top of the startup-seeded accounts.
+- ✅ Tests: `DemoLoginSeederTests` (5: all logins signable-in, tenants + operative seeded, no-op when disabled,
+  idempotent, heals a drifted password/suspension); existing `DemoDataServiceTests`/`DemoDataApiTests`/
+  `MobileDemoAuthApiTests` still green.
+
 ### Launch readiness — LR-4: object-storage `IImageStore` (S3-compatible, iDrive e2) (this change)
 Plan: `docs/next-phases-plan.md` (Track A, LR-4). Added a production-grade object store behind the existing
 `IImageStore` (R9), selectable by config — the database BLOB store stays the default so nothing changes until S3 is
