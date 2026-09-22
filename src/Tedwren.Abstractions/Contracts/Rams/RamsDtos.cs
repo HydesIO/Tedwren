@@ -43,3 +43,29 @@ public sealed record ReviewRamsRequest(string Note);
 /// </summary>
 public sealed record RegisterRamsFromDocumentRequest(
     string ContractorName, string Title, string? FileReference, Guid? FamilyId, Guid? SiteId, string? SiteName);
+
+/// <summary>
+/// The current live (approved) RAMS an operative must read and sign before starting (Gate 5). <see cref="HasFile"/>
+/// flags a stored document — the bytes are served only through the authorised file route, never a public URL (R9).
+/// </summary>
+public sealed record LiveRamsDto(
+    Guid Id,
+    Guid FamilyId,
+    int Version,
+    string Title,
+    string Reference,
+    string ContractorName,
+    bool HasFile,
+    string Status,
+    DateTimeOffset SubmittedUtc);
+
+/// <summary>An operative's request to sign a specific live RAMS submission (Gate 5).</summary>
+public sealed record SignRamsRequest(Guid RamsSubmissionId, string SignatureName);
+
+/// <summary>The recorded operative RAMS signature (Gate 5); <see cref="ExpiresUtc"/> is the re-sign deadline under the MC's review cycle, or null.</summary>
+public sealed record RamsAcknowledgementDto(
+    Guid Id,
+    Guid FamilyId,
+    int Version,
+    DateTimeOffset SignedUtc,
+    DateTimeOffset? ExpiresUtc);

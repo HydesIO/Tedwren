@@ -30,6 +30,7 @@ is the whole process, phased so each increment is usable and never breaks a comp
 | **Access period** (default 12 months) | **Beyond PRD** | Capture + persist; **no enforcement** yet (`// TODO` + flag). |
 | **RAMS review cycle** (recurring 6/9/12 months) | **Beyond PRD** — §8.2 RAMS review is per-submission, `hse`-gated | Persist + reminder-only scheduler behind the flag. |
 | **Induction-expiry alerts** in the SF-9 engine (Phase 6) | **Beyond PRD** — SF-9 names cards; SUB-4 adds company documents; induction expiry (MC-7) is not a named SF-9 source | Include induction as a third notification source, **gated per-company behind the `subcontractor-onboarding` flag** and fail-closed (mirrors the RAMS reminder). Cards + company documents stay ungated core (SF-9/SUB-4/SUB-5). |
+| **Operative must sign the live RAMS** at Gate 5 (Phase 7) | **Beyond PRD** — §506 requires only that an *approved* RAMS exists before that contractor's workers can start; it does not require a per-operative signature | Enforce the full spec Gate 5 (approved live RAMS **and** the operative has signed its current version) only where the `hse` module is held; recorded `NotRun` and never blocking otherwise (§406/§629). The signature is captured in the new `RamsAcknowledgement`; both the manager decision (MC-8) and the operative's own sign-in enforce it via one shared `RamsGate`. Propose adding the operative-signature condition to PRD §5/§8. |
 | **Subcontractor-issued induction** | **Conflicts with §6.1 permanent non-goal** | Resolve for the PRD: the operative completes the **MC's** induction template; do **not** build sub-issued induction. |
 | Device binding (console config) | Relates to **R17** (biometrics/DPIA = Phase 5) | Console side = config toggle only; real binding is the existing operative OTP/device mechanism. |
 | Spec actors SubcontractorAdmin / SiteManagement | Not in the `AccessRole` model | Map onto existing roles (MC Admin → `Administrator`; Site Management → `SiteManager`; Subcontractor Admin → anonymous TradeInvite link holder; Operative → `Person`+`Engagement`); **no new roles**. |
@@ -86,8 +87,19 @@ is the whole process, phased so each increment is usable and never breaks a comp
    gains `SourceLabel`). Dual migration `044_expiry_notification_source.sql` + EF `AddExpiryNotificationSource`.
    The register *pages* already existed (`/expiries`, `/induction-records`, `/rams`, `/documents`) and were reused.
    See `TODO.md` SO-6.
-7. **Site sign-in Gate 5** — replace the stubbed `SiteEntryService.CheckRamsAsync` with a real signed-approved-
-   RAMS check (MC-8 fifth check where `hse` held); new `RamsAcknowledgement`. Mobile track in lockstep.
+7. **Site sign-in Gate 5 + deferred Gate 3** — replace the stubbed `SiteEntryService.CheckRamsAsync` with a real
+   signed-approved-RAMS check (MC-8 fifth check where `hse` held), and land the deferred SF-11 Gate-3 accreditation
+   enforcement in `CheckCardsAsync`. Mobile track in lockstep. **[Done]** — new `RamsAcknowledgement` vertical
+   (domain `IsValid`, repo + InMemory + Dapper, EF record + dual migration `045_rams_acknowledgement.sql` +
+   `AddRamsAcknowledgement`, parity green; `IRamsRepository.GetLiveForFamilyAsync`). A single shared `RamsGate`
+   (`NotApplicable`/`NoApprovedRams`/`MustSign`/`Signed`) is consumed by **both** sign-in paths so they never diverge:
+   Path B (`SiteEntryService.CheckRamsAsync` → `DecisionCheck`, the five-check machinery R2/R3/R10/R14 reused) and
+   Path A (`AttendanceService.SignInAsync` blocks unsigned/unapproved RAMS, returns additive `SignInResult.RamsToSignId`
+   → "block + retry"). `CheckCardsAsync` blocks a missing legally-mandatory accreditation via `EvaluateGate3Async`
+   (advisory never blocks). Operative surface `/api/mobile/rams` (`RequireOperative`) `GET /live` + `POST /sign`;
+   `RamsApiClient` (both heads); emulator `RamsSign.razor` + `Attendance.razor` routing + home tile; native
+   `RamsSignPage.cs` + `SignInOutPage.cs` branch + home tile (lockstep, hand-reviewed). The **operative-must-sign**
+   condition is beyond §506 (see the discrepancy note above). See `TODO.md` SO-7.
 
 ## Phase 1 — as built
 

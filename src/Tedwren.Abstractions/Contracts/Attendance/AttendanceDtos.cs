@@ -15,8 +15,11 @@ public sealed record SignInRequest(
 /// The outcome of a sign-in. <see cref="SignedIn"/> is whether the worker is now recorded present.
 /// <see cref="Outcome"/> is "Accepted", "Flagged" or "Refused"; <see cref="SignedInElsewhere"/> names the
 /// other site when a sign-in is refused because the worker is already present there (SF-18).
+/// <see cref="RamsToSignId"/> is set when the sign-in is refused because the operative must first read and sign the
+/// current live RAMS (Gate 5); it carries the live RAMS id so the app can route straight to the sign screen and retry.
 /// </summary>
-public sealed record SignInResult(bool SignedIn, string Outcome, string? Reason, Guid RecordId, string? SignedInElsewhere);
+public sealed record SignInResult(
+    bool SignedIn, string Outcome, string? Reason, Guid RecordId, string? SignedInElsewhere, Guid? RamsToSignId = null);
 
 /// <summary>A worker's sign-out attempt.</summary>
 public sealed record SignOutRequest(

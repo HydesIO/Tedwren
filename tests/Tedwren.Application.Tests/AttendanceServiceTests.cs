@@ -1,7 +1,9 @@
 using Tedwren.Abstractions.Common;
 using Tedwren.Abstractions.Contracts.Attendance;
 using Tedwren.Application.Attendance;
+using Tedwren.Application.Entitlements;
 using Tedwren.Application.Persistence.InMemory;
+using Tedwren.Application.Rams;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 using Tedwren.Domain.ValueObjects;
@@ -143,5 +145,105 @@ public sealed class AttendanceServiceTests
 
         Assert.True(result.SignedIn);
         Assert.Equal("Accepted", result.Outcome);
+    }
+
+    // ---- Gate 5 (Phase 7): the operative's own sign-in enforces a signed, approved live RAMS -----------------
+
+    /// <summary>
+    /// Builds the service with the shared <see cref="RamsGate"/> wired, over in-memory RAMS/config/entitlement stores,
+    /// and a site + active engagement under one company (the site's MC). Returns the stores so a test seeds the RAMS
+    /// chain. The location is inside the boundary so a sign-in would be Accepted but for the RAMS gate.
+    /// </summary>
+    private static (AttendanceService Service, Site Site, Guid Company, InMemorySubcontractorOnboardingConfigRepository Configs, InMemoryRamsRepository Rams, InMemoryRamsAcknowledgementRepository Acks)
+        CreateRamsSut(bool hse = true)
+    {
+        var company = Guid.NewGuid();
+        var siteStore = new InMemorySiteStore(seed: false);
+        var attendanceStore = new InMemoryAttendanceStore(seed: false);
+        var orgStore = new InMemoryOrganisationStore(seed: false);
+        orgStore.Engagements[Guid.NewGuid()] = new Engagement { CompanyId = company, PersonId = Person, Name = "Alex Operative" };
+
+        var entitlements = new InMemoryEntitlementRepository();
+        if (hse)
+        {
+            entitlements.SetAsync(company, "hse", true).GetAwaiter().GetResult();
+        }
+
+        var configs = new InMemorySubcontractorOnboardingConfigRepository();
+        var rams = new InMemoryRamsRepository();
+        var acks = new InMemoryRamsAcknowledgementRepository();
+
+        var site = new Site { CompanyId = company, Name = "Alpha Site " + Guid.NewGuid(), Boundary = new Geofence(51.5074, -0.1278, 150) };
+        siteStore.Sites[site.Id] = site;
+
+        var sites = new InMemorySiteRepository(siteStore);
+        var engagements = new InMemoryEngagementRepository(orgStore);
+        var ramsGate = new RamsGate(sites, new EntitlementService(entitlements), configs, rams, acks, engagements);
+        var service = new AttendanceService(sites, new InMemorySitePropertyRepository(siteStore), new InMemoryAttendanceRepository(attendanceStore), engagements, ramsGate);
+        return (service, site, company, configs, rams, acks);
+    }
+
+    [Fact] // Gate 5 (block + retry) — an unsigned approved live RAMS refuses the sign-in and returns the RAMS to sign.
+    public async Task SignIn_IsBlocked_WhenRamsMustBeSigned()
+    {
+        var (service, site, company, configs, rams, _) = CreateRamsSut();
+        var familyId = Guid.NewGuid();
+        await configs.AddAsync(new SubcontractorOnboardingConfig
+        {
+            Id = Guid.NewGuid(), InviterCompanyId = company, SubcontractorCompanyId = company,
+            RamsFamilyId = familyId, CreatedUtc = DateTimeOffset.UtcNow,
+        });
+        var live = new RamsSubmission
+        {
+            CompanyId = company, FamilyId = familyId, Version = 1, Reference = "R1",
+            ContractorName = "Sub", Title = "RAMS", Status = RamsStatus.Approved, IsLive = true,
+        };
+        await rams.AddAsync(live);
+
+        var result = await service.SignInAsync(SignIn(site.Id, 51.5074, -0.1278));   // inside boundary
+
+        Assert.False(result.SignedIn);
+        Assert.Equal("Refused", result.Outcome);
+        Assert.Equal(live.Id, result.RamsToSignId);
+        Assert.Single(await service.GetSiteRecordsAsync(site.Id, 10));   // the refusal is recorded (SF-16)
+    }
+
+    [Fact] // NotApplicable (no subcontractor RAMS obligation) — sign-in behaves exactly as before (Accepted inside the boundary).
+    public async Task SignIn_IsUnchanged_WhenRamsNotApplicable()
+    {
+        var (service, site, _, _, _, _) = CreateRamsSut();   // hse held, but no config → NotApplicable
+
+        var result = await service.SignInAsync(SignIn(site.Id, 51.5074, -0.1278));
+
+        Assert.True(result.SignedIn);
+        Assert.Equal("Accepted", result.Outcome);
+        Assert.Null(result.RamsToSignId);
+    }
+
+    [Fact] // Signed — once the operative has signed the current live RAMS, their sign-in is admitted.
+    public async Task SignIn_IsAdmitted_WhenRamsSigned()
+    {
+        var (service, site, company, configs, rams, acks) = CreateRamsSut();
+        var familyId = Guid.NewGuid();
+        await configs.AddAsync(new SubcontractorOnboardingConfig
+        {
+            Id = Guid.NewGuid(), InviterCompanyId = company, SubcontractorCompanyId = company,
+            RamsFamilyId = familyId, CreatedUtc = DateTimeOffset.UtcNow,
+        });
+        await rams.AddAsync(new RamsSubmission
+        {
+            CompanyId = company, FamilyId = familyId, Version = 1, Reference = "R1",
+            ContractorName = "Sub", Title = "RAMS", Status = RamsStatus.Approved, IsLive = true,
+        });
+        await acks.AddAsync(new RamsAcknowledgement
+        {
+            CompanyId = company, PersonId = Person, FamilyId = familyId, Version = 1, SignatureName = "Alex Operative",
+        });
+
+        var result = await service.SignInAsync(SignIn(site.Id, 51.5074, -0.1278));
+
+        Assert.True(result.SignedIn);
+        Assert.Equal("Accepted", result.Outcome);
+        Assert.Null(result.RamsToSignId);
     }
 }

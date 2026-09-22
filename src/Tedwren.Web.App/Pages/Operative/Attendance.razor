@@ -3,6 +3,7 @@
 @inject AttendanceApiClient AttendanceApi
 @inject IConnectivityService Connectivity
 @inject WebGeolocation Geo
+@inject NavigationManager Nav
 
 @* Operative attendance sign-in / sign-out (M4) — mirrors the native SignInOutPage: online-only (R2/R3), an
    advisory geofence hint (SF-14), and subcontractor-safe wording ("recorded", never "permitted"/"denied", R18). *@
@@ -125,6 +126,13 @@
             else if (result.SignedInElsewhere is { } elsewhere)
             {
                 ShowResult($"You're already signed in at {elsewhere}. Sign out there first.", "warning");
+            }
+            else if (result.RamsToSignId is not null)
+            {
+                // Gate 5 (block + retry): the operative must read and sign the RAMS first — route them there.
+                ShowResult("You need to read and sign the site RAMS before you can sign in. Taking you there now…", "warning");
+                Nav.NavigateTo($"/operative/rams-sign?site={site.Id}");
+                return;
             }
             else
             {

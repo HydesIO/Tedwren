@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Tedwren.Abstractions.Common;
 using Tedwren.Abstractions.Contracts.Mobile;
 using Tedwren.Mobile.Controls.Controls;
@@ -20,6 +21,7 @@ public class SignInOutPage : ContentPage
     private readonly OperativeDataService _data;
     private readonly AttendanceApiClient _attendance;
     private readonly IConnectivityService _connectivity;
+    private readonly IServiceProvider _services;
 
     private readonly Picker _sitePicker = new() { Title = "Choose a site" };
     private readonly Label _statusLine = new() { FontAttributes = FontAttributes.Bold, Text = "Loading…" };
@@ -32,12 +34,14 @@ public class SignInOutPage : ContentPage
     private Guid? _currentSiteId;
     private bool _busy;
 
-    /// <summary>Builds the attendance page over the cached site list, the attendance client and connectivity.</summary>
-    public SignInOutPage(OperativeDataService data, AttendanceApiClient attendance, IConnectivityService connectivity)
+    /// <summary>Builds the attendance page over the cached site list, the attendance client, connectivity and the
+    /// service provider (used to open the RAMS sign page when a sign-in is blocked pending a signature, Gate 5).</summary>
+    public SignInOutPage(OperativeDataService data, AttendanceApiClient attendance, IConnectivityService connectivity, IServiceProvider services)
     {
         _data = data;
         _attendance = attendance;
         _connectivity = connectivity;
+        _services = services;
         Title = "Sign in / out";
 
         _hintLine.SetAppThemeColor(Label.TextColorProperty, TwPalette.TextSecondaryLight, TwPalette.TextSecondaryDark);
@@ -167,6 +171,14 @@ public class SignInOutPage : ContentPage
             else if (result.SignedInElsewhere is { } elsewhere)
             {
                 ShowResult($"You're already signed in at {elsewhere}. Sign out there first.", Severity.Warning);
+            }
+            else if (result.RamsToSignId is not null)
+            {
+                // Gate 5 (block + retry): the operative must read and sign the RAMS first — open the sign page, then
+                // they return here (nav pop) and sign in again.
+                ShowResult("You need to read and sign the site RAMS before you can sign in.", Severity.Warning);
+                await Navigation.PushAsync(_services.GetRequiredService<RamsSignPage>());
+                return;
             }
             else
             {

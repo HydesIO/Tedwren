@@ -4,6 +4,7 @@ using Tedwren.Abstractions.Contracts.Decisions;
 using Tedwren.Abstractions.Contracts.SiteEntry;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Persistence;
+using Tedwren.Application.Rams;
 using Tedwren.Domain.Entities;
 using Tedwren.Domain.Enums;
 
@@ -30,12 +31,13 @@ public sealed class SiteEntryService : ISiteEntryService
     private readonly IDecisionService _decisions;
     private readonly ISiteRepository _sites;
     private readonly ISitePropertyRepository _properties;
+    private readonly RamsGate _ramsGate;
 
     /// <summary>Creates the service over its collaborators.</summary>
     public SiteEntryService(
         IEngagementRepository engagements, IAttendanceRepository attendance, IInductionSessionRepository inductions,
         IQualificationService qualifications, IEntitlementService entitlements, IDecisionService decisions,
-        ISiteRepository sites, ISitePropertyRepository properties)
+        ISiteRepository sites, ISitePropertyRepository properties, RamsGate ramsGate)
     {
         _engagements = engagements;
         _attendance = attendance;
@@ -45,6 +47,7 @@ public sealed class SiteEntryService : ISiteEntryService
         _decisions = decisions;
         _sites = sites;
         _properties = properties;
+        _ramsGate = ramsGate;
     }
 
     /// <summary>Decides whether a worker may enter, records the decision, and returns the result (MC-8/R10/R14).</summary>
@@ -59,8 +62,8 @@ public sealed class SiteEntryService : ISiteEntryService
             await RunCheckAsync("Registered", () => CheckRegisteredAsync(request.CompanyId, request.PersonId, cancellationToken)),
             await RunCheckAsync("Not signed in elsewhere", () => CheckNotElsewhereAsync(request.PersonId, request.SiteId, cancellationToken)),
             await RunCheckAsync("Induction valid", () => CheckInductionAsync(request.CompanyId, request.PersonId, now, cancellationToken)),
-            await RunCheckAsync("Cards in date & confirmed", () => CheckCardsAsync(request.PersonId, cancellationToken)),
-            await RunCheckAsync("RAMS", () => CheckRamsAsync(request.CompanyId, cancellationToken)),
+            await RunCheckAsync("Cards in date & confirmed", () => CheckCardsAsync(request.CompanyId, request.PersonId, cancellationToken)),
+            await RunCheckAsync("RAMS", () => CheckRamsAsync(request.PersonId, request.SiteId, cancellationToken)),
         };
 
         var admittedByChecks = SiteEntryPolicy.IsAdmitted(checks);
@@ -165,8 +168,10 @@ public sealed class SiteEntryService : ISiteEntryService
             : new DecisionCheck("Induction valid", DecisionCheckOutcome.Failed, "Induction has expired — re-induction required");
     }
 
-    /// <summary>All qualification cards are in date and confirmed (SF-7/SF-8).</summary>
-    private async Task<DecisionCheck> CheckCardsAsync(Guid personId, CancellationToken cancellationToken)
+    /// <summary>All qualification cards are in date and confirmed (SF-7/SF-8), and every legally-mandatory accreditation
+    /// for the worker's trade is held and in date (Gate 3, SF-11/MC-8). Advisory (client-required/other) requirements
+    /// never block. The Gate-3 map is consulted against the worker's engaged trade for this company (R15).</summary>
+    private async Task<DecisionCheck> CheckCardsAsync(Guid companyId, Guid personId, CancellationToken cancellationToken)
     {
         var cards = await _qualifications.GetCardsForPersonAsync(personId, cancellationToken);
         var expired = cards.Where(c => c.State == ComplianceState.NonCompliant).Select(c => c.QualificationName).ToList();
@@ -180,18 +185,41 @@ public sealed class SiteEntryService : ISiteEntryService
             return new DecisionCheck("Cards in date & confirmed", DecisionCheckOutcome.Failed, "A qualification card is unconfirmed");
         }
 
+        // Gate 3 (SF-11): the worker's trade may legally require specific accreditations (e.g. Gas Safe). Block when a
+        // legally-mandatory one is missing or expired, naming it (MC-9). No trade on the engagement → nothing mandated.
+        var engagement = await _engagements.GetByCompanyAndPersonAsync(companyId, personId, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(engagement?.Trade))
+        {
+            var gate3 = await _qualifications.EvaluateGate3Async(personId, engagement.Trade!, companyId, cancellationToken);
+            if (!gate3.Cleared)
+            {
+                var missing = gate3.Requirements
+                    .Where(r => r.LegalMandatory && !r.Satisfied)
+                    .Select(r => r.Accreditation)
+                    .ToList();
+                return new DecisionCheck("Cards in date & confirmed", DecisionCheckOutcome.Failed,
+                    "Missing required accreditation: " + string.Join(", ", missing));
+            }
+        }
+
         return new DecisionCheck("Cards in date & confirmed", DecisionCheckOutcome.Passed, "All cards in date and confirmed");
     }
 
-    /// <summary>RAMS where the module is held; recorded as not-run when the customer does not hold it (R10). RAMS is
-    /// part of the "hse" module (ModuleCatalog: "Plant register, RAMS and safety records") — checking a non-existent
-    /// "rams" key here made the entitlement always fail closed, so the check never applied even for HSE customers.</summary>
-    private async Task<DecisionCheck> CheckRamsAsync(Guid companyId, CancellationToken cancellationToken)
+    /// <summary>The fifth check (MC-8): the subcontractor has an approved live RAMS (§506) and the operative has signed
+    /// its current version (spec Gate 5), evaluated by the shared <see cref="RamsGate"/> so the manager decision and the
+    /// operative's own sign-in never diverge. Recorded as not-run where the customer does not hold the "hse" module or the
+    /// worker has no subcontractor RAMS obligation, so the record still reconstructs and the customer is told (R10, §406).
+    /// RAMS is part of the "hse" module (ModuleCatalog: "Plant register, RAMS and safety records").</summary>
+    private async Task<DecisionCheck> CheckRamsAsync(Guid personId, Guid siteId, CancellationToken cancellationToken)
     {
-        var held = await _entitlements.IsEnabledAsync(companyId, "hse", cancellationToken);
-        return held
-            ? new DecisionCheck("RAMS", DecisionCheckOutcome.Passed, "RAMS acknowledged")
-            : new DecisionCheck("RAMS", DecisionCheckOutcome.NotRun, "RAMS module not held — check does not apply");
+        var result = await _ramsGate.EvaluateAsync(personId, siteId, cancellationToken);
+        var outcome = result.Status switch
+        {
+            RamsGateStatus.Signed => DecisionCheckOutcome.Passed,
+            RamsGateStatus.NotApplicable => DecisionCheckOutcome.NotRun,
+            _ => DecisionCheckOutcome.Failed,   // NoApprovedRams / MustSign block entry (R2, §506, MC-9)
+        };
+        return new DecisionCheck("RAMS", outcome, result.Detail);
     }
 
     /// <summary>Maps a domain check to the decision-store DTO.</summary>

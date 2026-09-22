@@ -35,6 +35,10 @@ public sealed class InMemoryRamsRepository : IRamsRepository
         return Task.FromResult(rows);
     }
 
+    /// <summary>Returns the current live version of a family for the company, or null when none is live (Gate 5).</summary>
+    public Task<RamsSubmission?> GetLiveForFamilyAsync(Guid companyId, Guid familyId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(_rams.Values.FirstOrDefault(r => r.CompanyId == companyId && r.FamilyId == familyId && r.IsLive));
+
     /// <summary>Returns a single submission by id, or null if none exists.</summary>
     public Task<RamsSubmission?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(_rams.TryGetValue(id, out var submission) ? submission : null);

@@ -131,7 +131,35 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   projections incl. email-only + entitlement-gating; multi-source engine idempotent per source+subject; digest merge
   ordered by date; tenant-scoped read union) + regression on the card-only path. Whole solution builds clean
   (0 warnings) and the full suite is green. Branch `claude/subcontractor-onboarding-phase-6` (off latest master).
-- ⏳ **SO-7 — Site sign-in Gate 5 (Phase 7; mobile track in lockstep).**
+- ✅ **SO-7 — Site sign-in Gate 5 + deferred Gate 3 (Phase 7; mobile track in lockstep).** The capstone: the
+  site-entry decision's fifth check (MC-8) now re-validates a **signed, approved, live RAMS**, and the SF-11
+  **Gate-3** accreditation enforcement deferred from Phase 5b lands in the cards check. New net-new
+  `RamsAcknowledgement` vertical (domain entity with `IsValid`, `IRamsAcknowledgementRepository` + InMemory + Dapper,
+  EF `RamsAcknowledgementRecord` + mapping + DbSet, dual migration `045_rams_acknowledgement.sql` + EF
+  `AddRamsAcknowledgement`, parity green; `IRamsRepository.GetLiveForFamilyAsync`). A single shared
+  `RamsGate` (Application) is the one source of truth for "is this operative cleared on RAMS at this site?" — it
+  resolves the site's MC, gates on the `hse` module (§406 → `NotApplicable`/NotRun when not held), finds the
+  operative's subcontractor config for that MC, requires an approved live RAMS (§506 → `NoApprovedRams`) that the
+  operative signed on its current version (spec Gate 5 → `MustSign`/`Signed`). **Both** sign-in paths consume it so
+  they never diverge: **Path B** — `SiteEntryService.CheckRamsAsync` maps `RamsGateResult`→`DecisionCheck`
+  (NotApplicable→NotRun, NoApprovedRams/MustSign→Failed with a specific reason MC-9, Signed→Passed), the rest of the
+  five-check machinery (R2/R3/R10/R14 <3s) reused unchanged; **Path A** — `AttendanceService.SignInAsync` blocks an
+  unsigned/unapproved RAMS before recording (SF-16), returning the new additive `SignInResult.RamsToSignId` so the
+  app routes to sign and retry ("block + retry"). `CheckCardsAsync` now also consults `EvaluateGate3Async` via the
+  worker's engaged trade and blocks a missing **legally-mandatory** accreditation (e.g. Gas Safe), naming it;
+  advisory requirements never block. Operative RAMS surface: `/api/mobile/rams` (`RequireOperative`, PersonId from the
+  token, R15) `GET /live` + `POST /sign`; `Mobile.Core` `RamsApiClient` registered in **both** heads with
+  `OperativeAuthMessageHandler`; emulator `Pages/Operative/RamsSign.razor` (+ a "Site RAMS" home tile) and
+  `Attendance.razor` routing on `RamsToSignId`; native `RamsSignPage.cs` + `SignInOutPage.cs` branch + home tile
+  (lockstep, hand-reviewed — MAUI heads not in CI). New tests: `RamsAcknowledgement.IsValid`; `RamsGate` (all four
+  statuses incl. stale-version); `SiteEntryService` RAMS map (pass when signed, block when unsigned, NotRun when hse
+  off) + Gate-3 block/clear; `AttendanceService` block-with-`RamsToSignId` / unchanged-when-NotApplicable /
+  admitted-when-signed; `/api/mobile/rams` live + sign (PersonId from token, 409 stale, 204 none, console-token
+  rejection); `RamsApiClient` (FakeHttp); bUnit `RamsSign` render + sign and `Attendance` RAMS routing; parity `045`.
+  Whole solution builds clean (0 warnings) and the full suite is green; existing MC-8 five-check tests, non-sub
+  attendance and the anonymous kiosk path stay green (regression). **Beyond-PRD flag:** the "operative must sign the
+  live version" condition goes beyond §506 (which requires only that an approved RAMS exists) — captured in
+  `docs/subcontractor-onboarding-plan.md`. Branch `claude/subcontractor-onboarding-phase-7` (off latest master).
 
 ---
 
