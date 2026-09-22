@@ -61,8 +61,19 @@ is the whole process, phased so each increment is usable and never breaks a comp
      (resolve-or-create the MC's own template, §6.1); `AttemptLimit` enforced + `ResetAsync` re-grants;
      `GetOrStartForPersonAsync` + `OperativeInductionService`; `/api/mobile/inductions/*` (`RequireOperative`, core);
      `InductionApiClient`; `Induction.razor` + `InductionPage.cs`. Migration `042_*` + EF `AddInductionTemplateLink`. See `TODO.md` SO-5a.
-   - **[5b Planned]** Accreditation / competency (Gate 3): SF-11 `LegalMandatory`/`ClientRequired`, seed Gas Safe,
-     map/type CRUD, a pure `Gate3Evaluator`, operative card upload (lockstep). Site-entry enforcement deferred to Phase 7.
+   - **[5b Done]** Accreditation / competency (Gate 3): SF-11 `TradeQualificationRequirement` gains
+     `LegalMandatory`/`ClientRequired`/`CompanyId`, `QualificationType` gains `CompanyId` (org-custom, Q21),
+     `QualificationCard` gains `CaptureClientId` (offline idempotency); **Gas Safe** seeded + mapped to "Gas Engineer"
+     as legally-mandatory, with an idempotent seeder upsert. Pure `Gate3Evaluator` (only a missing/expired
+     legally-mandatory accreditation blocks; advisory ones reported), reused by `EvaluateGate3Async`/`GetShortfallAsync`.
+     Operative card upload `/api/mobile/cards/*` (`RequireOperative`, core) + `CaptureApiClient` card methods +
+     `CardOutboxHandler` (offline outbox, lockstep both heads); emulator `AddAccreditation.razor` + native `AddCardPage.cs`,
+     "Add accreditation" entry + `MyCards` "still needed" shortfall (`OperativeDetailDto.MissingQualifications`).
+     Platform-admin CRUD (Q21) for the type library + trade→accreditation map (gated like `MasterDataService`;
+     type-delete guarded when referenced): console `/api/qualifications/{types,requirements}` endpoints,
+     `ApiQualificationService`, `AdminAccreditations.razor` + dialogs + nav. Migration `043_accreditation_map.sql` + EF
+     `AddAccreditationMap`. **Site-entry turnstile enforcement of G3 deferred to Phase 7** (the capability + evaluator
+     ship now; the `SiteEntryService.CheckCardsAsync` change lands with the RAMS Gate-5 rework). See `TODO.md` SO-5b.
 6. **Registers + one notification engine** — competency/induction/RAMS as projections over the existing
    expiry engine (SF-9); alerts to operative (SMS) + site team (email).
 7. **Site sign-in Gate 5** — replace the stubbed `SiteEntryService.CheckRamsAsync` with a real signed-approved-

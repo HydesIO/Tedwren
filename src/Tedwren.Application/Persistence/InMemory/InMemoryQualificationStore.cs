@@ -20,8 +20,8 @@ public sealed class InMemoryQualificationStore
     /// <summary>Qualification cards by id.</summary>
     public ConcurrentDictionary<Guid, QualificationCard> Cards { get; } = new();
 
-    /// <summary>Trade requirements (small list; scanned per lookup).</summary>
-    public IReadOnlyList<TradeQualificationRequirement> TradeRequirements { get; }
+    /// <summary>Trade requirements by id (SF-11 map; mutable so the mock mode supports the admin CRUD, Q21).</summary>
+    public ConcurrentDictionary<Guid, TradeQualificationRequirement> TradeRequirements { get; } = new();
 
     /// <summary>Creates the store with the full demo seed — the default library <em>and</em> the demo operatives'
     /// cards. This is the constructor DI resolves for the mock API host; unit tests call <c>(bool seed)</c> to
@@ -37,7 +37,6 @@ public sealed class InMemoryQualificationStore
     {
         if (!seed)
         {
-            TradeRequirements = Array.Empty<TradeQualificationRequirement>();
             return;
         }
 
@@ -46,7 +45,10 @@ public sealed class InMemoryQualificationStore
             Types[type.Id] = type;
         }
 
-        TradeRequirements = DefaultQualificationLibrary.TradeRequirements;
+        foreach (var requirement in DefaultQualificationLibrary.TradeRequirements)
+        {
+            TradeRequirements[requirement.Id] = requirement;
+        }
     }
 
     /// <summary>Seeds a few confirmed cards per demo operative, including one expiring soon (SF-9 warning window).</summary>

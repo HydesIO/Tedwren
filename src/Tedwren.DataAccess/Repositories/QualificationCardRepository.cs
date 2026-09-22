@@ -11,7 +11,7 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
     private const string Columns =
         "Id, PersonId, QualificationTypeId, CardNumber, HolderName, IssuedOn, ExpiresOn, CaptureSource, " +
         "ImageReference, VerificationState, NeedsReview, ConfirmedBy, ConfirmedUtc, SupersedesCardId, " +
-        "SupersededByCardId, CreatedUtc";
+        "SupersededByCardId, CaptureClientId, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public QualificationCardRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -79,10 +79,10 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
         ExecuteAsync(
             "INSERT INTO QualificationCards (Id, PersonId, QualificationTypeId, CardNumber, HolderName, IssuedOn, " +
             "ExpiresOn, CaptureSource, ImageReference, VerificationState, NeedsReview, ConfirmedBy, ConfirmedUtc, " +
-            "SupersedesCardId, SupersededByCardId, CreatedUtc) " +
+            "SupersedesCardId, SupersededByCardId, CaptureClientId, CreatedUtc) " +
             "VALUES (@Id, @PersonId, @QualificationTypeId, @CardNumber, @HolderName, @IssuedOn, @ExpiresOn, " +
             "@CaptureSource, @ImageReference, @VerificationState, @NeedsReview, @ConfirmedBy, @ConfirmedUtc, " +
-            "@SupersedesCardId, @SupersededByCardId, @CreatedUtc)",
+            "@SupersedesCardId, @SupersededByCardId, @CaptureClientId, @CreatedUtc)",
             ToParam(card),
             cancellationToken);
 
@@ -113,6 +113,7 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
         c.ConfirmedUtc,
         c.SupersedesCardId,
         c.SupersededByCardId,
+        c.CaptureClientId,
         c.CreatedUtc,
     };
 
@@ -134,6 +135,7 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
         ConfirmedUtc = r.ConfirmedUtc,
         SupersedesCardId = r.SupersedesCardId,
         SupersededByCardId = r.SupersededByCardId,
+        CaptureClientId = r.CaptureClientId,
         CreatedUtc = r.CreatedUtc,
     };
 
@@ -142,7 +144,7 @@ public sealed class QualificationCardRepository : RepositoryBase, IQualification
         Guid Id, Guid PersonId, Guid QualificationTypeId, string? CardNumber, string? HolderName,
         DateOnly? IssuedOn, DateOnly? ExpiresOn, int CaptureSource, string? ImageReference,
         int VerificationState, bool NeedsReview, string? ConfirmedBy, DateTimeOffset? ConfirmedUtc,
-        Guid? SupersedesCardId, Guid? SupersededByCardId, DateTimeOffset CreatedUtc);
+        Guid? SupersedesCardId, Guid? SupersededByCardId, Guid? CaptureClientId, DateTimeOffset CreatedUtc);
 
     /// <summary>Row shape for the grouped holder-count query.</summary>
     private sealed record HeldByRow(Guid TypeId, int Count);

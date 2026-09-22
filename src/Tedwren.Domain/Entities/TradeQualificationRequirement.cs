@@ -15,4 +15,16 @@ public sealed class TradeQualificationRequirement
 
     /// <summary>The qualification type the trade must hold.</summary>
     public required Guid QualificationTypeId { get; init; }
+
+    /// <summary>
+    /// Whether this accreditation is <b>legally required</b> for the trade (e.g. Gas Safe for gas work). A missing
+    /// or expired legal-mandatory accreditation blocks the operative at Gate 3; other requirements are advisory.
+    /// </summary>
+    public bool LegalMandatory { get; set; }
+
+    /// <summary>Whether the (main) contractor/client requires this accreditation over and above the legal minimum. Advisory at Gate 3.</summary>
+    public bool ClientRequired { get; set; }
+
+    /// <summary>The owning company for an org-custom requirement, or null for a global (platform-default) row the customer may adjust (Q21, R15).</summary>
+    public Guid? CompanyId { get; init; }
 }

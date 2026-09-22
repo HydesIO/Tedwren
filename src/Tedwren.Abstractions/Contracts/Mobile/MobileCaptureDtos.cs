@@ -21,6 +21,23 @@ public sealed record MobileReportEvidenceRequest(
     string? PhotoReference,
     DateTimeOffset CapturedUtc);
 
+/// <summary>
+/// An operative's offline-captured qualification card / accreditation (Subcontractor Onboarding spec Stage 4,
+/// Gate 3). The operative picks a <see cref="QualificationTypeId"/> and photographs the card; it is stored for a
+/// manager to confirm (SF-6), never auto-accepted. <see cref="ClientId"/> is the device-generated id + idempotency
+/// key so a retried sync never duplicates the card (R4/R16); <see cref="PhotoReference"/> is the reference returned
+/// by <c>/api/mobile/uploads</c> (null when no photo); <see cref="CapturedUtc"/> stamps the capture (R11, UTC).
+/// </summary>
+public sealed record MobileCaptureCardRequest(
+    Guid ClientId,
+    Guid QualificationTypeId,
+    string? CardNumber,
+    string? HolderName,
+    DateOnly? IssuedOn,
+    DateOnly? ExpiresOn,
+    string? PhotoReference,
+    DateTimeOffset CapturedUtc);
+
 /// <summary>A stored evidence item for the operative's confirmation / a future review surface. Photo is exposed only as a flag (R9).</summary>
 public sealed record EvidenceItemDto(
     Guid Id,

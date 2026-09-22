@@ -1,0 +1,156 @@
+@using Tedwren.Abstractions.Contracts.Qualifications
+@using Tedwren.Abstractions.Services
+@inject IQualificationService Qualifications
+@inject ISnackbar Snackbar
+
+@* Add or edit a trade→accreditation map row (SF-11). Adding maps a trade to an accreditation type; editing changes
+   only the legal-mandatory / client-required flags (the trade and accreditation are fixed once created). Editing can
+   also delete the mapping. Legal-mandatory rows block the operative at Gate 3; the others are advisory. *@
+
+<MudDialog>
+    <DialogContent>
+        <div class="tw-dialog-body">
+            <DialogGuidance Text="@(_isEdit
+                ? "Update how this accreditation applies to the trade. A legally-mandatory accreditation blocks the operative at Gate 3; client-required is advisory."
+                : "Map an accreditation to a trade. Every operative of this trade is then expected to hold it. Mark it legally-mandatory to block site entry at Gate 3 when it is missing or expired.")" />
+
+            <section class="tw-dialog-section">
+                <h3 class="tw-dialog-section__title">Mapping</h3>
+                <div class="tw-dialog-section__grid">
+                    @if (_isEdit)
+                    {
+                        <div>
+                            <div class="tw-dialog-field__label">Trade</div>
+                            <div class="tw-dialog-field__value">@Existing!.Trade</div>
+                        </div>
+                        <div>
+                            <div class="tw-dialog-field__label">Accreditation</div>
+                            <div class="tw-dialog-field__value">@Existing!.Accreditation</div>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="tw-dialog-body__full">
+                            <TedwrenTextField Label="Trade" @bind-Value="_trade" Required="true"
+                                              Placeholder="e.g. Gas Engineer"
+                                              Error="_submitted && string.IsNullOrWhiteSpace(_trade)"
+                                              ErrorText="A trade is required." />
+                        </div>
+                        <div class="tw-dialog-body__full">
+                            <TedwrenSelect T="QualificationTypeDto" Label="Accreditation" Required="true"
+                                           Options="Types" OptionText="@(t => t.Name)"
+                                           Value="_selectedType" ValueChanged="OnTypeChanged"
+                                           Placeholder="Select an accreditation…"
+                                           Error="_submitted && _selectedType is null"
+                                           ErrorText="An accreditation is required." />
+                        </div>
+                    }
+                    <TedwrenToggle Label="Legally mandatory" @bind-Value="_legalMandatory"
+                                   Description="Blocks the operative at Gate 3 when missing or expired." />
+                    <TedwrenToggle Label="Client required" @bind-Value="_clientRequired"
+                                   Description="Required by the contractor over the legal minimum (advisory)." />
+                </div>
+            </section>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        @if (_isEdit)
+        {
+            <MudButton Variant="Variant.Outlined" Color="Color.Error" OnClick="DeleteAsync" Disabled="_busy">Delete</MudButton>
+        }
+        <MudSpacer />
+        <MudButton Variant="Variant.Text" OnClick="@(() => MudDialog.Cancel())">Cancel</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SaveAsync" Disabled="_busy">
+            @(_isEdit ? "Save changes" : "Add mapping")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>The map row being edited, or null when adding a new one.</summary>
+    [Parameter] public TradeQualificationRequirementDto? Existing { get; set; }
+
+    /// <summary>The accreditation types to choose from when adding a mapping.</summary>
+    [Parameter] public IReadOnlyList<QualificationTypeDto> Types { get; set; } = Array.Empty<QualificationTypeDto>();
+
+    private string? _trade;
+    private QualificationTypeDto? _selectedType;
+    private bool _legalMandatory;
+    private bool _clientRequired;
+    private bool _submitted;
+    private bool _busy;
+
+    private bool _isEdit => Existing is not null;
+
+    protected override void OnInitialized()
+    {
+        if (Existing is not null)
+        {
+            _trade = Existing.Trade;
+            _legalMandatory = Existing.LegalMandatory;
+            _clientRequired = Existing.ClientRequired;
+        }
+    }
+
+    private void OnTypeChanged(QualificationTypeDto? type) => _selectedType = type;
+
+    // Persists the add/edit via IQualificationService, then closes with success so the page can refresh.
+    private async Task SaveAsync()
+    {
+        _submitted = true;
+        if (!_isEdit && (string.IsNullOrWhiteSpace(_trade) || _selectedType is null))
+        {
+            Snackbar.Add("A trade and an accreditation are required.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            if (_isEdit)
+            {
+                await Qualifications.UpdateTradeRequirementAsync(Existing!.Id,
+                    new UpdateTradeRequirementRequest(_legalMandatory, _clientRequired));
+            }
+            else
+            {
+                // Platform-admin management maintains the shared national map (Global: true).
+                await Qualifications.CreateTradeRequirementAsync(
+                    new CreateTradeRequirementRequest(_trade!.Trim(), _selectedType!.Id, _legalMandatory, _clientRequired, Global: true));
+            }
+
+            Snackbar.Add(_isEdit ? "Mapping updated." : "Mapping added.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Could not save the mapping: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Deletes the mapping row.
+    private async Task DeleteAsync()
+    {
+        _busy = true;
+        try
+        {
+            await Qualifications.DeleteTradeRequirementAsync(Existing!.Id);
+            Snackbar.Add("Mapping deleted.", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

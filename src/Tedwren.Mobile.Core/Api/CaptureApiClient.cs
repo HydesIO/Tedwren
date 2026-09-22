@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using Tedwren.Abstractions.Contracts.Mobile;
+using Tedwren.Abstractions.Contracts.Qualifications;
 
 namespace Tedwren.Mobile.Core.Api;
 
@@ -42,6 +43,18 @@ public sealed class CaptureApiClient
     public async Task ReportHazardAsync(MobileReportHazardRequest request, CancellationToken cancellationToken = default)
     {
         using var response = await _http.PostAsJsonAsync("api/mobile/hazards", request, cancellationToken);
+        response.EnsureSuccessStatusCode();
+    }
+
+    /// <summary>Returns the qualification-type library for the accreditation-type picker (Gate 3).</summary>
+    public async Task<IReadOnlyList<QualificationTypeDto>> GetCardTypesAsync(CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<IReadOnlyList<QualificationTypeDto>>("api/mobile/cards/types", cancellationToken)
+        ?? Array.Empty<QualificationTypeDto>();
+
+    /// <summary>Submits the operative's captured accreditation card (idempotent server-side on the request's client id, Gate 3).</summary>
+    public async Task UploadCardAsync(MobileCaptureCardRequest request, CancellationToken cancellationToken = default)
+    {
+        using var response = await _http.PostAsJsonAsync("api/mobile/cards", request, cancellationToken);
         response.EnsureSuccessStatusCode();
     }
 }

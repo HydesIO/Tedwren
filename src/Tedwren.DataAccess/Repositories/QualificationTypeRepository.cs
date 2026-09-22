@@ -8,7 +8,7 @@ namespace Tedwren.DataAccess.Repositories;
 public sealed class QualificationTypeRepository : RepositoryBase, IQualificationTypeRepository
 {
     private const string Columns =
-        "Id, Name, Category, Issuer, DefaultValidityMonths, IsCscsVerifiable, CreatedUtc";
+        "Id, Name, Category, Issuer, DefaultValidityMonths, IsCscsVerifiable, CompanyId, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
     public QualificationTypeRepository(IDbConnectionFactory connectionFactory) : base(connectionFactory)
@@ -33,14 +33,26 @@ public sealed class QualificationTypeRepository : RepositoryBase, IQualification
     /// <summary>Inserts a new qualification type.</summary>
     public Task AddAsync(QualificationType type, CancellationToken cancellationToken = default) =>
         ExecuteAsync(
-            "INSERT INTO QualificationTypes (Id, Name, Category, Issuer, DefaultValidityMonths, IsCscsVerifiable, CreatedUtc) " +
-            "VALUES (@Id, @Name, @Category, @Issuer, @DefaultValidityMonths, @IsCscsVerifiable, @CreatedUtc)",
+            "INSERT INTO QualificationTypes (Id, Name, Category, Issuer, DefaultValidityMonths, IsCscsVerifiable, CompanyId, CreatedUtc) " +
+            "VALUES (@Id, @Name, @Category, @Issuer, @DefaultValidityMonths, @IsCscsVerifiable, @CompanyId, @CreatedUtc)",
             new
             {
                 type.Id, type.Name, type.Category, type.Issuer,
-                type.DefaultValidityMonths, type.IsCscsVerifiable, type.CreatedUtc,
+                type.DefaultValidityMonths, type.IsCscsVerifiable, type.CompanyId, type.CreatedUtc,
             },
             cancellationToken);
+
+    /// <summary>Updates a type's editable fields (owner + created date are immutable).</summary>
+    public Task UpdateAsync(QualificationType type, CancellationToken cancellationToken = default) =>
+        ExecuteAsync(
+            "UPDATE QualificationTypes SET Name = @Name, Category = @Category, Issuer = @Issuer, " +
+            "DefaultValidityMonths = @DefaultValidityMonths, IsCscsVerifiable = @IsCscsVerifiable WHERE Id = @Id",
+            new { type.Id, type.Name, type.Category, type.Issuer, type.DefaultValidityMonths, type.IsCscsVerifiable },
+            cancellationToken);
+
+    /// <summary>Removes a qualification type (guarded by the service to types nothing references).</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
+        ExecuteAsync("DELETE FROM QualificationTypes WHERE Id = @Id", new { Id = id }, cancellationToken);
 
     /// <summary>Maps a queried row to the domain entity.</summary>
     private static QualificationType ToEntity(Row r) => new()
@@ -51,11 +63,12 @@ public sealed class QualificationTypeRepository : RepositoryBase, IQualification
         Issuer = r.Issuer,
         DefaultValidityMonths = r.DefaultValidityMonths,
         IsCscsVerifiable = r.IsCscsVerifiable,
+        CompanyId = r.CompanyId,
         CreatedUtc = r.CreatedUtc,
     };
 
     /// <summary>Flat row shape Dapper maps query results into.</summary>
     private sealed record Row(
         Guid Id, string Name, string? Category, string? Issuer,
-        int DefaultValidityMonths, bool IsCscsVerifiable, DateTimeOffset CreatedUtc);
+        int DefaultValidityMonths, bool IsCscsVerifiable, Guid? CompanyId, DateTimeOffset CreatedUtc);
 }

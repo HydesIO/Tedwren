@@ -191,6 +191,13 @@ public sealed class WorkforceService : IWorkforceService
         var inductionValid = latestInduction?.IsValid(now) ?? false;
         var (state, label) = ApplyInduction(cardState, applies, inductionValid);
 
+        // The accreditations the operative's trade requires but they do not currently hold or hold only expired
+        // (SF-11 / Gate 3): the company-scoped map is consulted so an MC's own custom requirements count (Q21).
+        // The gate itself is not enforced here (Phase 7); this only surfaces the shortfall on the cards screen.
+        var missingQualifications = string.IsNullOrWhiteSpace(engagement.Trade)
+            ? (IReadOnlyList<string>)Array.Empty<string>()
+            : (await _qualifications.GetShortfallAsync(engagement.PersonId, engagement.Trade, company.Id, cancellationToken)).MissingQualifications;
+
         return new OperativeDetailDto(
             engagement.PersonId,
             engagement.Id,
@@ -204,6 +211,7 @@ public sealed class WorkforceService : IWorkforceService
             label,
             qualifications,
             history,
+            missingQualifications,
             applies,
             inductionValid,
             InductionStatusLabel(applies, latestInduction, now),

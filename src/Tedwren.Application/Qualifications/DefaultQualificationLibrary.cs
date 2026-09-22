@@ -19,6 +19,7 @@ public static class DefaultQualificationLibrary
     private static readonly Guid Asbestos = new("11111111-1111-4111-8111-000000000005");
     private static readonly Guid WorkingAtHeight = new("11111111-1111-4111-8111-000000000006");
     private static readonly Guid ManualHandling = new("11111111-1111-4111-8111-000000000007");
+    private static readonly Guid GasSafe = new("11111111-1111-4111-8111-000000000008");
 
     /// <summary>The default qualification types (SF-12). Mirrors the sample library so mock/db agree.</summary>
     public static IReadOnlyList<QualificationType> Types { get; } = new List<QualificationType>
@@ -30,11 +31,14 @@ public static class DefaultQualificationLibrary
         new() { Id = Asbestos, Name = "Asbestos Awareness", Category = "Health & Safety", Issuer = "UKATA", DefaultValidityMonths = 12 },
         new() { Id = WorkingAtHeight, Name = "Working at Height", Category = "Health & Safety", Issuer = "IPAF", DefaultValidityMonths = 60 },
         new() { Id = ManualHandling, Name = "Manual Handling", Category = "Health & Safety", Issuer = "RoSPA", DefaultValidityMonths = 36 },
+        new() { Id = GasSafe, Name = "Gas Safe", Category = "Health & Safety", Issuer = "Gas Safe Register", DefaultValidityMonths = 60 },
     };
 
     /// <summary>
     /// Illustrative default trade requirements (SF-11): a CSCS card underpins every listed trade, with a
-    /// couple of trade-specific additions. The customer adjusts these (Q21); they are a starting point.
+    /// couple of trade-specific additions. <see cref="TradeQualificationRequirement.LegalMandatory"/> marks the
+    /// genuinely legally-required accreditations (Gas Safe for gas work) that block at Gate 3; the rest are
+    /// advisory. The customer adjusts these (Q21); they are a starting point, not invented compliance rules.
     /// </summary>
     public static IReadOnlyList<TradeQualificationRequirement> TradeRequirements { get; } = new List<TradeQualificationRequirement>
     {
@@ -47,5 +51,7 @@ public static class DefaultQualificationLibrary
         new() { Trade = "Site Supervisor", QualificationTypeId = CscsCard },
         new() { Trade = "Site Supervisor", QualificationTypeId = Sssts },
         new() { Trade = "Labourer", QualificationTypeId = CscsCard },
+        new() { Trade = "Gas Engineer", QualificationTypeId = CscsCard },
+        new() { Trade = "Gas Engineer", QualificationTypeId = GasSafe, LegalMandatory = true },
     };
 }

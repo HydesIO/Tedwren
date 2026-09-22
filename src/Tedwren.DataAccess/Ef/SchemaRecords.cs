@@ -70,6 +70,7 @@ public sealed class QualificationTypeRecord
     public string? Issuer { get; set; }
     public int DefaultValidityMonths { get; set; }
     public bool IsCscsVerifiable { get; set; }
+    public Guid? CompanyId { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
@@ -91,6 +92,7 @@ public sealed class QualificationCardRecord
     public DateTimeOffset? ConfirmedUtc { get; set; }
     public Guid? SupersedesCardId { get; set; }
     public Guid? SupersededByCardId { get; set; }
+    public Guid? CaptureClientId { get; set; }
     public DateTimeOffset CreatedUtc { get; set; }
 }
 
@@ -100,6 +102,9 @@ public sealed class TradeQualificationRequirementRecord
     public Guid Id { get; set; }
     public string Trade { get; set; } = string.Empty;
     public Guid QualificationTypeId { get; set; }
+    public bool LegalMandatory { get; set; }
+    public bool ClientRequired { get; set; }
+    public Guid? CompanyId { get; set; }
 }
 
 /// <summary>Schema row for the <c>ExpiryNotifications</c> table (SF-9).</summary>

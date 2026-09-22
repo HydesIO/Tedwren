@@ -51,8 +51,14 @@ public static class QualificationEndpoints
 
         group.MapGet("/people/{personId:guid}/shortfall",
                 async (Guid personId, string trade, IQualificationService service, CancellationToken cancellationToken) =>
-                    Results.Ok(await service.GetShortfallAsync(personId, trade, cancellationToken)))
+                    Results.Ok(await service.GetShortfallAsync(personId, trade, cancellationToken: cancellationToken)))
             .WithName("GetShortfall");
+
+        // Gate 3 (SF-11): whether the person holds every legally-mandatory accreditation for the trade (spec §2).
+        group.MapGet("/people/{personId:guid}/gate3",
+                async (Guid personId, string trade, IQualificationService service, CancellationToken cancellationToken) =>
+                    Results.Ok(await service.EvaluateGate3Async(personId, trade, cancellationToken: cancellationToken)))
+            .WithName("EvaluateGate3");
 
         // CSCS live verification (PRD-Phase 1). Resolves the caller's company server-side (R15) and applies the
         // §8.1 decision rules; the coordinator fails closed when the company does not hold the paid CSCS module.
@@ -68,7 +74,123 @@ public static class QualificationEndpoints
                 })
             .WithName("CscsCheck").RequireAuthorization("RequireWrite");
 
+        MapLibraryManagementEndpoints(group);
         return app;
+    }
+
+    /// <summary>
+    /// Maps the accreditation-library management endpoints (the qualification-type library SF-12 and the
+    /// trade→accreditation map SF-11; Q21). All writes need console write access; the platform-admin-vs-tenant
+    /// ownership split (shared rows are platform-admin only) is enforced inside <see cref="IQualificationService"/>,
+    /// so a customer Administrator cannot change the shared national library (R15).
+    /// </summary>
+    private static void MapLibraryManagementEndpoints(IEndpointRouteBuilder group)
+    {
+        // Qualification-type library (SF-12).
+        group.MapGet("/types/manage", async (IQualificationService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetQualificationTypesForManagementAsync(cancellationToken)))
+            .WithName("GetQualificationTypesForManagement").RequireAuthorization("RequireWrite");
+
+        group.MapPost("/types", async (CreateQualificationTypeRequest request, IQualificationService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var id = await service.CreateQualificationTypeAsync(request, cancellationToken);
+                    return Results.Created($"/api/qualifications/types/{id}", new { id });
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("CreateQualificationType").RequireAuthorization("RequireWrite");
+
+        group.MapPut("/types/{id:guid}", async (Guid id, UpdateQualificationTypeRequest request, IQualificationService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    await service.UpdateQualificationTypeAsync(id, request, cancellationToken);
+                    return Results.NoContent();
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("UpdateQualificationType").RequireAuthorization("RequireWrite");
+
+        group.MapDelete("/types/{id:guid}", async (Guid id, IQualificationService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    await service.DeleteQualificationTypeAsync(id, cancellationToken);
+                    return Results.NoContent();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("DeleteQualificationType").RequireAuthorization("RequireWrite");
+
+        // Trade→accreditation map (SF-11).
+        group.MapGet("/requirements", async (IQualificationService service, CancellationToken cancellationToken) =>
+                Results.Ok(await service.GetTradeRequirementsAsync(cancellationToken)))
+            .WithName("GetTradeRequirements").RequireAuthorization("RequireWrite");
+
+        group.MapPost("/requirements", async (CreateTradeRequirementRequest request, IQualificationService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    var id = await service.CreateTradeRequirementAsync(request, cancellationToken);
+                    return Results.Created($"/api/qualifications/requirements/{id}", new { id });
+                }
+                catch (ArgumentException ex)
+                {
+                    return Results.BadRequest(new { error = ex.Message });
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("CreateTradeRequirement").RequireAuthorization("RequireWrite");
+
+        group.MapPut("/requirements/{id:guid}", async (Guid id, UpdateTradeRequirementRequest request, IQualificationService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    await service.UpdateTradeRequirementAsync(id, request, cancellationToken);
+                    return Results.NoContent();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("UpdateTradeRequirement").RequireAuthorization("RequireWrite");
+
+        group.MapDelete("/requirements/{id:guid}", async (Guid id, IQualificationService service, CancellationToken cancellationToken) =>
+            {
+                try
+                {
+                    await service.DeleteTradeRequirementAsync(id, cancellationToken);
+                    return Results.NoContent();
+                }
+                catch (InvalidOperationException ex)
+                {
+                    return Results.Conflict(new { error = ex.Message });
+                }
+            })
+            .WithName("DeleteTradeRequirement").RequireAuthorization("RequireWrite");
     }
 
     /// <summary>Body for confirming a card — the card id comes from the route.</summary>

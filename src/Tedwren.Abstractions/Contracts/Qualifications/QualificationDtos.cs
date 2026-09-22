@@ -2,7 +2,10 @@ using Tedwren.Abstractions.Common;
 
 namespace Tedwren.Abstractions.Contracts.Qualifications;
 
-/// <summary>A qualification-type library row (SF-12) with the count of operatives currently holding it.</summary>
+/// <summary>
+/// A qualification-type library row (SF-12) with the count of operatives currently holding it. <see cref="CompanyId"/>
+/// owns an org-custom type (Q21, R15); <see cref="IsGlobal"/> is derived from a null company (a shared platform row).
+/// </summary>
 public sealed record QualificationTypeDto(
     Guid Id,
     string Name,
@@ -10,7 +13,33 @@ public sealed record QualificationTypeDto(
     string? Issuer,
     int DefaultValidityMonths,
     bool IsCscsVerifiable,
-    int HeldBy);
+    int HeldBy,
+    Guid? CompanyId = null,
+    bool IsGlobal = true);
+
+/// <summary>Request to add a qualification type to the library (SF-12). <paramref name="Global"/> is honoured only for a platform administrator; a tenant's type is scoped to its own company (Q21, R15).</summary>
+public sealed record CreateQualificationTypeRequest(
+    string Name, string? Category, string? Issuer, int DefaultValidityMonths, bool IsCscsVerifiable, bool Global);
+
+/// <summary>Request to update a qualification type's editable fields (name/category/issuer/validity/CSCS-verifiable).</summary>
+public sealed record UpdateQualificationTypeRequest(
+    string Name, string? Category, string? Issuer, int DefaultValidityMonths, bool IsCscsVerifiable);
+
+/// <summary>
+/// A trade→accreditation map row (SF-11): the trade, the required qualification type (with its display name), and the
+/// <see cref="LegalMandatory"/>/<see cref="ClientRequired"/> flags that drive Gate 3. <see cref="CompanyId"/> owns an
+/// org-custom row (Q21, R15); <see cref="IsGlobal"/> is derived from a null company (a shared platform row).
+/// </summary>
+public sealed record TradeQualificationRequirementDto(
+    Guid Id, string Trade, Guid QualificationTypeId, string Accreditation, bool LegalMandatory, bool ClientRequired,
+    Guid? CompanyId, bool IsGlobal);
+
+/// <summary>Request to add a trade→accreditation map row (SF-11). <paramref name="Global"/> is honoured only for a platform administrator; a tenant's row is scoped to its own company (Q21, R15).</summary>
+public sealed record CreateTradeRequirementRequest(
+    string Trade, Guid QualificationTypeId, bool LegalMandatory, bool ClientRequired, bool Global);
+
+/// <summary>Request to update a trade→accreditation map row's flags (legal-mandatory / client-required).</summary>
+public sealed record UpdateTradeRequirementRequest(bool LegalMandatory, bool ClientRequired);
 
 /// <summary>
 /// A qualification card held by a person, with the <b>status computed server-side from the expiry
@@ -52,7 +81,10 @@ public sealed record CaptureCardRequest(
     DateOnly? IssuedOn,
     DateOnly? ExpiresOn,
     bool NeedsReview,
-    string? ImageReference = null);
+    string? ImageReference = null,
+    // The client id of the mobile capture that created this card, for at-least-once idempotency; null for a
+    // console/onboarding capture.
+    Guid? CaptureClientId = null);
 
 /// <summary>Request to confirm a card by a named person (SF-6).</summary>
 public sealed record ConfirmCardRequest(Guid CardId, string ConfirmedBy);
@@ -69,3 +101,17 @@ public sealed record CompetencyShortfallDto(
     Guid PersonId,
     string Trade,
     IReadOnlyList<string> MissingQualifications);
+
+/// <summary>
+/// One Gate-3 accreditation requirement's status for an operative (Subcontractor Onboarding spec §2/§5, SF-11):
+/// whether a current (non-superseded, in-date) card satisfies it, whether it is legally mandatory (blocking) and,
+/// when not satisfied, why (<c>"Expired"</c> or <c>"Not held"</c>). Advisory requirements never block the gate.
+/// </summary>
+public sealed record Gate3RequirementDto(string Accreditation, bool LegalMandatory, bool Satisfied, string? Issue);
+
+/// <summary>
+/// The Gate-3 competency result for an operative (spec §2, e.g. Gas Safe): <see cref="Cleared"/> is true only when
+/// every legally-mandatory accreditation the trade requires is present and valid. Advisory requirements are
+/// reported but do not affect <see cref="Cleared"/>; no requirements clears vacuously.
+/// </summary>
+public sealed record Gate3StatusDto(bool Cleared, IReadOnlyList<Gate3RequirementDto> Requirements);

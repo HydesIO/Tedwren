@@ -36,8 +36,10 @@ public sealed class QualificationServiceTests
 
         var types = await service.GetQualificationTypesAsync();
 
-        Assert.Equal(7, types.Count);
+        Assert.Equal(8, types.Count);
         Assert.Contains(types, t => t.Name == "CSCS Card" && t.IsCscsVerifiable);
+        Assert.Contains(types, t => t.Name == "Gas Safe");   // seeded for Gate 3 (spec §2)
+        Assert.All(types, t => Assert.True(t.IsGlobal));      // default library ships as shared (global) rows
     }
 
     [Fact] // SF-5

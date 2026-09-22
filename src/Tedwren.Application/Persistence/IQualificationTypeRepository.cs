@@ -13,4 +13,10 @@ public interface IQualificationTypeRepository
 
     /// <summary>Persists a new qualification type.</summary>
     Task AddAsync(QualificationType type, CancellationToken cancellationToken = default);
+
+    /// <summary>Updates a qualification type's editable fields (name/category/issuer/validity).</summary>
+    Task UpdateAsync(QualificationType type, CancellationToken cancellationToken = default);
+
+    /// <summary>Removes a qualification type (guarded by the service to types nothing references).</summary>
+    Task DeleteAsync(Guid id, CancellationToken cancellationToken = default);
 }
