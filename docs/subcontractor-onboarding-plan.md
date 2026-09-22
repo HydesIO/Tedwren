@@ -56,6 +56,13 @@ is the whole process, phased so each increment is usable and never breaks a comp
    `TODO.md` SO-4.
 5. **Operative induction & accreditation gates (G2/G3/G4)** — reuse OTP/device (G2), server-scored quiz (G4,
    R5), SF-11 mandatory accreditation (G3). Mobile track: `Tedwren.Mobile.Core` + `Tedwren.Web.App` in lockstep.
+   **Split into 5a (induction / Gate 4) + 5b (accreditation / Gate 3).**
+   - **[5a Done]** Operative induction take-flow (native + emulator, lockstep): config gains `InductionTemplateId`
+     (resolve-or-create the MC's own template, §6.1); `AttemptLimit` enforced + `ResetAsync` re-grants;
+     `GetOrStartForPersonAsync` + `OperativeInductionService`; `/api/mobile/inductions/*` (`RequireOperative`, core);
+     `InductionApiClient`; `Induction.razor` + `InductionPage.cs`. Migration `042_*` + EF `AddInductionTemplateLink`. See `TODO.md` SO-5a.
+   - **[5b Planned]** Accreditation / competency (Gate 3): SF-11 `LegalMandatory`/`ClientRequired`, seed Gas Safe,
+     map/type CRUD, a pure `Gate3Evaluator`, operative card upload (lockstep). Site-entry enforcement deferred to Phase 7.
 6. **Registers + one notification engine** — competency/induction/RAMS as projections over the existing
    expiry engine (SF-9); alerts to operative (SMS) + site team (email).
 7. **Site sign-in Gate 5** — replace the stubbed `SiteEntryService.CheckRamsAsync` with a real signed-approved-

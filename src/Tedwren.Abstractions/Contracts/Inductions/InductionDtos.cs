@@ -74,7 +74,7 @@ public sealed record InductionSessionDto(
 /// so a newly-onboarded main contractor can run an induction immediately (SF-12). The customer refines the
 /// steps and questions afterwards.
 /// </summary>
-public sealed record CreateInductionTemplateRequest(Guid CompanyId, string Name, int ValidityDays, int PassMark);
+public sealed record CreateInductionTemplateRequest(Guid CompanyId, string Name, int ValidityDays, int PassMark, int AttemptLimit = 0);
 
 /// <summary>Request to start an induction for an operative (MC-1).</summary>
 public sealed record StartInductionRequest(Guid CompanyId, Guid TemplateId, Guid PersonId, string PersonName);
@@ -82,8 +82,13 @@ public sealed record StartInductionRequest(Guid CompanyId, Guid TemplateId, Guid
 /// <summary>Request to submit quiz answers (question id → chosen option index) for server-side scoring (R5).</summary>
 public sealed record SubmitQuizRequest(IReadOnlyDictionary<string, int> Answers);
 
-/// <summary>The outcome of a scored quiz attempt — score and pass/fail only; no answers are returned (R5).</summary>
-public sealed record QuizResultDto(int Correct, int Total, bool Passed, int AttemptCount);
+/// <summary>
+/// The outcome of a scored quiz attempt — score and pass/fail only; no answers are returned (R5).
+/// <paramref name="AttemptsExhausted"/> is true when the attempt limit is spent without a pass (MC-6/MC-15) and a
+/// manager reset is now required before another attempt; it is also returned (without scoring) if a submit is made
+/// once the limit is already spent.
+/// </summary>
+public sealed record QuizResultDto(int Correct, int Total, bool Passed, int AttemptCount, bool AttemptsExhausted = false);
 
 /// <summary>Request to finalise an induction: signature and the separate, optional consent (MC-5, MC-20).</summary>
 public sealed record FinalizeInductionRequest(string SignatureName, bool ConsentGiven);

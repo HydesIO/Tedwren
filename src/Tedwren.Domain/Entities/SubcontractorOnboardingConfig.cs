@@ -47,6 +47,13 @@ public sealed class SubcontractorOnboardingConfig
     /// <summary>Maximum induction quiz attempts before a manager reset is needed (spec §4; default 3, MC-6).</summary>
     public int InductionAttemptLimit { get; set; } = 3;
 
+    /// <summary>
+    /// The main contractor's induction template the subcontractor's operatives must complete (spec Stage 4 / Gate 4).
+    /// The induction is always the <b>MC's own</b> template (§6.1 — never sub-issued); this is resolved-or-created
+    /// from the induction settings above when the subcontractor is set up. Null only when no induction is configured.
+    /// </summary>
+    public Guid? InductionTemplateId { get; set; }
+
     /// <summary>RAMS re-review cycle in months (6/9/12; spec §4). Null when not set. Drives re-review reminders (Phase 4).</summary>
     public int? RamsReviewCycleMonths { get; set; }
 

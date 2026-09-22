@@ -43,6 +43,13 @@ public interface IInductionService
     /// <summary>Starts an induction, superseding the operative's prior induction for the same template (MC-1/MC-7).</summary>
     Task<InductionSessionDto> StartAsync(StartInductionRequest request, CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Returns the operative's current induction session for a template — resuming an in-progress or failed session,
+    /// or a still-valid passed one — and starts a fresh session only when there is none or the last pass has expired
+    /// (re-induction, MC-7). Used by the operative app's "my induction" surface so polling never clobbers progress.
+    /// </summary>
+    Task<InductionSessionDto> GetOrStartForPersonAsync(Guid companyId, Guid templateId, Guid personId, string personName, CancellationToken cancellationToken = default);
+
     /// <summary>Returns the device-facing session (steps + quiz without answers), or null (R5).</summary>
     Task<InductionSessionDto?> GetSessionAsync(Guid sessionId, CancellationToken cancellationToken = default);
 

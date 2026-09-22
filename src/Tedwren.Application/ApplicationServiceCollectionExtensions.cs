@@ -176,10 +176,11 @@ public static class ApplicationServiceCollectionExtensions
         return services;
     }
 
-    /// <summary>Registers the store-agnostic digital-induction service (MC-1–MC-7, MC-20, R5).</summary>
+    /// <summary>Registers the store-agnostic digital-induction service (MC-1–MC-7, MC-20, R5) and the operative-facing induction facade (Gate 4, mobile).</summary>
     public static IServiceCollection AddInductionCore(this IServiceCollection services)
     {
         services.AddScoped<IInductionService, Inductions.InductionService>();
+        services.AddScoped<Inductions.OperativeInductionService>();
         return services;
     }
 

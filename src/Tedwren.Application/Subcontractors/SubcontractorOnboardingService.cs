@@ -1,4 +1,5 @@
 using Tedwren.Abstractions.Contracts.Audit;
+using Tedwren.Abstractions.Contracts.Inductions;
 using Tedwren.Abstractions.Contracts.Organisation;
 using Tedwren.Abstractions.Contracts.Subcontractors;
 using Tedwren.Abstractions.Services;
@@ -26,14 +27,16 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
     private readonly ICurrentUserService? _currentUser;
     private readonly IAuditService? _audit;
     private readonly IRamsRepository? _rams;
+    private readonly IInductionService? _inductions;
 
     /// <summary>Default invite lifetime (SUB-18: 30 days), mirroring the onboarding/trade links.</summary>
     private static readonly TimeSpan LinkLifetime = TimeSpan.FromDays(30);
 
     /// <summary>
     /// Creates the service over the organisation service and the invite, config + document repositories. The RAMS
-    /// repository is optional (the review-cycle due-list needs it; the set-up/Gate-1 paths do not) so unit tests
-    /// can construct the service bare (the established pattern); the composition root supplies it.
+    /// repository (review-cycle due-list) and the induction service (resolving the MC's induction template, Gate 4)
+    /// are optional so unit tests can construct the service bare (the established pattern); the composition root
+    /// supplies them.
     /// </summary>
     public SubcontractorOnboardingService(
         IOrganisationService organisation,
@@ -42,7 +45,8 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
         ICompanyDocumentRepository documents,
         ICurrentUserService? currentUser = null,
         IAuditService? audit = null,
-        IRamsRepository? rams = null)
+        IRamsRepository? rams = null,
+        IInductionService? inductions = null)
     {
         _organisation = organisation;
         _invites = invites;
@@ -51,6 +55,7 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
         _currentUser = currentUser;
         _audit = audit;
         _rams = rams;
+        _inductions = inductions;
     }
 
     /// <summary>Sets up & configures a subcontractor, returning the shareable onboarding link and the created ids.</summary>
@@ -94,7 +99,14 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
         };
         await _invites.AddAsync(invite, cancellationToken);
 
-        // 3. Record the configuration (the Gate 1 required-document set, access period, SSSTS/SMSTS, induction, RAMS cycle).
+        // 3. Resolve the MC's induction template the operatives must complete (Gate 4). The induction is always the
+        //    MC's own (§6.1): reuse the MC's existing template when it has one, else create one from these settings.
+        var validityDays = request.InductionValidityDays <= 0 ? 365 : request.InductionValidityDays;
+        var passMark = Math.Max(0, request.InductionPassMark);
+        var attemptLimit = request.InductionAttemptLimit <= 0 ? 3 : request.InductionAttemptLimit;
+        var inductionTemplateId = await ResolveOrCreateInductionTemplateAsync(inviterCompanyId, validityDays, passMark, attemptLimit, cancellationToken);
+
+        // 4. Record the configuration (the Gate 1 required-document set, access period, SSSTS/SMSTS, induction, RAMS cycle).
         var config = new SubcontractorOnboardingConfig
         {
             Id = Guid.NewGuid(),
@@ -108,9 +120,10 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
                 .ToList(),
             SsstsRequired = request.SsstsRequired,
             SmstsRequired = request.SmstsRequired,
-            InductionValidityDays = request.InductionValidityDays <= 0 ? 365 : request.InductionValidityDays,
-            InductionPassMark = Math.Max(0, request.InductionPassMark),
-            InductionAttemptLimit = request.InductionAttemptLimit <= 0 ? 3 : request.InductionAttemptLimit,
+            InductionValidityDays = validityDays,
+            InductionPassMark = passMark,
+            InductionAttemptLimit = attemptLimit,
+            InductionTemplateId = inductionTemplateId,
             RamsReviewCycleMonths = request.RamsReviewCycleMonths,
             CreatedUtc = DateTimeOffset.UtcNow,
         };
@@ -231,6 +244,31 @@ public sealed class SubcontractorOnboardingService : ISubcontractorOnboardingSer
     /// <summary>The signed-in user's id for invite attribution, or null.</summary>
     private async Task<Guid?> CurrentUserIdAsync(CancellationToken cancellationToken) =>
         _currentUser is null ? null : (await _currentUser.GetCurrentAsync(cancellationToken)).UserId;
+
+    /// <summary>
+    /// Resolves the main contractor's induction template the subcontractor's operatives must complete (Gate 4).
+    /// The induction is always the MC's own (§6.1): reuse the MC's existing template when it has one, else create
+    /// one seeded from the shipped default and shaped by the configured induction settings. Returns null only when
+    /// no induction service is wired (unit tests that run the set-up flow bare).
+    /// </summary>
+    private async Task<Guid?> ResolveOrCreateInductionTemplateAsync(
+        Guid inviterCompanyId, int validityDays, int passMark, int attemptLimit, CancellationToken cancellationToken)
+    {
+        if (_inductions is null)
+        {
+            return null;
+        }
+
+        var existing = await _inductions.GetTemplatesAsync(inviterCompanyId, cancellationToken);
+        if (existing.Count > 0)
+        {
+            return existing[0].Id;
+        }
+
+        return await _inductions.CreateDefaultTemplateAsync(
+            new CreateInductionTemplateRequest(inviterCompanyId, "Site induction", validityDays, passMark, attemptLimit),
+            cancellationToken);
+    }
 
     /// <summary>Records an audit entry, best-effort — a failure never breaks the setup (SF-20).</summary>
     private async Task AuditAsync(Guid companyId, string action, string entity, string? reference, CancellationToken cancellationToken)

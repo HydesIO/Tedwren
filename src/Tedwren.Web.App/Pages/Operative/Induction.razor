@@ -1,0 +1,264 @@
+@page "/operative/induction"
+@using Tedwren.Abstractions.Contracts.Inductions
+@inject InductionApiClient InductionApi
+@inject NavigationManager Nav
+
+@* The operative induction take-flow (Gate 4) — mirrors the native InductionPage: resolves the operative's
+   main-contractor induction, works through the steps, takes the server-scored quiz (R5), then signs + consents to
+   finalise and receive the induction number. The quiz answers are scored on the server; a spent attempt limit
+   prompts a manager reset (MC-6). *@
+
+<div class="tw-screen">
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="5" /></TwCard>
+    }
+    else if (_session is null)
+    {
+        <h1 class="tw-screen__title">Induction</h1>
+        <TwCard>
+            <TwEmptyState Glyph="🎓" Title="No induction assigned"
+                          Message="Your main contractor hasn't set up an induction for you yet. Check back once you've been onboarded." />
+        </TwCard>
+    }
+    else if (_session.Status == "Passed")
+    {
+        <h1 class="tw-screen__title">@_session.TemplateName</h1>
+        <TwCard>
+            <div class="tw-kpi-row">
+                <div>
+                    <div class="tw-status-line">Induction complete</div>
+                    <div class="tw-muted">Reference @_session.CompletionReference</div>
+                </div>
+                <TwStatusPill Kind="TwStatusKind.Success" Text="Passed" />
+            </div>
+            @if (_session.ExpiresUtc is { } expiry)
+            {
+                <div class="tw-muted">Valid until @expiry.LocalDateTime.ToString("dd MMM yyyy")</div>
+            }
+        </TwCard>
+    }
+    else
+    {
+        <h1 class="tw-screen__title">@_session.TemplateName</h1>
+
+        <div class="tw-section__label">Steps</div>
+        <TwCard>
+            @foreach (var step in _session.Steps)
+            {
+                var done = _session.CompletedStepIds.Contains(step.Id);
+                <div class="tw-kpi-row tw-induction-step">
+                    <div>
+                        <div class="tw-status-line">@step.Label@(step.Required ? "" : " (optional)")</div>
+                    </div>
+                    @if (done)
+                    {
+                        <TwStatusPill Kind="TwStatusKind.Success" Text="Done" />
+                    }
+                    else
+                    {
+                        <button type="button" class="tw-btn" @onclick="() => CompleteStepAsync(step.Id)" disabled="@_busy">Mark as read</button>
+                    }
+                </div>
+            }
+        </TwCard>
+
+        @if (_session.Questions.Count > 0)
+        {
+            <div class="tw-section__label">Quiz</div>
+            <TwCard>
+                @foreach (var q in _session.Questions)
+                {
+                    <div class="tw-induction-question">
+                        <div class="tw-status-line">@q.Prompt</div>
+                        @for (var i = 0; i < q.Options.Count; i++)
+                        {
+                            var optionIndex = i;
+                            <label class="tw-radio">
+                                <input type="radio" name="@($"q_{q.Id}")"
+                                       checked="@(_answers.GetValueOrDefault(q.Id, -1) == optionIndex)"
+                                       @onchange="() => _answers[q.Id] = optionIndex" />
+                                <span>@q.Options[optionIndex]</span>
+                            </label>
+                        }
+                    </div>
+                }
+                <button type="button" class="tw-btn tw-btn--block" @onclick="SubmitQuizAsync" disabled="@(_busy || _quizPassed)">Submit answers</button>
+
+                @if (_quizResult is not null)
+                {
+                    <div class="tw-banner @(_quizResult.Passed ? "tw-banner--success" : "tw-banner--warning")">
+                        @if (_quizResult.Passed)
+                        {
+                            <text>Passed — @_quizResult.Correct of @_quizResult.Total correct.</text>
+                        }
+                        else if (_quizResult.AttemptsExhausted)
+                        {
+                            <text>No attempts left (@_quizResult.Correct of @_quizResult.Total). Ask your manager to reset your induction.</text>
+                        }
+                        else
+                        {
+                            <text>Not passed — @_quizResult.Correct of @_quizResult.Total correct. Review the steps and try again.</text>
+                        }
+                    </div>
+                }
+            </TwCard>
+        }
+
+        <div class="tw-section__label">Sign & complete</div>
+        <TwCard>
+            <label class="tw-field">
+                <span class="tw-field__label">Your full name</span>
+                <input class="tw-input" @bind="_signatureName" @bind:event="oninput" placeholder="e.g. Sam Taylor" />
+            </label>
+            <label class="tw-check">
+                <input type="checkbox" @bind="_consent" />
+                <span>I consent to my induction record being stored (optional).</span>
+            </label>
+
+            @if (_error is not null)
+            {
+                <div class="tw-banner tw-banner--danger">@_error</div>
+            }
+
+            <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="FinalizeAsync" disabled="@(!CanFinalize)">Complete induction</button>
+            @if (!CanFinalize && _error is null)
+            {
+                <div class="tw-screen__footnote">@FinalizeHint</div>
+            }
+        </TwCard>
+    }
+
+    <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>
+</div>
+
+@code {
+    private InductionSessionDto? _session;
+    private QuizResultDto? _quizResult;
+    private readonly Dictionary<string, int> _answers = new();
+    private string? _signatureName;
+    private bool _consent;
+    private bool _loading = true;
+    private bool _busy;
+    private bool _quizPassed;
+    private string? _error;
+
+    /// <summary>Loads (resuming or starting) the operative's current induction.</summary>
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        try
+        {
+            _session = await InductionApi.GetCurrentAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _session = null;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    /// <summary>All required steps are complete (a precondition for finalising, MC-4).</summary>
+    private bool RequiredStepsDone =>
+        _session is not null && _session.Steps.Where(s => s.Required).All(s => _session.CompletedStepIds.Contains(s.Id));
+
+    /// <summary>The quiz is satisfied — passed this session, or the template has no quiz (a "watch and sign" induction).</summary>
+    private bool QuizSatisfied => _session is not null && (_session.Questions.Count == 0 || _quizPassed);
+
+    /// <summary>Whether the induction can be finalised now (MC-4/MC-5).</summary>
+    private bool CanFinalize => !_busy && RequiredStepsDone && QuizSatisfied && !string.IsNullOrWhiteSpace(_signatureName);
+
+    /// <summary>A short hint explaining why the complete button is disabled.</summary>
+    private string FinalizeHint => !RequiredStepsDone
+        ? "Complete every required step first."
+        : !QuizSatisfied
+            ? "Pass the quiz to continue."
+            : "Enter your name to sign.";
+
+    private async Task CompleteStepAsync(string stepId)
+    {
+        if (_busy || _session is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var updated = await InductionApi.CompleteStepAsync(_session.Id, stepId);
+            if (updated is not null)
+            {
+                _session = updated;
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "Couldn't save that step. Check your connection and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SubmitQuizAsync()
+    {
+        if (_busy || _session is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            _quizResult = await InductionApi.SubmitQuizAsync(_session.Id, new SubmitQuizRequest(_answers));
+            _quizPassed = _quizResult?.Passed == true;
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "Couldn't score the quiz. Check your connection and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task FinalizeAsync()
+    {
+        if (!CanFinalize || _session is null)
+        {
+            return;
+        }
+
+        _busy = true;
+        _error = null;
+        try
+        {
+            var done = await InductionApi.FinalizeAsync(_session.Id, new FinalizeInductionRequest(_signatureName!.Trim(), _consent));
+            if (done is null)
+            {
+                _error = "Couldn't complete the induction. Make sure the steps are done and the quiz is passed.";
+            }
+            else
+            {
+                _session = done;
+            }
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _error = "Couldn't complete the induction. Check your connection and try again.";
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

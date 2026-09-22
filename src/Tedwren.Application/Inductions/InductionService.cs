@@ -77,6 +77,7 @@ public sealed class InductionService : IInductionService
             Name = request.Name.Trim(),
             ValidityDays = request.ValidityDays > 0 ? request.ValidityDays : DefaultInductionTemplate.Template.ValidityDays,
             PassMark = request.PassMark > 0 ? request.PassMark : DefaultInductionTemplate.Template.PassMark,
+            AttemptLimit = request.AttemptLimit > 0 ? request.AttemptLimit : DefaultInductionTemplate.Template.AttemptLimit,
             Steps = DefaultInductionTemplate.Template.Steps.ToList(),
             Questions = DefaultInductionTemplate.Template.Questions.ToList(),
         };
@@ -312,6 +313,24 @@ public sealed class InductionService : IInductionService
         return ToSessionDto(session, template);
     }
 
+    /// <summary>Resumes the operative's current session for a template, or starts a fresh one when there is none or the last pass has expired (MC-7). See the interface.</summary>
+    public async Task<InductionSessionDto> GetOrStartForPersonAsync(Guid companyId, Guid templateId, Guid personId, string personName, CancellationToken cancellationToken = default)
+    {
+        var template = await _templates.GetByIdAsync(templateId, cancellationToken)
+            ?? throw new InvalidOperationException("Induction template not found.");
+
+        // Resume an in-progress/failed session, or a still-valid pass; only start fresh (superseding) when there is
+        // none or the last pass has lapsed — so repeatedly opening "my induction" never discards progress.
+        var prior = await _sessions.GetLatestForPersonAsync(companyId, templateId, personId, cancellationToken);
+        var expiredPass = prior is { Status: InductionStatus.Passed } && !prior.IsValid(DateTimeOffset.UtcNow);
+        if (prior is not null && !expiredPass)
+        {
+            return ToSessionDto(prior, template);
+        }
+
+        return await StartAsync(new StartInductionRequest(companyId, templateId, personId, personName), cancellationToken);
+    }
+
     /// <summary>Returns the device-facing session (steps + quiz without answers), or null (R5).</summary>
     public async Task<InductionSessionDto?> GetSessionAsync(Guid sessionId, CancellationToken cancellationToken = default)
     {
@@ -450,6 +469,15 @@ public sealed class InductionService : IInductionService
             return null;
         }
 
+        // MC-6/MC-15: once the attempt limit is spent without a pass, further attempts are blocked until a manager
+        // reset (ResetAsync re-grants). Guard before scoring so a spent session cannot rack up more attempts.
+        var alreadyPassed = session.Status == InductionStatus.Passed
+            || (session.LastScore is { } prior && prior >= template.PassMark);
+        if (!alreadyPassed && template.AttemptLimit > 0 && session.AttemptCount >= template.AttemptLimit)
+        {
+            return new QuizResultDto(session.LastScore ?? 0, template.Questions.Count, false, session.AttemptCount, AttemptsExhausted: true);
+        }
+
         // R5: the correct answers live in the template on the server; scoring happens here, not on the device.
         var result = InductionQuiz.Score(template.Questions, request.Answers, template.PassMark);
         session.AttemptCount++;
@@ -457,7 +485,9 @@ public sealed class InductionService : IInductionService
         session.Status = result.Passed ? InductionStatus.InProgress : InductionStatus.Failed;
         await _sessions.UpdateAsync(session, cancellationToken);
 
-        return new QuizResultDto(result.Correct, result.Total, result.Passed, session.AttemptCount);
+        // Flag when this failed attempt was the last one allowed (the UI prompts to contact a manager, MC-6).
+        var exhausted = !result.Passed && template.AttemptLimit > 0 && session.AttemptCount >= template.AttemptLimit;
+        return new QuizResultDto(result.Correct, result.Total, result.Passed, session.AttemptCount, exhausted);
     }
 
     /// <summary>Finalises the induction once required steps are done and the quiz passed (MC-4/MC-5/MC-20).</summary>
@@ -513,6 +543,7 @@ public sealed class InductionService : IInductionService
 
         session.Status = InductionStatus.InProgress;
         session.LastScore = null;
+        session.AttemptCount = 0;   // MC-6: a manager reset re-grants the operative's quiz attempts.
         session.ResetReason = request.Reason;
         await _sessions.UpdateAsync(session, cancellationToken);
 

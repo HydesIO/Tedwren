@@ -80,6 +80,9 @@ public static class MauiProgram
         builder.Services.AddSingleton<IOutboxItemHandler, FormsOutboxHandler>();
         builder.Services.AddSingleton<IFormDraftStore>(sp => sp.GetRequiredService<EncryptedStore>());
 
+        // Operative induction take-flow (Gate 4): resolve-or-start, steps, server-scored quiz, finalise.
+        builder.Services.AddTedwrenClient<InductionApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
+
         // Manager / admin surface (M7; M8 adds silent refresh). The console-token session is now the manager auth
         // handler's refresher (renew the 8h token) as well as its expiry sink (re-login when the refresh is gone).
         builder.Services.AddSingleton<ManagerSessionManager>();
@@ -104,6 +107,7 @@ public static class MauiProgram
         builder.Services.AddTransient<ReportHazardPage>();
         builder.Services.AddTransient<FormsInboxPage>();
         builder.Services.AddTransient<FormFillPage>();
+        builder.Services.AddTransient<InductionPage>();
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
         builder.Services.AddTransient<ProfilePage>();

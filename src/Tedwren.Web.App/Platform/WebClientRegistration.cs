@@ -63,6 +63,9 @@ public static class WebClientRegistration
         services.AddTedwrenWebClient<FormsApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
         services.AddSingleton<IOutboxItemHandler, FormsOutboxHandler>();
 
+        // Operative induction take-flow (Gate 4): resolve-or-start, steps, server-scored quiz, finalise.
+        services.AddTedwrenWebClient<InductionApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
+
         // Manager / admin surface: the console-token session (silent refresh + expiry sink) and its typed clients.
         services.AddSingleton<ManagerSessionManager>();
         services.AddSingleton<IManagerSessionExpiredHandler>(sp => sp.GetRequiredService<ManagerSessionManager>());

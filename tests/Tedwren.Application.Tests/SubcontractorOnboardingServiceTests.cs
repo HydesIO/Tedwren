@@ -2,6 +2,7 @@ using Tedwren.Abstractions.Contracts.Identity;
 using Tedwren.Abstractions.Contracts.Subcontractors;
 using Tedwren.Abstractions.Contracts.Trades;
 using Tedwren.Abstractions.Services;
+using Tedwren.Application.Inductions;
 using Tedwren.Application.Organisation;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Application.Rams;
@@ -37,12 +38,13 @@ public sealed class SubcontractorOnboardingServiceTests
         SubcontractorOnboardingService Subs,
         TradeOnboardingService Trades,
         RamsService Rams,
+        InductionService Inductions,
         InMemorySubcontractorOnboardingConfigRepository Configs,
         InMemoryCompanyRepository Companies,
         InMemoryCompanyDocumentRepository Documents,
         InMemoryTradeInviteRepository Invites);
 
-    /// <summary>Builds the subcontractor + trade onboarding services (and the shared RAMS service the bridge feeds) over shared in-memory repositories, scoped to a tenant.</summary>
+    /// <summary>Builds the subcontractor + trade onboarding services (plus the shared RAMS + induction services they compose) over shared in-memory repositories, scoped to a tenant.</summary>
     private static Sut CreateSut(Guid tenant)
     {
         var orgStore = new InMemoryOrganisationStore(seed: false);
@@ -56,14 +58,16 @@ public sealed class SubcontractorOnboardingServiceTests
         var configs = new InMemorySubcontractorOnboardingConfigRepository();
         var ramsRepo = new InMemoryRamsRepository();
         var rams = new RamsService(ramsRepo, new InMemoryImageStore());
+        var inductionStore = new InMemoryInductionStore();
+        var inductions = new InductionService(new InMemoryInductionTemplateRepository(inductionStore), new InMemoryInductionSessionRepository(inductionStore));
         var currentUser = new StubCurrentUser(tenant);
 
-        var subs = new SubcontractorOnboardingService(organisation, invites, configs, documents, currentUser, audit: null, rams: ramsRepo);
+        var subs = new SubcontractorOnboardingService(organisation, invites, configs, documents, currentUser, audit: null, rams: ramsRepo, inductions: inductions);
         var trades = new TradeOnboardingService(
             invites, companies, documents, organisation, new InMemoryImageStore(),
             audit: null, currentUser: currentUser, email: null, subcontractorConfigs: configs, rams: rams);
 
-        return new Sut(subs, trades, rams, configs, companies, documents, invites);
+        return new Sut(subs, trades, rams, inductions, configs, companies, documents, invites);
     }
 
     private static SetupSubcontractorRequest SampleRequest(
@@ -287,5 +291,34 @@ public sealed class SubcontractorOnboardingServiceTests
         var due = Assert.Single(await sut.Subs.GetSubcontractorsDueForRamsReviewAsync(DateTimeOffset.UtcNow.AddMonths(7)));
         Assert.Equal(result.SubcontractorCompanyId, due.SubcontractorCompanyId);
         Assert.Equal(6, due.ReviewCycleMonths);
+    }
+
+    [Fact] // Gate 4 — setup creates and links the main contractor's own induction template (§6.1).
+    public async Task Setup_CreatesAndLinksMcInductionTemplate()
+    {
+        var sut = CreateSut(MainContractor);
+
+        var result = await sut.Subs.SetupAsync(SampleRequest());
+
+        var config = await sut.Configs.GetBySubcontractorCompanyAsync(result.SubcontractorCompanyId);
+        Assert.NotNull(config!.InductionTemplateId);
+
+        var templates = await sut.Inductions.GetTemplatesAsync(MainContractor);
+        Assert.Contains(templates, t => t.Id == config.InductionTemplateId);
+    }
+
+    [Fact] // The induction is the MC's own — a second subcontractor reuses the same template, not a duplicate (§6.1).
+    public async Task Setup_ReusesExistingMcInductionTemplate()
+    {
+        var sut = CreateSut(MainContractor);
+
+        var first = await sut.Subs.SetupAsync(SampleRequest());
+        var second = await sut.Subs.SetupAsync(SampleRequest());
+
+        var c1 = await sut.Configs.GetBySubcontractorCompanyAsync(first.SubcontractorCompanyId);
+        var c2 = await sut.Configs.GetBySubcontractorCompanyAsync(second.SubcontractorCompanyId);
+        Assert.NotNull(c1!.InductionTemplateId);
+        Assert.Equal(c1.InductionTemplateId, c2!.InductionTemplateId);
+        Assert.Single(await sut.Inductions.GetTemplatesAsync(MainContractor));   // one MC induction, reused
     }
 }

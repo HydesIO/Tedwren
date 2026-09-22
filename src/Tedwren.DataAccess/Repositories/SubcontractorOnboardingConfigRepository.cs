@@ -14,7 +14,7 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
 {
     private const string Columns =
         "Id, InviterCompanyId, SubcontractorCompanyId, TradeInviteId, AccessPeriodMonths, RequiredDocumentsJson, " +
-        "SsstsRequired, SmstsRequired, InductionValidityDays, InductionPassMark, InductionAttemptLimit, " +
+        "SsstsRequired, SmstsRequired, InductionValidityDays, InductionPassMark, InductionAttemptLimit, InductionTemplateId, " +
         "RamsReviewCycleMonths, RamsFamilyId, LastRamsReviewReminderUtc, CreatedUtc";
 
     /// <summary>Creates the repository over the connection factory.</summary>
@@ -27,10 +27,10 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         ExecuteAsync(
             "INSERT INTO SubcontractorOnboardingConfigs (Id, InviterCompanyId, SubcontractorCompanyId, TradeInviteId, " +
             "AccessPeriodMonths, RequiredDocumentsJson, SsstsRequired, SmstsRequired, InductionValidityDays, " +
-            "InductionPassMark, InductionAttemptLimit, RamsReviewCycleMonths, RamsFamilyId, LastRamsReviewReminderUtc, CreatedUtc) VALUES " +
+            "InductionPassMark, InductionAttemptLimit, InductionTemplateId, RamsReviewCycleMonths, RamsFamilyId, LastRamsReviewReminderUtc, CreatedUtc) VALUES " +
             "(@Id, @InviterCompanyId, @SubcontractorCompanyId, @TradeInviteId, @AccessPeriodMonths, @RequiredDocumentsJson, " +
             "@SsstsRequired, @SmstsRequired, @InductionValidityDays, @InductionPassMark, @InductionAttemptLimit, " +
-            "@RamsReviewCycleMonths, @RamsFamilyId, @LastRamsReviewReminderUtc, @CreatedUtc)",
+            "@InductionTemplateId, @RamsReviewCycleMonths, @RamsFamilyId, @LastRamsReviewReminderUtc, @CreatedUtc)",
             ToParameters(config), cancellationToken);
 
     /// <summary>Returns the configuration for a trade invite, or null.</summary>
@@ -76,7 +76,8 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
             "UPDATE SubcontractorOnboardingConfigs SET AccessPeriodMonths = @AccessPeriodMonths, " +
             "RequiredDocumentsJson = @RequiredDocumentsJson, SsstsRequired = @SsstsRequired, SmstsRequired = @SmstsRequired, " +
             "InductionValidityDays = @InductionValidityDays, InductionPassMark = @InductionPassMark, " +
-            "InductionAttemptLimit = @InductionAttemptLimit, RamsReviewCycleMonths = @RamsReviewCycleMonths, " +
+            "InductionAttemptLimit = @InductionAttemptLimit, InductionTemplateId = @InductionTemplateId, " +
+            "RamsReviewCycleMonths = @RamsReviewCycleMonths, " +
             "RamsFamilyId = @RamsFamilyId, LastRamsReviewReminderUtc = @LastRamsReviewReminderUtc WHERE Id = @Id",
             ToParameters(config), cancellationToken);
 
@@ -100,6 +101,7 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         c.InductionValidityDays,
         c.InductionPassMark,
         c.InductionAttemptLimit,
+        c.InductionTemplateId,
         c.RamsReviewCycleMonths,
         c.RamsFamilyId,
         c.LastRamsReviewReminderUtc,
@@ -122,6 +124,7 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
         InductionValidityDays = r.InductionValidityDays,
         InductionPassMark = r.InductionPassMark,
         InductionAttemptLimit = r.InductionAttemptLimit,
+        InductionTemplateId = r.InductionTemplateId,
         RamsReviewCycleMonths = r.RamsReviewCycleMonths,
         RamsFamilyId = r.RamsFamilyId,
         LastRamsReviewReminderUtc = r.LastRamsReviewReminderUtc,
@@ -132,6 +135,6 @@ public sealed class SubcontractorOnboardingConfigRepository : RepositoryBase, IS
     private sealed record Row(
         Guid Id, Guid InviterCompanyId, Guid SubcontractorCompanyId, Guid TradeInviteId, int AccessPeriodMonths,
         string? RequiredDocumentsJson, bool SsstsRequired, bool SmstsRequired, int InductionValidityDays,
-        int InductionPassMark, int InductionAttemptLimit, int? RamsReviewCycleMonths, Guid? RamsFamilyId,
-        DateTimeOffset? LastRamsReviewReminderUtc, DateTimeOffset CreatedUtc);
+        int InductionPassMark, int InductionAttemptLimit, Guid? InductionTemplateId, int? RamsReviewCycleMonths,
+        Guid? RamsFamilyId, DateTimeOffset? LastRamsReviewReminderUtc, DateTimeOffset CreatedUtc);
 }
