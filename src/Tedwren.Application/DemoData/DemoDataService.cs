@@ -116,16 +116,26 @@ public sealed class DemoDataService : IDemoDataService
             
             //await PurgeAsync(plan, cancellationToken);
 
+            // Companies, users, people and engagements are created skip-if-present: the startup demo-login seed
+            // (DemoLoginSeeder) may already have seeded the two demo tenants, the two demo-tenant admins and the
+            // demo operative under the same deterministic ids, so this on-demand full seed coexists with it rather
+            // than colliding on a duplicate key. The remaining record types are unique to this dataset.
             _progress.Advance("Companies");
             foreach (var company in plan.Companies)
             {
-                await _companies.AddAsync(company, cancellationToken);
+                if (await _companies.GetByIdAsync(company.Id, cancellationToken) is null)
+                {
+                    await _companies.AddAsync(company, cancellationToken);
+                }
             }
 
             _progress.Advance("Users & module access");
             foreach (var user in plan.Users)
             {
-                await _users.AddAsync(user, cancellationToken);
+                if (await _users.GetByIdAsync(user.Id, cancellationToken) is null)
+                {
+                    await _users.AddAsync(user, cancellationToken);
+                }
             }
             foreach (var (companyId, moduleKey) in plan.EnabledModules)
             {
@@ -141,11 +151,17 @@ public sealed class DemoDataService : IDemoDataService
             _progress.Advance("Operatives");
             foreach (var person in plan.People)
             {
-                await _people.AddAsync(person, cancellationToken);
+                if (await _people.GetByIdAsync(person.Id, cancellationToken) is null)
+                {
+                    await _people.AddAsync(person, cancellationToken);
+                }
             }
             foreach (var engagement in plan.Engagements)
             {
-                await _engagements.AddAsync(engagement, cancellationToken);
+                if (await _engagements.GetAsync(engagement.CompanyId, engagement.Id, cancellationToken) is null)
+                {
+                    await _engagements.AddAsync(engagement, cancellationToken);
+                }
             }
 
             _progress.Advance("Qualification cards");

@@ -587,6 +587,8 @@ public static class ApplicationServiceCollectionExtensions
     {
         services.AddSingleton<Tedwren.Application.DemoData.DemoDataProgressState>();
         services.AddScoped<IDemoDataService, Tedwren.Application.DemoData.DemoDataService>();
+        // Startup seed of the published demo login accounts (gated on Demo:Enabled, refused in Production).
+        services.AddScoped<Tedwren.Application.DemoData.DemoLoginSeeder>();
         return services;
     }
 
