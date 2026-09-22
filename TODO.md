@@ -113,7 +113,24 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
     `/api/mobile/cards` flow + idempotency + console-token rejection + CRUD auth; Web.App: bUnit AddAccreditation + MyCards
     shortfall). Whole solution builds clean (0 warnings) and the full suite is green. Site-entry turnstile enforcement of
     G3 is **deferred to Phase 7** (with the RAMS Gate-5 rework). Branch `claude/subcontractor-onboarding-phase-5b` (off latest master).
-- ⏳ **SO-6 — Registers + notification engine (Phase 6).**
+- ✅ **SO-6 — Registers + one notification engine (Phase 6).** Generalised the existing SF-9 expiry-warning engine,
+  the SUB-5 weekly digest and the upcoming-expiries read from **one source (cards) to three**: qualification cards
+  (SF-9), **company documents** (SUB-4 — insurances/accreditations/policies, the real gap) and **induction expiry**
+  (MC-7, a flagged extension gated per-company behind `subcontractor-onboarding`, fail-closed like the Phase-4 RAMS
+  reminder). New source-neutral projection `ExpiryItem` + `IExpirySource` with three providers
+  (`CardExpirySource` — engaging-company fan-out, unchanged behaviour; `CompanyDocumentExpirySource` — owning company,
+  email-only; `InductionExpirySource` — entitlement-gated, `ExpiresUtc`→`DateOnly`). The SF-9 idempotency log is now
+  **source-neutral**: `ExpiryNotification.CardId`→`SubjectId` + new `ExpirySource Source`, uniqueness
+  `(Source, SubjectId, Stage, Channel, Recipient)` so the three sources never collide; `INotificationLogRepository`,
+  Dapper + InMemory repos, EF record + mapping updated. `ExpiryWarningJob`/`WeeklyDigestJob`/`ExpiryQueryService` now
+  consume the sources; the schedule (60/30/7/0/−1), senders, scheduler and the fail-loud `JobHeartbeatMonitor` are
+  reused unchanged (no new job). Read + UI **extended, not duplicated**: `UpcomingExpiryDto` gains `SourceLabel` +
+  `SubjectId` (was card-only `CardId`/`QualificationName`); `/expiries` gains a filterable **Type** badge and the
+  dashboard "Expiring soon" widget + "Expiring in 30 days" KPI span all three sources. Dual migration
+  `044_expiry_notification_source.sql` + EF `AddExpiryNotificationSource`; EF↔raw parity green. New tests (source
+  projections incl. email-only + entitlement-gating; multi-source engine idempotent per source+subject; digest merge
+  ordered by date; tenant-scoped read union) + regression on the card-only path. Whole solution builds clean
+  (0 warnings) and the full suite is green. Branch `claude/subcontractor-onboarding-phase-6` (off latest master).
 - ⏳ **SO-7 — Site sign-in Gate 5 (Phase 7; mobile track in lockstep).**
 
 ---

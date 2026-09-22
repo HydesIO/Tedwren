@@ -11,9 +11,9 @@ public sealed class InMemoryNotificationLogRepository : INotificationLogReposito
     public InMemoryNotificationLogRepository(InMemoryExpiryStore store) => _store = store;
 
     /// <summary>Whether a matching warning has already been logged.</summary>
-    public Task<bool> ExistsAsync(Guid cardId, ExpiryWarningStage stage, NotificationChannel channel, string recipient, CancellationToken cancellationToken = default) =>
+    public Task<bool> ExistsAsync(ExpirySource source, Guid subjectId, ExpiryWarningStage stage, NotificationChannel channel, string recipient, CancellationToken cancellationToken = default) =>
         Task.FromResult(_store.Notifications.Any(n =>
-            n.CardId == cardId && n.Stage == stage && n.Channel == channel && n.Recipient == recipient));
+            n.Source == source && n.SubjectId == subjectId && n.Stage == stage && n.Channel == channel && n.Recipient == recipient));
 
     /// <summary>Records a sent warning.</summary>
     public Task AddAsync(ExpiryNotification notification, CancellationToken cancellationToken = default)

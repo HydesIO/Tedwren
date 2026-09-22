@@ -289,8 +289,8 @@
             .Take(10)
             .Select(e => new NotificationEntry(
                 MudBlazor.Icons.Material.Outlined.WarningAmber,
-                "Qualification expiring",
-                $"{e.QualificationName} — {DisplayText.Humanize(e.StatusLabel)}",
+                "Expiring soon",
+                $"{e.Label} — {DisplayText.Humanize(e.StatusLabel)}",
                 e.ExpiresOn?.ToString("dd MMM yyyy") ?? string.Empty,
                 e.DaysUntilExpiry <= 7 ? StatusKind.Danger : StatusKind.Warning,
                 Unread: true))

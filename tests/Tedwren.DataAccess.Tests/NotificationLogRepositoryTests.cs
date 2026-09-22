@@ -35,26 +35,28 @@ public sealed class NotificationLogRepositoryTests
 
         var log = new NotificationLogRepository(factory);
         var runs = new JobRunRepository(factory);
-        var cardId = Guid.NewGuid();
+        var subjectId = Guid.NewGuid();
         var jobName = "test-" + Guid.NewGuid();
         const string recipient = "integration@test.local";
 
         try
         {
-            Assert.False(await log.ExistsAsync(cardId, ExpiryWarningStage.ThirtyDays, NotificationChannel.Email, recipient));
+            Assert.False(await log.ExistsAsync(ExpirySource.Card, subjectId, ExpiryWarningStage.ThirtyDays, NotificationChannel.Email, recipient));
             await log.AddAsync(new ExpiryNotification
             {
-                CardId = cardId,
+                Source = ExpirySource.Card,
+                SubjectId = subjectId,
                 Stage = ExpiryWarningStage.ThirtyDays,
                 Channel = NotificationChannel.Email,
                 Recipient = recipient,
             });
-            Assert.True(await log.ExistsAsync(cardId, ExpiryWarningStage.ThirtyDays, NotificationChannel.Email, recipient));
+            Assert.True(await log.ExistsAsync(ExpirySource.Card, subjectId, ExpiryWarningStage.ThirtyDays, NotificationChannel.Email, recipient));
 
-            // SF-9: the unique index rejects a duplicate (card, stage, channel, recipient).
+            // SF-9: the unique index rejects a duplicate (source, subject, stage, channel, recipient).
             await Assert.ThrowsAnyAsync<Exception>(() => log.AddAsync(new ExpiryNotification
             {
-                CardId = cardId,
+                Source = ExpirySource.Card,
+                SubjectId = subjectId,
                 Stage = ExpiryWarningStage.ThirtyDays,
                 Channel = NotificationChannel.Email,
                 Recipient = recipient,
@@ -75,7 +77,7 @@ public sealed class NotificationLogRepositoryTests
         finally
         {
             using var connection = factory.Create();
-            await connection.ExecuteAsync("DELETE FROM ExpiryNotifications WHERE CardId = @cardId", new { cardId });
+            await connection.ExecuteAsync("DELETE FROM ExpiryNotifications WHERE SubjectId = @subjectId", new { subjectId });
             await connection.ExecuteAsync("DELETE FROM JobRuns WHERE JobName = @jobName", new { jobName });
         }
     }

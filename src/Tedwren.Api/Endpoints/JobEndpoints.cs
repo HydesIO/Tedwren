@@ -34,7 +34,7 @@ public static class JobEndpoints
                 await runner.RunAsync(JobNames.ExpiryScan, async token =>
                 {
                     result = await job.RunAsync(today, token);
-                    return (result.CardsEvaluated, result.NotificationsSent);
+                    return (result.ItemsEvaluated, result.NotificationsSent);
                 }, cancellationToken);
                 return Results.Ok(result);
             })

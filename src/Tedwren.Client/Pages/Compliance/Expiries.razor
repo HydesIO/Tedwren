@@ -9,7 +9,7 @@
 @* The drill-down the dashboard "Expiring in 30 days" tile and "View all expiries" link now open (UAT-003/004/005).
    Previously both dead-ended on the compliance page, which listed no expiries; this shows who and what is
    expiring, scoped to the tenant (R15), and each row opens the operative. *@
-<PageHeader Title="Upcoming expiries" Subtitle="Qualification cards due to expire in the next 30 days, or already expired (SF-8/SF-9)" />
+<PageHeader Title="Upcoming expiries" Subtitle="Cards, company documents and inductions due to expire in the next 30 days, or already expired (SF-9/SUB-4)" />
 
 <DashboardCard>
     <Body>
@@ -19,9 +19,9 @@
                    Loading="_loading"
                    ErrorMessage="@_error"
                    OnRetry="LoadAsync"
-                   SearchPlaceholder="Search operative or qualification…"
+                   SearchPlaceholder="Search operative, item or type…"
                    EmptyTitle="Nothing expiring"
-                   EmptyDescription="No qualification cards are expiring in the next 30 days."
+                   EmptyDescription="No cards, company documents or inductions are expiring in the next 30 days."
                    EmptyIcon="@Icons.Material.Outlined.EventAvailable"
                    OnRowClick="OpenOperative" />
     </Body>
@@ -76,7 +76,12 @@
         _columns = new()
         {
             new() { Title = "Operative", Value = e => e.PersonName ?? "—", Filterable = true },
-            new() { Title = "Qualification", Value = e => e.QualificationName, Filterable = true },
+            new() { Title = "Item", Value = e => e.Label, Filterable = true },
+            new()
+            {
+                Title = "Type", Value = e => e.SourceLabel, Filterable = true, Searchable = false,
+                CellTemplate = e => @<StatusPill Label="@e.SourceLabel" Status="StatusKind.Neutral" />
+            },
             new()
             {
                 Title = "Expires", Value = e => e.ExpiresOn ?? DateOnly.MaxValue, Searchable = false,

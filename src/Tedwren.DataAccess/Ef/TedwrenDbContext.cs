@@ -112,7 +112,7 @@ public sealed class TedwrenDbContext : DbContext
         {
             e.ToTable("ExpiryNotifications");
             e.Property(x => x.Recipient).HasMaxLength(256);
-            e.HasIndex(x => new { x.CardId, x.Stage, x.Channel, x.Recipient }).IsUnique();  // SF-9
+            e.HasIndex(x => new { x.Source, x.SubjectId, x.Stage, x.Channel, x.Recipient }).IsUnique();  // SF-9
         });
 
         model.Entity<JobRunRecord>(e =>

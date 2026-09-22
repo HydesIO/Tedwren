@@ -71,7 +71,7 @@ public sealed class ExpirySchedulerHostedService : BackgroundService
             await runner.RunAsync(JobNames.ExpiryScan, async token =>
             {
                 var result = await scan.RunAsync(today, token);
-                return (result.CardsEvaluated, result.NotificationsSent);
+                return (result.ItemsEvaluated, result.NotificationsSent);
             }, cancellationToken);
 
             if (DateTime.UtcNow.DayOfWeek == DayOfWeek.Monday)
