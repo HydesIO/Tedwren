@@ -109,7 +109,7 @@ public sealed class DemoLoginSeederTests
 
         // No account is duplicated on a second run (accounts are keyed by email/deterministic id).
         Assert.Equal(afterFirst, users.Users.Count);
-        Assert.Single(users.Users.Values.Where(u => string.Equals(u.Email, "contractor@tedwren.com", StringComparison.OrdinalIgnoreCase)));
+        Assert.Single(users.Users.Values, u => string.Equals(u.Email, "contractor@tedwren.com", StringComparison.OrdinalIgnoreCase));
     }
 
     [Fact]
