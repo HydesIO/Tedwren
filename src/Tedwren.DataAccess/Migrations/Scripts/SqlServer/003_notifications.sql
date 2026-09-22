@@ -12,9 +12,13 @@ CREATE TABLE dbo.ExpiryNotifications
 );
 
 -- SF-9: a given warning (card + stage + channel + recipient) is sent at most once.
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ExpiryNotifications_Unique')
-CREATE UNIQUE INDEX UX_ExpiryNotifications_Unique
-    ON dbo.ExpiryNotifications (CardId, Stage, Channel, Recipient);
+-- Guarded by CardId's existence (and wrapped in dynamic SQL, as 044 is) so a re-run after 044 has retired the
+-- card-only shape does not try to recreate this legacy index on the dropped CardId column — that bind failure
+-- ("Column name 'CardId' does not exist") aborts the whole startup migration run on every subsequent boot.
+IF COL_LENGTH('dbo.ExpiryNotifications', 'CardId') IS NOT NULL
+   AND NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = N'UX_ExpiryNotifications_Unique')
+    EXEC sp_executesql N'CREATE UNIQUE INDEX UX_ExpiryNotifications_Unique
+    ON dbo.ExpiryNotifications (CardId, Stage, Channel, Recipient);';
 
 IF OBJECT_ID(N'dbo.JobRuns', N'U') IS NULL
 CREATE TABLE dbo.JobRuns

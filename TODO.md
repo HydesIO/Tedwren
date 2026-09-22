@@ -436,6 +436,16 @@ surfaced defects the in-memory suite and the PostgreSQL run could not:
   each script as one batch, no `GO`), so SQL Server failed with 207 *"Invalid column name 'UnsubscribeToken'"* and
   the API **could not start** on a fresh commercial database. Wrapped the index in `EXEC(N'…')` (the established
   pattern from `023_company_orgtype`). PostgreSQL was unaffected (sequential statement execution).
+- ✅ **Startup crash on re-run — `003_notifications` vs `044_expiry_notification_source` (both providers).** `044`
+  (added with SO-6) migrates `ExpiryNotifications` off its card-only shape: it drops the `UX_ExpiryNotifications_Unique`
+  index **and the `CardId` column**. But `003` re-creates that legacy index guarded **only** on the index name, so on
+  every boot *after* `044` had run once, `003` found the index gone and tried to `CREATE UNIQUE INDEX … (CardId, …)` on
+  a table where `CardId` no longer existed → SQL Server 207 *"Column name 'CardId' does not exist"* (Postgres: the
+  analogous `cardid`), which **aborts the whole startup migration run** — the API can no longer start and every request
+  (login included) 500s with no CORS headers. Guarded `003`'s legacy-index creation on `CardId`'s existence
+  (`COL_LENGTH`, and dynamic SQL as `044` uses; a `DO` block on Postgres) so it no-ops once `044` has retired the
+  card-only shape, while still creating it on a fresh database before `044` runs. No data repair needed — an
+  already-migrated database is in the correct shape; only the re-run bind failure had to be removed.
 - ✅ **Schema drift: raw `MigrationRunner` scripts vs EF migrations (both providers) — CORE FLOW BREAK.**
   `PersonRepository` reads/writes `Persons.EmergencyContactName/EmergencyContactPhone` and `CompanyDocumentRepository`
   reads/writes `CompanyDocuments.FileReference/Version/SupersedesDocumentId/SupersededByDocumentId`, but those columns
