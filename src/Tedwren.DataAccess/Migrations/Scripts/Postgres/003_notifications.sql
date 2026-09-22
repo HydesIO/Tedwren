@@ -12,8 +12,17 @@ CREATE TABLE IF NOT EXISTS expirynotifications
 );
 
 -- SF-9: a given warning (card + stage + channel + recipient) is sent at most once.
-CREATE UNIQUE INDEX IF NOT EXISTS ux_expirynotifications_unique
-    ON expirynotifications (cardid, stage, channel, recipient);
+-- Guarded by cardid's existence so a re-run after 044 has retired the card-only shape does not try to recreate
+-- this legacy index on the dropped cardid column (which would abort the startup migration run on every boot).
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.columns
+               WHERE table_name = 'expirynotifications' AND column_name = 'cardid')
+       AND NOT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = 'ux_expirynotifications_unique') THEN
+        CREATE UNIQUE INDEX ux_expirynotifications_unique
+            ON expirynotifications (cardid, stage, channel, recipient);
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS jobruns
 (
