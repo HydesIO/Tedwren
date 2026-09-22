@@ -72,6 +72,42 @@
                            Disabled="_busy" OnClick="SubmitForReview">Submit for review</MudButton>
             }
         }
+
+        @* Gate 1 (spec §2): required-before-work documents must be valid before operatives can be added. *@
+        @if (_view.Gate1 is { } gate)
+        {
+            <div class="mt-6">
+                @if (gate.Cleared)
+                {
+                    <BannerAlert Severity="StatusKind.Success" Title="Ready to add operatives"
+                                 Message="All documents required before work are in. Add your operatives below." />
+                }
+                else
+                {
+                    <BannerAlert Severity="StatusKind.Warning" Title="Documents outstanding"
+                                 Message="These documents must be uploaded and in date before you can add operatives:" />
+                    <MudList T="string" Dense="true">
+                        @foreach (var req in gate.Requirements.Where(r => !r.Satisfied))
+                        {
+                            <MudListItem T="string" Icon="@Icons.Material.Outlined.ErrorOutline">
+                                @req.Heading — @req.Issue
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </div>
+
+            @if (gate.Cleared)
+            {
+                <MudText Typo="Typo.subtitle1" Class="mt-4 mb-1">Add an operative</MudText>
+                <TedwrenTextField Label="Full name" @bind-Value="_opName" Placeholder="Operative name" />
+                <TedwrenTextField Label="Mobile number" @bind-Value="_opMobile" InputType="InputType.Telephone" Placeholder="+44 …" />
+                <TedwrenTextField Label="Trade (optional)" @bind-Value="_opTrade" Placeholder="e.g. Electrical" />
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3"
+                           Disabled="@(_busy || string.IsNullOrWhiteSpace(_opName) || string.IsNullOrWhiteSpace(_opMobile))"
+                           OnClick="AddOperative">Add operative</MudButton>
+            }
+        }
     }
 </MudPaper>
 
@@ -86,6 +122,10 @@
     private string? _docName;
     private DateTime? _expiry;
     private IBrowserFile? _file;
+
+    private string? _opName;
+    private string? _opMobile;
+    private string? _opTrade;
 
     // The trade can submit while the invite is fresh or was returned for changes (not once it's with the reviewer).
     private bool _canSubmit => _view?.Status is "Invited" or "Returned";
@@ -140,6 +180,44 @@
             {
                 Snackbar.Add("This link cannot be opened.", Severity.Error);
             }
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    // Adds an operative from the link. The server re-checks Gate 1 and rejects (409) if it is not cleared.
+    private async Task AddOperative()
+    {
+        if (string.IsNullOrWhiteSpace(_opName) || string.IsNullOrWhiteSpace(_opMobile))
+        {
+            Snackbar.Add("Enter a name and mobile number.", Severity.Error);
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var updated = await Trades.AddOperativeByLinkAsync(_token, _passcode,
+                new AddTradeOperativeRequest(_opName!.Trim(), _opMobile!.Trim(),
+                    string.IsNullOrWhiteSpace(_opTrade) ? null : _opTrade!.Trim()));
+            if (updated is not null)
+            {
+                _view = updated;
+                _opName = null;
+                _opMobile = null;
+                _opTrade = null;
+                Snackbar.Add("Operative added.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("This link cannot be opened.", Severity.Error);
+            }
+        }
+        catch (InvalidOperationException ex)
+        {
+            Snackbar.Add(ex.Message, Severity.Error);
         }
         finally
         {

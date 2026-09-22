@@ -36,4 +36,9 @@ public sealed class ApiSubcontractorOnboardingService : ISubcontractorOnboarding
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<SubcontractorOnboardingConfigDto>(cancellationToken);
     }
+
+    /// <summary>Returns the subcontractor's Gate 1 status (whether every required-before-work document is present and valid).</summary>
+    public async Task<Gate1StatusDto> EvaluateGate1Async(Guid subcontractorCompanyId, CancellationToken cancellationToken = default) =>
+        await _http.GetFromJsonAsync<Gate1StatusDto>($"api/subcontractor-onboarding/{subcontractorCompanyId}/gate1", cancellationToken)
+        ?? new Gate1StatusDto(false, Array.Empty<Gate1RequirementDto>());
 }
