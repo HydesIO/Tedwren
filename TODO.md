@@ -160,6 +160,25 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   attendance and the anonymous kiosk path stay green (regression). **Beyond-PRD flag:** the "operative must sign the
   live version" condition goes beyond §506 (which requires only that an approved RAMS exists) — captured in
   `docs/subcontractor-onboarding-plan.md`. Branch `claude/subcontractor-onboarding-phase-7` (off latest master).
+- ✅ **SO — Demo dataset refreshed in line with SO-1…7.** The Product-Admin demonstration dataset
+  (`DemoDataPlanBuilder`) was the one seed untouched across the programme; brought back in line with the recent
+  changes. (1) Both demo companies now carry their typed `OrgType` (PRD §2 — `MainContractor` / `Subcontractor`),
+  so the default module bundle (SF-22), console shape and sign-in semantics (R18) resolve correctly instead of
+  reading as product-less. (2) Module access is set **per product** rather than one shared list: the main
+  contractor also gets **`hse`** so the RAMS / site-entry Gate-5 surface (SO-7) is visible; the subcontractor gets
+  its own bundle (no MC-only `inductions`). (3) The workforce now includes **Gas Engineer** operatives, some
+  holding and some deliberately missing the legally-mandatory **Gas Safe** accreditation, so the compliance
+  roll-up shows a genuine **Gate-3** shortfall (SF-11, SO-5b). The reference/default seeds (`MasterListSeed`↔raw
+  `038`, `DefaultQualificationLibrary`, `DefaultInductionTemplate`) were already current and verified consistent.
+  Whole solution builds clean (0 warnings); full suite green — demo seed counts (`≥30` cards, 31 operatives) and
+  idempotency hold, and `ModuleEntitlementConsistencyTests` still passes (every demo module key is a real
+  catalogue key). Branch `claude/seed-data-updates-uc02sh`.
+- ❗ **Known, separate from seed data:** the `subcontractor-onboarding` gate key (checked by
+  `InductionExpirySource` and `RamsReviewCycleReminderJob` via `IEntitlementService.IsEnabledAsync`) is **not** a
+  `ModuleCatalog` key, so the check fails closed and those beyond-PRD reminders can never be switched on through
+  the real service — an entitlement write for that key is a dead override. `ModuleEntitlementConsistencyTests`
+  guards demo/bundle keys against this but not gate-only keys. The demo deliberately does **not** set it. Needs a
+  product decision (add to the catalogue to make it enable-able, or leave dormant); not a seed-data change.
 
 ---
 

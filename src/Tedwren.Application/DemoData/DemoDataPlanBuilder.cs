@@ -20,15 +20,29 @@ public static class DemoDataPlanBuilder
     private static readonly Guid Smsts = new("11111111-1111-4111-8111-000000000003");
     private static readonly Guid FirstAid = new("11111111-1111-4111-8111-000000000004");
     private static readonly Guid WorkingAtHeight = new("11111111-1111-4111-8111-000000000006");
+    private static readonly Guid GasSafe = new("11111111-1111-4111-8111-000000000008");
 
-    // Catalogue module keys (ModuleCatalog): "time" and "compliance", NOT "timesheets"/"compliance-packs" — the
-    // latter were dead overrides for non-existent modules, so the demo never actually switched Time & Attendance on.
-    private static readonly string[] ModuleKeys = { "forms", "permits", "time", "inductions", "compliance" };
+    // Catalogue module keys (ModuleCatalog) enabled per product so each demo console reflects the product split
+    // (SF-22, ProductModuleBundles). The main contractor also gets HSE (RAMS + site-entry Gate 5, SO-7) so the
+    // safety features land; both get Forms/Permits (paid add-ons) to showcase them. Keys must be real catalogue
+    // keys — the old "timesheets"/"compliance-packs" strings were dead overrides that resolved to nothing.
+    private static readonly string[] MainModuleKeys =
+    {
+        "workforce", "compliance", "inductions", "reports", "time", "forms", "permits", "hse",
+    };
+
+    private static readonly string[] SubModuleKeys =
+    {
+        "workforce", "compliance", "reports", "time", "forms", "permits",
+    };
 
     private static readonly string[] Trades =
     {
         "Groundworks", "Bricklayer", "Electrician", "Scaffolder", "Site Supervisor",
         "Labourer", "Carpenter", "Plant Operator", "Steel Fixer", "Plasterer",
+        // Gas Engineer carries the legally-mandatory Gas Safe accreditation (SF-11, Gate 3) — some demo gas
+        // engineers hold it and some don't, so the compliance roll-up shows a Gate-3 shortfall (SO-5b).
+        "Gas Engineer",
     };
 
     // 25 uniquely-named operatives for the main contractor.
@@ -60,6 +74,9 @@ public static class DemoDataPlanBuilder
                 Id = DemoDataIds.MainCompanyId,
                 Name = "Demo Contractors Ltd",
                 Type = "Main Contractor",
+                // Typed product discriminator (PRD §2): drives the default module bundle (SF-22), the console
+                // shape (MC-23) and sign-in semantics (R18). Without it the tenant reads as product-less.
+                OrgType = OrgType.MainContractor,
                 Trade = "Principal Contractor",
                 RegistrationNumber = "DC0000001",
                 Address = "1 Riverside Way, London, SE1 2AA",
@@ -72,6 +89,9 @@ public static class DemoDataPlanBuilder
                 Id = DemoDataIds.SubCompanyId,
                 Name = "Demo Sub Contractors Ltd",
                 Type = "Subcontractor",
+                // Typed product discriminator (PRD §2): selects the subcontractor module bundle (SF-22), the
+                // console shape (SUB-24) and sign-in semantics (R18).
+                OrgType = OrgType.Subcontractor,
                 Trade = "Specialist Trades",
                 RegistrationNumber = "DS0000002",
                 Address = "42 Kiln Road, Manchester, M1 4BT",
@@ -91,12 +111,13 @@ public static class DemoDataPlanBuilder
         };
 
         var enabledModules = new List<(Guid, string)>();
-        foreach (var companyId in DemoDataIds.CompanyIds)
+        foreach (var key in MainModuleKeys)
         {
-            foreach (var key in ModuleKeys)
-            {
-                enabledModules.Add((companyId, key));
-            }
+            enabledModules.Add((DemoDataIds.MainCompanyId, key));
+        }
+        foreach (var key in SubModuleKeys)
+        {
+            enabledModules.Add((DemoDataIds.SubCompanyId, key));
         }
 
         var sites = BuildSites(now);
@@ -365,6 +386,27 @@ public static class DemoDataPlanBuilder
                 ExpiresOn = today.AddYears(2),
                 CaptureSource = CardCaptureSource.Photo,
                 VerificationState = CardVerificationState.CustomerChecked,
+            };
+        }
+
+        // Gas engineers need the legally-mandatory Gas Safe accreditation (SF-11, Gate 3). Even-indexed engineers
+        // hold a valid card; odd-indexed ones deliberately have none, so the compliance roll-up shows a genuine
+        // Gate-3 shortfall (a missing legal-mandatory accreditation blocks; advisory ones only warn — SO-5b).
+        if (trade == "Gas Engineer" && index % 2 == 0)
+        {
+            yield return new QualificationCard
+            {
+                Id = DemoDataIds.Derive($"card:{personKey}:gassafe"),
+                PersonId = personId,
+                QualificationTypeId = GasSafe,
+                CardNumber = $"GAS-{50000 + index:00000}",
+                HolderName = name,
+                IssuedOn = today.AddYears(-1),
+                ExpiresOn = today.AddYears(4),
+                CaptureSource = CardCaptureSource.Photo,
+                VerificationState = CardVerificationState.CustomerChecked,
+                ConfirmedBy = "Demo Main Compliance",
+                ConfirmedUtc = now.AddMonths(-2),
             };
         }
     }
