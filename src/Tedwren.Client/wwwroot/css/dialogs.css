@@ -66,3 +66,17 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* A read-only labelled value inside a dialog (e.g. a field fixed after creation): a small muted caption
+   over the value, matching the field label rhythm without an editable control. */
+.tw-dialog-field__label {
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--mud-palette-text-secondary);
+    margin-bottom: var(--spacing-4, 4px);
+}
+
+.tw-dialog-field__value {
+    font-size: .9rem;
+    color: var(--mud-palette-text-primary);
+}

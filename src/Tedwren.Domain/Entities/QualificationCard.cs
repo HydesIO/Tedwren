@@ -59,6 +59,13 @@ public sealed class QualificationCard
     /// <summary>The later card that superseded this one, if it has been renewed (SF-10).</summary>
     public Guid? SupersededByCardId { get; set; }
 
+    /// <summary>
+    /// The client-generated id of the mobile capture that created this card, or null for a console/onboarding
+    /// capture. The operative app queues captures in its offline outbox and retries at-least-once, so the mobile
+    /// card-upload endpoint dedupes on this id — a retried submit finds the existing card instead of duplicating it.
+    /// </summary>
+    public Guid? CaptureClientId { get; init; }
+
     /// <summary>When the card record was created (UTC).</summary>
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;
 

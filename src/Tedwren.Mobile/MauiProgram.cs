@@ -72,6 +72,7 @@ public static class MauiProgram
         builder.Services.AddTedwrenClient<CaptureApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
         builder.Services.AddSingleton<IOutboxItemHandler, EvidenceOutboxHandler>();
         builder.Services.AddSingleton<IOutboxItemHandler, HazardOutboxHandler>();
+        builder.Services.AddSingleton<IOutboxItemHandler, CardOutboxHandler>();   // Gate 3 accreditation upload
         builder.Services.AddSingleton<SyncEngine>();
 
         // Forms & inspection engine (M6): the forms client, its outbox handler (auto-discovered by SyncEngine) and
@@ -110,6 +111,7 @@ public static class MauiProgram
         builder.Services.AddTransient<InductionPage>();
         builder.Services.AddTransient<MyHoursPage>();
         builder.Services.AddTransient<MyCardsPage>();
+        builder.Services.AddTransient<AddCardPage>();
         builder.Services.AddTransient<ProfilePage>();
 
         // Manager / admin pages (M7).

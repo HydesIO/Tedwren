@@ -74,8 +74,9 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
   unit tests (live-version + approve-with-comments + register-from-document; bridge into queue; review-due
   detection; reminder fires/idempotent/flag-gated/not-yet-due); whole solution builds clean (0 warnings) and the
   full suite is green. Branch `claude/subcontractor-onboarding-phase-4` (off latest master).
-- 🟡 **SO-5 — Operative induction & accreditation gates (Phase 5; mobile track in lockstep).** Split into two
-  sequential PRs by gate; **5a (induction / Gate 4) done**, 5b (accreditation / Gate 3) next.
+- ✅ **SO-5 — Operative induction & accreditation gates (Phase 5; mobile track in lockstep).** Split into two
+  sequential PRs by gate; **5a (induction / Gate 4) and 5b (accreditation / Gate 3) both done**. Site-entry
+  turnstile enforcement of both gates lands in Phase 7 (SO-7) with the RAMS Gate-5 rework.
   - ✅ **SO-5a — Operative induction + quiz (Gate 4).** The operative completes their **MC-owned** induction on the
     mobile app (native + emulator, in lockstep) and passing issues the induction number (`IND-…`) + the session
     register entry. **G2** (OTP + device binding) already existed and was reused as-is. `SubcontractorOnboardingConfig`
@@ -91,9 +92,27 @@ verticals and the `TedwrenStepper`/Forms/dialog kit.
     setup-links-template + operative resolution/ownership; Mobile.Core: `InductionApiClient` via `FakeHttp`; Api:
     operative induction flow issues `IND-…` + console-token rejection; Web.App: bUnit induction render). Whole solution
     builds clean (0 warnings) and the full suite is green. Branch `claude/subcontractor-onboarding-phase-5a` (off latest master).
-  - ⏳ **SO-5b — Operative accreditation / competency (Gate 3).** SF-11 map gains `LegalMandatory`/`ClientRequired`;
-    seed **Gas Safe**; map/type admin CRUD (Q21); a pure `Gate3Evaluator`; operative card upload (`/api/mobile/cards`)
-    + emulator/native screens (lockstep). Site-entry turnstile enforcement of G3 is **deferred to Phase 7** (with the RAMS Gate-5 rework).
+  - ✅ **SO-5b — Operative accreditation / competency (Gate 3).** The operative photographs and uploads their
+    accreditation cards on the mobile app (native + emulator, in lockstep); each lands in the register needing a
+    manager to confirm (SF-6). SF-11 `TradeQualificationRequirement` gains `LegalMandatory`/`ClientRequired`/`CompanyId`;
+    `QualificationType` gains `CompanyId` (org-custom types, Q21); `QualificationCard` gains `CaptureClientId` (offline
+    idempotency, R4/R16). **Gas Safe** is seeded and mapped to "Gas Engineer" as legally-mandatory; the seeder upserts
+    each default map row so it lands on existing DBs. New pure `Gate3Evaluator` (only a missing/expired *legally-mandatory*
+    accreditation blocks; advisory ones are reported); `QualificationService.EvaluateGate3Async` + `GetShortfallAsync`
+    refactored onto it. Operative card API `/api/mobile/cards/*` (`RequireOperative`, core — no module gate; PersonId from
+    the token, R15; idempotent on the client id); `Mobile.Core` `CaptureApiClient.GetCardTypesAsync`/`UploadCardAsync` +
+    `CardOutboxHandler` (offline outbox, checkpointed upload) registered in both heads' DI; emulator
+    `Pages/Operative/AddAccreditation.razor` + native `Pages/AddCardPage.cs`, with an "Add accreditation" entry and a
+    trade-shortfall "still needed" section (`OperativeDetailDto.MissingQualifications`) on `MyCards` (both heads).
+    **Platform-admin CRUD (Q21):** `QualificationService` gains type + trade→accreditation-map create/update/delete gated
+    like `MasterDataService` (platform admin owns global rows, a tenant its own; type-delete guarded when referenced);
+    console `/api/qualifications/{types,requirements}` endpoints (`RequireWrite`), `ApiQualificationService` methods, and
+    admin page `Pages/Admin/AdminAccreditations.razor` (+ type/map edit dialogs, `ShellChrome` nav). Dual migration
+    `043_accreditation_map.sql` + EF `AddAccreditationMap`; EF↔raw parity green. New tests (Application: `Gate3Evaluator`,
+    type/map CRUD + gating + delete-guard, Gas Safe seeded; Mobile.Core: card client + `CardOutboxHandler` drain; Api:
+    `/api/mobile/cards` flow + idempotency + console-token rejection + CRUD auth; Web.App: bUnit AddAccreditation + MyCards
+    shortfall). Whole solution builds clean (0 warnings) and the full suite is green. Site-entry turnstile enforcement of
+    G3 is **deferred to Phase 7** (with the RAMS Gate-5 rework). Branch `claude/subcontractor-onboarding-phase-5b` (off latest master).
 - ⏳ **SO-6 — Registers + notification engine (Phase 6).**
 - ⏳ **SO-7 — Site sign-in Gate 5 (Phase 7; mobile track in lockstep).**
 

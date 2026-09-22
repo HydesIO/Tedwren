@@ -27,4 +27,18 @@ public sealed class InMemoryQualificationTypeRepository : IQualificationTypeRepo
         _store.Types[type.Id] = type;
         return Task.CompletedTask;
     }
+
+    /// <summary>Updates a type in the store.</summary>
+    public Task UpdateAsync(QualificationType type, CancellationToken cancellationToken = default)
+    {
+        _store.Types[type.Id] = type;
+        return Task.CompletedTask;
+    }
+
+    /// <summary>Removes a type from the store.</summary>
+    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        _store.Types.TryRemove(id, out _);
+        return Task.CompletedTask;
+    }
 }

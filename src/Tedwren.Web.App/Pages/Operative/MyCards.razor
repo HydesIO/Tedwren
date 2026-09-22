@@ -18,6 +18,18 @@
     {
         <TwCard><div class="tw-card__title">@_profile.StatusLabel</div></TwCard>
 
+        @if (_profile.MissingQualifications is { Count: > 0 } missing)
+        {
+            <TwCard>
+                <div class="tw-card__title">Still needed</div>
+                <div class="tw-muted">Your trade requires these accreditations. Add them so you can be cleared for site.</div>
+                @foreach (var name in missing)
+                {
+                    <div class="tw-list-line">@name</div>
+                }
+            </TwCard>
+        }
+
         @if (_profile.Qualifications.Count == 0)
         {
             <TwEmptyState Glyph="🪪" Title="No cards on file" Message="Your qualification cards will appear here once captured." />
@@ -34,6 +46,8 @@
                 </TwCard>
             }
         }
+
+        <a class="tw-btn tw-btn--primary tw-btn--block" href="/operative/cards/add">Add accreditation</a>
     }
 
     <div class="tw-screen__footnote"><a href="/operative">Back to home</a></div>

@@ -25,6 +25,9 @@ public sealed class QualificationType
     /// <summary>Whether this type can be verified live against CSCS (PRD-Phase 1). Informational for now.</summary>
     public bool IsCscsVerifiable { get; set; }
 
+    /// <summary>The owning company for an org-custom type, or null for a global (platform-default) type visible to everyone (Q21, R15).</summary>
+    public Guid? CompanyId { get; init; }
+
     /// <summary>When the type was created (UTC).</summary>
     public DateTimeOffset CreatedUtc { get; init; } = DateTimeOffset.UtcNow;
 }

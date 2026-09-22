@@ -1,0 +1,179 @@
+@page "/admin/accreditations"
+@using Tedwren.Abstractions.Contracts.Qualifications
+@using Tedwren.Abstractions.Services
+@using Tedwren.UiComponents.DataDisplay
+@using Tedwren.UiComponents.Dialogs
+@inject IQualificationService Qualifications
+@inject IDialogService DialogService
+
+<PageTitle>Accreditations · Admin · Tedwren</PageTitle>
+
+<AdminGuard>
+    <PageHeader Title="Accreditations"
+                Subtitle="The shared accreditation-type library and the trade→accreditation map that drives Gate 3 (SF-11/SF-12, Q21)" />
+
+    <DashboardCard>
+        <Body>
+            <div class="admin-master-data__toolbar">
+                <div class="admin-master-data__lists" role="tablist">
+                    <MudButton Variant="@(_view == View.Types ? Variant.Filled : Variant.Outlined)"
+                               Color="Color.Primary" Size="Size.Small"
+                               OnClick="@(() => SwitchView(View.Types))">Accreditation types</MudButton>
+                    <MudButton Variant="@(_view == View.Map ? Variant.Filled : Variant.Outlined)"
+                               Color="Color.Primary" Size="Size.Small"
+                               OnClick="@(() => SwitchView(View.Map))">Trade → accreditation map</MudButton>
+                </div>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary"
+                           StartIcon="@Icons.Material.Outlined.Add" OnClick="AddAsync">
+                    @(_view == View.Types ? "Add accreditation" : "Add mapping")
+                </MudButton>
+            </div>
+
+            @if (_view == View.Types)
+            {
+                <DataTable TItem="QualificationTypeDto"
+                           Items="_types"
+                           Columns="_typeColumns"
+                           Loading="_loading"
+                           OnRowClick="EditTypeAsync"
+                           SearchPlaceholder="Search accreditations…"
+                           EmptyTitle="No accreditations yet"
+                           EmptyDescription="Add the first accreditation type — customers can then map it to a trade and operatives can capture a card."
+                           EmptyIcon="@Icons.Material.Outlined.Badge" />
+            }
+            else
+            {
+                <DataTable TItem="TradeQualificationRequirementDto"
+                           Items="_requirements"
+                           Columns="_mapColumns"
+                           Loading="_loading"
+                           OnRowClick="EditRequirementAsync"
+                           SearchPlaceholder="Search trades…"
+                           EmptyTitle="No mappings yet"
+                           EmptyDescription="Map a trade to the accreditation it requires — legally-mandatory rows block the operative at Gate 3."
+                           EmptyIcon="@Icons.Material.Outlined.Rule" />
+            }
+        </Body>
+    </DashboardCard>
+</AdminGuard>
+
+@code {
+    private enum View { Types, Map }
+
+    private View _view = View.Types;
+    private IReadOnlyList<QualificationTypeDto> _types = Array.Empty<QualificationTypeDto>();
+    private IReadOnlyList<TradeQualificationRequirementDto> _requirements = Array.Empty<TradeQualificationRequirementDto>();
+    private List<DataColumn<QualificationTypeDto>> _typeColumns = new();
+    private List<DataColumn<TradeQualificationRequirementDto>> _mapColumns = new();
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        BuildColumns();
+        await LoadAsync();
+    }
+
+    private void BuildColumns()
+    {
+        _typeColumns = new()
+        {
+            new() { Title = "Accreditation", Value = t => t.Name },
+            new() { Title = "Category", Value = t => t.Category ?? "—", Filterable = true },
+            new() { Title = "Issuer", Value = t => t.Issuer ?? "—" },
+            new() { Title = "Validity", Text = t => t.DefaultValidityMonths > 0 ? $"{t.DefaultValidityMonths} mo" : "—", AlignRight = true },
+            new()
+            {
+                Title = "Scope", Text = t => t.IsGlobal ? "Shared" : "Custom", Filterable = true,
+                CellTemplate = t => @<StatusPill Label="@(t.IsGlobal ? "Shared" : "Custom")"
+                                                 Status="@(t.IsGlobal ? StatusKind.Info : StatusKind.Neutral)" />
+            },
+            new() { Title = "Held by", Value = t => t.HeldBy, AlignRight = true },
+        };
+
+        _mapColumns = new()
+        {
+            new() { Title = "Trade", Value = r => r.Trade },
+            new() { Title = "Accreditation", Value = r => r.Accreditation },
+            new()
+            {
+                Title = "Legally mandatory", Text = r => r.LegalMandatory ? "Yes" : "No", Filterable = true, Sortable = false,
+                CellTemplate = r => @<StatusPill Label="@(r.LegalMandatory ? "Mandatory" : "Advisory")"
+                                                 Status="@(r.LegalMandatory ? StatusKind.Warning : StatusKind.Neutral)" />
+            },
+            new()
+            {
+                Title = "Client required", Text = r => r.ClientRequired ? "Yes" : "No", Filterable = true, Sortable = false,
+                CellTemplate = r => @<StatusPill Label="@(r.ClientRequired ? "Required" : "—")"
+                                                 Status="@(r.ClientRequired ? StatusKind.Info : StatusKind.Neutral)" />
+            },
+            new()
+            {
+                Title = "Scope", Text = r => r.IsGlobal ? "Shared" : "Custom", Filterable = true,
+                CellTemplate = r => @<StatusPill Label="@(r.IsGlobal ? "Shared" : "Custom")"
+                                                 Status="@(r.IsGlobal ? StatusKind.Info : StatusKind.Neutral)" />
+            },
+        };
+    }
+
+    private async Task SwitchView(View view)
+    {
+        _view = view;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        // Keep the type list loaded for the map's accreditation picker as well as the types view.
+        _types = await Qualifications.GetQualificationTypesForManagementAsync();
+        if (_view == View.Map)
+        {
+            _requirements = await Qualifications.GetTradeRequirementsAsync();
+        }
+        _loading = false;
+    }
+
+    // Opens the add dialog for the active view; reloads on success.
+    private async Task AddAsync()
+    {
+        if (_view == View.Types)
+        {
+            var dialog = await DialogService.ShowAsync<EditQualificationTypeDialog>("Add accreditation", TedwrenDialog.Medium());
+            if (await dialog.Result is { Canceled: false })
+            {
+                await LoadAsync();
+            }
+        }
+        else
+        {
+            var parameters = new DialogParameters { ["Types"] = _types };
+            var dialog = await DialogService.ShowAsync<EditTradeRequirementDialog>("Add mapping", parameters, TedwrenDialog.Medium());
+            if (await dialog.Result is { Canceled: false })
+            {
+                await LoadAsync();
+            }
+        }
+    }
+
+    // Opens the edit dialog for an accreditation type (also used to delete it); reloads on success.
+    private async Task EditTypeAsync(QualificationTypeDto item)
+    {
+        var parameters = new DialogParameters { ["Existing"] = item };
+        var dialog = await DialogService.ShowAsync<EditQualificationTypeDialog>("Edit accreditation", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+
+    // Opens the edit dialog for a map row (also used to delete it); reloads on success.
+    private async Task EditRequirementAsync(TradeQualificationRequirementDto item)
+    {
+        var parameters = new DialogParameters { ["Existing"] = item, ["Types"] = _types };
+        var dialog = await DialogService.ShowAsync<EditTradeRequirementDialog>("Edit mapping", parameters, TedwrenDialog.Medium());
+        if (await dialog.Result is { Canceled: false })
+        {
+            await LoadAsync();
+        }
+    }
+}

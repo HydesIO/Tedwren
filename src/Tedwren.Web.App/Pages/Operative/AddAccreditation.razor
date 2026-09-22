@@ -1,0 +1,183 @@
+@page "/operative/cards/add"
+@using Tedwren.Abstractions.Contracts.Qualifications
+@inject CaptureApiClient CaptureApi
+@inject IOutboxStore Outbox
+@inject SyncEngine Sync
+@inject IConnectivityService Connectivity
+
+@* Add an accreditation / qualification card (Gate 3) — mirrors the native AddCardPage: pick the type, photograph the
+   card and add its dates, then queue it to the outbox to sync when online. Stored for a manager to confirm (SF-6),
+   never auto-accepted. The enqueue is identical to the app's, so the sync path is shared. *@
+
+<div class="tw-screen">
+    <h1 class="tw-screen__title">Add accreditation</h1>
+
+    @if (_loading)
+    {
+        <TwCard><TwSkeleton Lines="4" /></TwCard>
+    }
+    else if (_loadFailed)
+    {
+        <div class="tw-banner tw-banner--warning">Couldn't load the card types. Check your connection and try again.</div>
+        <div class="tw-screen__footnote"><a href="/operative/cards">Back to cards</a></div>
+    }
+    else
+    {
+        <div class="tw-banner tw-banner--info">
+            Pick the card type, take a clear photo of the card and add its dates. It's saved on your device and uploads
+            when you're online. Your manager confirms it before it counts.
+        </div>
+
+        <div class="tw-field">
+            <label class="tw-label" for="type">Accreditation</label>
+            <select id="type" class="tw-input" @bind="_typeId">
+                <option value="">Select a card type…</option>
+                @foreach (var type in _types)
+                {
+                    <option value="@type.Id">@type.Name</option>
+                }
+            </select>
+        </div>
+
+        <TwPhotoInput @key="_photoInputKey" OnCaptured="OnPhoto" />
+
+        <div class="tw-field">
+            <label class="tw-label" for="cardNumber">Card number</label>
+            <input id="cardNumber" class="tw-input" @bind="_cardNumber" placeholder="Optional" />
+        </div>
+
+        <div class="tw-field">
+            <label class="tw-label" for="holder">Name on card</label>
+            <input id="holder" class="tw-input" @bind="_holderName" placeholder="Optional" />
+        </div>
+
+        <div class="tw-grid-2">
+            <div class="tw-field">
+                <label class="tw-label" for="issued">Issued</label>
+                <input id="issued" type="date" class="tw-input" @bind="_issuedOn" />
+            </div>
+            <div class="tw-field">
+                <label class="tw-label" for="expires">Expires</label>
+                <input id="expires" type="date" class="tw-input" @bind="_expiresOn" />
+            </div>
+        </div>
+
+        @if (_result is not null)
+        {
+            <div class="tw-banner tw-banner--@_severity">@_result</div>
+        }
+
+        <button type="button" class="tw-btn tw-btn--primary tw-btn--block" @onclick="SaveAsync" disabled="@_busy">Save accreditation</button>
+
+        <div class="tw-screen__footnote"><a href="/operative/cards">Back to cards</a></div>
+    }
+</div>
+
+@code {
+    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
+
+    private IReadOnlyList<QualificationTypeDto> _types = Array.Empty<QualificationTypeDto>();
+    private string _typeId = string.Empty;
+    private string? _cardNumber;
+    private string? _holderName;
+    private DateOnly? _issuedOn;
+    private DateOnly? _expiresOn;
+    private byte[]? _photo;
+    private string? _photoType;
+    private int _photoInputKey;
+    private string? _result;
+    private string _severity = "success";
+    private bool _loading = true;
+    private bool _loadFailed;
+    private bool _busy;
+
+    /// <summary>Loads the qualification-type library for the picker when the page opens.</summary>
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _types = await CaptureApi.GetCardTypesAsync();
+        }
+        catch (Exception ex) when (ex is ApiException or HttpRequestException or TaskCanceledException)
+        {
+            _loadFailed = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnPhoto(TwPhotoInput.PhotoCapture capture)
+    {
+        _photo = capture.Bytes;
+        _photoType = capture.ContentType;
+    }
+
+    /// <summary>Queues the accreditation card to the outbox (like the app) and nudges a sync.</summary>
+    private async Task SaveAsync()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        if (!Guid.TryParse(_typeId, out var typeId))
+        {
+            ShowResult("Pick the card type first.", "warning");
+            return;
+        }
+
+        if (_photo is null)
+        {
+            ShowResult("Take a photo of the card first.", "warning");
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var clientId = Guid.NewGuid();
+            var capturedUtc = DateTimeOffset.UtcNow;
+            var request = new MobileCaptureCardRequest(
+                clientId, typeId, Clean(_cardNumber), Clean(_holderName), _issuedOn, _expiresOn, null, capturedUtc);
+
+            await Outbox.EnqueueAsync(new OutboxItem
+            {
+                Id = clientId,
+                Kind = CardOutboxHandler.ItemKind,
+                PayloadJson = JsonSerializer.Serialize(request, Json),
+                PhotoBytes = _photo,
+                PhotoContentType = _photoType,
+                CreatedUtc = capturedUtc,
+            });
+            Sync.RequestSync();
+
+            ShowResult(Connectivity.IsConnected ? "Saved — uploading now." : "Saved on your device — it'll upload when you're online.", "success");
+            _typeId = string.Empty;
+            _cardNumber = null;
+            _holderName = null;
+            _issuedOn = null;
+            _expiresOn = null;
+            _photo = null;
+            _photoType = null;
+            _photoInputKey++;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            ShowResult("Couldn't save. Please try again.", "danger");
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private static string? Clean(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    private void ShowResult(string text, string severity)
+    {
+        _result = text;
+        _severity = severity;
+    }
+}

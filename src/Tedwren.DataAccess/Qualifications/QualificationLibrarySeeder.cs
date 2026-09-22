@@ -7,7 +7,8 @@ namespace Tedwren.DataAccess.Qualifications;
 /// Seeds the default qualification-type library (SF-12) and default trade requirements (SF-11) into the
 /// database after migrations, keeping <see cref="DefaultQualificationLibrary"/> as the single source of
 /// truth (rather than duplicating the list in SQL). Idempotent: types are inserted only when their id is
-/// absent, and requirements only when none exist, so it is safe to run at every startup.
+/// absent, and each default requirement only when that (trade, type) mapping is not already present — so a
+/// newly-added default (e.g. Gas Safe) lands on an existing database without disturbing the customer's own edits.
 /// </summary>
 public sealed class QualificationLibrarySeeder
 {
@@ -33,9 +34,12 @@ public sealed class QualificationLibrarySeeder
         }
 
         var existing = await _requirements.GetAllAsync(cancellationToken);
-        if (existing.Count == 0)
+        var present = existing
+            .Select(r => (r.Trade.ToLowerInvariant(), r.QualificationTypeId))
+            .ToHashSet();
+        foreach (var requirement in DefaultQualificationLibrary.TradeRequirements)
         {
-            foreach (var requirement in DefaultQualificationLibrary.TradeRequirements)
+            if (present.Add((requirement.Trade.ToLowerInvariant(), requirement.QualificationTypeId)))
             {
                 await _requirements.AddAsync(requirement, cancellationToken);
             }

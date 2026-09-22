@@ -36,6 +36,10 @@ public sealed record OperativeDetailDto(
     string StatusLabel,
     IReadOnlyList<OperativeQualificationDto> Qualifications,
     IReadOnlyList<OperativeHistoryDto> History,
+    // The accreditations this operative's trade requires but they do not currently hold, or hold only on an
+    // expired card (SF-11 / Gate 3). Drives the "still needed" prompt on the operative's cards screen; empty
+    // when nothing is outstanding or the trade has no mapped requirements.
+    IReadOnlyList<string> MissingQualifications,
     // Induction is a site-entry condition for a main contractor (MC-8) but not a subcontractor (SUB-11), so it
     // is surfaced only when it applies. The reported State/StatusLabel already fold this in so "Compliant" never
     // contradicts the site gate (UAT-014); these expose the induction status on its own for the detail view.

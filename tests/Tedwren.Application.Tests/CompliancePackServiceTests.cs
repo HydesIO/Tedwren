@@ -140,7 +140,16 @@ public sealed class CompliancePackServiceTests
         public Task<Guid> CaptureCardAsync(CaptureCardRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<bool> ConfirmCardAsync(ConfirmCardRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<Guid?> RenewCardAsync(RenewCardRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
-        public Task<CompetencyShortfallDto> GetShortfallAsync(Guid personId, string trade, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<CompetencyShortfallDto> GetShortfallAsync(Guid personId, string trade, Guid? companyId = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Gate3StatusDto> EvaluateGate3Async(Guid personId, string trade, Guid? companyId = null, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<QualificationTypeDto>> GetQualificationTypesForManagementAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Guid> CreateQualificationTypeAsync(CreateQualificationTypeRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task UpdateQualificationTypeAsync(Guid id, UpdateQualificationTypeRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task DeleteQualificationTypeAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<TradeQualificationRequirementDto>> GetTradeRequirementsAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Guid> CreateTradeRequirementAsync(CreateTradeRequirementRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task UpdateTradeRequirementAsync(Guid id, UpdateTradeRequirementRequest request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task DeleteTradeRequirementAsync(Guid id, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 
     /// <summary>Engagement repository fake returning a fixed operative name.</summary>

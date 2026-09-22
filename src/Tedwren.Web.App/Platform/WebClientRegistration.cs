@@ -57,6 +57,7 @@ public static class WebClientRegistration
         services.AddTedwrenWebClient<CaptureApiClient>().AddHttpMessageHandler<OperativeAuthMessageHandler>();
         services.AddSingleton<IOutboxItemHandler, EvidenceOutboxHandler>();
         services.AddSingleton<IOutboxItemHandler, HazardOutboxHandler>();
+        services.AddSingleton<IOutboxItemHandler, CardOutboxHandler>();   // Gate 3 accreditation upload
         services.AddSingleton<SyncEngine>();
 
         // Forms & inspection engine: the forms client, its outbox handler (auto-discovered by SyncEngine) and drafts.
