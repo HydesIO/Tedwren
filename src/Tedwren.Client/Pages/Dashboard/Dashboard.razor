@@ -198,12 +198,12 @@
             var upcoming = await Expiry.GetUpcomingAsync(ExpiryWindowDays);
             _expiries = upcoming
                 .Select(e => new ExpiryItem(
-                    e.QualificationName,
-                    e.PersonName ?? "—",   // name the operative whose card is expiring, not a bare dash (UAT-005)
+                    e.Label,
+                    e.PersonName ?? e.SourceLabel,   // the operative whose item is expiring, or the register for a company-level item (UAT-005)
                     e.ExpiresOn ?? DateOnly.MaxValue,
                     e.DaysUntilExpiry,
                     ExpiryStatus(e.DaysUntilExpiry),
-                    e.Slug is null ? null : $"/workforce/{e.Slug}"))   // click through to the operative
+                    e.Slug is null ? null : $"/workforce/{e.Slug}"))   // click through to the operative (cards/inductions)
                 .ToList();
 
             // Scope the recent-activity feed to the selected period (F9). The KPI/compliance/site-risk tiles are

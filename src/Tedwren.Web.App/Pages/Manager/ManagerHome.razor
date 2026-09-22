@@ -56,8 +56,8 @@
                 @foreach (var e in _expiries.Take(5))
                 {
                     <div class="tw-list-row">
-                        <strong>@e.QualificationName</strong>
-                        <div class="tw-muted">@(e.PersonName ?? "Operative") · @DueLabel(e)</div>
+                        <strong>@e.Label</strong>
+                        <div class="tw-muted">@(e.PersonName ?? e.SourceLabel) · @DueLabel(e)</div>
                     </div>
                 }
             }

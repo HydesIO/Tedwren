@@ -29,6 +29,7 @@ is the whole process, phased so each increment is usable and never breaks a comp
 | "MC configures a subcontractor" as a first-class config object | **Beyond PRD v6.4** | Build UI + persistence; enforcement behind the `subcontractor-onboarding` flag; propose a new PRD §5/§8 requirement. |
 | **Access period** (default 12 months) | **Beyond PRD** | Capture + persist; **no enforcement** yet (`// TODO` + flag). |
 | **RAMS review cycle** (recurring 6/9/12 months) | **Beyond PRD** — §8.2 RAMS review is per-submission, `hse`-gated | Persist + reminder-only scheduler behind the flag. |
+| **Induction-expiry alerts** in the SF-9 engine (Phase 6) | **Beyond PRD** — SF-9 names cards; SUB-4 adds company documents; induction expiry (MC-7) is not a named SF-9 source | Include induction as a third notification source, **gated per-company behind the `subcontractor-onboarding` flag** and fail-closed (mirrors the RAMS reminder). Cards + company documents stay ungated core (SF-9/SUB-4/SUB-5). |
 | **Subcontractor-issued induction** | **Conflicts with §6.1 permanent non-goal** | Resolve for the PRD: the operative completes the **MC's** induction template; do **not** build sub-issued induction. |
 | Device binding (console config) | Relates to **R17** (biometrics/DPIA = Phase 5) | Console side = config toggle only; real binding is the existing operative OTP/device mechanism. |
 | Spec actors SubcontractorAdmin / SiteManagement | Not in the `AccessRole` model | Map onto existing roles (MC Admin → `Administrator`; Site Management → `SiteManager`; Subcontractor Admin → anonymous TradeInvite link holder; Operative → `Person`+`Engagement`); **no new roles**. |
@@ -74,8 +75,17 @@ is the whole process, phased so each increment is usable and never breaks a comp
      `ApiQualificationService`, `AdminAccreditations.razor` + dialogs + nav. Migration `043_accreditation_map.sql` + EF
      `AddAccreditationMap`. **Site-entry turnstile enforcement of G3 deferred to Phase 7** (the capability + evaluator
      ship now; the `SiteEntryService.CheckCardsAsync` change lands with the RAMS Gate-5 rework). See `TODO.md` SO-5b.
-6. **Registers + one notification engine** — competency/induction/RAMS as projections over the existing
-   expiry engine (SF-9); alerts to operative (SMS) + site team (email).
+6. **Registers + one notification engine** — the three registers as projections over the existing expiry engine
+   (SF-9); alerts to operative (SMS) + admin (email). **[Done]** — generalised the existing SF-9 `ExpiryWarningJob`,
+   the SUB-5 `WeeklyDigestJob` and the `ExpiryQueryService` read from **one source (cards) to three** via a
+   source-neutral `ExpiryItem`/`IExpirySource` projection: `CardExpirySource` (SF-9, unchanged behaviour),
+   `CompanyDocumentExpirySource` (SUB-4 — insurances/accreditations, email-only) and `InductionExpirySource`
+   (MC-7 — entitlement-gated, beyond-PRD extension). The SF-9 idempotency log became source-neutral
+   (`ExpiryNotification.CardId`→`SubjectId` + `Source`). Read + UI **extended, not duplicated**: `/expiries` +
+   dashboard "Expiring soon" now span all three sources with a filterable source badge (`UpcomingExpiryDto`
+   gains `SourceLabel`). Dual migration `044_expiry_notification_source.sql` + EF `AddExpiryNotificationSource`.
+   The register *pages* already existed (`/expiries`, `/induction-records`, `/rams`, `/documents`) and were reused.
+   See `TODO.md` SO-6.
 7. **Site sign-in Gate 5** — replace the stubbed `SiteEntryService.CheckRamsAsync` with a real signed-approved-
    RAMS check (MC-8 fifth check where `hse` held); new `RamsAcknowledgement`. Mobile track in lockstep.
 

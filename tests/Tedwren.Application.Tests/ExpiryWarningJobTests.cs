@@ -1,4 +1,5 @@
 using Tedwren.Application.Expiry;
+using Tedwren.Application.Expiry.Sources;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Domain.Entities;
@@ -33,12 +34,15 @@ public sealed class ExpiryWarningJobTests
         var card = new QualificationCard { PersonId = person.Id, QualificationTypeId = cscsId, ExpiresOn = cardExpiry };
         qual.Cards[card.Id] = card;
 
-        var job = new ExpiryWarningJob(
+        var cardSource = new CardExpirySource(
             new InMemoryQualificationCardRepository(qual),
             new InMemoryQualificationTypeRepository(qual),
             new InMemoryPersonRepository(org),
             new InMemoryEngagementRepository(org),
-            new InMemoryCompanyRepository(org),
+            new InMemoryCompanyRepository(org));
+
+        var job = new ExpiryWarningJob(
+            new IExpirySource[] { cardSource },
             new InMemoryNotificationLogRepository(exp),
             new OutboxSmsSender(outbox),
             new OutboxEmailSender(outbox));
@@ -53,7 +57,7 @@ public sealed class ExpiryWarningJobTests
         var result = await job.RunAsync(Today);
 
         // At 30 days the 60- and 30-day stages are both due (catch-up) → 2 stages × (SMS + email).
-        Assert.Equal(1, result.CardsEvaluated);
+        Assert.Equal(1, result.ItemsEvaluated);
         Assert.Equal(4, result.NotificationsSent);
         Assert.Contains(outbox.Messages, m => m.Channel == "Sms" && m.Recipient == "+447700900123");
         Assert.Contains(outbox.Messages, m => m.Channel == "Email" && m.Recipient == "admin@alpha.test");

@@ -107,11 +107,13 @@ public sealed class TradeQualificationRequirementRecord
     public Guid? CompanyId { get; set; }
 }
 
-/// <summary>Schema row for the <c>ExpiryNotifications</c> table (SF-9).</summary>
+/// <summary>Schema row for the <c>ExpiryNotifications</c> table (SF-9). Keyed by source + subject so cards,
+/// company documents (SUB-4) and inductions share one idempotency log without colliding.</summary>
 public sealed class ExpiryNotificationRecord
 {
     public Guid Id { get; set; }
-    public Guid CardId { get; set; }
+    public int Source { get; set; }
+    public Guid SubjectId { get; set; }
     public int Stage { get; set; }
     public int Channel { get; set; }
     public string Recipient { get; set; } = string.Empty;

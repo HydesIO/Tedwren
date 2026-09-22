@@ -1,4 +1,5 @@
 using Tedwren.Application.Expiry;
+using Tedwren.Application.Expiry.Sources;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Persistence.InMemory;
 using Tedwren.Domain.Entities;
@@ -27,12 +28,7 @@ public sealed class WeeklyDigestJobTests
         var cscsId = qual.Types.Values.Single(t => t.Name == "CSCS Card").Id;
         qual.Cards[Guid.NewGuid()] = new QualificationCard { PersonId = person.Id, QualificationTypeId = cscsId, ExpiresOn = Today.AddDays(20) };
 
-        var digest = new WeeklyDigestJob(
-            new InMemoryCompanyRepository(org),
-            new InMemoryEngagementRepository(org),
-            new InMemoryQualificationCardRepository(qual),
-            new InMemoryQualificationTypeRepository(qual),
-            new OutboxEmailSender(outbox));
+        var digest = new WeeklyDigestJob(new IExpirySource[] { CardSource(org, qual) }, new OutboxEmailSender(outbox));
 
         var result = await digest.RunAsync(Today);
 
@@ -52,16 +48,19 @@ public sealed class WeeklyDigestJobTests
         var company = new Company { Name = "Beta Ltd", ContactEmail = "admin@beta.test" };
         org.Companies[company.Id] = company;
 
-        var digest = new WeeklyDigestJob(
-            new InMemoryCompanyRepository(org),
-            new InMemoryEngagementRepository(org),
-            new InMemoryQualificationCardRepository(qual),
-            new InMemoryQualificationTypeRepository(qual),
-            new OutboxEmailSender(outbox));
+        var digest = new WeeklyDigestJob(new IExpirySource[] { CardSource(org, qual) }, new OutboxEmailSender(outbox));
 
         var result = await digest.RunAsync(Today);
 
         Assert.Equal(0, result.EmailsSent);
         Assert.Empty(outbox.Messages);
     }
+
+    /// <summary>The qualification-card expiry source over the seeded in-memory stores.</summary>
+    private static CardExpirySource CardSource(InMemoryOrganisationStore org, InMemoryQualificationStore qual) =>
+        new(new InMemoryQualificationCardRepository(qual),
+            new InMemoryQualificationTypeRepository(qual),
+            new InMemoryPersonRepository(org),
+            new InMemoryEngagementRepository(org),
+            new InMemoryCompanyRepository(org));
 }

@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Tedwren.Abstractions.Notifications;
 using Tedwren.Abstractions.Services;
 using Tedwren.Application.Expiry;
+using Tedwren.Application.Expiry.Sources;
 using Tedwren.Application.Jobs;
 using Tedwren.Application.Notifications;
 using Tedwren.Application.Attendance;
@@ -85,6 +86,12 @@ public static class ApplicationServiceCollectionExtensions
         services.AddSingleton<INotificationOutbox, NotificationOutbox>();
         services.AddScoped<ISmsSender, OutboxSmsSender>();
         services.AddScoped<IEmailSender, OutboxEmailSender>();
+        // The expiry sources the warning engine, the weekly digest and the upcoming-expiries read all draw on
+        // (SF-9 cards, SUB-4 company documents, MC-7 inductions). Registered as IExpirySource so all three resolve
+        // as an IEnumerable into each consumer.
+        services.AddScoped<IExpirySource, CardExpirySource>();
+        services.AddScoped<IExpirySource, CompanyDocumentExpirySource>();
+        services.AddScoped<IExpirySource, InductionExpirySource>();
         services.AddScoped<ExpiryWarningJob>();
         services.AddScoped<WeeklyDigestJob>();
         services.AddScoped<JobRunner>();
